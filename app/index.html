@@ -1637,6 +1637,7 @@ function gearItems(){
 function setGearItems(items){
   state.gear = {items, updatedAt: Date.now()};
   persistProgram();
+  if(typeof syncSchedule === "function") syncSchedule();        /* 同期: ダンベル設定を変えたとき */
 }
 /* 計算用: 同じ重さはまとめ、軽い順 */
 function inventory(){
@@ -2501,7 +2502,10 @@ function wire(){
     let t=null;
     note.oninput = ()=>{
       clearTimeout(t);
-      t = setTimeout(()=>{ const s = session(TODAY); s.note = note.value; s.noteAt = Date.now(); persistSession(TODAY); }, 600);
+      t = setTimeout(()=>{
+        const s = session(TODAY); s.note = note.value; s.noteAt = Date.now(); persistSession(TODAY);
+        if(typeof syncSchedule === "function") syncSchedule();      /* 同期: メモを変えたとき */
+      }, 600);
     };
   }
 
@@ -2570,6 +2574,7 @@ function addSet(id){
   const e = entryFor(TODAY, id, true);
   e.sets.push(st);
   persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();                   /* 同期: 記録したとき */
 
   const doneNow = e.sets.length >= (item.sets||3);
   if(doneNow){ openEx = null; editEx = null; }
@@ -2597,6 +2602,7 @@ function delSet(id, i){
     s.entries = s.entries.filter(x => x !== e);
   }
   persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();                   /* 同期: 修正で消したとき */
   /* 修正で規定に届かなくなったら、そのまま記録できる状態で開く */
   if(wasDone && !isDoneToday(id)){ editEx = null; openEx = id; }
   render();

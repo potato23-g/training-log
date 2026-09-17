@@ -19,16 +19,14 @@ var SYNC_LAST_KEY = "trainlog.sync.lastAt";
 var SYNC_REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 var SYNC_BACKOFF_MS = [800, 1600];
 
-/* デバウンス・巡回間隔・可視化スロットル。テストから縮めて使う */
-var SYNC_TUNE = { debounce: 4000, interval: 5 * 60 * 1000, visThrottle: 15000 };
+/* メモ・ダンベル設定の変更から同期までの待ち時間（入力中に何度も送らないため）。テストから縮めて使う */
+var SYNC_TUNE = { debounce: 4000 };
 
 var syncStatusText = "";
 var syncRunning = false;
 var syncRerunRequested = false;
 var syncDebounceTimer = null;
-var syncLastAttemptAt = 0;
 var syncRenderPending = false;
-var syncIntervalHandle = null;
 
 /* ============================================================
    設定の保存（localStorage["trainlog.sync.v1"] = {repo, token}）
@@ -231,7 +229,7 @@ function syncErrorMessage(kind){
     case "forbidden": return "鍵にこのリポジトリへの書き込み権限がありません（Contents を Read and write に）";
     case "repo404": return "リポジトリが見つかりません。名前と、鍵で選んだリポジトリを確認してください";
     case "public": return "公開リポジトリなので保存しません。非公開（Private）のリポジトリを指定してください";
-    case "network": return "通信できませんでした。つながる場所で開くと自動で同期します";
+    case "network": return "通信できませんでした。次に起動したときや記録したときに、まとめて同期します";
     case "conflict": return "同期が混み合っています。少し待ってからもう一度お試しください";
     case "badformat": return "リポジトリの trainlog.json がこのアプリの形式ではありません";
     case "progress": return "同期しています…";
@@ -421,7 +419,6 @@ function syncReportError(err){
 }
 
 async function syncRunOnce(cfg){
-  syncLastAttemptAt = Date.now();
   syncUpdateStatusEl(syncErrorMessage("progress"));
   var lastErr = null;
   for(var attempt = 0; attempt < 3; attempt++){
@@ -442,6 +439,8 @@ async function syncNow(){
   var cfg = syncLoadConfig();
   if(!cfg) return;
   if(syncRunning){ syncRerunRequested = true; return; }
+  /* 今から同期するので、入力待ちの同期は取り消す（その変更も今回まとめて送る） */
+  if(syncDebounceTimer){ clearTimeout(syncDebounceTimer); syncDebounceTimer = null; }
   syncRunning = true;
   try{
     await syncRunOnce(cfg);
@@ -474,27 +473,16 @@ function syncFlushPending(){
   }
 }
 
+/* 同期するのは次のときだけ（本人の指定）:
+     起動したとき（ここ）/ セットを記録・修正で消したとき（画面側から syncNow）/
+     メモ・ダンベル設定を変えたとき（画面側から syncSchedule）。
+   画面を離れるときは、入力待ちの同期が残っていれば取りこぼさないようその場で送る。 */
 function syncInit(){
-  var cfg = syncLoadConfig();
-  if(cfg) syncNow();
-
+  if(syncLoadConfig()) syncNow();
   try{
-    document.addEventListener("visibilitychange", function(){
-      if(!document.hidden){
-        var now = Date.now();
-        if(now - syncLastAttemptAt >= SYNC_TUNE.visThrottle) syncNow();
-      }else{
-        syncFlushPending();
-      }
-    });
+    document.addEventListener("visibilitychange", function(){ if(document.hidden) syncFlushPending(); });
   }catch(e){}
-  try{ window.addEventListener("online", function(){ syncNow(); }); }catch(e){}
   try{ window.addEventListener("pagehide", function(){ syncFlushPending(); }); }catch(e){}
-  try{
-    syncIntervalHandle = setInterval(function(){
-      if(!document.hidden) syncNow();
-    }, SYNC_TUNE.interval);
-  }catch(e){}
 }
 
 /* ============================================================
@@ -539,6 +527,7 @@ function syncEsc(s){
 
 /* GitHub の作成画面を、名前・公開範囲・権限を入れた状態で開くリンク（GitHub公式のURLパラメータ） */
 var SYNC_REPO_NAME = "training-log-data";
+var SYNC_WHEN = "同期するのは、アプリを起動したとき、セットを記録・修正したとき、メモやダンベル設定を変えたときです。";
 function syncNewRepoUrl(){
   return "https://github.com/new?name=" + SYNC_REPO_NAME + "&visibility=private";
 }
@@ -556,7 +545,7 @@ function syncCard(){
   if(!cfg){
     return `<h3 class="sec">スマホとPCで記録を共有</h3>
     <div class="card">
-      <p class="lastline" style="margin-top:0">GitHubの非公開リポジトリを介して、この記録をスマホとPCの両方から使えるようにします。</p>
+      <p class="lastline" style="margin-top:0">GitHubの非公開リポジトリを介して、この記録をスマホとPCの両方から使えるようにします。${SYNC_WHEN}</p>
       <details>
         <summary>はじめての設定（5分ほど）</summary>
         <ol class="steps">
@@ -580,7 +569,7 @@ function syncCard(){
   return `<h3 class="sec">スマホとPCで記録を共有</h3>
     <div class="card">
       <h4>接続中: ${syncEsc(cfg.repo)}</h4>
-      <p class="lastline" style="margin-top:0">${last ? "最終同期 " + last : "まだ同期していません"}</p>
+      <p class="lastline" style="margin-top:0">${last ? "最終同期 " + last : "まだ同期していません"}。${SYNC_WHEN}</p>
       <div class="rowbtns">
         <button data-sync="now">今すぐ同期</button>
         <button data-sync="disconnect">接続を解除</button>

@@ -44,11 +44,9 @@ async function initStore(){
 function persistSession(date){
   if(state.sessions[date]) state.sessions[date].updatedAt = Date.now();
   saveLocal();
-  if(typeof syncSchedule === "function") syncSchedule();
 }
 function persistProgram(){
   saveLocal();
-  if(typeof syncSchedule === "function") syncSchedule();
 }
 
 /* ファイル書き出し（ブラウザのダウンロード） */
@@ -101,7 +99,6 @@ function applyBackup(text){
   }
   if(Array.isArray(o.program) && o.program.length) state.program = o.program;
   saveLocal();
-  if(typeof syncSchedule === "function") syncSchedule();
   render();
   setStatus(days + "日分を取り込みました");
 }

@@ -76,8 +76,6 @@ function makeDevice(apiBase){
   vm.runInContext(IDS_SRC, ctx, { filename: "ids.js" });
   vm.runInContext(SYNC_SRC, ctx, { filename: "sync-github.js" });
   ctx.SYNC_TUNE.debounce = 50;
-  ctx.SYNC_TUNE.interval = 999999999;
-  ctx.SYNC_TUNE.visThrottle = 0;
 
   return { ctx, viewEl, doc, renderCalls, statusLog, localStorage };
 }
