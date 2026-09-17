@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>動作コンタクトシート</title>
+<style>
+  body { margin: 0; background: #EFEFE9; color: #1A2430; font: 12px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; }
+  body.dark { background: #13171B; color: #E9E9E2; }
+  table { border-collapse: collapse; }
+  td, th { padding: 0; text-align: center; font-weight: 400; font-size: 11px; }
+  td.lb { padding: 0 8px; white-space: nowrap; text-align: left; font-size: 12px; }
+  img { display: block; }
+  .cell { position: relative; }
+  .cell b { position: absolute; left: 3px; top: 2px; font-size: 10px; font-weight: 400; opacity: .55; }
+  .bad { outline: 2px solid #d33; outline-offset: -2px; }
+</style>
+</head>
+<body>
+<div id="out"></div>
+<canvas id="work" style="display:none"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+<script src="../src/motion.js"></script>
+<script src="../src/motions.js"></script>
+<script src="../src/motions_b.js"></script>
+<script src="../src/motions_c.js"></script>
+<script src="../src/motions_d.js"></script>
+<script src="../src/figure3d.js"></script>
+<script>
+(function () {
+  const qs = new URLSearchParams(location.search);
+  const ids = (qs.get('ids') || Object.keys(MOTION.motions).join(',')).split(',');
+  const N = +(qs.get('n') || 8);
+  const theme = qs.get('theme') || 'light';
+  const W = +(qs.get('w') || 260), H = +(qs.get('h') || 320);
+  const views = (qs.get('views') || 'default').split(',');
+  if (theme === 'dark') document.body.classList.add('dark');
+
+  const fig = FIGURE3D.create(THREE, document.getElementById('work'), { theme, dpr: 2 });
+  fig.setSize(W, H);
+
+  const out = document.getElementById('out');
+  let html = '<table><tr><th></th>';
+  for (let i = 0; i < N; i++) html += '<th>' + i + '</th>';
+  html += '</tr></table>';
+  out.innerHTML = html;
+  const table = out.querySelector('table');
+
+  ids.forEach((id) => {
+    const m = MOTION.motions[id];
+    if (!m) return;
+    const T = MOTION.cycleTime(m);
+    views.forEach((v) => {
+      const tr = document.createElement('tr');
+      const view = Object.assign({}, m.view);
+      if (v === 'side') { view.az = 0; }
+      if (v === 'front') { view.az = 90; }
+      if (v === 'back') { view.az = 180; }
+      if (v === 'top') { view.el = 55; }
+      tr.innerHTML = '<td class="lb">' + id + (v === 'default' ? '' : '<br>' + v) + '<br><small>' + T + '秒</small></td>';
+      for (let i = 0; i < N; i++) {
+        const t = T * i / N;
+        const frame = fig.render(m, t, view);
+        const bad = MOTION.romCheck(frame.pose);
+        const td = document.createElement('td');
+        td.innerHTML = '<div class="cell' + (bad.length ? ' bad' : '') + '"><img src="' + fig.renderer.domElement.toDataURL('image/png') +
+          '" width="' + W + '" height="' + H + '"><b>' + t.toFixed(1) + 's</b></div>';
+        tr.appendChild(td);
+      }
+      table.appendChild(tr);
+    });
+  });
+  window.__ready = true;
+})();
+</script>
+</body>
+</html>

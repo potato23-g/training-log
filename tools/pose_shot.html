@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>pose</title>
+<style>body{margin:0;background:#EFEFE9;display:flex;gap:4px}canvas{display:block}</style>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+<script src="../src/motion.js"></script><script src="../src/motions.js"></script>
+<script src="../src/motions_b.js"></script><script src="../src/motions_c.js"></script><script src="../src/motions_d.js"></script>
+<script src="../src/figure3d.js"></script>
+<script>
+(function(){
+  const qs = new URLSearchParams(location.search);
+  const id = qs.get('id') || 'goblet', t = +(qs.get('t') || 0);
+  const azs = (qs.get('az') || '90,0,40').split(',').map(Number);
+  const W = +(qs.get('w')||420), H = +(qs.get('h')||640);
+  azs.forEach(az => {
+    const c = document.createElement('canvas');
+    document.body.appendChild(c);
+    const f = FIGURE3D.create(THREE, c, {theme:'light', dpr:2});
+    f.setSize(W, H);
+    c.style.width = W + 'px'; c.style.height = H + 'px';
+    const v = Object.assign({}, MOTION.motions[id].view, {az});
+    if (qs.get('target')) { v.fit = false; v.target = qs.get('target').split(',').map(Number); v.dist = +(qs.get('dist') || 1.2); }
+    f.render(MOTION.motions[id], t, v);
+  });
+  window.__ready = true;
+})();
+</script>
+
+</body>

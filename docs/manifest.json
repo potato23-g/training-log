@@ -1,0 +1,20 @@
+{
+  "name": "トレーニング記録",
+  "short_name": "トレ記録",
+  "description": "自宅ダンベルトレーニングの記録・種目解説・動作アニメーション",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#EFEFE9",
+  "theme_color": "#EFEFE9",
+  "lang": "ja",
+  "icons": [
+    { "src": "icons/favicon-16.png", "sizes": "16x16", "type": "image/png" },
+    { "src": "icons/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

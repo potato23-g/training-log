@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>perf</title><body>
+<div id="out">measuring</div><canvas id="c" width="460" height="540"></canvas>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
+<script src="../src/motion.js"></script><script src="../src/motions.js"></script><script src="../src/figure3d.js"></script>
+<script>
+(function(){
+  const f = FIGURE3D.create(THREE, document.getElementById('c'), {theme:'light', dpr:2});
+  f.setSize(460, 540);
+  const m = MOTION.motions.goblet, T = MOTION.cycleTime(m);
+  f.render(m, 0, m.view);                       /* 初回（枠合わせ込み） */
+  let t0 = performance.now();
+  for (let i = 0; i < 60; i++) MOTION.solveFrame(m, T * i / 60);
+  const solve = (performance.now() - t0) / 60;
+  t0 = performance.now();
+  for (let i = 0; i < 60; i++) f.render(m, T * i / 60, m.view);
+  const full = (performance.now() - t0) / 60;
+  document.getElementById('out').textContent = '姿勢計算 ' + solve.toFixed(2) + ' ms/コマ、描画込み ' + full.toFixed(2) + ' ms/コマ';
+  window.__ready = true;
+})();
+</script></body>

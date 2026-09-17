@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>トレーニング記録</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EFEFE9;
+  --panel:#FFFFFF;
+  --panel-2:#F7F7F2;
+  --ink:#1A2430;
+  --ink-2:#5A6774;
+  --ink-3:#8C97A1;
+  --rule:#D6D8D0;
+  --muscle:#B23A31;
+  --muscle-2:#8A2B24;
+  --neutral-fill:#DBDCD4;
+  --neutral-stroke:#C4C6BD;
+  --done:#2F6B4F;
+  --shadow:0 1px 0 rgba(26,36,48,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#13171B;
+    --panel:#1A1F25;
+    --panel-2:#20262D;
+    --ink:#E9E9E2;
+    --ink-2:#9BA6B0;
+    --ink-3:#6E7A85;
+    --rule:#2B333A;
+    --muscle:#D3584C;
+    --muscle-2:#E8796D;
+    --neutral-fill:#2C333A;
+    --neutral-stroke:#3A434B;
+    --done:#4F9C77;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#13171B;
+  --panel:#1A1F25;
+  --panel-2:#20262D;
+  --ink:#E9E9E2;
+  --ink-2:#9BA6B0;
+  --ink-3:#6E7A85;
+  --rule:#2B333A;
+  --muscle:#D3584C;
+  --muscle-2:#E8796D;
+  --neutral-fill:#2C333A;
+  --neutral-stroke:#3A434B;
+  --done:#4F9C77;
+  --shadow:none;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans JP","Meiryo",system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.7;
+  -webkit-text-size-adjust:100%;
+}
+.num{font-family:"Archivo",system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--muscle);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+
+.wrap{max-width:620px;margin:0 auto;padding:0 16px 96px}
+
+/* ---- header ---- */
+header{padding:22px 0 12px;display:flex;align-items:baseline;gap:12px}
+header h1{font-size:17px;font-weight:700;margin:0;letter-spacing:.02em}
+header .date{margin-left:auto;font-size:13px;color:var(--ink-2)}
+.themebtn{background:none;border:1px solid var(--rule);border-radius:999px;padding:3px 10px;font-size:12px;color:var(--ink-2)}
+
+/* ---- tabs ---- */
+nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);margin-bottom:20px;overflow-x:auto}
+nav.tabs button{
+  background:none;border:none;padding:10px 14px;font-size:14px;font-weight:600;
+  color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;
+}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--muscle)}
+
+/* ---- hero ---- */
+.hero{background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:18px 18px 16px;margin-bottom:18px;box-shadow:var(--shadow)}
+.hero .kicker{font-size:12px;color:var(--ink-3);margin:0 0 2px}
+.hero h2{margin:0 0 10px;font-size:20px;font-weight:700}
+.bigset{display:flex;align-items:baseline;gap:6px}
+.bigset .v{font-size:46px;font-weight:700;line-height:1}
+.bigset .x{font-size:22px;color:var(--ink-3);font-weight:500}
+.bigset .u{font-size:15px;color:var(--ink-2);align-self:flex-end;padding-bottom:5px}
+.hero .sub{font-size:13px;color:var(--ink-2);margin-top:6px}
+
+/* ---- exercise cards ---- */
+.exrow{background:var(--panel);border:1px solid var(--rule);border-radius:4px;margin-bottom:10px;overflow:hidden}
+.exrow.done{border-color:var(--done)}
+.exhead{display:flex;align-items:center;gap:10px;padding:13px 14px;width:100%;background:none;border:none;text-align:left}
+.exhead .nm{font-weight:600;font-size:15px}
+.exhead .meta{font-size:12px;color:var(--ink-2);margin-top:1px}
+.exhead .cnt{margin-left:auto;font-size:13px;color:var(--ink-3);white-space:nowrap}
+.exrow.done .cnt{color:var(--done);font-weight:600}
+.exbody{padding:0 14px 14px;border-top:1px solid var(--rule)}
+
+.setline{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--rule);font-size:14px}
+.setline:last-of-type{border-bottom:none}
+.setline .i{width:22px;color:var(--ink-3);font-size:12px}
+.setline .val{font-weight:600}
+.setline .rpe{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.setline .del{background:none;border:none;color:var(--ink-3);padding:2px 6px;font-size:16px;line-height:1}
+
+.entry{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
+.fld{display:flex;flex-direction:column;gap:3px}
+.fld label{font-size:11px;color:var(--ink-3)}
+.stepper{display:flex;align-items:center;border:1px solid var(--rule);border-radius:3px;background:var(--panel-2)}
+.stepper button{background:none;border:none;width:32px;height:38px;font-size:17px;color:var(--ink-2)}
+.stepper input{
+  width:52px;height:38px;border:none;background:none;text-align:center;
+  font-family:"Archivo",system-ui,sans-serif;font-size:17px;font-weight:600;color:var(--ink);
+  -moz-appearance:textfield;
+}
+.stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.addbtn{background:var(--ink);color:var(--paper);border:none;border-radius:3px;height:38px;padding:0 18px;font-weight:700;font-size:14px}
+.addbtn.ghost{background:none;color:var(--ink-2);border:1px solid var(--rule);font-weight:600}
+
+.hint{font-size:12.5px;color:var(--ink-2);background:var(--panel-2);border-left:2px solid var(--muscle);padding:8px 10px;margin-top:12px;border-radius:0 3px 3px 0}
+.lastline{font-size:12.5px;color:var(--ink-2);margin-top:10px}
+.lastline b{color:var(--ink);font-family:"Archivo",system-ui,sans-serif}
+
+/* ---- rest timer ---- */
+.timer{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);display:none;align-items:center;gap:14px;padding:11px 18px;z-index:50}
+.timer.on{display:flex}
+.timer .t{font-family:"Archivo",system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:.02em}
+.timer .lb{font-size:13px;opacity:.75}
+.timer button+button{margin-left:0}
+.timer button{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:3px;padding:5px 12px;font-size:13px}
+
+/* ---- body figure ---- */
+.figs{display:flex;gap:6px;justify-content:center;align-items:flex-start}
+.figwrap{flex:1;max-width:190px;text-align:center}
+.figwrap .cap{font-size:11px;color:var(--ink-3);margin-top:2px}
+svg.fig{width:100%;height:auto;display:block}
+svg.fig .nt{fill:var(--neutral-fill);opacity:.55}
+svg.fig .rg{fill:var(--neutral-fill);stroke:var(--neutral-stroke);stroke-width:.8;transition:fill .18s}
+svg.fig .rg.sel{stroke:var(--ink);stroke-width:1.6}
+svg.fig.clickable .rg{cursor:pointer}
+
+.legend{display:flex;align-items:center;gap:8px;justify-content:center;font-size:11.5px;color:var(--ink-2);margin-top:10px}
+.legend .bar{width:96px;height:8px;border-radius:2px;background:linear-gradient(90deg,var(--neutral-fill),var(--muscle))}
+
+.mlist{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.chip{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-2)}
+.chip.p{background:var(--muscle);border-color:var(--muscle);color:#fff}
+.chip.s{border-color:var(--muscle);color:var(--muscle)}
+
+/* ---- generic blocks ---- */
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:16px;margin-bottom:12px}
+h3.sec{font-size:13px;font-weight:700;color:var(--ink-2);margin:26px 0 10px}
+.card h4{margin:0 0 8px;font-size:15px;font-weight:700}
+.steps{margin:0;padding-left:20px}
+.steps li{margin-bottom:5px;font-size:14px}
+.warn{color:var(--muscle)}
+ul.plain{list-style:none;margin:0;padding:0}
+ul.plain li{font-size:14px;padding-left:15px;position:relative;margin-bottom:5px}
+ul.plain li::before{content:"";position:absolute;left:0;top:11px;width:6px;height:1.5px;background:var(--ink-3)}
+
+table.hist{width:100%;border-collapse:collapse;font-size:13.5px}
+table.hist th{text-align:left;font-size:11.5px;color:var(--ink-3);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--rule)}
+table.hist td{padding:6px;border-bottom:1px solid var(--rule)}
+table.hist td.n{font-family:"Archivo",system-ui,sans-serif;font-weight:600;text-align:right;white-space:nowrap}
+
+.spark{display:flex;align-items:flex-end;gap:3px;height:44px;margin:8px 0 2px}
+.spark i{flex:1;background:var(--muscle);opacity:.8;border-radius:1px 1px 0 0;min-height:2px}
+
+.empty{color:var(--ink-2);font-size:14px;padding:26px 4px;text-align:center}
+.rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.rowbtns button{background:none;border:1px solid var(--rule);border-radius:3px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
+
+select,textarea,input[type=text]{
+  font:inherit;color:var(--ink);background:var(--panel-2);
+  border:1px solid var(--rule);border-radius:3px;padding:8px 10px;width:100%;
+}
+textarea{min-height:64px;resize:vertical}
+
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:60;align-items:flex-end;justify-content:center}
+.sheet.on{display:flex}
+.sheet .inner{background:var(--paper);width:100%;max-width:620px;max-height:86vh;overflow-y:auto;border-radius:10px 10px 0 0;padding:18px 16px 30px}
+.sheet .inner h4{margin:0 0 12px;font-size:16px}
+.picklist{display:flex;flex-direction:column;gap:6px}
+.picklist button{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:11px 13px;text-align:left;font-size:14px;font-weight:600}
+.picklist button span{display:block;font-weight:400;font-size:12px;color:var(--ink-2)}
+
+.status{font-size:11.5px;color:var(--ink-3);text-align:center;padding:14px 0 0}
+.overflowx{overflow-x:auto}
+
+/* ---- movement diagrams ---- */
+.diapair{display:flex;align-items:center;gap:4px;margin:2px 0 0}
+.diacell{flex:1;min-width:0;text-align:center}
+.diacell svg,.diasolo svg{width:100%;height:auto;display:block}
+.diasolo{max-width:76%;margin:0 auto}
+.diahint{font-size:11.5px;color:var(--ink-3);text-align:center;margin:2px 0 0}
+.dialab{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.diaarrow{color:var(--ink-3);font-size:19px;line-height:1;flex:0 0 auto;padding:0 2px}
+.fg-body{fill:var(--ink)}
+.fg-far{fill:var(--ink);opacity:.4}
+.fg-ghost{opacity:.14}
+.fg-halo{fill:var(--panel);stroke:var(--panel);stroke-width:2.8;stroke-linejoin:round}
+.fg-db{fill:var(--muscle)}
+.fg-prop{fill:var(--neutral-fill);stroke:var(--neutral-stroke);stroke-width:1.5}
+.fg-floor{stroke:var(--neutral-stroke);stroke-width:2;stroke-linecap:round}
+.dianote{font-size:12.5px;color:var(--ink-2);margin:10px 0 0}
+.diahold{font-size:12px;color:var(--ink-2);margin:9px 0 0;padding:7px 9px;background:var(--panel-2);border-radius:3px}
+.diahold b{color:var(--ink-3);font-size:10.5px;font-weight:700}
+.rswitch{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px}
+.rswitch button{background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:8px 4px;
+  display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.3}
+.rswitch button b{font-family:"Archivo",system-ui,sans-serif;font-size:16px;color:var(--ink-3)}
+.rswitch button span{font-size:10.5px;color:var(--ink-3)}
+.rswitch button.on{border-color:var(--muscle);background:var(--panel)}
+.rswitch button.on b{color:var(--muscle)}
+.rswitch button.on span{color:var(--ink)}
+.side{font-size:10px;color:var(--muscle);border:1px solid var(--muscle);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
+.target{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;background:var(--panel-2);
+  border-left:2px solid var(--muscle);padding:9px 11px;margin-top:12px;border-radius:0 3px 3px 0}
+.target .tl{font-size:11px;color:var(--ink-3)}
+.target .tv{font-size:19px;font-weight:700}
+.target .tw{font-size:11.5px;color:var(--ink-2);flex-basis:100%}
+.setrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.setrow:last-of-type{border-bottom:none}
+.setrow small{display:block;font-size:11px;color:var(--ink-3)}
+.setrow .stt{margin-left:auto;font-size:12px;color:var(--ink-3)}
+.tg{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:999px;
+  padding:4px 14px;font-size:12.5px;font-weight:600;color:var(--ink-3);white-space:nowrap}
+.tg.on{border-color:var(--muscle);color:var(--muscle)}
+.splitcols{display:block}
+.exmain{min-width:0}
+.exside{margin-top:14px}
+.refhead{font-size:12px;color:var(--ink-3);font-weight:400;margin-left:6px}
+
+@media (min-width:900px){
+  .wrap{max-width:1120px;padding:0 28px 96px}
+  .shell{display:grid;grid-template-columns:168px minmax(0,1fr);gap:36px;align-items:start}
+  nav.tabs{flex-direction:column;gap:0;border-bottom:none;border-right:1px solid var(--rule);
+           position:sticky;top:20px;margin:0;overflow:visible}
+  nav.tabs button{text-align:left;padding:9px 16px 9px 2px;border-bottom:none;
+                  border-right:2px solid transparent;margin:0 -1px 0 0;font-size:15px}
+  nav.tabs button[aria-selected="true"]{border-right-color:var(--muscle)}
+  main.view-today,main.view-hist{max-width:760px}
+  .splitcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+  .splitcols>div{min-width:0}
+  .exbody{display:grid;grid-template-columns:minmax(0,1fr) 258px;gap:22px;align-items:start}
+  .exside{margin-top:0}
+  .hero{padding:24px 26px 22px}
+  .hero .bigset .v{font-size:56px}
+  .diasolo{max-width:52%}
+}
+@media (min-width:1180px){
+  .wrap{max-width:1240px}
+  .shell{grid-template-columns:180px minmax(0,1fr)}
+}
+.diawrong .fg-body,.diawrong .fg-far{fill:var(--muscle)}
+.diawrong .fg-halo{fill:var(--panel);stroke:var(--panel)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>トレーニング記録</h1>
+    <span class="date num" id="todayLabel"></span>
+    <button class="themebtn" id="themeBtn">表示</button>
+  </header>
+
+  <div class="shell">
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="today" aria-selected="true">今日</button>
+      <button role="tab" data-tab="ex" aria-selected="false">種目</button>
+      <button role="tab" data-tab="body" aria-selected="false">からだ</button>
+      <button role="tab" data-tab="hist" aria-selected="false">履歴</button>
+    </nav>
+    <main id="view" class="view-today"></main>
+  </div>
+  <div class="status" id="status"></div>
+</div>
+
+<div class="timer" id="timer">
+  <span class="t num" id="timerT">1:30</span>
+  <span class="lb" id="timerLb">休憩</span>
+  <button id="timerPlus">+30秒</button>
+  <button id="timerStop">終了</button>
+</div>
+
+<div class="sheet" id="sheet"><div class="inner" id="sheetInner"></div></div>
+
+<script>
+/* ============================================================
+   筋肉グループ
+   ============================================================ */
+const MUSCLES = {
+  chest:"胸", shoulders:"肩", traps:"僧帽筋", lats:"広背筋", erectors:"脊柱起立筋",
+  biceps:"上腕二頭筋", triceps:"上腕三頭筋", forearms:"前腕",
+  abs:"腹直筋", obliques:"腹斜筋",
+  glutes:"大殿筋", quads:"大腿四頭筋", hams:"ハムストリング",
+  adductors:"内転筋", calves:"ふくらはぎ"
+};
+
+/* ============================================================
+   種目ライブラリ
+   kind: "w"=重量×回数 / "b"=自重×回数 / "t"=秒数
+   ============================================================ */
+const EX = [
+  {
+    id:"goblet", name:"ゴブレットスクワット", kind:"w", w:5, r:12, sets:3,
+    p:["quads","glutes"], s:["adductors","abs","erectors"],
+    how:[
+      "ダンベルを縦に持ち、胸の前で両手で抱える。肘は体の内側に落とす。",
+      "足は肩幅よりやや広く、つま先は少し外向き。",
+      "胸を張ったまま、股関節から後ろに座るようにしゃがむ。太ももが床と平行かそれ以下まで。",
+      "かかと全体で床を押して立ち上がる。一番上で尻を締める。"
+    ],
+    ng:[
+      "膝が内側に入る。つま先と同じ方向に開いたまま動かす。",
+      "背中が丸まる。ダンベルが重すぎるか、足首が硬い可能性。",
+      "浅い。深さが足りないと5kgではほぼ刺激にならない。"
+    ],
+    up:[
+      "しゃがむ深さを限界まで広げる",
+      "下ろす動作に3秒かける",
+      "一番下で1秒静止してから立つ",
+      "片脚（ブルガリアン）に切り替える"
+    ]
+  },
+  {
+    id:"rdl", name:"ルーマニアンデッドリフト", kind:"w", w:5, r:12, sets:3,
+    p:["hams","glutes"], s:["erectors","lats","forearms"],
+    how:[
+      "ダンベルを体の前で持ち、足は腰幅。膝は軽く曲げた角度で固定する。",
+      "膝の角度を変えずに、尻を後ろに引きながら上体を倒す。",
+      "ダンベルは脚のすぐ前をこすりながら下ろす。もも裏が張るところで止める。",
+      "尻を締めながら股関節を前に押し出して戻る。"
+    ],
+    ng:[
+      "スクワットになっている。これは膝ではなく股関節を曲げる種目。",
+      "腰が丸まる。丸まる直前が可動域の限界。",
+      "ダンベルが体から離れる。腰への負担が増える。"
+    ],
+    up:[
+      "もも裏の伸びを感じる位置まで深く下ろす",
+      "下ろす動作に3秒かける",
+      "片脚ルーマニアンデッドリフトに切り替える"
+    ]
+  },
+  {
+    id:"split", name:"ブルガリアンスクワット", kind:"w", w:5, r:10, sets:3,
+    p:["quads","glutes"], s:["adductors","abs"],
+    how:[
+      "椅子やベッドに片足の甲を乗せ、前脚は椅子から70cmほど前に置く。",
+      "上体をやや前傾させたまま、前脚の膝を曲げて真下に沈む。",
+      "後ろの膝が床に近づくまで下ろす。",
+      "前脚のかかとで床を押して戻る。"
+    ],
+    ng:[
+      "前脚の位置が近すぎて膝が前に出すぎる。バランスが取れないときは足幅を見直す。",
+      "後ろ脚で押している。後ろ脚は支えるだけ。"
+    ],
+    up:["深さを広げる","ダンベルを両手に持つ","下ろす動作をゆっくりにする"]
+  },
+  {
+    id:"hipthrust", name:"ヒップスラスト", kind:"w", w:5, r:15, sets:3,
+    p:["glutes"], s:["hams","abs"],
+    how:[
+      "肩甲骨をベッドや椅子の縁に乗せ、膝を90度に立てる。",
+      "ダンベルを骨盤の上に置いて両手で支える。",
+      "かかとで床を押し、肩・腰・膝が一直線になるまで尻を持ち上げる。",
+      "一番上で1〜2秒締めてから下ろす。"
+    ],
+    ng:["腰を反って上げている。上げるのは股関節であって腰ではない。","足が体から遠すぎてもも裏だけで上げている。"],
+    up:["一番上で3秒静止","片脚で行う","可動域いっぱいまで下ろす"]
+  },
+  {
+    id:"row", name:"ワンハンドロウ", kind:"w", w:5, r:12, sets:3,
+    p:["lats","traps"], s:["biceps","forearms","erectors"],
+    how:[
+      "椅子に片手と片膝をつき、背中を床と平行に近い角度で保つ。",
+      "反対の手でダンベルを持ち、腕を真下に垂らす。",
+      "肘を腰の方向に引き上げる。肩甲骨を背骨側に寄せる意識。",
+      "ゆっくり下ろし、下で広背筋が伸びるのを感じる。"
+    ],
+    ng:[
+      "腕で引いている。動きの起点は肩甲骨。",
+      "体をひねって反動で上げる。上体は固定する。",
+      "肘が外に開く。体側に沿わせて引く。"
+    ],
+    up:["下ろしきって一瞬止める","引き上げた位置で2秒静止","下ろす動作に3秒かける"]
+  },
+  {
+    id:"ohp", name:"ダンベルショルダープレス", kind:"w", w:5, r:12, sets:3,
+    p:["shoulders"], s:["triceps","traps","abs"],
+    how:[
+      "立つか椅子に浅く座る。ダンベルを肩の高さ、耳の横あたりに構える。",
+      "肋骨を締めて腰が反らないようにする。",
+      "真上に押し上げ、肘を伸ばしきる。",
+      "肩の高さまでゆっくり下ろす。"
+    ],
+    ng:["腰が反る。腹を締めて骨盤を立てる。","下ろす位置が浅い。耳の高さまで下ろす。"],
+    up:["片手ずつ行う（体幹の負荷も上がる）","下ろす動作に3秒かける","上で1秒静止"]
+  },
+  {
+    id:"lateral", name:"サイドレイズ", kind:"w", w:5, r:15, sets:3,
+    p:["shoulders"], s:["traps"],
+    how:[
+      "ダンベルを体の横に持ち、肘をわずかに曲げて固定する。",
+      "肩の高さまで真横に上げる。小指側をわずかに高くする意識。",
+      "3秒かけて下ろす。"
+    ],
+    ng:["反動で上げている。この種目は軽い重量でゆっくりが正解。","肩がすくむ。首を長く保つ。"],
+    up:["下ろす動作を5秒に延ばす","一番上で2秒静止","回数を20回まで伸ばす"]
+  },
+  {
+    id:"floorpress", name:"ダンベルフロアプレス", kind:"w", w:5, r:12, sets:3,
+    p:["chest"], s:["triceps","shoulders"],
+    how:[
+      "床に仰向けになり、膝を立てる。ダンベルを胸の横に構える。",
+      "肘が床につくまで下ろす。上腕は体幹から45度くらい。",
+      "胸で押すように真上へ上げる。"
+    ],
+    ng:["肘を真横に開く。肩を痛めやすい。","上げきったときに肩甲骨が浮く。"],
+    up:["下ろす動作に3秒かける","床につく直前で2秒静止","腕立て伏せに切り替える"]
+  },
+  {
+    id:"pushup", name:"腕立て伏せ", kind:"b", r:10, sets:3,
+    p:["chest"], s:["triceps","shoulders","abs"],
+    how:[
+      "手は肩幅よりやや広く、指先はやや外向き。",
+      "頭からかかとまで一直線を保つ。",
+      "胸が床に近づくまで下ろし、押し返す。"
+    ],
+    ng:["腰が落ちる。腹と尻を締める。","可動域が浅い。きつければ膝つきか、手を台に乗せて角度を緩める。"],
+    up:["足を台に乗せて角度をきつくする","下ろす動作に3秒かける","片手を前後にずらす"]
+  },
+  {
+    id:"curl", name:"ダンベルカール", kind:"w", w:5, r:12, sets:3,
+    p:["biceps"], s:["forearms"],
+    how:[
+      "ダンベルを体の横に持ち、肘を体側に固定する。",
+      "肘の位置を動かさずに前腕だけを巻き上げる。",
+      "ゆっくり下ろし、肘を伸ばしきる。"
+    ],
+    ng:["肘が前に出る。それは肩の動き。","反動で振り上げる。"],
+    up:["下ろす動作に4秒かける","上で2秒静止","両手同時ではなく片手ずつ集中して行う"]
+  },
+  {
+    id:"triext", name:"トライセプスエクステンション", kind:"w", w:5, r:12, sets:3,
+    p:["triceps"], s:[],
+    how:[
+      "ダンベルを両手で持ち、頭の後ろに構える。",
+      "肘の位置を固定したまま、腕を真上に伸ばす。",
+      "ゆっくり頭の後ろへ戻す。"
+    ],
+    ng:["肘が開く。前を向けたまま固定する。","肩を痛めやすいので可動域は無理に広げない。"],
+    up:["下ろす動作に4秒かける","片手ずつ行う"]
+  },
+  {
+    id:"plank", name:"プランク", kind:"t", r:40, sets:3,
+    p:["abs"], s:["obliques","shoulders","erectors"],
+    how:[
+      "肘を肩の真下につき、つま先で支える。",
+      "頭からかかとまで一直線。尻を締め、肋骨を締める。",
+      "呼吸を止めない。"
+    ],
+    ng:["腰が落ちる／尻が上がる。どちらもフォームが崩れた合図なので、そこで終了する。","60秒を超えて続けるより、きつい姿勢を短く保つほうが効率がいい。"],
+    up:["片脚を上げる","片手を前に伸ばす","肘を前方に遠ざける"]
+  },
+  {
+    id:"deadbug", name:"デッドバグ", kind:"b", r:10, sets:3,
+    p:["abs"], s:["obliques"],
+    how:[
+      "仰向けで、両腕を天井に、股関節と膝を90度に曲げる。",
+      "腰を床に押し付けたまま、右腕と左脚をゆっくり伸ばす。",
+      "戻して反対側。左右で1回。"
+    ],
+    ng:["腰が床から浮く。浮かない範囲までしか伸ばさない。","動きが速い。1回に4秒かける。"],
+    up:["動作をさらにゆっくりにする","手足を床すれすれまで伸ばす","かかとに軽い負荷を足す"]
+  },
+  {
+    id:"crunch", name:"腹筋（クランチ）", kind:"b", r:20, sets:3,
+    p:["abs"], s:["obliques"],
+    how:[
+      "仰向けで膝を立て、手は胸か側頭部に。",
+      "肩甲骨が床から離れるところまで背中を丸める。",
+      "ゆっくり戻す。首を引っ張らない。"
+    ],
+    ng:["首を手で引っ張る。","反動で起き上がる。","毎日高回数やる。腹筋も他の筋肉と同じで回復が要る。"],
+    up:["ダンベルを胸に抱えて行う","上で2秒静止","動作をゆっくりにする"]
+  },
+  {
+    id:"sideplank", name:"サイドプランク", kind:"t", r:30, sets:2,
+    p:["obliques"], s:["abs","glutes"],
+    how:["横向きで肘を肩の真下につく。","腰を持ち上げ、頭から足まで一直線を保つ。","左右それぞれ行う。"],
+    ng:["腰が落ちる。","体が前後に傾く。"],
+    up:["上の脚を上げる","時間を延ばす"]
+  },
+  {
+    id:"calf", name:"カーフレイズ", kind:"w", w:5, r:20, sets:3,
+    p:["calves"], s:[],
+    how:["段差のふちにつま先を乗せ、かかとを下げる。","限界まで背伸びする。","ゆっくりかかとを下げる。"],
+    ng:["反動で跳ねる。","可動域が狭い。下も上も限界まで。"],
+    up:["片脚で行う","一番上で2秒静止","下ろす動作をゆっくりにする"]
+  },
+  {
+    id:"farmer", name:"ファーマーズウォーク", kind:"t", r:45, sets:3,
+    p:["forearms","traps"], s:["abs","obliques","calves"],
+    how:["ダンベルを持って、胸を張ったまま歩く（狭ければその場で保持）。","肩をすくめず、下に引き下げたまま。","時間または距離で区切る。"],
+    ng:["前傾する。","持ち手が滑る前に肩がすくむ。"],
+    up:["片手だけで持つ（体幹への負荷が大きく上がる）","時間を延ばす"]
+  }
+];
+EX.push({
+  id:"rdl1", name:"片脚ルーマニアンデッドリフト", kind:"w", w:5, r:10, sets:3, base:"rdl",
+  p:["hams","glutes"], s:["erectors","abs","obliques","calves"],
+  variant:"両脚版と動きは同じです。片脚で立ち、反対の脚を後ろに伸ばしながら上体を倒します。負荷が倍になるうえ、バランスを保つために体幹と足首も使います。壁や椅子に指先を添えて構いません。",
+  how:null, ng:null, up:null
+});
+const EXMAP = Object.fromEntries(EX.map(e=>[e.id,e]));
+/* 派生種目は親の図・解説・手順を引き継ぐ */
+function baseOf(id){ const e=EXMAP[id]; return (e && e.base) ? e.base : id; }
+function exHow(id){ const e=EXMAP[id]; return e.how || EXMAP[baseOf(id)].how; }
+function exNg(id){ const e=EXMAP[id]; return e.ng || EXMAP[baseOf(id)].ng; }
+function exUp(id){ const e=EXMAP[id]; return e.up || EXMAP[baseOf(id)].up; }
+
+/* ============================================================
+   A/B/C/D ローテーション
+   ============================================================ */
+const ROUTINES = [
+ {id:"A", name:"脚（前側）", items:[
+   {ex:"split", sets:3, r:10, side:true, note:"ベッドに後ろ足を乗せる。両手に1つずつ持つ"},
+   {ex:"goblet", sets:3, r:18, note:"下ろす3秒。2つ担げば10kgになる"},
+   {ex:"hipthrust", sets:3, r:18, note:"台が低いぶん可動域は狭い。上で2秒締める"},
+   {ex:"calf", sets:3, r:18, side:true, label:"カーフレイズ（片脚）"},
+   {ex:"deadbug", sets:3, r:10, side:true}
+ ]},
+ {id:"B", name:"押す", items:[
+   {ex:"pushup", sets:3, r:10, note:"足をベッドに乗せて角度をきつくする"},
+   {ex:"floorpress", sets:3, r:18, note:"下ろす3秒"},
+   {ex:"ohp", sets:3, r:13},
+   {ex:"lateral", sets:3, r:18, note:"下ろす4秒"},
+   {ex:"triext", sets:3, r:13},
+   {ex:"plank", sets:2, r:45}
+ ]},
+ {id:"C", name:"脚（後ろ側）", items:[
+   {ex:"rdl1", sets:3, r:11, side:true},
+   {ex:"rdl", sets:3, r:18, note:"下ろす3秒"},
+   {ex:"hipthrust", sets:3, r:13, side:true, label:"ヒップスラスト（片脚）"},
+   {ex:"calf", sets:3, r:22},
+   {ex:"sideplank", sets:2, r:25, side:true}
+ ]},
+ {id:"D", name:"引く・腕", items:[
+   {ex:"row", sets:4, r:13, side:true, note:"下ろす3秒"},
+   {ex:"farmer", sets:3, r:50, note:"片手だけで持つと負荷が大きく上がる"},
+   {ex:"curl", sets:3, r:13, note:"下ろす4秒"},
+   {ex:"crunch", sets:3, r:18},
+   {ex:"deadbug", sets:2, r:10, side:true}
+ ]}
+];
+const RMAP = Object.fromEntries(ROUTINES.map(r=>[r.id,r]));
+const RORDER = ROUTINES.map(r=>r.id);
+function itemName(it){ return it.label || EXMAP[it.ex].name; }
+
+/* ============================================================
+   動きの図解
+   pose: head / sh sh2 / el el2 / wr wr2 / hip hip2 / kn kn2 /
+         an an2 / toe toe2 / heel / db[]
+   mode "flow" = 開始→終了の動作、"compare" = 正しい姿勢と崩れた姿勢
+   ============================================================ */
+const DIA = {
+  goblet:{view:"側面", floor:true, mode:"flow", la:"立つ", lb:"しゃがむ",
+    note:"ダンベルは胸の前で固定したまま、股関節から後ろに座る。膝だけを前に出さない。",
+    a:{head:[57,22],sh:[56,38],el:[47,55],wr:[58,48],hip:[56,72],kn:[56,102],an:[56,134],toe:[70,138],heel:[46,138],db:[[63,46]]},
+    b:{head:[52,50],sh:[50,64],el:[42,80],wr:[56,74],hip:[41,100],kn:[65,104],an:[56,134],toe:[70,138],heel:[46,138],db:[[61,72]]}},
+
+  rdl:{view:"側面", floor:true, mode:"flow", la:"立つ", lb:"股関節を折る",
+    note:"膝の角度は最初に決めたまま動かさない。曲げるのは股関節だけ。ダンベルは脚をこすりながら下ろす。",
+    a:{head:[57,22],sh:[56,38],el:[61,58],wr:[62,78],hip:[56,72],kn:[56,102],an:[56,134],toe:[70,138],heel:[46,138],db:[[62,84]]},
+    b:{head:[24,54],sh:[34,62],el:[36,82],wr:[38,100],hip:[64,76],kn:[58,104],an:[56,134],toe:[70,138],heel:[46,138],db:[[38,106]]}},
+
+  split:{view:"側面", floor:true, mode:"flow", la:"立つ", lb:"沈む",
+    note:"後ろ脚は支えるだけ。前脚のかかとで床を押して戻る。",
+    props:'<rect class="fg-prop" x="76" y="102" width="44" height="7" rx="2"/><rect class="fg-prop" x="80" y="109" width="5" height="29"/><rect class="fg-prop" x="111" y="109" width="5" height="29"/>',
+    a:{head:[47,24],sh:[46,40],el:[44,60],wr:[42,80],hip:[46,74],kn:[46,104],an:[46,134],toe:[60,138],heel:[36,138],kn2:[64,110],an2:[82,102],toe2:[93,100],db:[[40,86]]},
+    b:{head:[47,46],sh:[44,62],el:[42,82],wr:[40,102],hip:[32,94],kn:[59,107],an:[46,134],toe:[60,138],heel:[36,138],kn2:[67,114],an2:[82,102],toe2:[93,100],db:[[38,108]]}},
+
+  hipthrust:{view:"側面", floor:true, mode:"flow", la:"下ろす", lb:"持ち上げる",
+    note:"上げるのは股関節。腰を反って上げていたら、それは別の動きになっている。",
+    props:'<rect class="fg-prop" x="12" y="86" width="38" height="7" rx="2"/><rect class="fg-prop" x="16" y="93" width="5" height="45"/><rect class="fg-prop" x="41" y="93" width="5" height="45"/>',
+    a:{head:[16,76],sh:[30,88],el:[46,106],wr:[62,116],hip:[66,124],kn:[92,108],an:[96,136],toe:[110,139],db:[[66,118]]},
+    b:{head:[16,76],sh:[30,88],el:[46,94],wr:[62,92],hip:[66,98],kn:[92,102],an:[96,136],toe:[110,139],db:[[66,92]]}},
+
+  row:{view:"側面", floor:true, mode:"flow", la:"下ろす", lb:"肘を引き上げる",
+    note:"起点は肩甲骨。腕で引くと背中に入らない。上体はひねらず固定する。",
+    props:'<rect class="fg-prop" x="24" y="94" width="76" height="7" rx="2"/><rect class="fg-prop" x="30" y="101" width="5" height="37"/><rect class="fg-prop" x="90" y="101" width="5" height="37"/>',
+    a:{head:[22,70],sh:[36,80],el:[40,98],wr:[40,116],el2:[34,86],wr2:[34,94],hip:[80,84],kn:[80,94],an:[94,94],kn2:[92,114],an2:[98,136],toe2:[110,139],db:[[40,122]]},
+    b:{head:[22,70],sh:[36,80],el:[52,66],wr:[42,84],el2:[34,86],wr2:[34,94],hip:[80,84],kn:[80,94],an:[94,94],kn2:[92,114],an2:[98,136],toe2:[110,139],db:[[42,90]]}},
+
+  ohp:{view:"正面", floor:true, mode:"flow", la:"肩の高さ", lb:"押し上げる",
+    note:"肋骨を締めて腰が反らないようにする。下ろす位置は耳の高さまで。",
+    a:{head:[62,24],sh:[48,42],sh2:[76,42],el:[38,60],wr:[36,44],el2:[86,60],wr2:[88,44],hip:[54,82],hip2:[70,82],kn:[50,110],an:[50,134],toe:[58,138],kn2:[74,110],an2:[74,134],toe2:[82,138],db:[[34,40],[90,40]]},
+    b:{head:[62,24],sh:[48,42],sh2:[76,42],el:[44,28],wr:[50,12],el2:[80,28],wr2:[74,12],hip:[54,82],hip2:[70,82],kn:[50,110],an:[50,134],toe:[58,138],kn2:[74,110],an2:[74,134],toe2:[82,138],db:[[50,8],[74,8]]}},
+
+  lateral:{view:"正面", floor:true, mode:"flow", la:"体の横", lb:"肩の高さまで",
+    note:"肘の角度は固定したまま真横へ。上げるより、3秒かけて下ろすほうが効く。",
+    a:{head:[62,24],sh:[48,42],sh2:[76,42],el:[44,64],wr:[42,86],el2:[80,64],wr2:[82,86],hip:[54,82],hip2:[70,82],kn:[50,110],an:[50,134],toe:[58,138],kn2:[74,110],an2:[74,134],toe2:[82,138],db:[[42,92],[82,92]]},
+    b:{head:[62,24],sh:[48,42],sh2:[76,42],el:[29,44],wr:[13,46],el2:[95,44],wr2:[111,46],hip:[54,82],hip2:[70,82],kn:[50,110],an:[50,134],toe:[58,138],kn2:[74,110],an2:[74,134],toe2:[82,138],db:[[13,52],[111,52]]}},
+
+  floorpress:{view:"側面", floor:true, mode:"flow", la:"肘を床に", lb:"押し上げる",
+    note:"上腕は体幹から45度くらい。真横に開くと肩を痛めやすい。",
+    a:{head:[22,114],sh:[36,118],el:[29,135],wr:[35,119],hip:[74,122],kn:[94,102],an:[100,134],toe:[112,138],db:[[35,113]]},
+    b:{head:[22,114],sh:[36,118],el:[36,104],wr:[36,90],hip:[74,122],kn:[94,102],an:[100,134],toe:[112,138],db:[[36,84]]}},
+
+  pushup:{view:"側面", floor:true, mode:"flow", la:"上", lb:"下",
+    note:"頭からかかとまで一直線。腰が落ちたらそこが限界なので、膝つきか台に手を乗せて角度を緩める。",
+    a:{head:[24,86],sh:[38,90],el:[40,112],wr:[40,136],hip:[74,98],kn:[96,106],an:[116,114],toe:[122,124]},
+    b:{head:[24,104],sh:[38,108],el:[58,124],wr:[40,136],hip:[74,114],kn:[96,120],an:[116,126],toe:[122,134]}},
+
+  curl:{view:"正面", floor:true, mode:"flow", la:"伸ばす", lb:"巻き上げる",
+    note:"肘の位置を動かさない。肘が前に出たらそれは肩の動き。",
+    a:{head:[62,24],sh:[48,42],sh2:[76,42],el:[44,64],wr:[42,86],el2:[80,64],wr2:[82,86],hip:[54,82],hip2:[70,82],kn:[50,110],an:[50,134],toe:[58,138],kn2:[74,110],an2:[74,134],toe2:[82,138],db:[[42,92],[82,92]]},
+    b:{head:[62,24],sh:[48,42],sh2:[76,42],el:[44,64],wr:[49,47],el2:[80,64],wr2:[75,47],hip:[54,82],hip2:[70,82],kn:[50,110],an:[50,134],toe:[58,138],kn2:[74,110],an2:[74,134],toe2:[82,138],db:[[48,43],[76,43]]}},
+
+  triext:{view:"側面", floor:true, mode:"flow", la:"頭の後ろ", lb:"真上に伸ばす",
+    note:"肘の位置は固定。開かないように前へ向けたまま保つ。",
+    a:{head:[50,34],sh:[56,50],el:[63,26],wr:[47,44],hip:[56,82],kn:[56,108],an:[56,134],toe:[70,138],heel:[46,138],db:[[43,46]]},
+    b:{head:[50,34],sh:[56,50],el:[63,26],wr:[67,10],hip:[56,82],kn:[56,108],an:[56,134],toe:[70,138],heel:[46,138],db:[[69,6]]}},
+
+  plank:{view:"側面", floor:true, mode:"compare", la:"正しい", lb:"よくある崩れ",
+    note:"腰が落ちた時点でフォームは終わっている。時間を延ばすより、まっすぐな姿勢で終えるほうが意味がある。",
+    a:{head:[26,90],sh:[40,96],el:[40,134],wr:[56,138],hip:[76,102],kn:[98,110],an:[116,124],toe:[122,132]},
+    b:{head:[26,94],sh:[40,100],el:[40,134],wr:[56,138],hip:[76,122],kn:[98,126],an:[116,130],toe:[122,136]}},
+
+  deadbug:{view:"側面", floor:true, mode:"flow", la:"90度で構える", lb:"対角に伸ばす",
+    note:"腰を床に押し付けたまま。腰が浮かない範囲までしか伸ばさない。1回に4秒かける。",
+    a:{head:[22,116],sh:[36,120],el:[36,106],wr:[36,92],el2:[36,106],wr2:[36,92],hip:[74,124],kn:[78,104],an:[64,98],kn2:[78,104],an2:[64,98]},
+    b:{head:[22,116],sh:[36,120],el:[27,110],wr:[13,106],el2:[36,106],wr2:[36,92],hip:[74,124],kn:[96,116],an:[116,122],kn2:[78,104],an2:[64,98]}},
+
+  crunch:{view:"側面", floor:true, mode:"flow", la:"寝た状態", lb:"肩甲骨を浮かす",
+    note:"起き上がるのではなく背中を丸める。首を手で引っ張らない。",
+    a:{head:[26,120],sh:[40,124],el:[46,132],wr:[57,126],hip:[74,128],kn:[96,106],an:[102,134],toe:[114,138]},
+    b:{head:[32,102],sh:[44,112],el:[50,122],wr:[59,115],hip:[74,128],kn:[96,106],an:[102,134],toe:[114,138]}},
+
+  sideplank:{view:"側面", floor:true, mode:"compare", la:"正しい", lb:"よくある崩れ",
+    note:"肘は肩の真下。腰が落ちるか、体が前後に傾いたら終了の合図。",
+    a:{head:[26,106],sh:[40,112],el:[30,136],wr:[48,138],el2:[40,92],wr2:[40,78],hip:[76,108],kn:[96,116],an:[114,134],toe:[120,139]},
+    b:{head:[26,116],sh:[40,122],el:[30,136],wr:[48,138],el2:[40,102],wr2:[40,88],hip:[76,128],kn:[96,130],an:[114,136],toe:[120,140]}},
+
+  calf:{view:"側面", floor:true, mode:"flow", la:"かかとを下げる", lb:"限界まで背伸び",
+    note:"段差のふちにつま先を乗せる。下も上も可動域いっぱいまで使う。",
+    props:'<rect class="fg-prop" x="62" y="118" width="62" height="23"/>',
+    a:{head:[59,30],sh:[58,42],el:[64,62],wr:[66,82],hip:[58,66],kn:[58,88],an:[58,114],heel:[44,130],toe:[75,118],db:[[66,88]]},
+    b:{head:[57,10],sh:[56,22],el:[62,42],wr:[64,62],hip:[56,46],kn:[56,68],an:[56,94],heel:[42,106],toe:[75,118],db:[[64,68]]}},
+
+  farmer:{view:"正面", floor:true, mode:"compare", la:"正しい", lb:"よくある崩れ",
+    note:"肩は下げて後ろに引いたまま。すくんで前に丸まり、肩幅が狭くなってきたらそこが限界。",
+    a:{head:[62,22],sh:[48,42],sh2:[76,42],el:[44,62],wr:[42,84],el2:[80,62],wr2:[82,84],hip:[54,82],hip2:[70,82],kn:[50,110],an:[50,134],toe:[58,138],kn2:[74,110],an2:[74,134],toe2:[82,138],db:[[42,90],[82,90]]},
+    b:{head:[62,22],sh:[52,38],sh2:[72,38],el:[48,58],wr:[46,80],el2:[76,58],wr2:[78,80],hip:[54,82],hip2:[70,82],kn:[50,110],an:[50,134],toe:[58,138],kn2:[74,110],an2:[74,134],toe2:[82,138],db:[[46,86],[78,86]]}}
+};
+
+/* ============================================================
+   種目の詳細解説
+   ============================================================ */
+const DETAIL = {
+goblet:{
+ why:"体の中で最も大きい筋肉が集まる脚と尻を、一種目でまとめて使える。ダンベルを胸の前で持つ形は背中が丸まりにくく、フォームを覚える段階に向いている。",
+ setup:"足は肩幅よりやや広く、つま先を15〜30度外へ。ダンベルは縦に持ち、上側のプレートを両手で下から支えて胸の前に抱える。肘は体の内側に落とす。",
+ breath:"立った位置で息を吸って腹を固め、しゃがんで立ち上がりきるまで止める。上まで戻ってから吐く。",
+ tempo:"下ろす3秒 → 一番下で0〜1秒 → 立ち上がる1秒。",
+ rom:"太ももが床と平行か、それ以下まで。かかとが浮く、腰が丸まる、どちらかが起きた位置が今の限界。",
+ feel:"翌日に太ももの前と尻に張りが出れば効いている。腰だけが痛む場合はフォームが崩れている可能性が高い。",
+ easy:"椅子の座面に軽く触れるところまでで止める（ボックススクワット）",
+ hard:"ブルガリアンスクワット、片脚スクワット",
+ reps:"3セット × 10〜15回"},
+rdl:{
+ why:"しゃがむ動作では鍛えにくいもも裏・尻・背中下部をまとめて使う。スクワットと対になる種目で、片方だけだと体の前後でバランスが崩れる。",
+ setup:"足は腰幅。ダンベルを体の前で持つ。膝を10〜15度だけ曲げ、その角度を最後まで変えない。",
+ breath:"上で吸って腹を固め、下ろして戻りきるまで止める。",
+ tempo:"下ろす3秒 → 戻す1〜2秒。",
+ rom:"もも裏が突っ張って、これ以上いくと腰が丸まる直前まで。膝下まで下りない人も珍しくない。",
+ feel:"もも裏と尻の付け根が張る。腰の中央だけが張るなら背中が丸まっている。",
+ easy:"壁に尻を向けて立ち、尻で壁を触りにいく動きで股関節の折り方だけ練習する",
+ hard:"片脚ルーマニアンデッドリフト",
+ reps:"3セット × 10〜12回"},
+split:{
+ why:"片脚ずつ行うので、5kgでも実質的な負荷が倍になる。左右差の発見と修正にも使える。",
+ setup:"椅子かベッドに片足の甲を乗せる。前脚は台から70cm前後前に。一度しゃがんでみて、膝が前に出すぎない距離を探す。",
+ breath:"上で吸い、沈んで戻るまで止める。",
+ tempo:"下ろす2〜3秒 → 戻す1秒。",
+ rom:"後ろの膝が床に近づくまで。バランスが崩れる手前で止めてよい。",
+ feel:"前脚の太もも前と尻。後ろ脚の付け根が伸びる感覚は正常。",
+ easy:"後ろ足を台に乗せず床につけたスプリットスクワット",
+ hard:"両手にダンベルを持つ、または一番下で2秒静止",
+ reps:"左右それぞれ3セット × 8〜12回"},
+hipthrust:{
+ why:"尻を最も直接鍛えられる。スクワットやデッドリフトで尻に効いている感覚が出にくい人の補強になる。",
+ setup:"肩甲骨の下あたりをベッドや椅子の縁に当てる。膝は90度、足は肩幅。ダンベルは骨盤の上に置いて両手で支える。",
+ breath:"下で吸い、上げきるところで吐く。",
+ tempo:"上げる1秒 → 一番上で2秒静止 → 下ろす2秒。",
+ rom:"肩・腰・膝が一直線になるまで。それ以上は腰を反らせているだけ。",
+ feel:"尻の上部。もも裏がつる場合は足の位置を体に少し近づける。",
+ easy:"ダンベルを持たず、床の上で自重のヒップリフト",
+ hard:"片脚で行う",
+ reps:"3セット × 12〜20回"},
+row:{
+ why:"押す種目に偏ると肩が前に巻きやすい。引く種目を同じだけ入れることで、姿勢と肩関節のバランスが保たれる。",
+ setup:"椅子に片手と片膝をつく。背中は床と平行に近く、腰は反らず丸めず。反対の手でダンベルを持ち、腕を真下に垂らす。",
+ breath:"引くときに吐く、下ろすときに吸う。",
+ tempo:"引く1秒 → 上で1秒 → 下ろす2〜3秒。",
+ rom:"下は肩甲骨が前に出て脇が伸びきるまで。上は肘が体の横を通り、腰の高さまで。",
+ feel:"脇の下から背中の外側。腕の力こぶだけが疲れるなら、肩甲骨から動かせていない。",
+ easy:"両手を台について体を安定させ、片手だけ動かす",
+ hard:"引いた位置で2秒静止、下ろす3秒",
+ reps:"左右それぞれ3セット × 10〜12回"},
+ohp:{
+ why:"肩と腕の後ろを鍛えつつ、立って行えば体幹も同時に使う。頭上に物を上げる日常動作の基礎にもなる。",
+ setup:"立つか椅子に浅く座る。ダンベルを肩の高さ、耳の横に構える。手のひらは前向き。肋骨を締めて骨盤を立てる。",
+ breath:"押し上げながら吐く、下ろしながら吸う。",
+ tempo:"押す1秒 → 下ろす2〜3秒。",
+ rom:"下は耳の高さ、上は肘が伸びきって腕が耳の横に来るまで。",
+ feel:"肩の前と横、腕の後ろ。腰が痛むなら反っている。",
+ easy:"椅子の背もたれに寄りかかって座って行う",
+ hard:"片手ずつ行う（体幹の負荷も上がる）、または下ろす動作を4秒に",
+ reps:"3セット × 8〜12回"},
+lateral:{
+ why:"肩の横を狙える数少ない種目。肩幅の見た目に最も影響する部分で、軽い重量でも成立する。",
+ setup:"立って、ダンベルを体の横に。肘を10度ほど曲げて固定する。肩はすくめず下げたまま。",
+ breath:"上げながら吐く。",
+ tempo:"上げる1〜2秒 → 下ろす3〜5秒。",
+ rom:"肩の高さまで。それ以上は僧帽筋の仕事に変わる。",
+ feel:"肩の真横。首の付け根が張るなら、すくんでいるか重すぎる。",
+ easy:"肘をもっと深く曲げて腕を短くする",
+ hard:"下ろす動作を5秒に、または一番上で2秒静止",
+ reps:"3セット × 12〜20回"},
+floorpress:{
+ why:"ベンチがなくても胸と腕の後ろを鍛えられる。肘が床で止まるので、肩を痛めにくい押す種目でもある。",
+ setup:"仰向けで膝を立てる。ダンベルを胸の横に構える。上腕は体幹から45度くらい。",
+ breath:"押しながら吐く、下ろしながら吸う。",
+ tempo:"押す1秒 → 下ろす3秒。",
+ rom:"肘が床につくまで。床がそのままストッパーになる。",
+ feel:"胸の外側と腕の後ろ。",
+ easy:"片手ずつ行い、反対の手で体を安定させる",
+ hard:"床につく直前で2秒静止、または腕立て伏せへ移行",
+ reps:"3セット × 10〜12回"},
+pushup:{
+ why:"器具がいらず体幹も同時に使う。ダンベルが軽くなってきたときの、押す種目の受け皿になる。",
+ setup:"手は肩幅よりやや広く、指先はやや外向き。頭からかかとまで一直線を保つ。",
+ breath:"下ろしながら吸い、押しながら吐く。",
+ tempo:"下ろす2〜3秒 → 押す1秒。",
+ rom:"胸が床から拳一つ分のところまで。",
+ feel:"胸、肩の前、腕の後ろ。腰が痛むなら姿勢が崩れている。",
+ easy:"机や壁に手をついて角度を緩める。膝つきより先にこちらを試すほうが、体幹の使い方が崩れない",
+ hard:"足を台に乗せる、または一番下で2秒静止",
+ reps:"3セット × 6〜15回"},
+curl:{
+ why:"引く種目でも上腕二頭筋は使われるが、直接狙うと可動域を広く使える。握力にも効く。",
+ setup:"立って、ダンベルを体の横に。肘を体側につけて固定する。",
+ breath:"上げながら吐く。",
+ tempo:"上げる1〜2秒 → 下ろす3〜4秒。",
+ rom:"下は肘を伸ばしきるところまで、上は前腕が床と垂直を少し越えたところまで。",
+ feel:"力こぶ。肩の前が張るなら肘が前に出ている。",
+ easy:"片手ずつ行い、反対の手で肘を支える",
+ hard:"下ろす動作を5秒に、または一番上で2秒静止",
+ reps:"3セット × 10〜15回"},
+triext:{
+ why:"腕の太さの大部分は上腕三頭筋。押す種目でも使われるが、頭上で行うと可動域を最も広く取れる。",
+ setup:"立つか座る。ダンベルを両手で持ち、頭の後ろへ。肘は前を向けたまま耳の横に固定する。",
+ breath:"伸ばしながら吐く。",
+ tempo:"伸ばす1秒 → 戻す3秒。",
+ rom:"肘に違和感が出ない範囲で頭の後ろまで。無理に深くしない。",
+ feel:"二の腕の裏。肘の関節そのものが痛むなら中止する。",
+ easy:"片手ずつ、反対の手で肘を支える",
+ hard:"片手で行う、または戻す動作を4秒に",
+ reps:"3セット × 10〜15回"},
+plank:{
+ why:"腹を丸めるのではなく支える使い方を覚える種目。腰を守る体幹の使い方に近い。",
+ setup:"肘は肩の真下、前腕は床。つま先で支える。尻を締め、肋骨を締め、あごを軽く引く。",
+ breath:"止めない。ゆっくり吸って吐き続ける。",
+ tempo:"静止。",
+ rom:"動かさない。姿勢を保つ種目。",
+ feel:"腹全体。腰が張るなら反っているか落ちている。",
+ easy:"膝をついて行う",
+ hard:"片脚を上げる、肘を前方へ遠ざける",
+ reps:"2〜3セット × 20〜45秒"},
+deadbug:{
+ why:"腰を床に押し付けたまま手足を動かすので、腰に負担をかけずに腹の支える力を鍛えられる。クランチより腰にやさしい。",
+ setup:"仰向けで両腕を天井へ、股関節と膝を90度に曲げる。腰と床の隙間をなくす。",
+ breath:"伸ばしながら吐き、戻しながら吸う。",
+ tempo:"片側で4秒かける。",
+ rom:"腰が床から浮かない範囲まで。浮いた時点がその日の限界。",
+ feel:"腹の深い位置。",
+ easy:"腕だけ、または脚だけを動かす",
+ hard:"手足を床すれすれまで伸ばす、動作をさらに遅く",
+ reps:"2〜3セット × 左右各8〜12回"},
+crunch:{
+ why:"腹直筋を丸める動きで直接狙う。すでに習慣になっているなら残す価値はあるが、これだけでは腹の支える力は育ちにくい。",
+ setup:"仰向けで膝を立てる。手は胸の前で交差するか、側頭部に軽く添える。",
+ breath:"丸めながら吐く。",
+ tempo:"丸める1〜2秒 → 戻す2〜3秒。",
+ rom:"肩甲骨が床から離れるところまで。腰は床につけたまま。",
+ feel:"みぞおちから下腹。首が疲れるなら首を引っ張っている。",
+ easy:"手を体の横に置く",
+ hard:"ダンベルを胸に抱える、一番上で2秒静止",
+ reps:"2〜3セット × 10〜20回"},
+sideplank:{
+ why:"体を横に曲げない・ひねらせない力を鍛える。腹斜筋を安全に使える数少ない種目。",
+ setup:"横向きで肘を肩の真下に。足は重ねるか前後にずらす。腰を持ち上げて一直線にする。",
+ breath:"止めない。",
+ tempo:"静止。",
+ rom:"動かさない。",
+ feel:"下側の脇腹。",
+ easy:"膝をついて行う",
+ hard:"上の脚を上げる、時間を延ばす",
+ reps:"左右それぞれ2セット × 15〜30秒"},
+calf:{
+ why:"ふくらはぎは他の種目でほとんど鍛えられない。歩行や着地の安定に関わる部位。",
+ setup:"段差や階段のふちに母趾球を乗せ、かかとを空中に出す。手すりか壁に軽く触れてバランスを取る。",
+ breath:"上げながら吐く。",
+ tempo:"上げる1秒 → 一番上で2秒 → 下ろす3秒。",
+ rom:"かかとが限界まで下がる位置から、つま先立ちの限界まで。",
+ feel:"ふくらはぎ全体。上まで上げきらないと効きにくい。",
+ easy:"床の上で行う（可動域は狭くなる）",
+ hard:"片脚で行う",
+ reps:"3セット × 15〜25回"},
+farmer:{
+ why:"握力・体幹・姿勢を同時に鍛えられる。重量が軽くても時間を延ばせば成立する、数少ない種目。",
+ setup:"ダンベルを体の横に持つ。肩を下げて後ろに引き、胸を軽く張る。狭い部屋ならその場で保持するだけでよい。",
+ breath:"自然に。止めない。",
+ tempo:"一定のペースで歩く、または保持する。",
+ rom:"動かさない。",
+ feel:"前腕と肩の上、腹。肩がすくんできたらそこが限界。",
+ easy:"保持時間を短くする",
+ hard:"片手だけで持つ（体幹の負荷が大きく上がる）",
+ reps:"3セット × 30〜60秒"}
+};
+
+const JOINTS = ["head","sh","sh2","el","el2","wr","wr2","hip","hip2","kn","kn2","an","an2","toe","toe2","heel"];
+
+function fx(n){ return Math.round(n*100)/100; }
+
+/* 2つの円をつないだ形（太さが変わる手足）を多角形で近似する */
+function capsule(a, b, ra, rb){
+  const dx = b[0]-a[0], dy = b[1]-a[1], d = Math.hypot(dx,dy);
+  if(d < 0.01){
+    const r = Math.max(ra,rb);
+    return `M ${fx(a[0]-r)} ${fx(a[1])} a ${fx(r)} ${fx(r)} 0 1 0 ${fx(2*r)} 0 a ${fx(r)} ${fx(r)} 0 1 0 ${fx(-2*r)} 0 Z`;
+  }
+  const al = Math.atan2(dy,dx);
+  const be = Math.acos(Math.max(-1, Math.min(1, (ra-rb)/d)));
+  const N = 9, pts = [];
+  for(let i=0;i<=N;i++){ const th = al+be - 2*be*(i/N); pts.push([b[0]+rb*Math.cos(th), b[1]+rb*Math.sin(th)]); }
+  for(let i=0;i<=N;i++){ const th = al-be - (2*Math.PI-2*be)*(i/N); pts.push([a[0]+ra*Math.cos(th), a[1]+ra*Math.sin(th)]); }
+  return "M" + pts.map(q=>fx(q[0])+","+fx(q[1])).join("L") + "Z";
+}
+function mid2(a,b){ return [(a[0]+b[0])/2, (a[1]+b[1])/2]; }
+function extend(from, to, by){
+  const dx=to[0]-from[0], dy=to[1]-from[1], d=Math.hypot(dx,dy)||1;
+  return [to[0]+dx/d*by, to[1]+dy/d*by];
+}
+
+/* 体を「近い側」「遠い側」の2群に分けて描く */
+function bodyPaths(p){
+  const near = [], far = [], arms = [];
+  const frontal = !!p.sh2;
+  const shC = frontal ? mid2(p.sh, p.sh2) : p.sh;
+  const hipC = (p.hip && p.hip2) ? mid2(p.hip, p.hip2) : p.hip;
+  const cap = (arr,A,B,ra,rb)=>{ if(A&&B) arr.push(capsule(A,B,ra,rb)); };
+
+  if(shC && hipC){
+    const ra = frontal ? Math.hypot(p.sh2[0]-p.sh[0], p.sh2[1]-p.sh[1])/2 + 0.8 : 10.4;
+    const rb = (p.hip && p.hip2) ? Math.hypot(p.hip2[0]-p.hip[0], p.hip2[1]-p.hip[1])/2 + 4.2 : 8.4;
+    cap(near, shC, hipC, ra, rb);
+  }
+  if(shC && p.head) cap(near, shC, p.head, 5.4, 4.4);
+
+  const side = frontal ? arms : far;   /* 側面図では第2の手足を奥側として薄く描く */
+  cap(arms, p.sh, p.el, 5.2, 4.1);
+  cap(arms, p.el, p.wr, 4.1, 3.0);
+  if(p.el && p.wr) cap(arms, p.wr, extend(p.el, p.wr, 3.6), 3.0, 2.7);
+  const s2 = p.sh2 || p.sh;
+  cap(side, s2, p.el2, 5.2, 4.1);
+  cap(side, p.el2, p.wr2, 4.1, 3.0);
+  if(p.el2 && p.wr2) cap(side, p.wr2, extend(p.el2, p.wr2, 3.6), 3.0, 2.7);
+
+  cap(near, p.hip, p.kn, 8.2, 5.5);
+  cap(near, p.kn, p.an, 5.5, 3.5);
+  cap(near, p.an, p.toe, 3.6, 2.5);
+  cap(near, p.an, p.heel, 3.6, 2.8);
+  const h2 = p.hip2 || p.hip;
+  cap(side, h2, p.kn2, 8.2, 5.5);
+  cap(side, p.kn2, p.an2, 5.5, 3.5);
+  cap(side, p.an2, p.toe2, 3.6, 2.5);
+
+  let head = "";
+  if(p.head && shC){
+    const ang = Math.atan2(p.head[1]-shC[1], p.head[0]-shC[0]) * 180/Math.PI + 90;
+    head = `<ellipse cx="${fx(p.head[0])}" cy="${fx(p.head[1])}" rx="7.6" ry="9.1" transform="rotate(${fx(ang)} ${fx(p.head[0])} ${fx(p.head[1])})"/>`;
+  }
+  return {trunk:near, arms, far, head};
+}
+function bodyMarkup(p, flat){
+  const {trunk, arms, far, head} = bodyPaths(p);
+  const P = a => a.map(d=>`<path d="${d}"/>`).join("");
+  if(flat) return `<g class="fg-body">${P(far)}${P(trunk)}${P(arms)}${head}</g>`;
+  return (far.length ? `<g class="fg-far">${P(far)}</g>` : "")
+    + `<g class="fg-body">${P(trunk)}${head}</g>`
+    + (arms.length ? `<g class="fg-halo">${P(arms)}</g><g class="fg-body">${P(arms)}</g>` : "");
+}
+function dbGlyph(x,y){
+  return `<g class="fg-db"><rect x="${fx(x-7)}" y="${fx(y-1.7)}" width="14" height="3.4" rx="1.7"/>`
+    + `<rect x="${fx(x-9.5)}" y="${fx(y-4.8)}" width="4.2" height="9.6" rx="1.6"/>`
+    + `<rect x="${fx(x+5.3)}" y="${fx(y-4.8)}" width="4.2" height="9.6" rx="1.6"/></g>`;
+}
+function figSVG(pose, d, wrong, ghosts){
+  return `<svg viewBox="0 0 130 148" xmlns="http://www.w3.org/2000/svg" class="${wrong?"diawrong":""}" aria-hidden="true">`
+    + (d.floor ? `<line class="fg-floor" x1="6" y1="141" x2="124" y2="141"/>` : "")
+    + (d.props || "")
+    + (ghosts ? ghosts.map(g=>`<g class="fg-ghost">${bodyMarkup(g, true)}</g>`).join("") : "")
+    + bodyMarkup(pose)
+    + (pose.db || []).map(q=>dbGlyph(q[0],q[1])).join("")
+    + `</svg>`;
+}
+
+/* ---- 終了姿勢の骨の長さを開始姿勢に合わせる（動作中に手足が伸び縮みしないように） ---- */
+function rigidify(a, b){
+  const pa = toPolar(a), pb = toPolar(b);
+  if(!pa.root || pa.root !== pb.root) return b;
+  const out = {};
+  out[pb.root] = pb.rootPos.slice();
+  let rest = JOINTS.filter(k=>pb.bones[k]);
+  let guard = 0;
+  while(rest.length && guard++ < 12){
+    const again = [];
+    rest.forEach(k=>{
+      const bb = pb.bones[k];
+      if(!out[bb.par]){ again.push(k); return; }
+      const len = pa.bones[k] ? pa.bones[k].len : bb.len;
+      out[k] = [out[bb.par][0] + Math.cos(bb.ang)*len, out[bb.par][1] + Math.sin(bb.ang)*len];
+    });
+    rest = again;
+  }
+  JOINTS.forEach(k=>{ if(!out[k] && b[k]) out[k] = b[k].slice(); });
+  /* 動きの少ない関節（床や台との接点）を基準に位置を合わせる */
+  let anc = null, best = Infinity;
+  JOINTS.forEach(k=>{
+    if(!a[k] || !b[k] || !out[k]) return;
+    const dd = Math.hypot(b[k][0]-a[k][0], b[k][1]-a[k][1]);
+    if(dd < best - 0.01 || (anc && Math.abs(dd-best) < 0.01 && b[k][1] > b[anc][1])){ best = Math.min(best,dd); anc = k; }
+  });
+  if(anc){
+    const dx = b[anc][0]-out[anc][0], dy = b[anc][1]-out[anc][1];
+    JOINTS.forEach(k=>{ if(out[k]) out[k] = [out[k][0]+dx, out[k][1]+dy]; });
+  }
+  if(b.db) out.db = b.db.map((q,i)=>{
+    const key = (i===1 && b.wr2) ? "wr2" : (b.wr ? "wr" : null);
+    if(!key || !out[key] || !b[key]) return q.slice();
+    return [out[key][0] + (q[0]-b[key][0]), out[key][1] + (q[1]-b[key][1])];
+  });
+  return out;
+}
+
+/* ---- 関節の角度で補間する（手足の長さが変わらない） ---- */
+function parentOf(p, k){
+  const m = {sh:"hip", sh2:"sh", head:"sh", el:"sh", wr:"el",
+             el2:(p.sh2?"sh2":"sh"), wr2:"el2",
+             kn:"hip", an:"kn", toe:"an", heel:"an",
+             kn2:(p.hip2?"hip2":"hip"), an2:"kn2", toe2:"an2", hip2:"hip"};
+  return m[k];
+}
+function toPolar(p){
+  const root = p.hip ? "hip" : (p.sh ? "sh" : (p.kn ? "kn" : null));
+  const out = {root, rootPos: root ? p[root] : [0,0], bones:{}};
+  if(!root) return out;
+  JOINTS.forEach(k=>{
+    if(k === root || !p[k]) return;
+    let par = parentOf(p, k);
+    let guard = 0;
+    while(par && !p[par] && guard++ < 8) par = parentOf(p, par);
+    if(!par || !p[par]) return;
+    const dx = p[k][0]-p[par][0], dy = p[k][1]-p[par][1];
+    out.bones[k] = {par, len: Math.hypot(dx,dy), ang: Math.atan2(dy,dx)};
+  });
+  return out;
+}
+function lerpPose(a, b, t){
+  const pa = toPolar(a), pb = toPolar(b);
+  const out = {};
+  if(!pa.root || pa.root !== pb.root){
+    JOINTS.forEach(k=>{
+      if(a[k] && b[k]) out[k] = [a[k][0]+(b[k][0]-a[k][0])*t, a[k][1]+(b[k][1]-a[k][1])*t];
+      else if(a[k]) out[k] = a[k]; else if(b[k]) out[k] = b[k];
+    });
+  }else{
+    out[pa.root] = [pa.rootPos[0]+(pb.rootPos[0]-pa.rootPos[0])*t,
+                    pa.rootPos[1]+(pb.rootPos[1]-pa.rootPos[1])*t];
+    let rest = JOINTS.filter(k=>pa.bones[k] && pb.bones[k]);
+    let guard = 0;
+    while(rest.length && guard++ < 12){
+      const again = [];
+      rest.forEach(k=>{
+        const ba = pa.bones[k], bb = pb.bones[k];
+        if(!out[ba.par]){ again.push(k); return; }
+        const len = ba.len + (bb.len - ba.len)*t;
+        let dd = bb.ang - ba.ang;
+        while(dd >  Math.PI) dd -= 2*Math.PI;
+        while(dd < -Math.PI) dd += 2*Math.PI;
+        const ang = ba.ang + dd*t;
+        out[k] = [out[ba.par][0] + Math.cos(ang)*len, out[ba.par][1] + Math.sin(ang)*len];
+      });
+      rest = again;
+    }
+    JOINTS.forEach(k=>{ if(!out[k]){ if(a[k]&&b[k]) out[k]=[a[k][0]+(b[k][0]-a[k][0])*t, a[k][1]+(b[k][1]-a[k][1])*t]; else if(a[k]) out[k]=a[k]; else if(b[k]) out[k]=b[k]; } });
+  }
+  /* ダンベルは手首に追従させる */
+  if(a.db && b.db && a.db.length === b.db.length){
+    out.db = a.db.map((q,i)=>{
+      const key = (i===1 && a.wr2 && b.wr2) ? "wr2" : (a.wr && b.wr ? "wr" : null);
+      if(!key || !out[key]) return [q[0]+(b.db[i][0]-q[0])*t, q[1]+(b.db[i][1]-q[1])*t];
+      const oa = [q[0]-a[key][0], q[1]-a[key][1]];
+      const ob = [b.db[i][0]-b[key][0], b.db[i][1]-b[key][1]];
+      return [out[key][0] + oa[0]+(ob[0]-oa[0])*t, out[key][1] + oa[1]+(ob[1]-oa[1])*t];
+    });
+  } else out.db = a.db || b.db;
+  return out;
+}
+/* 角度で補間したあと、接地点と骨の長さを満たすように解き直す */
+function framePose(d, t){
+  const raw = lerpPose(d.a, d.b, t);
+  if(!d.lens || !d.pins) return raw;
+  const pos = {}; JOINTS.forEach(k=>{ if(raw[k]) pos[k] = raw[k].slice(); });
+  const solved = solvePose(pos, d.lens, d.pins, 60);
+  if(raw.db) solved.db = raw.db.map((q,i)=>{
+    const key = (i===1 && raw.wr2) ? "wr2" : (raw.wr ? "wr" : null);
+    if(!key || !solved[key] || !raw[key]) return q.slice();
+    return [solved[key][0] + (q[0]-raw[key][0]), solved[key][1] + (q[1]-raw[key][1])];
+  });
+  return solved;
+}
+
+/* 既定メニュー（週3・全身） */
+const DEFAULT_PROGRAM = ["goblet","rdl","row","ohp","deadbug"];
+
+/* ============================================================
+   保存層： db があれば db、なければ localStorage
+   ============================================================ */
+const LS = "trainlog.v1";
+let DB = null;
+let state = { sessions:{}, program: DEFAULT_PROGRAM.slice() };
+let unsub = null;
+
+function loadLocal(){
+  try{
+    const raw = localStorage.getItem(LS);
+    if(raw){ const o = JSON.parse(raw); state.sessions = o.sessions||{}; state.program = o.program||DEFAULT_PROGRAM.slice(); }
+  }catch(e){}
+}
+function saveLocal(){
+  try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+}
+function setStatus(t){ document.getElementById("status").textContent = t; }
+
+async function initStore(){
+  loadLocal();
+  render();
+  let db = null;
+  try{ db = await claude.use("db"); }catch(e){ db = null; }
+  if(!db){ setStatus("この端末内に保存しています"); return; }
+  DB = db;
+  try{
+    DB.collection("sessions").orderBy("date","desc").limit(500).onSnapshot(snap=>{
+      const next = {};
+      snap.docs.forEach(d=>{ const v = d.data(); if(v) next[d.id] = v; });
+      state.sessions = next;
+      saveLocal();
+      render();
+      setStatus("保存済み");
+    }, err=>{
+      DB = null;
+      setStatus("保存領域に接続できないため、この端末内に保存しています");
+    });
+    const cfg = await DB.doc("meta/config").get();
+    if(cfg.exists && cfg.data() && Array.isArray(cfg.data().program)){
+      state.program = cfg.data().program; saveLocal(); render();
+    }
+  }catch(e){
+    DB = null;
+    setStatus("この端末内に保存しています");
+  }
+}
+
+let writing = Promise.resolve();
+function persistSession(date){
+  saveLocal();
+  if(!DB) return;
+  const body = state.sessions[date];
+  writing = writing.then(()=>{
+    if(!body) return DB.doc("sessions/"+date).delete().catch(()=>{});
+    return DB.doc("sessions/"+date).set(body).catch(()=>{});
+  });
+}
+function persistProgram(){
+  saveLocal();
+  if(!DB) return;
+  writing = writing.then(()=> DB.doc("meta/config").set({program: state.program}).catch(()=>{}));
+}
+
+/* ============================================================
+   日付など
+   ============================================================ */
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function fmtDate(k){
+  const [y,m,d] = k.split("-").map(Number);
+  const wd = ["日","月","火","水","木","金","土"][new Date(y,m-1,d).getDay()];
+  return m+"月"+d+"日("+wd+")";
+}
+function asDate(k){ const [y,m,d] = k.split("-").map(Number); return new Date(y, m-1, d); }
+function daysAgo(k){
+  return Math.round((asDate(todayKey()) - asDate(k)) / 86400000);
+}
+const TODAY = todayKey();
+
+function session(date){
+  if(!state.sessions[date]) state.sessions[date] = { date, entries:[], note:"" };
+  return state.sessions[date];
+}
+function sortedDates(){ return Object.keys(state.sessions).sort().reverse(); }
+
+function entryFor(date, exId, create){
+  const s = session(date);
+  let e = s.entries.find(x=>x.ex===exId);
+  if(!e && create){ e = {ex:exId, sets:[]}; s.entries.push(e); }
+  return e;
+}
+function lastPerformance(exId, beforeDate){
+  for(const d of sortedDates()){
+    if(d >= beforeDate) continue;
+    const e = (state.sessions[d].entries||[]).find(x=>x.ex===exId && x.sets.length);
+    if(e) return {date:d, sets:e.sets};
+  }
+  return null;
+}
+function bestSet(sets, kind){
+  if(!sets.length) return null;
+  if(kind==="w") return sets.slice().sort((a,b)=> (b.w*b.r)-(a.w*a.r))[0];
+  return sets.slice().sort((a,b)=> b.r-a.r)[0];
+}
+function setText(st, kind){
+  if(kind==="w") return st.w+" kg × "+st.r;
+  if(kind==="t") return st.r+" 秒";
+  return st.r+" 回";
+}
+
+/* ============================================================
+   人体図
+   ============================================================ */
+function figFront(){ return `
+<svg class="fig" viewBox="0 0 200 378" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正面の筋肉図">
+ <g class="nt">
+  <ellipse cx="100" cy="28" rx="18" ry="21"/>
+  <rect x="91" y="45" width="18" height="14" rx="5"/>
+  <path d="M78,170 L122,170 L118,191 L82,191 Z"/>
+  <ellipse cx="46" cy="208" rx="8" ry="10"/><ellipse cx="154" cy="208" rx="8" ry="10"/>
+  <ellipse cx="88" cy="284" rx="12" ry="9"/><ellipse cx="112" cy="284" rx="12" ry="9"/>
+  <rect x="80" y="290" width="17" height="62" rx="8"/><rect x="103" y="290" width="17" height="62" rx="8"/>
+  <path d="M80,352 L97,352 L97,366 L74,366 Z"/><path d="M120,352 L103,352 L103,366 L126,366 Z"/>
+ </g>
+ <path class="rg" data-m="traps" d="M80,62 L100,56 L120,62 L113,76 L87,76 Z"/>
+ <ellipse class="rg" data-m="shoulders" cx="62" cy="90" rx="16" ry="15"/>
+ <ellipse class="rg" data-m="shoulders" cx="138" cy="90" rx="16" ry="15"/>
+ <rect class="rg" data-m="chest" x="77" y="74" width="22" height="36" rx="9"/>
+ <rect class="rg" data-m="chest" x="101" y="74" width="22" height="36" rx="9"/>
+ <ellipse class="rg" data-m="biceps" cx="53" cy="124" rx="11" ry="25"/>
+ <ellipse class="rg" data-m="biceps" cx="147" cy="124" rx="11" ry="25"/>
+ <ellipse class="rg" data-m="forearms" cx="46" cy="174" rx="9.5" ry="27"/>
+ <ellipse class="rg" data-m="forearms" cx="154" cy="174" rx="9.5" ry="27"/>
+ <path class="rg" data-m="obliques" d="M77,110 C71,128 73,148 81,166 L87,164 L87,112 Z"/>
+ <path class="rg" data-m="obliques" d="M123,110 C129,128 127,148 119,166 L113,164 L113,112 Z"/>
+ <rect class="rg" data-m="abs" x="86" y="112" width="28" height="58" rx="9"/>
+ <rect class="rg" data-m="quads" x="76" y="189" width="23" height="89" rx="11"/>
+ <rect class="rg" data-m="quads" x="101" y="189" width="23" height="89" rx="11"/>
+ <path class="rg" data-m="adductors" d="M98,191 L98,248 L90,236 C88,216 90,199 93,191 Z"/>
+ <path class="rg" data-m="adductors" d="M102,191 L102,248 L110,236 C112,216 110,199 107,191 Z"/>
+</svg>`; }
+
+function figBack(){ return `
+<svg class="fig" viewBox="0 0 200 378" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="背面の筋肉図">
+ <g class="nt">
+  <ellipse cx="100" cy="28" rx="18" ry="21"/>
+  <ellipse cx="46" cy="208" rx="8" ry="10"/><ellipse cx="154" cy="208" rx="8" ry="10"/>
+  <ellipse cx="88" cy="286" rx="12" ry="9"/><ellipse cx="112" cy="286" rx="12" ry="9"/>
+  <path d="M80,352 L97,352 L97,366 L74,366 Z"/><path d="M120,352 L103,352 L103,366 L126,366 Z"/>
+ </g>
+ <path class="rg" data-m="traps" d="M100,50 L127,66 L117,106 L100,114 L83,106 L73,66 Z"/>
+ <ellipse class="rg" data-m="shoulders" cx="60" cy="90" rx="15" ry="14"/>
+ <ellipse class="rg" data-m="shoulders" cx="140" cy="90" rx="15" ry="14"/>
+ <path class="rg" data-m="lats" d="M79,100 C69,118 72,144 83,166 L98,152 L98,104 Z"/>
+ <path class="rg" data-m="lats" d="M121,100 C131,118 128,144 117,166 L102,152 L102,104 Z"/>
+ <rect class="rg" data-m="erectors" x="93" y="112" width="14" height="58" rx="6"/>
+ <ellipse class="rg" data-m="triceps" cx="53" cy="124" rx="11" ry="25"/>
+ <ellipse class="rg" data-m="triceps" cx="147" cy="124" rx="11" ry="25"/>
+ <ellipse class="rg" data-m="forearms" cx="46" cy="174" rx="9.5" ry="27"/>
+ <ellipse class="rg" data-m="forearms" cx="154" cy="174" rx="9.5" ry="27"/>
+ <path class="rg" data-m="glutes" d="M100,172 L100,213 C91,219 79,212 77,197 C76,182 86,170 100,172 Z"/>
+ <path class="rg" data-m="glutes" d="M100,172 L100,213 C109,219 121,212 123,197 C124,182 114,170 100,172 Z"/>
+ <rect class="rg" data-m="hams" x="77" y="213" width="22" height="68" rx="10"/>
+ <rect class="rg" data-m="hams" x="101" y="213" width="22" height="68" rx="10"/>
+ <rect class="rg" data-m="calves" x="80" y="292" width="17" height="60" rx="8"/>
+ <rect class="rg" data-m="calves" x="103" y="292" width="17" height="60" rx="8"/>
+</svg>`; }
+
+function bothFigs(clickable){
+  const c = clickable ? " clickable" : "";
+  return `<div class="figs">
+    <div class="figwrap">${figFront().replace('class="fig"','class="fig'+c+'"')}<div class="cap">前面</div></div>
+    <div class="figwrap">${figBack().replace('class="fig"','class="fig'+c+'"')}<div class="cap">背面</div></div>
+  </div>`;
+}
+
+function paintFigs(root, weights, maxV){
+  root.querySelectorAll("svg.fig .rg").forEach(el=>{
+    const m = el.getAttribute("data-m");
+    const v = weights[m] || 0;
+    if(v<=0){ el.style.fill=""; return; }
+    const t = maxV>0 ? Math.min(1, v/maxV) : 1;
+    el.style.fill = "color-mix(in srgb, var(--muscle) "+Math.round(22+78*t)+"%, var(--neutral-fill))";
+  });
+}
+
+/* 直近N日間の部位別「有効セット数」 */
+function muscleLoad(days){
+  const out = {}; Object.keys(MUSCLES).forEach(k=>out[k]=0);
+  for(const d of sortedDates()){
+    if(daysAgo(d) >= days) continue;
+    for(const e of (state.sessions[d].entries||[])){
+      const ex = EXMAP[e.ex]; if(!ex) continue;
+      const n = e.sets.length;
+      ex.p.forEach(m=> out[m] = (out[m]||0) + n);
+      (ex.s||[]).forEach(m=> out[m] = (out[m]||0) + n*0.5);
+    }
+  }
+  return out;
+}
+
+/* ============================================================
+   設定（この端末のみ）
+   ============================================================ */
+const PREF = {
+  get(k,d){ try{ const v=localStorage.getItem("trainlog."+k); return v===null?d:JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem("trainlog."+k, JSON.stringify(v)); }catch(e){} }
+};
+const PREF_DEFAULT = { sound:true, vib:false, notify:false, wake:true };
+let CAP = { sound:null, vib:null, notif:null, wake:null };
+
+/* ---- 音 ---- */
+let AC = null;
+function unlockAudio(){
+  try{
+    const C = window.AudioContext || window.webkitAudioContext;
+    if(!C) { CAP.sound=false; return; }
+    if(!AC) AC = new C();
+    if(AC.state === "suspended") AC.resume();
+    CAP.sound = true;
+  }catch(e){ CAP.sound = false; }
+}
+function beep(){
+  if(!PREF.get("sound", true)) return;
+  try{
+    unlockAudio(); if(!AC) return;
+    [[0,784],[0.22,784],[0.44,1046]].forEach(([t,f])=>{
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      const s0 = AC.currentTime + t;
+      g.gain.setValueAtTime(0.0001, s0);
+      g.gain.exponentialRampToValueAtTime(0.3, s0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, s0 + 0.2);
+      o.connect(g); g.connect(AC.destination);
+      o.start(s0); o.stop(s0 + 0.22);
+    });
+  }catch(e){ CAP.sound = false; }
+}
+/* ---- 振動 ---- */
+function buzz(){
+  if(!PREF.get("vib", false)) return;
+  try{ if(navigator.vibrate){ navigator.vibrate([220,90,220,90,320]); CAP.vib = true; } else CAP.vib = false; }
+  catch(e){ CAP.vib = false; }
+}
+/* ---- 端末通知 ---- */
+function notifySupported(){ return typeof Notification !== "undefined"; }
+function notify(title, body){
+  if(!PREF.get("notify", false) || !notifySupported()) return;
+  try{
+    if(Notification.permission === "granted"){ new Notification(title, {body, tag:"trainlog-rest"}); CAP.notif = true; }
+  }catch(e){ CAP.notif = false; }
+}
+async function askNotify(){
+  if(!notifySupported()){ CAP.notif = false; setStatus("この画面では端末通知が使えません。音と振動で知らせます"); render(); return; }
+  try{
+    const r = await Notification.requestPermission();
+    const ok = (r === "granted");
+    PREF.set("notify", ok); CAP.notif = ok;
+    setStatus(ok ? "" : "通知が許可されませんでした。音と振動で知らせます");
+  }catch(e){ CAP.notif = false; PREF.set("notify", false); setStatus("この画面では端末通知が使えません。音と振動で知らせます"); }
+  render();
+}
+/* ---- 画面を消さない ---- */
+let wakeLock = null;
+async function keepAwake(on){
+  try{
+    if(on && navigator.wakeLock){ wakeLock = await navigator.wakeLock.request("screen"); CAP.wake = true; }
+    else if(wakeLock){ await wakeLock.release(); wakeLock = null; }
+  }catch(e){ CAP.wake = false; wakeLock = null; }
+}
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible" && PREF.get("wake", true) && restIv) keepAwake(true);
+});
+
+/* ============================================================
+   休憩タイマー
+   ============================================================ */
+let restLeft = 0, restIv = null, restLabel = "";
+function startRest(sec, label){
+  restLeft = sec;
+  restLabel = label || "";
+  document.getElementById("timer").classList.add("on");
+  document.getElementById("timerLb").textContent = restLabel || "休憩";
+  drawRest();
+  clearInterval(restIv);
+  if(PREF.get("wake", true)) keepAwake(true);
+  restIv = setInterval(()=>{
+    restLeft--;
+    if(restLeft<=0){
+      clearInterval(restIv); restIv = null;
+      document.getElementById("timerT").textContent = "0:00";
+      beep(); buzz();
+      notify("次のセットの時間です", restLabel || "休憩おわり");
+      setTimeout(stopRest, 4000);
+      return;
+    }
+    drawRest();
+  },1000);
+}
+function drawRest(){
+  const m = Math.floor(restLeft/60), s = restLeft%60;
+  document.getElementById("timerT").textContent = m+":"+String(s).padStart(2,"0");
+}
+function stopRest(){
+  clearInterval(restIv); restIv = null;
+  document.getElementById("timer").classList.remove("on");
+  keepAwake(false);
+}
+document.getElementById("timerStop").onclick = stopRest;
+document.getElementById("timerPlus").onclick = ()=>{ if(restIv){ restLeft += 30; drawRest(); } };
+
+/* ============================================================
+   画面
+   ============================================================ */
+let tab = "today";
+let openEx = null;
+let refEx = EX[0].id;
+let bodyDays = 7;
+let selMuscle = null;
+
+document.querySelectorAll("nav.tabs button").forEach(b=>{
+  b.onclick = ()=>{
+    tab = b.dataset.tab;
+    document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected", String(x===b)));
+    render();
+    window.scrollTo(0,0);
+  };
+});
+
+/* ============================================================
+   物理的な拘束
+   pins  : 床や台に接していて動かない関節（位置は開始姿勢のものを使う）
+   floor : これより下に体の点は行けない
+   hold  : 何がどこに接しているかの説明
+   ============================================================ */
+const FLOOR_Y = 139;
+const PHYS = {
+  goblet:{pins:["an","toe","heel"], hold:"両足は床につけたまま。ダンベルは胸の前で両手で支える"},
+  rdl:{pins:["an","toe","heel"], hold:"両足は床につけたまま。ダンベルは両手で体の前に持つ"},
+  rdl1:{pins:["an","toe","heel"], hold:"片足だけが床。ダンベルは体の前に持つ"},
+  split:{pins:["an","toe","heel","an2","toe2"], hold:"前足は床、後ろ足の甲をベッドに乗せる。ダンベルは両手に1つずつ"},
+  hipthrust:{pins:["sh","an","toe"], hold:"肩甲骨をベッドの縁に当て、足裏は床。ダンベルは骨盤の上に置いて手で支える"},
+  row:{pins:["wr2","kn","an","an2","toe2"], hold:"片手と片膝を椅子に乗せ、反対の足は床。ダンベルは垂らした手に1つ"},
+  ohp:{pins:["an","toe","an2","toe2"], hold:"両足は床。ダンベルは両手に1つずつ"},
+  lateral:{pins:["an","toe","an2","toe2"], hold:"両足は床。ダンベルは両手に1つずつ"},
+  curl:{pins:["an","toe","an2","toe2"], hold:"両足は床。肘は体側に固定。ダンベルは両手に1つずつ"},
+  farmer:{pins:["an","toe","an2","toe2"], hold:"両足は床。ダンベルは両手に1つずつ、体の横で保持"},
+  triext:{pins:["an","toe","heel"], hold:"両足は床。ダンベル1つを両手で持ち、頭の後ろへ"},
+  floorpress:{pins:["sh","hip","an","toe"], hold:"背中と足裏は床。ダンベルは胸の横から真上へ"},
+  pushup:{pins:["wr","toe"], hold:"手のひらとつま先だけが床に接する"},
+  plank:{pins:["el","wr","toe"], hold:"前腕とつま先だけが床に接する"},
+  sideplank:{pins:["el","wr","an","toe"], hold:"下側の前腕と足の外側だけが床に接する"},
+  deadbug:{pins:["sh","hip"], hold:"背中と腰は床につけたまま。手足だけを動かす"},
+  crunch:{pins:["hip","an","toe"], hold:"腰と足裏は床につけたまま。肩甲骨だけを浮かせる"},
+  calf:{pins:["toe"], hold:"母趾球だけが段差に乗り、かかとは空中。手すりや壁に軽く触れてよい"}
+};
+function boneLens(p){
+  const pol = toPolar(p), out = {};
+  Object.keys(pol.bones).forEach(k=>{ out[k] = {par:pol.bones[k].par, len:pol.bones[k].len}; });
+  return out;
+}
+/* 骨の長さと接地点を同時に満たす位置を、緩和法で求める */
+function solvePose(pos, lens, pins, iters){
+  const keys = Object.keys(lens);
+  const N = iters || 90;
+  for(let it=0; it<N; it++){
+    Object.keys(pins).forEach(k=>{ if(pos[k]) pos[k] = pins[k].slice(); });
+    keys.forEach(k=>{
+      const b = lens[k];
+      if(!pos[k] || !pos[b.par]) return;
+      const dx = pos[k][0]-pos[b.par][0], dy = pos[k][1]-pos[b.par][1];
+      const d = Math.hypot(dx,dy) || 1e-6;
+      const f = (d - b.len)/d;
+      const wk = pins[k] ? 0 : 1, wp = pins[b.par] ? 0 : 1, tot = wk+wp;
+      if(!tot) return;
+      if(wk) pos[k] = [pos[k][0] - dx*f*(wk/tot), pos[k][1] - dy*f*(wk/tot)];
+      if(wp) pos[b.par] = [pos[b.par][0] + dx*f*(wp/tot), pos[b.par][1] + dy*f*(wp/tot)];
+    });
+    JOINTS.forEach(k=>{
+      if(!pos[k] || pins[k]) return;
+      if(pos[k][1] > FLOOR_Y) pos[k] = [pos[k][0], FLOOR_Y];
+    });
+  }
+  Object.keys(pins).forEach(k=>{ if(pos[k]) pos[k] = pins[k].slice(); });
+  return pos;
+}
+function pinsFor(id, ref){
+  const spec = PHYS[id]; const out = {};
+  if(!spec) return out;
+  spec.pins.forEach(k=>{ if(ref[k]) out[k] = ref[k].slice(); });
+  return out;
+}
+/* 起動時に開始・終了の両姿勢を物理的に成立する形へ固める */
+Object.keys(DIA).forEach(id=>{
+  const d = DIA[id];
+  d.lens = boneLens(d.a);
+  d.pins = pinsFor(id, d.a);
+  d.hold = (PHYS[id]||{}).hold || "";
+  const copy = p => { const o={}; JOINTS.forEach(k=>{ if(p[k]) o[k]=p[k].slice(); }); return o; };
+  const fixDb = (solved, orig) => {
+    if(!orig.db) return;
+    solved.db = orig.db.map((q,i)=>{
+      const key = (i===1 && orig.wr2) ? "wr2" : (orig.wr ? "wr" : null);
+      if(!key || !solved[key] || !orig[key]) return q.slice();
+      return [solved[key][0] + (q[0]-orig[key][0]), solved[key][1] + (q[1]-orig[key][1])];
+    });
+  };
+  const sa = solvePose(copy(d.a), d.lens, d.pins); fixDb(sa, d.a); d.a = sa;
+  const rb = rigidify(d.a, d.b);
+  const sb = solvePose(copy(rb), d.lens, d.pins); fixDb(sb, rb); d.b = sb;
+});
+
+/* ---------- 図解の描画と再生 ---------- */
+let animRAF = null, animCleanup = null, playingId = null;
+function stopAnim(){
+  if(animRAF) cancelAnimationFrame(animRAF);
+  animRAF = null;
+  if(animCleanup){ animCleanup(); animCleanup = null; }
+  playingId = null;
+}
+function diaHTML(id, compact){
+  const d = DIA[id]; if(!d) return "";
+  const sep = d.mode==="compare" ? "／" : "→";
+  return `<div class="dia" data-dia="${id}">
+    <div class="diapair">
+      <div class="diacell">${figSVG(d.a,d,false)}<div class="dialab">${d.la}</div></div>
+      <div class="diaarrow">${sep}</div>
+      <div class="diacell">${figSVG(d.b,d,d.mode==="compare")}<div class="dialab">${d.lb}</div></div>
+    </div>
+    ${d.hold ? `<p class="diahold"><b>接地</b>　${d.hold}</p>` : ""}
+    ${compact ? "" : `<p class="dianote">${d.note}</p>`}
+    ${d.mode==="flow" ? `<div class="rowbtns"><button data-act="play" data-ex="${id}">動きを再生</button></div>` : ""}
+  </div>`;
+}
+function togglePlay(id){
+  const wrap = document.querySelector('[data-dia="'+id+'"]');
+  if(!wrap) return;
+  if(playingId === id){ stopAnim(); return; }
+  stopAnim();
+  const d = DIA[id];
+  const pair = wrap.querySelector(".diapair");
+  const btn = wrap.querySelector('[data-act="play"]');
+  const solo = document.createElement("div");
+  solo.className = "diasolo";
+  pair.style.display = "none";
+  pair.insertAdjacentElement("afterend", solo);
+  if(btn) btn.textContent = "停止";
+  playingId = id;
+  const hint = document.createElement("p");
+  hint.className = "diahint";
+  hint.textContent = "薄い影は開始と終了の位置です";
+  solo.insertAdjacentElement("afterend", hint);
+  const GO = 1400, HOLD1 = 550, BACK = 1150, HOLD2 = 550;
+  const CYCLE = GO + HOLD1 + BACK + HOLD2;
+  const ease = x => x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x+2, 2)/2;
+  const ghosts = [d.a, d.b];
+  const t0 = performance.now();
+  let lastDraw = 0;
+  const tick = (now)=>{
+    animRAF = requestAnimationFrame(tick);
+    if(now - lastDraw < 32) return;
+    lastDraw = now;
+    const m = (now - t0) % CYCLE;
+    let k;
+    if(m < GO) k = ease(m/GO);
+    else if(m < GO+HOLD1) k = 1;
+    else if(m < GO+HOLD1+BACK) k = 1 - ease((m-GO-HOLD1)/BACK);
+    else k = 0;
+    solo.innerHTML = figSVG(framePose(d, k), d, false, ghosts);
+  };
+  animRAF = requestAnimationFrame(tick);
+  animCleanup = ()=>{ solo.remove(); hint.remove(); pair.style.display = ""; if(btn) btn.textContent = "動きを再生"; };
+}
+
+function render(){
+  stopAnim();
+  document.getElementById("todayLabel").textContent = fmtDate(TODAY);
+  const v = document.getElementById("view");
+  v.className = "view-" + tab;
+  if(tab==="today") v.innerHTML = viewToday();
+  else if(tab==="ex") v.innerHTML = viewEx();
+  else if(tab==="body") v.innerHTML = viewBody();
+  else v.innerHTML = viewHist();
+  wire();
+}
+
+/* ---------- 今日 ---------- */
+const REST = {split:120, goblet:120, rdl:120, rdl1:120, hipthrust:105, row:105, ohp:105, pushup:105, floorpress:105};
+function restFor(item){
+  const ex = EXMAP[item.ex];
+  if(ex.kind === "t") return 60;
+  return REST[item.ex] || 90;
+}
+function routineToday(){
+  const s = session(TODAY);
+  if(s.routine && RMAP[s.routine]) return s.routine;
+  for(const d of sortedDates()){
+    if(d >= TODAY) continue;
+    const sd = state.sessions[d];
+    if(sd && sd.routine && (sd.entries||[]).some(e=>e.sets.length)){
+      const i = RORDER.indexOf(sd.routine);
+      if(i >= 0) return RORDER[(i+1) % RORDER.length];
+    }
+  }
+  return "A";
+}
+function todayItems(){
+  const items = RMAP[routineToday()].items.map(x=>Object.assign({}, x));
+  const s = session(TODAY);
+  (s.entries||[]).forEach(e=>{
+    if(!items.some(i=>i.ex===e.ex) && EXMAP[e.ex]){
+      const ex = EXMAP[e.ex];
+      items.push({ex:e.ex, sets:ex.sets||3, r:ex.r, extra:true});
+    }
+  });
+  return items;
+}
+function itemOf(id){ return todayItems().find(i=>i.ex===id) || {ex:id, sets:3, r:EXMAP[id]?EXMAP[id].r:10}; }
+
+/* ---- きつさに応じて次のセットの回数を決める ---- */
+function clampR(kind, r){
+  r = Math.round(r);
+  return kind==="t" ? Math.max(10, Math.min(180, r)) : Math.max(4, Math.min(40, r));
+}
+function adjust(kind, r, rpe){
+  const st = kind==="t" ? 5 : 2;
+  if(!rpe) return {r:clampR(kind,r), why:""};
+  if(rpe <= 5) return {r:clampR(kind, r + st*2), why:"かなり余裕があったので増やしました"};
+  if(rpe <= 6) return {r:clampR(kind, r + st), why:"まだ余力があるので少し増やしました"};
+  if(rpe <= 9) return {r:clampR(kind, r), why:"狙いの範囲です。同じ数字で"};
+  return {r:clampR(kind, r - st), why:"限界まで行ったので少し減らしました"};
+}
+function suggestNext(item, e, last){
+  const ex = EXMAP[item.ex], kind = ex.kind;
+  const sets = e ? e.sets : [];
+  let w = kind==="w" ? (ex.w||5) : undefined;
+  if(sets.length){
+    const prev = sets[sets.length-1];
+    if(kind==="w") w = prev.w;
+    const a = adjust(kind, prev.r, prev.rpe);
+    return {r:a.r, w, why:a.why, src:"前のセットのきつさ " + (prev.rpe||"—")};
+  }
+  if(last && last.sets.length){
+    const first = last.sets[0];
+    if(kind==="w") w = first.w;
+    const avg = last.sets.reduce((x,st)=>x+(st.rpe||0),0) / last.sets.length;
+    const a = adjust(kind, first.r, avg ? Math.round(avg*2)/2 : 0);
+    return {r:a.r, w, why:a.why, src:"前回のきつさ平均 " + (avg ? Math.round(avg*10)/10 : "—")};
+  }
+  return {r:clampR(kind, item.r || ex.r), w, why:"初回はフォーム優先。余力を2〜3回残して終える", src:"初回"};
+}
+function sugText(item, sug){
+  const ex = EXMAP[item.ex];
+  if(ex.kind === "w") return sug.w + " kg × " + sug.r + (item.side ? "（左右それぞれ）" : "");
+  if(ex.kind === "t") return sug.r + " 秒" + (item.side ? "（左右それぞれ）" : "");
+  return sug.r + " 回" + (item.side ? "（左右それぞれ）" : "");
+}
+
+function viewToday(){
+  const rid = routineToday(), R = RMAP[rid];
+  const items = todayItems();
+  const s = session(TODAY);
+
+  let next = null;
+  for(const it of items){
+    const e = entryFor(TODAY, it.ex, false);
+    if(!e || e.sets.length < (it.sets||3)){ next = it; break; }
+  }
+
+  const switcher = `<div class="rswitch">` + ROUTINES.map(r=>
+    `<button data-act="setr" data-r="${r.id}" class="${r.id===rid?"on":""}">
+       <b>${r.id}</b><span>${r.name}</span></button>`).join("") + `</div>`;
+
+  let hero;
+  if(!next){
+    const total = s.entries.reduce((a,e)=>a+e.sets.length,0);
+    hero = `<div class="hero"><p class="kicker">${rid}：${R.name}</p><h2>完了</h2>
+      <div class="bigset"><span class="v num" style="color:var(--done)">${total}</span><span class="u">セット記録</span></div>
+      <p class="sub">次回は ${RORDER[(RORDER.indexOf(rid)+1)%RORDER.length]}：${RMAP[RORDER[(RORDER.indexOf(rid)+1)%RORDER.length]].name} です。</p></div>`;
+  }else{
+    const ex = EXMAP[next.ex];
+    const e = entryFor(TODAY, next.ex, false);
+    const sug = suggestNext(next, e, lastPerformance(next.ex, TODAY));
+    const inner = ex.kind==="w"
+      ? `<div class="bigset"><span class="v num">${sug.w}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">kg・回</span></div>`
+      : `<div class="bigset"><span class="v num">${sug.r}</span><span class="u">${ex.kind==="t"?"秒":"回"}${next.side?"・左右":""}</span></div>`;
+    hero = `<div class="hero"><p class="kicker">${rid}：${R.name}　—　次の種目</p>
+      <h2>${itemName(next)}</h2>${inner}
+      <p class="sub">${sug.src}${sug.why?"　→　"+sug.why:""}</p></div>`;
+  }
+
+  const rows = items.map(it=>exRow(it)).join("");
+
+  return switcher + hero + rows + `
+    <div class="rowbtns"><button data-act="addex">種目を追加</button></div>
+    <h3 class="sec">今日のメモ</h3>
+    <div class="card">
+      <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${(s.note||"").replace(/</g,"&lt;")}</textarea>
+    </div>
+    ${settingsCard()}`;
+}
+
+function settingsCard(){
+  const sound = PREF.get("sound", true), vib = PREF.get("vib", false),
+        notif = PREF.get("notify", false), wake = PREF.get("wake", true);
+  const notifState = !notifySupported() ? "この画面では使えません"
+    : (typeof Notification !== "undefined" && Notification.permission === "denied") ? "ブラウザ側で拒否されています"
+    : (notif ? "オン" : "オフ");
+  return `<h3 class="sec">休憩おわりの知らせ</h3>
+  <div class="card">
+    <div class="setrow"><span>音で知らせる</span>
+      <button data-act="pref" data-k="sound" class="tg ${sound?"on":""}">${sound?"オン":"オフ"}</button></div>
+    <div class="setrow"><span>振動で知らせる<small>対応端末のみ。PCでは動きません</small></span>
+      <button data-act="pref" data-k="vib" class="tg ${vib?"on":""}">${vib?"オン":"オフ"}</button></div>
+    <div class="setrow"><span>端末に通知を出す<small>${notifState}</small></span>
+      <button data-act="asknotify" class="tg ${notif?"on":""}">${notif?"オン":"許可する"}</button></div>
+    <div class="setrow"><span>休憩中は画面を消さない</span>
+      <button data-act="pref" data-k="wake" class="tg ${wake?"on":""}">${wake?"オン":"オフ"}</button></div>
+    <div class="rowbtns"><button data-act="testalert">今の設定で鳴らしてみる</button></div>
+    <p class="lastline">知らせはこの端末の中で完結します。アプリを閉じている間は鳴りません。</p>
+  </div>`;
+}
+
+function exRow(item){
+  const id = item.ex, ex = EXMAP[id]; if(!ex) return "";
+  const e = entryFor(TODAY, id, false);
+  const n = e ? e.sets.length : 0;
+  const target = item.sets || ex.sets || 3;
+  const done = n >= target;
+  const open = openEx === id;
+  const last = lastPerformance(id, TODAY);
+  const parts = ex.p.map(m=>MUSCLES[m]).join("・");
+  const sug = suggestNext(item, e, last);
+
+  let body = "";
+  if(open){
+    const sets = (e?e.sets:[]).map((st,i)=>`
+      <div class="setline">
+        <span class="i num">${i+1}</span>
+        <span class="val num">${setText(st, ex.kind)}</span>
+        ${st.rpe?`<span class="rpe">きつさ ${st.rpe}</span>`:""}
+        <button class="del" data-act="delset" data-ex="${id}" data-i="${i}" aria-label="削除">×</button>
+      </div>`).join("");
+
+    const wfld = ex.kind==="w" ? `
+      <div class="fld"><label>重量 kg</label>
+        <div class="stepper">
+          <button data-act="step" data-t="w" data-ex="${id}" data-d="-1">−</button>
+          <input type="number" id="w_${id}" value="${sug.w}" step="0.5" inputmode="decimal">
+          <button data-act="step" data-t="w" data-ex="${id}" data-d="1">＋</button>
+        </div></div>` : "";
+
+    body = `<div class="exbody"><div class="exmain">
+      ${sets || ""}
+      <div class="target">
+        <span class="tl">次のセット</span>
+        <span class="tv num">${sugText(item, sug)}</span>
+        <span class="tw">${sug.src}${sug.why?"　→　"+sug.why:""}</span>
+      </div>
+      ${item.note?`<p class="lastline">${item.note}</p>`:""}
+      ${last?`<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${last.sets.map(x=>setText(x,ex.kind)).join(" / ")}</b></p>`:""}
+      <div class="entry">
+        ${wfld}
+        <div class="fld"><label>${ex.kind==="t"?"秒":"回数"}</label>
+          <div class="stepper">
+            <button data-act="step" data-t="r" data-ex="${id}" data-d="-1">−</button>
+            <input type="number" id="r_${id}" value="${sug.r}" inputmode="numeric">
+            <button data-act="step" data-t="r" data-ex="${id}" data-d="1">＋</button>
+          </div></div>
+        <div class="fld"><label>きつさ 1-10</label>
+          <div class="stepper">
+            <button data-act="step" data-t="e" data-ex="${id}" data-d="-1">−</button>
+            <input type="number" id="e_${id}" value="8" min="1" max="10" inputmode="numeric">
+            <button data-act="step" data-t="e" data-ex="${id}" data-d="1">＋</button>
+          </div></div>
+        <button class="addbtn" data-act="addset" data-ex="${id}">記録</button>
+      </div>
+      <p class="lastline">きつさは 8〜9 が狙いです。10は限界、7以下は軽すぎます。入れた数字で次のセットの回数が変わります。</p>
+      <div class="rowbtns">
+        <button data-act="rest" data-ex="${id}" data-s="${restFor(item)}">休憩 ${restFor(item)}秒</button>
+        <button data-act="goref" data-ex="${id}">解説を見る</button>
+      </div>
+      </div><div class="exside">${diaHTML(baseOf(id), true)}</div></div>`;
+  }
+
+  return `<div class="exrow ${done?"done":""}">
+    <button class="exhead" data-act="toggle" data-ex="${id}">
+      <span><span class="nm">${itemName(item)}${item.side?'<span class="side">左右</span>':""}</span><span class="meta">${parts}</span></span>
+      <span class="cnt num">${n} / ${target}</span>
+    </button>
+    ${body}
+  </div>`;
+}
+
+/* ---------- 種目 ---------- */
+function viewEx(){
+  const ex = EXMAP[refEx], bid = baseOf(refEx), d = DETAIL[refEx] || DETAIL[bid] || {};
+  const opts = EX.map(e=>`<option value="${e.id}" ${e.id===refEx?"selected":""}>${e.name}</option>`).join("");
+  const chips = ex.p.map(m=>`<span class="chip p">${MUSCLES[m]}</span>`).join("")
+    + (ex.s||[]).map(m=>`<span class="chip s">${MUSCLES[m]}</span>`).join("");
+  const kindLabel = ex.kind==="w" ? "ダンベル" : (ex.kind==="t" ? "時間で計測" : "自重");
+
+  const left = `
+    <div class="card">
+      <h4>動き<span class="refhead">${DIA[bid]?DIA[bid].view:""}から</span></h4>
+      ${diaHTML(bid, false)}
+    </div>
+    <div class="card" id="refFig">
+      <h4>効く部位</h4>
+      ${bothFigs(false)}
+      <div class="mlist">${chips}</div>
+      <p class="lastline">濃い色が主に効く部位、枠線だけが補助的に使われる部位です。</p>
+    </div>
+    <div class="card">
+      <h4>目安</h4>
+      <p style="margin:0 0 6px;font-size:14px">${kindLabel}　${d.reps||""}</p>
+      <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">今日のメニューに追加</button></div>
+    </div>`;
+
+  const right = `
+    ${ex.variant?`<div class="card"><h4>両脚版との違い</h4><p style="margin:0;font-size:14px">${ex.variant}</p></div>`:""}
+    ${d.why?`<div class="card"><h4>この種目を入れる理由</h4><p style="margin:0;font-size:14px">${d.why}</p></div>`:""}
+    ${d.setup?`<div class="card"><h4>準備</h4><p style="margin:0;font-size:14px">${d.setup}</p></div>`:""}
+    <div class="card">
+      <h4>やり方</h4>
+      <ol class="steps">${exHow(refEx).map(x=>`<li>${x}</li>`).join("")}</ol>
+    </div>
+    <div class="card">
+      <h4>呼吸とテンポ</h4>
+      ${d.breath?`<p style="margin:0 0 6px;font-size:14px"><b>呼吸</b>　${d.breath}</p>`:""}
+      ${d.tempo?`<p style="margin:0;font-size:14px"><b>テンポ</b>　${d.tempo}</p>`:""}
+    </div>
+    ${d.rom?`<div class="card"><h4>どこまで動かすか</h4><p style="margin:0;font-size:14px">${d.rom}</p></div>`:""}
+    ${d.feel?`<div class="card"><h4>効いているかの判断</h4><p style="margin:0;font-size:14px">${d.feel}</p></div>`:""}
+    <div class="card">
+      <h4>よくある間違い</h4>
+      <ul class="plain">${exNg(refEx).map(x=>`<li>${x}</li>`).join("")}</ul>
+    </div>
+    <div class="card">
+      <h4>きつい／簡単すぎる場合</h4>
+      ${d.easy?`<p style="margin:0 0 6px;font-size:14px"><b>きついとき</b>　${d.easy}</p>`:""}
+      ${d.hard?`<p style="margin:0;font-size:14px"><b>簡単すぎるとき</b>　${d.hard}</p>`:""}
+    </div>
+    <div class="card">
+      <h4>5kgが軽くなったら</h4>
+      <p class="lastline" style="margin-top:0">ダンベルを買い足す前に、上から順に試してください。</p>
+      <ol class="steps">${exUp(refEx).map(x=>`<li>${x}</li>`).join("")}</ol>
+    </div>
+    <div class="card">
+      <h4 class="warn">中止する合図</h4>
+      <p style="margin:0;font-size:14px">関節（膝・腰・肩）に鋭い痛みが走ったら、その種目はその場で中止してください。翌日以降にくる筋肉痛とは別物です。痛みが数日続く場合は整形外科の判断が先で、このアプリの助言は当てになりません。</p>
+    </div>`;
+
+  return `<div class="card"><select id="exSel">${opts}</select></div>
+    <div class="splitcols"><div>${left}</div><div>${right}</div></div>`;
+}
+
+/* ---------- からだ ---------- */
+function viewBody(){
+  const load = muscleLoad(bodyDays);
+  const vals = Object.values(load);
+  const max = Math.max(1, ...vals);
+  const ranked = Object.keys(MUSCLES).map(k=>({k, v:load[k]})).sort((a,b)=>b.v-a.v);
+  const zero = ranked.filter(x=>x.v<=0);
+
+  let detail = "";
+  if(selMuscle){
+    const hits = [];
+    for(const d of sortedDates()){
+      if(daysAgo(d) >= bodyDays) continue;
+      for(const e of (state.sessions[d].entries||[])){
+        const ex = EXMAP[e.ex]; if(!ex) continue;
+        const role = ex.p.includes(selMuscle) ? "主" : ((ex.s||[]).includes(selMuscle) ? "補助" : null);
+        if(role) hits.push({d, name:ex.name, n:e.sets.length, role});
+      }
+    }
+    detail = `<div class="card">
+      <h4>${MUSCLES[selMuscle]}</h4>
+      <p class="lastline" style="margin-top:0">直近${bodyDays}日で <b>${(load[selMuscle]||0).toFixed(1)}</b> 有効セット</p>
+      ${hits.length ? `<ul class="plain">${hits.map(h=>`<li>${fmtDate(h.d)}　${h.name}　${h.n}セット（${h.role}）</li>`).join("")}</ul>`
+        : `<p style="font-size:14px;margin:6px 0 0">この期間、この部位を使う種目はありません。</p>`}
+      ${zeroAdvice(selMuscle)}
+    </div>`;
+  }
+
+  const fig = `
+    <div class="card">
+      <h4>直近${bodyDays}日の刺激</h4>
+      ${bothFigs(true)}
+      <div class="legend"><span>少</span><span class="bar"></span><span>多</span></div>
+      <p class="lastline" style="text-align:center">部位をタップすると内訳が出ます。</p>
+      <div class="rowbtns">
+        <button data-act="days" data-d="7" ${bodyDays===7?'style="border-color:var(--ink);color:var(--ink)"':''}>7日</button>
+        <button data-act="days" data-d="14" ${bodyDays===14?'style="border-color:var(--ink);color:var(--ink)"':''}>14日</button>
+        <button data-act="days" data-d="30" ${bodyDays===30?'style="border-color:var(--ink);color:var(--ink)"':''}>30日</button>
+      </div>
+    </div>`;
+  const side = `
+    ${detail}
+    <div class="card">
+      <h4>使えていない部位</h4>
+      ${zero.length ? `<div class="mlist">${zero.map(x=>`<span class="chip">${MUSCLES[x.k]}</span>`).join("")}</div>
+        <p class="lastline">全部を毎週埋める必要はありません。ただし大腿四頭筋・大殿筋・ハムストリング・広背筋がここに並び続けている場合は、メニューの組み方を見直したほうがいいです。体の中で大きい筋肉が抜けていると、同じ時間をかけても効果の範囲が狭くなります。</p>`
+        : `<p style="margin:0;font-size:14px">この期間、主要な部位はひと通り使えています。</p>`}
+    </div>`;
+  const note = `
+    <div class="card">
+      <h4>有効セット数とは</h4>
+      <p style="margin:0;font-size:14px">主に効く部位は1セットを1.0、補助的に使う部位は0.5として足した数です。重量は含めていません。週あたり各部位10前後が初心者の一般的な目安とされますが、この数字は研究間でばらつきが大きく、個人差も大きいので、絶対視しないでください。偏りを見るための指標だと思ってもらうのが適切です。</p>
+    </div>`;
+  return `<div class="splitcols"><div>${fig}</div><div>${side}${note}</div></div>`;
+}
+function zeroAdvice(m){
+  const cands = EX.filter(e=>e.p.includes(m)).slice(0,3);
+  if(!cands.length) return "";
+  return `<p class="lastline">この部位を主に使う種目: ${cands.map(c=>c.name).join("、")}</p>`;
+}
+
+/* ---------- 履歴 ---------- */
+function viewHist(){
+  const dates = sortedDates().filter(d=> (state.sessions[d].entries||[]).some(e=>e.sets.length));
+  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。</div>`;
+
+  const streakDays = dates.length;
+  const totalSets = dates.reduce((a,d)=>a+(state.sessions[d].entries||[]).reduce((x,e)=>x+e.sets.length,0),0);
+  const last7 = dates.filter(d=>daysAgo(d)<7).length;
+
+  const perEx = {};
+  dates.slice().reverse().forEach(d=>{
+    (state.sessions[d].entries||[]).forEach(e=>{
+      if(!e.sets.length) return;
+      const ex = EXMAP[e.ex]; if(!ex) return;
+      const vol = ex.kind==="w" ? e.sets.reduce((a,s)=>a+s.w*s.r,0) : e.sets.reduce((a,s)=>a+s.r,0);
+      (perEx[e.ex] = perEx[e.ex] || []).push({d, vol, best: bestSet(e.sets, ex.kind)});
+    });
+  });
+
+  const prog = Object.keys(perEx).map(id=>{
+    const ex = EXMAP[id], rows = perEx[id];
+    const max = Math.max(...rows.map(r=>r.vol), 1);
+    const bars = rows.slice(-12).map(r=>`<i style="height:${Math.max(4, Math.round(r.vol/max*44))}px" title="${fmtDate(r.d)}"></i>`).join("");
+    const first = rows[0], lastR = rows[rows.length-1];
+    const delta = first.vol>0 ? Math.round((lastR.vol/first.vol-1)*100) : 0;
+    const unit = ex.kind==="w" ? "kg·回" : (ex.kind==="t"?"秒":"回");
+    return `<div class="card">
+      <h4>${ex.name}</h4>
+      <div class="spark">${bars}</div>
+      <p class="lastline" style="margin-top:2px">総量 <b>${Math.round(lastR.vol)}</b> ${unit}　最高セット <b>${setText(lastR.best, ex.kind)}</b>${rows.length>1?`　開始時比 <b>${delta>=0?"+":""}${delta}%</b>`:""}</p>
+    </div>`;
+  }).join("");
+
+  const table = dates.slice(0,30).map(d=>{
+    const s = state.sessions[d];
+    const sets = (s.entries||[]).reduce((a,e)=>a+e.sets.length,0);
+    const names = (s.entries||[]).filter(e=>e.sets.length).map(e=>EXMAP[e.ex]?EXMAP[e.ex].name:e.ex).join("、");
+    return `<tr><td>${fmtDate(d)}<div style="font-size:11.5px;color:var(--ink-3)">${names}</div>${s.note?`<div style="font-size:11.5px;color:var(--ink-2)">${s.note.replace(/</g,"&lt;")}</div>`:""}</td><td class="n">${sets}</td></tr>`;
+  }).join("");
+
+  return `
+    <div class="card">
+      <h4>これまで</h4>
+      <div class="bigset"><span class="v num">${streakDays}</span><span class="u">回のトレーニング・${totalSets}セット</span></div>
+      <p class="lastline">直近7日で ${last7} 回。</p>
+    </div>
+    <h3 class="sec">種目ごとの推移</h3>
+    ${prog}
+    <h3 class="sec">セッション</h3>
+    <div class="card overflowx">
+      <table class="hist"><thead><tr><th>日付</th><th style="text-align:right">セット</th></tr></thead><tbody>${table}</tbody></table>
+    </div>
+    <h3 class="sec">書き出し</h3>
+    <div class="card">
+      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。</p>
+      <div class="rowbtns">
+        <button data-act="csv">CSVで保存</button>
+        <button data-act="txt">テキストで表示</button>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   イベント
+   ============================================================ */
+function wire(){
+  const v = document.getElementById("view");
+
+  v.querySelectorAll("[data-act]").forEach(el=>{
+    el.onclick = (ev)=>{
+      const a = el.dataset.act;
+      if(a==="toggle"){ openEx = (openEx===el.dataset.ex)?null:el.dataset.ex; render(); }
+      else if(a==="addset"){ addSet(el.dataset.ex); }
+      else if(a==="delset"){ delSet(el.dataset.ex, +el.dataset.i); }
+      else if(a==="step"){ step(el.dataset.t, el.dataset.ex, +el.dataset.d); }
+      else if(a==="rest"){
+        const id = el.dataset.ex, it = itemOf(id);
+        const sug = suggestNext(it, entryFor(TODAY, id, false), lastPerformance(id, TODAY));
+        unlockAudio();
+        startRest(+el.dataset.s, itemName(it) + "  " + sugText(it, sug));
+      }
+      else if(a==="setr"){ const s2 = session(TODAY); s2.routine = el.dataset.r; persistSession(TODAY); openEx=null; render(); }
+      else if(a==="pref"){ const k = el.dataset.k; PREF.set(k, !PREF.get(k, PREF_DEFAULT[k])); render(); }
+      else if(a==="asknotify"){ if(PREF.get("notify",false)){ PREF.set("notify",false); render(); } else askNotify(); }
+      else if(a==="testalert"){ unlockAudio(); beep(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
+      else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
+      else if(a==="addex"){ openPicker("add"); }
+      else if(a==="addtoday"){ addToProgramToday(el.dataset.ex); }
+      else if(a==="days"){ bodyDays = +el.dataset.d; selMuscle=null; render(); }
+      else if(a==="play"){ togglePlay(el.dataset.ex); }
+      else if(a==="csv"){ exportCSV(); }
+      else if(a==="txt"){ showText(); }
+    };
+  });
+
+  const sel = v.querySelector("#exSel");
+  if(sel) sel.onchange = ()=>{ refEx = sel.value; render(); };
+
+  const note = v.querySelector("#note");
+  if(note){
+    let t=null;
+    note.oninput = ()=>{
+      clearTimeout(t);
+      t = setTimeout(()=>{ session(TODAY).note = note.value; persistSession(TODAY); }, 600);
+    };
+  }
+
+  if(tab==="ex"){
+    const ex = EXMAP[refEx];
+    const w = {}; ex.p.forEach(m=>w[m]=1); (ex.s||[]).forEach(m=>{ if(!w[m]) w[m]=0.45; });
+    paintFigs(v.querySelector("#refFig"), w, 1);
+  }
+  if(tab==="body"){
+    const load = muscleLoad(bodyDays);
+    const max = Math.max(1, ...Object.values(load));
+    paintFigs(v, load, max);
+    v.querySelectorAll("svg.fig .rg").forEach(el=>{
+      if(selMuscle && el.getAttribute("data-m")===selMuscle) el.classList.add("sel");
+      el.onclick = ()=>{ selMuscle = el.getAttribute("data-m"); render(); };
+    });
+  }
+}
+function switchTab(t){
+  tab = t;
+  document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected", String(x.dataset.tab===t)));
+  render(); window.scrollTo(0,0);
+}
+
+function step(t, id, d){
+  const map = {w:"w_", r:"r_", e:"e_"};
+  const inp = document.getElementById(map[t]+id);
+  if(!inp) return;
+  let val = parseFloat(inp.value||"0");
+  if(t==="w") val = Math.max(0, val + d*0.5);
+  else if(t==="e") val = Math.min(10, Math.max(1, val + d));
+  else val = Math.max(1, val + d);
+  inp.value = (t==="w") ? String(val) : String(Math.round(val));
+}
+
+function addSet(id){
+  const ex = EXMAP[id];
+  const r = Math.round(parseFloat(document.getElementById("r_"+id).value||"0"));
+  const rpe = Math.round(parseFloat(document.getElementById("e_"+id).value||"0"));
+  if(!r || r<1) return;
+  unlockAudio();
+  const st = {r, rpe};
+  if(ex.kind==="w"){
+    const w = parseFloat(document.getElementById("w_"+id).value||"0");
+    st.w = isNaN(w)?0:w;
+  }
+  const e = entryFor(TODAY, id, true);
+  e.sets.push(st);
+  const s = session(TODAY);
+  if(!s.routine) s.routine = routineToday();
+  persistSession(TODAY);
+
+  const item = itemOf(id);
+  const doneNow = e.sets.length >= (item.sets||3);
+  let label;
+  if(doneNow){
+    const items = todayItems();
+    const nx = items.find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < (it.sets||3); });
+    label = nx ? "次: " + itemName(nx) : "今日のメニュー完了";
+  }else{
+    const sug = suggestNext(item, e, lastPerformance(id, TODAY));
+    label = itemName(item) + "  " + sugText(item, sug);
+  }
+  render();
+  startRest(restFor(item), label);
+}
+function delSet(id, i){
+  const e = entryFor(TODAY, id, false);
+  if(!e) return;
+  e.sets.splice(i,1);
+  if(!e.sets.length && !state.program.includes(id)){
+    const s = session(TODAY);
+    s.entries = s.entries.filter(x => x !== e);
+  }
+  persistSession(TODAY);
+  render();
+}
+function addToProgramToday(id){
+  entryFor(TODAY, id, true);
+  persistSession(TODAY);
+  openEx = id;
+  switchTab("today");
+}
+
+/* ---------- ピッカー ---------- */
+const sheet = document.getElementById("sheet");
+const sheetInner = document.getElementById("sheetInner");
+sheet.onclick = (e)=>{ if(e.target===sheet) sheet.classList.remove("on"); };
+
+function openPicker(mode){
+  if(mode==="add"){
+    sheetInner.innerHTML = `<h4>今日のメニューに追加</h4><div class="picklist">` +
+      EX.map(e=>`<button data-pick="${e.id}">${e.name}<span>${e.p.map(m=>MUSCLES[m]).join("・")}</span></button>`).join("") +
+      `</div>`;
+    sheetInner.querySelectorAll("[data-pick]").forEach(b=>{
+      b.onclick = ()=>{ sheet.classList.remove("on"); addToProgramToday(b.dataset.pick); };
+    });
+  }else{
+    sheetInner.innerHTML = `<h4>基本メニュー</h4>
+      <p class="lastline" style="margin-top:0">毎回のトレーニングで表示される種目です。タップで入れ替えできます。</p>
+      <div class="picklist">` +
+      EX.map(e=>{
+        const on = state.program.includes(e.id);
+        return `<button data-tog="${e.id}" style="${on?'border-color:var(--muscle);':''}">${on?"■ ":"□ "}${e.name}<span>${e.p.map(m=>MUSCLES[m]).join("・")}</span></button>`;
+      }).join("") +
+      `</div><div class="rowbtns"><button data-reset="1">既定に戻す</button><button data-close="1">閉じる</button></div>`;
+    sheetInner.querySelectorAll("[data-tog]").forEach(b=>{
+      b.onclick = ()=>{
+        const id = b.dataset.tog;
+        if(state.program.includes(id)) state.program = state.program.filter(x=>x!==id);
+        else state.program.push(id);
+        persistProgram(); openPicker("prog"); render();
+      };
+    });
+    const rs = sheetInner.querySelector("[data-reset]");
+    if(rs) rs.onclick = ()=>{ state.program = DEFAULT_PROGRAM.slice(); persistProgram(); openPicker("prog"); render(); };
+    const cl = sheetInner.querySelector("[data-close]");
+    if(cl) cl.onclick = ()=> sheet.classList.remove("on");
+  }
+  sheet.classList.add("on");
+}
+
+/* ---------- 書き出し ---------- */
+function buildCSV(){
+  const rows = [["日付","種目","セット","重量kg","回数/秒","きつさ","メモ"]];
+  sortedDates().slice().reverse().forEach(d=>{
+    const s = state.sessions[d];
+    let first = true;
+    (s.entries||[]).forEach(e=>{
+      const ex = EXMAP[e.ex];
+      e.sets.forEach((st,i)=>{
+        rows.push([d, ex?ex.name:e.ex, i+1, st.w!==undefined?st.w:"", st.r, st.rpe||"", first?(s.note||""):""]);
+        first = false;
+      });
+    });
+  });
+  return rows.map(r=>r.map(c=>{
+    const v = String(c===undefined?"":c);
+    return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  }).join(",")).join("\n");
+}
+async function exportCSV(){
+  const csv = "\ufeff" + buildCSV();
+  let dl = null;
+  try{ dl = await claude.use("downloads"); }catch(e){ dl = null; }
+  if(!dl){ showText(); return; }
+  try{
+    await dl.save({filename:"training-"+TODAY+".csv", data: csv});
+  }catch(err){
+    if(err && err.code==="declined") return;
+    showText();
+  }
+}
+function showText(){
+  const lines = [];
+  sortedDates().slice().reverse().forEach(d=>{
+    const s = state.sessions[d];
+    const es = (s.entries||[]).filter(e=>e.sets.length);
+    if(!es.length) return;
+    lines.push(fmtDate(d));
+    es.forEach(e=>{
+      const ex = EXMAP[e.ex];
+      lines.push("  " + (ex?ex.name:e.ex) + "  " + e.sets.map(st=>setText(st, ex?ex.kind:"b") + (st.rpe?`(${st.rpe})`:"")).join(" / "));
+    });
+    if(s.note) lines.push("  メモ: " + s.note);
+    lines.push("");
+  });
+  const txt = lines.join("\n") || "記録がありません";
+  sheetInner.innerHTML = `<h4>コピーして共有</h4>
+    <p class="lastline" style="margin-top:0">括弧内はきつさの自己評価です。</p>
+    <textarea style="min-height:280px" readonly>${txt.replace(/</g,"&lt;")}</textarea>
+    <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
+  const t = sheetInner.querySelector("textarea");
+  t.onfocus = ()=> t.select();
+  sheetInner.querySelector("[data-close]").onclick = ()=> sheet.classList.remove("on");
+  sheet.classList.add("on");
+}
+
+/* ---------- テーマ ---------- */
+const themeBtn = document.getElementById("themeBtn");
+(function(){
+  let t = null;
+  try{ t = localStorage.getItem("trainlog.theme"); }catch(e){}
+  if(t) document.documentElement.setAttribute("data-theme", t);
+  themeBtn.onclick = ()=>{
+    const cur = document.documentElement.getAttribute("data-theme");
+    const next = cur==="dark" ? "light" : (cur==="light" ? "" : "dark");
+    if(next) document.documentElement.setAttribute("data-theme", next);
+    else document.documentElement.removeAttribute("data-theme");
+    try{ next ? localStorage.setItem("trainlog.theme", next) : localStorage.removeItem("trainlog.theme"); }catch(e){}
+  };
+})();
+
+/* ---------- 起動 ---------- */
+render();
+initStore();
+</script>
+</body>
+</html>
