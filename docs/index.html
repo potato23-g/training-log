@@ -3859,6 +3859,16 @@ const RECOVER_SETS = {abs:10, obliques:10, calves:6, forearms:6};
 function patternOf(id){ return PATTERN[id] || PATTERN[baseOf(id)] || id; }
 function recoverLimit(m){ return RECOVER_SETS[m] || 3; }
 function daysSinceEx(id){ const l = lastPerformance(id, TODAY); return l ? daysAgo(l.date) : 9999; }
+/* 前回トレーニングした日（今日より前で1セットでも記録がある日）に手を付けた種目。
+   規定セットをやりきっていなくても、手を付けたものは次のトレーニング日には出さない */
+function lastDayTouched(){
+  for(const d of sortedDates()){
+    if(d >= TODAY) continue;
+    const ex = (state.sessions[d].entries||[]).filter(e=>e.sets.length).map(e=>e.ex);
+    if(ex.length) return new Set(ex);
+  }
+  return new Set();
+}
 function daysSincePattern(pat){
   for(const d of sortedDates()){
     if(d >= TODAY) continue;
@@ -3908,6 +3918,18 @@ function buildPlan(){
     if(daysSinceEx(it.ex) > daysSinceEx(slots[k].ex)) slots[k] = it;
     slots[i] = null;
   });
+  /* 1b. 前回手を付けた種目は出さない。同じ動きの別の種目に替えられればそれに（間隔が空いている場合だけ）、
+         替えられなければ枠を空けて、下で別の動きで埋める */
+  const touched = lastDayTouched();
+  slots.forEach((it, i)=>{
+    if(!it || !touched.has(it.ex)) return;
+    const pat = patternOf(it.ex);
+    const alt = daysSincePattern(pat) >= (PATTERN_GAP[pat] || 2)
+      ? catalog().filter(c => patternOf(c.ex) === pat && !touched.has(c.ex) && (EXMAP[c.ex].kind !== "w" || gearOptions(c.ex).length))
+                 .sort((a, b) => daysSinceEx(b.ex) - daysSinceEx(a.ex))[0]
+      : null;
+    slots[i] = alt ? Object.assign({}, alt) : null;
+  });
   /* 2. 空いた枠を別の動きで埋める */
   const load = {};
   const addLoad = it => {
@@ -3925,6 +3947,7 @@ function buildPlan(){
     const cands = catalog().filter(c=>{
       const ex = EXMAP[c.ex], pat = patternOf(c.ex), n = c.sets || 3;
       if(used.has(pat)) return false;
+      if(touched.has(c.ex)) return false;                                         /* 前回手を付けた */
       if(daysSincePattern(pat) < (PATTERN_GAP[pat] || 2)) return false;
       if(tiredMuscle(c.ex)) return false;
       if(ex.p.some(m => nextMuscles.has(m))) return false;
@@ -4355,8 +4378,10 @@ function altFor(exId, wantBodyweight){
   const ex = EXMAP[exId]; if(!ex) return null;
   const mine = ex.p[0];
   const todayPats = new Set(todayItems().filter(t=>t.ex !== exId).map(t=>patternOf(t.ex)));
+  const touched = lastDayTouched();
   const cands = EX.filter(c=>{
     if(c.id === exId || baseOf(c.id) === baseOf(exId)) return false;
+    if(touched.has(c.id)) return false;
     if(!c.p.includes(mine)) return false;
     if(todayPats.has(patternOf(c.id))) return false;
     if(wantBodyweight && c.kind === "w") return false;
