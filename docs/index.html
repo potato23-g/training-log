@@ -143,9 +143,11 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 .timer{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);display:none;align-items:center;gap:14px;padding:11px 18px;z-index:50}
 .timer.on{display:flex}
 .timer .t{font-family:"Archivo",system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:.02em}
-.timer .lb{font-size:13px;opacity:.75}
+.timer .lb{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.timer .lb b{font-size:12.5px;font-weight:600;opacity:.75}
+.timer .lb small{font-size:12px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .timer button+button{margin-left:0}
-.timer button{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:3px;padding:5px 12px;font-size:13px}
+.timer button{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:3px;padding:5px 12px;font-size:13px;white-space:nowrap;flex:0 0 auto}
 
 /* ---- body figure ---- */
 .figs{display:flex;gap:6px;justify-content:center;align-items:flex-start}
@@ -305,7 +307,7 @@ textarea{min-height:64px;resize:vertical}
 
 <div class="timer" id="timer">
   <span class="t num" id="timerT">1:30</span>
-  <span class="lb" id="timerLb">休憩</span>
+  <span class="lb"><b>次のセットまで</b><small id="timerLb"></small></span>
   <button id="timerPlus">+30秒</button>
   <button id="timerStop">終了</button>
 </div>
@@ -2775,7 +2777,7 @@ function startRest(sec, label){
   restLeft = sec;
   restLabel = label || "";
   document.getElementById("timer").classList.add("on");
-  document.getElementById("timerLb").textContent = restLabel || "休憩";
+  document.getElementById("timerLb").textContent = restLabel;
   drawRest();
   clearInterval(restIv);
   if(PREF.get("wake", true)) keepAwake(true);
@@ -3089,7 +3091,7 @@ function adjust(kind, r, rpe){
 function suggestNext(item, e, last){
   const ex = EXMAP[item.ex], kind = ex.kind;
   const sets = e ? e.sets : [];
-  let w = kind==="w" ? (ex.w||5) : undefined;
+  let w = kind==="w" ? gearWeight(item.ex) : undefined;
   if(sets.length){
     const prev = sets[sets.length-1];
     if(kind==="w") w = prev.w;
@@ -3153,7 +3155,113 @@ function viewToday(){
     <div class="card">
       <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${(s.note||"").replace(/</g,"&lt;")}</textarea>
     </div>
+    ${gearCard()}
     ${settingsCard()}`;
+}
+
+/* ============================================================
+   使える器具（設定で変える。既定は 5kg×2本＝引き継ぎ時の前提）
+   ============================================================ */
+const GEAR_DEFAULT = { unit: 5, count: 2, adjustable: false, max: 5 };
+function gear(){ return Object.assign({}, GEAR_DEFAULT, state.gear || {}); }
+function setGear(patch){
+  state.gear = Object.assign({}, gear(), patch);
+  if(state.gear.max < state.gear.unit) state.gear.max = state.gear.unit;
+  persistProgram();
+}
+function kgText(v){ return (Math.round(v*10)/10) + "kg"; }
+
+/* 種目ごとのダンベルの使い方
+   each   = 両手に1つずつ（2本あれば2本使う）
+   stack  = 両手で1つ／体に乗せる（2本あれば重ねて倍にできる）
+   single = 片手に1つだけ（左右を入れ替えて行う）
+   none   = 使わない（自重・時間種目） */
+const GEAR_USE = {
+  goblet:{mode:"stack"}, rdl:{mode:"each"}, rdl1:{mode:"each"}, split:{mode:"each"},
+  hipthrust:{mode:"stack"}, row:{mode:"single"}, ohp:{mode:"each"}, lateral:{mode:"each"},
+  floorpress:{mode:"each"}, curl:{mode:"each"}, triext:{mode:"stack", cap:1},
+  calf:{mode:"each"}, farmer:{mode:"each"}
+};
+function gearUse(id){ return GEAR_USE[id] || GEAR_USE[baseOf(id)] || {mode:"none"}; }
+
+/* その種目で実際に持てる本数と合計重量 */
+function gearLoad(id){
+  const g = gear(), u = gearUse(id);
+  if(u.mode === "none") return {n:0, total:0, mode:"none", unit:g.unit};
+  const cap = u.cap || 2;
+  const n = u.mode === "single" ? Math.min(1, g.count) : Math.min(g.count, cap);
+  return {n, total: Math.round(g.unit * n * 10) / 10, mode:u.mode, unit:g.unit};
+}
+/* 記録欄に出す初期値。器具から決まる */
+function gearWeight(id){
+  const l = gearLoad(id);
+  return l.n ? l.total : 0;
+}
+/* 「5kg×2 = 10kg（両手に1つずつ）」のような説明 */
+function gearLine(id){
+  const g = gear(), l = gearLoad(id);
+  if(l.mode === "none") return "";
+  if(!g.count) return "ダンベルが0本の設定です。この種目は飛ばすか、自重で近い動きに置き換えてください。";
+  const how = l.mode === "each" ? (l.n >= 2 ? "両手に1つずつ" : "ダンベルが1本なので片手ずつ行う")
+            : l.mode === "stack" ? (l.n >= 2 ? "2本まとめて持つ" : "両手で1つを持つ")
+            : "片手に1つ（左右を入れ替える）";
+  const calc = l.n >= 2 ? kgText(g.unit) + "×" + l.n + " = " + kgText(l.total) : kgText(l.total);
+  return calc + "（" + how + "）";
+}
+/* 解説文の中の「5kg」を今の設定に合わせる（既定の5kgなら何も変わらない） */
+function gearText(s){
+  const g = gear();
+  if(!s || g.unit === 5) return s || "";
+  return String(s).replace(/10\s*kg/g, kgText(g.unit * 2)).replace(/5\s*kg/g, kgText(g.unit));
+}
+/* 重量を上げる余地があるか（可変式で上限に未到達なら、まず重量を上げる） */
+function canAddWeight(){
+  const g = gear();
+  return !!(g.adjustable && g.max > g.unit);
+}
+function nextWeightStep(){
+  const g = gear();
+  return Math.min(g.max, Math.round((g.unit + Math.max(1, g.unit * 0.1)) * 2) / 2);
+}
+
+/* ルーチンの注記のうち、今の器具と食い違う一文を落とす（元データは書き換えない） */
+function noteForGear(note){
+  if(!note) return "";
+  const g = gear();
+  if(g.count >= 2) return gearText(note);
+  const kept = note.split("。").filter(x => x && !/[2２]つ|両手に[1１]つずつ/.test(x));
+  return kept.length ? gearText(kept.join("。") + "。") : "";
+}
+
+function gearCard(){
+  const g = gear();
+  const countBtn = (n, label) => `<button data-act="gearcount" data-n="${n}" class="tg ${g.count===n?"on":""}">${label}</button>`;
+  return `<h3 class="sec">使える器具</h3>
+  <div class="card">
+    <div class="entry">
+      <div class="fld"><label>ダンベル1本の重さ kg</label>
+        <div class="stepper">
+          <button data-act="gearstep" data-t="unit" data-d="-1">−</button>
+          <input type="number" id="gear_unit" value="${g.unit}" step="0.5" min="0.5" inputmode="decimal">
+          <button data-act="gearstep" data-t="unit" data-d="1">＋</button>
+        </div></div>
+    </div>
+    <div class="setrow"><span>本数</span>
+      <span style="margin-left:auto;display:flex;gap:6px">${countBtn(0,"0")}${countBtn(1,"1本")}${countBtn(2,"2本")}</span></div>
+    <div class="setrow"><span>重さを変えられる<small>可変式・プレート追加ができるダンベル</small></span>
+      <button data-act="gearadj" class="tg ${g.adjustable?"on":""}">${g.adjustable?"オン":"オフ"}</button></div>
+    ${g.adjustable ? `<div class="entry">
+      <div class="fld"><label>上限 kg（1本あたり）</label>
+        <div class="stepper">
+          <button data-act="gearstep" data-t="max" data-d="-1">−</button>
+          <input type="number" id="gear_max" value="${g.max}" step="0.5" min="${g.unit}" inputmode="decimal">
+          <button data-act="gearstep" data-t="max" data-d="1">＋</button>
+        </div></div>
+    </div>` : ""}
+    <p class="lastline">${g.count ? "今の設定: " + kgText(g.unit) + " × " + g.count + "本"
+      + (g.adjustable ? "（上限 " + kgText(g.max) + "）" : "（重さ固定）") : "ダンベルなし（自重種目のみ）"}</p>
+    <p class="lastline">記録欄の重さの初期値、種目ごとの持ち方、「軽くなったら」の案内、提案タブの判定が、この設定に合わせて変わります。</p>
+  </div>`;
 }
 
 function settingsCard(){
@@ -3213,7 +3321,8 @@ function exRow(item){
         <span class="tv num">${sugText(item, sug)}</span>
         <span class="tw">${sug.src}${sug.why?"　→　"+sug.why:""}</span>
       </div>
-      ${item.note?`<p class="lastline">${item.note}</p>`:""}
+      ${gearLine(id)?`<p class="lastline"><b>器具</b>　${gearLine(id)}</p>`:""}
+      ${noteForGear(item.note)?`<p class="lastline">${noteForGear(item.note)}</p>`:""}
       ${last?`<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${last.sets.map(x=>setText(x,ex.kind)).join(" / ")}</b></p>`:""}
       <div class="entry">
         ${wfld}
@@ -3232,8 +3341,8 @@ function exRow(item){
         <button class="addbtn" data-act="addset" data-ex="${id}">記録</button>
       </div>
       <p class="lastline">きつさは 8〜9 が狙いです。10は限界、7以下は軽すぎます。入れた数字で次のセットの回数が変わります。</p>
+      <p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットをやっていい時間になると音で知らせます。</p>
       <div class="rowbtns">
-        <button data-act="rest" data-ex="${id}" data-s="${restFor(item)}">休憩 ${restFor(item)}秒</button>
         <button data-act="goref" data-ex="${id}">解説を見る</button>
       </div>
       </div><div class="exside">${diaHTML(id, true)}</div></div>`;
@@ -3270,16 +3379,17 @@ function viewEx(){
     <div class="card">
       <h4>目安</h4>
       <p style="margin:0 0 6px;font-size:14px">${kindLabel}　${d.reps||""}</p>
+      ${gearLine(refEx)?`<p class="lastline" style="margin-top:0"><b>器具</b>　${gearLine(refEx)}</p>`:""}
       <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">今日のメニューに追加</button></div>
     </div>`;
 
   const right = `
     ${ex.variant?`<div class="card"><h4>両脚版との違い</h4><p style="margin:0;font-size:14px">${ex.variant}</p></div>`:""}
-    ${d.why?`<div class="card"><h4>この種目を入れる理由</h4><p style="margin:0;font-size:14px">${d.why}</p></div>`:""}
-    ${d.setup?`<div class="card"><h4>準備</h4><p style="margin:0;font-size:14px">${d.setup}</p></div>`:""}
+    ${d.why?`<div class="card"><h4>この種目を入れる理由</h4><p style="margin:0;font-size:14px">${gearText(d.why)}</p></div>`:""}
+    ${d.setup?`<div class="card"><h4>準備</h4><p style="margin:0;font-size:14px">${gearText(d.setup)}</p></div>`:""}
     <div class="card">
       <h4>やり方</h4>
-      <ol class="steps">${exHow(refEx).map(x=>`<li>${x}</li>`).join("")}</ol>
+      <ol class="steps">${exHow(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ol>
     </div>
     <div class="card">
       <h4>呼吸とテンポ</h4>
@@ -3290,7 +3400,7 @@ function viewEx(){
     ${d.feel?`<div class="card"><h4>効いているかの判断</h4><p style="margin:0;font-size:14px">${d.feel}</p></div>`:""}
     <div class="card">
       <h4>よくある間違い</h4>
-      <ul class="plain">${exNg(refEx).map(x=>`<li>${x}</li>`).join("")}</ul>
+      <ul class="plain">${exNg(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ul>
     </div>
     <div class="card">
       <h4>きつい／簡単すぎる場合</h4>
@@ -3298,9 +3408,11 @@ function viewEx(){
       ${d.hard?`<p style="margin:0;font-size:14px"><b>簡単すぎるとき</b>　${d.hard}</p>`:""}
     </div>
     <div class="card">
-      <h4>5kgが軽くなったら</h4>
-      <p class="lastline" style="margin-top:0">ダンベルを買い足す前に、上から順に試してください。</p>
-      <ol class="steps">${exUp(refEx).map(x=>`<li>${x}</li>`).join("")}</ol>
+      <h4>${kgText(gear().unit)}が軽くなったら</h4>
+      ${canAddWeight()
+        ? `<p style="margin:0 0 6px;font-size:14px"><b>まず重量を上げる</b>　可変式の設定なので、次は1本 ${kgText(nextWeightStep())} を試してください（上限 ${kgText(gear().max)}）。上げきったら下の順に進みます。</p>`
+        : `<p class="lastline" style="margin-top:0">ダンベルを買い足す前に、上から順に試してください。</p>`}
+      <ol class="steps">${exUp(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ol>
     </div>
     <div class="card">
       <h4 class="warn">中止する合図</h4>
@@ -3394,7 +3506,17 @@ function sessionSummary(exId, sets){
 }
 
 /* 種目ごとの「そろそろ変え時／まだ様子見／余裕あり」判定。
-   5kg固定なので進め方は重量ではなく EX[id].up（可動域・テンポ・片側化など）を使う。 */
+   可変式で上限に余裕があれば重量を上げる案を先に出し、重さ固定なら
+   EX[id].up（可動域・テンポ・片側化など）を次の一手として出す。 */
+/* 次の一手。重量を上げられるならそれが最優先 */
+function nextStepText(exId){
+  const ex = EXMAP[exId];
+  if(ex.kind === "w" && canAddWeight()){
+    return "1本 " + kgText(nextWeightStep()) + " に上げる（上限 " + kgText(gear().max) + "）";
+  }
+  return gearText(ex.up[0]);
+}
+
 function levelSuggestions(){
   const out = [];
   Object.keys(EXMAP).forEach(exId=>{
@@ -3410,8 +3532,8 @@ function levelSuggestions(){
     if(atCeiling){
       out.push({exId, kind:"levelup",
         title: itemName({ex:exId}) + "：そろそろ切り替え時",
-        body: "次の一手 → " + ex.up[0],
-        why: "直近3回とも" + (ex.kind==="t" ? "秒数" : "回数") + "が上限付近で、きつさの平均が " + recent3[recent3.length-1].avgRpe.toFixed(1) + "。5kgのままでは伸びしろが少ない状態です。"});
+        body: "次の一手 → " + nextStepText(exId),
+        why: "直近3回とも" + (ex.kind==="t" ? "秒数" : "回数") + "が上限付近で、きつさの平均が " + recent3[recent3.length-1].avgRpe.toFixed(1) + "。" + (canAddWeight() ? "重量を上げる余地があります。" : kgText(gear().unit) + "のままでは伸びしろが少ない状態です。")});
       return;
     }
 
@@ -3422,7 +3544,7 @@ function levelSuggestions(){
       if(first > 0 && last <= first*1.05 && avgRpe4 >= 8){
         out.push({exId, kind:"plateau",
           title: itemName({ex:exId}) + "：伸び悩みぎみ",
-          body: "次の一手 → " + ex.up[0],
+          body: "次の一手 → " + nextStepText(exId),
           why: "直近4回できつさは高いまま（平均 " + avgRpe4.toFixed(1) + "）ですが、量はほぼ横ばいです。"});
         return;
       }
@@ -3432,7 +3554,7 @@ function levelSuggestions(){
     if(easy3){
       out.push({exId, kind:"easy",
         title: itemName({ex:exId}) + "：余裕が続いています",
-        body: "回数を増やすか、早めに次の一手 → " + ex.up[0],
+        body: "回数を増やすか、早めに次の一手 → " + nextStepText(exId),
         why: "直近3回のきつさ平均が " + (recent3.reduce((a,s)=>a+s.avgRpe,0)/3).toFixed(1) + "。8〜9を狙う設計に対して軽すぎる状態です。"});
     }
   });
@@ -3606,14 +3728,11 @@ function wire(){
       else if(a==="addset"){ addSet(el.dataset.ex); }
       else if(a==="delset"){ delSet(el.dataset.ex, +el.dataset.i); }
       else if(a==="step"){ step(el.dataset.t, el.dataset.ex, +el.dataset.d); }
-      else if(a==="rest"){
-        const id = el.dataset.ex, it = itemOf(id);
-        const sug = suggestNext(it, entryFor(TODAY, id, false), lastPerformance(id, TODAY));
-        unlockAudio();
-        startRest(+el.dataset.s, itemName(it) + "  " + sugText(it, sug));
-      }
       else if(a==="setr"){ const s2 = session(TODAY); s2.routine = el.dataset.r; persistSession(TODAY); openEx=null; render(); }
       else if(a==="pref"){ const k = el.dataset.k; PREF.set(k, !PREF.get(k, PREF_DEFAULT[k])); render(); }
+      else if(a==="gearcount"){ setGear({count: +el.dataset.n}); render(); }
+      else if(a==="gearadj"){ const g = gear(); setGear({adjustable: !g.adjustable, max: Math.max(g.max, g.unit)}); render(); }
+      else if(a==="gearstep"){ gearStep(el.dataset.t, +el.dataset.d); }
       else if(a==="asknotify"){ if(PREF.get("notify",false)){ PREF.set("notify",false); render(); } else askNotify(); }
       else if(a==="testalert"){ unlockAudio(); beep(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
       else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
@@ -3631,6 +3750,17 @@ function wire(){
 
   const sel = v.querySelector("#exSel");
   if(sel) sel.onchange = ()=>{ refEx = sel.value; render(); };
+
+  ["unit","max"].forEach(k=>{
+    const inp = v.querySelector("#gear_" + k);
+    if(!inp) return;
+    inp.onchange = ()=>{
+      const val = parseFloat(inp.value || "0");
+      if(isNaN(val) || val <= 0) { render(); return; }
+      setGear(k === "max" ? {max: val} : {unit: val});
+      render();
+    };
+  });
 
   const note = v.querySelector("#note");
   if(note){
@@ -3671,6 +3801,15 @@ function step(t, id, d){
   else if(t==="e") val = Math.min(10, Math.max(1, val + d));
   else val = Math.max(1, val + d);
   inp.value = (t==="w") ? String(val) : String(Math.round(val));
+}
+
+function gearStep(which, d){
+  const g = gear();
+  const cur = which === "max" ? g.max : g.unit;
+  const step = cur >= 20 ? 2.5 : (cur >= 10 ? 1 : 0.5);
+  const v = Math.max(which === "max" ? g.unit : 0, Math.round((cur + d*step) * 10) / 10);
+  setGear(which === "max" ? {max: v} : {unit: v});
+  render();
 }
 
 function addSet(id){
