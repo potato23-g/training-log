@@ -7,15 +7,20 @@
 
 実装するエンドポイント:
   GET  /repos/{owner}/{repo}                  private フラグを返す
-  GET  /repos/{owner}/{repo}/contents/{path}   sha1(保存バイト) を sha として返す
+  GET  /repos/{owner}/{repo}/contents/{path}   保存済みファイルなら中身(sha1をshaとして)、
+                                                保存済みファイルを含むディレクトリなら一覧(配列)、
+                                                どちらでも無ければ404
   PUT  /repos/{owner}/{repo}/contents/{path}   sha semantics: 既存ファイルへの sha 無し→422、
                                                 sha 不一致→409、新規作成は sha 無しでよい
   OPTIONS *                                    CORS プリフライトに 204 で答える
 
-テスト制御用（認証不要）:
-  POST /_mock/conflict  次の1回の PUT だけを 409 にする
-  POST /_mock/public    private フラグを反転する
-  GET  /_mock/file      保存されている生バイトを返す（無ければ404）
+テスト制御用（認証不要。リクエストログには載らない）:
+  POST /_mock/conflict     次の1回の PUT だけを 409 にする
+  POST /_mock/public       private フラグを反転する
+  GET  /_mock/file?path=   保存されている生バイトを返す（省略時 trainlog.json。無ければ404）
+  GET  /_mock/list         保存されている全パスの配列 {"paths":[...]}
+  GET  /_mock/log          直近のリクエスト履歴 [{method,path,status,reqBytes,resBytes}, ...]
+  POST /_mock/log/reset    リクエスト履歴を空にする
 """
 import base64
 import hashlib
@@ -24,6 +29,7 @@ import json
 import re
 import sys
 import threading
+from urllib.parse import urlsplit, parse_qs
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8799
 TOKEN = sys.argv[2] if len(sys.argv) > 2 else "test-token"
@@ -33,6 +39,7 @@ STATE = {
     "files": {},          # path -> bytes
     "force_conflict": False,
 }
+REQUEST_LOG = []
 LOCK = threading.Lock()
 
 CONTENTS_RE = re.compile(r"^/repos/([^/]+)/([^/]+)/contents/(.+)$")
@@ -52,11 +59,24 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
-    def _send_json(self, status, obj):
-        body = json.dumps(obj).encode("utf-8")
-        self._send_raw(status, body, "application/json; charset=utf-8")
+    def _log(self, status, res_bytes, req_bytes=0):
+        p = self.path.split("?", 1)[0]
+        if p.startswith("/_mock/"):
+            return
+        with LOCK:
+            REQUEST_LOG.append({
+                "method": self.command,
+                "path": p,
+                "status": status,
+                "reqBytes": req_bytes,
+                "resBytes": res_bytes,
+            })
 
-    def _send_raw(self, status, body, content_type="application/octet-stream"):
+    def _send_json(self, status, obj, req_bytes=0):
+        body = json.dumps(obj).encode("utf-8")
+        self._send_raw(status, body, "application/json; charset=utf-8", req_bytes)
+
+    def _send_raw(self, status, body, content_type="application/octet-stream", req_bytes=0):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
@@ -64,6 +84,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         if body:
             self.wfile.write(body)
+        self._log(status, len(body), req_bytes)
 
     def _authed(self):
         return self.headers.get("Authorization", "") == "Bearer " + TOKEN
@@ -84,12 +105,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
 
         if path == "/_mock/file":
+            qs = parse_qs(urlsplit(self.path).query)
+            filepath = (qs.get("path") or ["trainlog.json"])[0]
             with LOCK:
-                data = STATE["files"].get("trainlog.json")
+                data = STATE["files"].get(filepath)
             if data is None:
                 self._send_raw(404, b"")
             else:
                 self._send_raw(200, data, "application/octet-stream")
+            return
+
+        if path == "/_mock/list":
+            with LOCK:
+                paths = sorted(STATE["files"].keys())
+            self._send_json(200, {"paths": paths})
+            return
+
+        if path == "/_mock/log":
+            with LOCK:
+                data = list(REQUEST_LOG)
+            self._send_json(200, data)
             return
 
         m = CONTENTS_RE.match(path)
@@ -100,8 +135,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
             filepath = m.group(3)
             with LOCK:
                 data = STATE["files"].get(filepath)
+                if data is None:
+                    # 単一ファイルとしては無い。ディレクトリとして中身があるか調べる（直下のみ、非再帰）
+                    prefix = filepath.rstrip("/") + "/"
+                    children = sorted(p for p in STATE["files"] if p.startswith(prefix) and "/" not in p[len(prefix):])
+                    entries = None
+                    if children:
+                        entries = []
+                        for child in children:
+                            cdata = STATE["files"][child]
+                            entries.append({
+                                "name": child[len(prefix):],
+                                "path": child,
+                                "sha": hashlib.sha1(cdata).hexdigest(),
+                                "size": len(cdata),
+                                "type": "file",
+                            })
             if data is None:
-                self._send_json(404, {"message": "Not Found"})
+                if entries is not None:
+                    self._send_json(200, entries)
+                else:
+                    self._send_json(404, {"message": "Not Found"})
                 return
             accept = self.headers.get("Accept", "")
             sha = hashlib.sha1(data).hexdigest()
@@ -144,6 +198,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 p = STATE["private"]
             self._send_json(200, {"private": p})
             return
+        if path == "/_mock/log/reset":
+            with LOCK:
+                REQUEST_LOG.clear()
+            self._send_json(200, {"ok": True})
+            return
         self._send_json(404, {"message": "Not Found"})
 
     def do_PUT(self):
@@ -152,48 +211,47 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         m = CONTENTS_RE.match(path)
         if not m:
-            self._send_json(404, {"message": "Not Found"})
+            self._send_json(404, {"message": "Not Found"}, req_bytes=len(raw))
             return
         if not self._authed():
-            self._send_json(401, {"message": "Bad credentials"})
+            self._send_json(401, {"message": "Bad credentials"}, req_bytes=len(raw))
             return
         filepath = m.group(3)
 
         try:
             body = json.loads(raw.decode("utf-8")) if raw else {}
         except Exception:
-            self._send_json(400, {"message": "Bad Request"})
+            self._send_json(400, {"message": "Bad Request"}, req_bytes=len(raw))
             return
 
+        # ロックの中では状態の読み書きだけ行い、レスポンス送信はロックを離してから行う。
+        # _send_json は自前で LOCK を取る（リクエストログのため）ので、保持したまま呼ぶとデッドロックする。
+        status = None
+        obj = None
         with LOCK:
             if STATE["force_conflict"]:
                 STATE["force_conflict"] = False
-                self._send_json(409, {"message": "Conflict"})
-                return
+                status, obj = 409, {"message": "Conflict"}
+            else:
+                existing = STATE["files"].get(filepath)
+                sha_in = body.get("sha")
 
-            existing = STATE["files"].get(filepath)
-            sha_in = body.get("sha")
+                if existing is not None and not sha_in:
+                    status, obj = 422, {"message": "sha wasn't supplied"}
+                elif existing is not None and sha_in != hashlib.sha1(existing).hexdigest():
+                    status, obj = 409, {"message": "Conflict"}
+                else:
+                    try:
+                        new_bytes = base64.b64decode(body.get("content", ""))
+                    except Exception:
+                        status, obj = 400, {"message": "content が base64 として読めません"}
+                    else:
+                        STATE["files"][filepath] = new_bytes
+                        new_sha = hashlib.sha1(new_bytes).hexdigest()
+                        status = 200 if existing is not None else 201
+                        obj = {"content": {"sha": new_sha, "path": filepath}, "commit": {"sha": new_sha}}
 
-            if existing is not None:
-                if not sha_in:
-                    self._send_json(422, {"message": "sha wasn't supplied"})
-                    return
-                existing_sha = hashlib.sha1(existing).hexdigest()
-                if sha_in != existing_sha:
-                    self._send_json(409, {"message": "Conflict"})
-                    return
-
-            try:
-                new_bytes = base64.b64decode(body.get("content", ""))
-            except Exception:
-                self._send_json(400, {"message": "content が base64 として読めません"})
-                return
-
-            STATE["files"][filepath] = new_bytes
-            new_sha = hashlib.sha1(new_bytes).hexdigest()
-            status = 200 if existing is not None else 201
-
-        self._send_json(status, {"content": {"sha": new_sha, "path": filepath}, "commit": {"sha": new_sha}})
+        self._send_json(status, obj, req_bytes=len(raw))
 
 
 def main():

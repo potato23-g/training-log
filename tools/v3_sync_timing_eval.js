@@ -22,7 +22,10 @@
   let calls = [];
   const realFetch = window.fetch.bind(window);
   window.fetch = (url, opt) => { calls.push((opt && opt.method) || "GET"); return realFetch(url, opt); };
-  const remote = async () => { const res = await realFetch(API + "/_mock/file", {cache: "no-store"}); return res.ok ? res.json() : null; };
+  /* リモートは trainlog/YYYY-MM.json + trainlog/settings.json に分かれている（単一の trainlog.json ではない） */
+  const remoteFile = async (p) => { const res = await realFetch(API + "/_mock/file?path=" + encodeURIComponent(p), {cache: "no-store"}); return res.ok ? res.json() : null; };
+  const remoteMonth = async () => remoteFile("trainlog/" + TODAY.slice(0, 7) + ".json");
+  const remoteSettings = async () => remoteFile("trainlog/settings.json");
   const idle = async ms => { calls = []; await wait(ms); return calls.slice(); };
 
   /* 同期しないはずの操作 */
@@ -42,14 +45,16 @@
   r.noteBeforeDebounce = calls.slice();
   await wait(4500);
   r.noteAfter = calls.slice();
-  r.noteRemote = ((await remote()).sessions[TODAY] || {}).note;
+  const noteMonthFile = await remoteMonth();
+  r.noteRemote = ((noteMonthFile && noteMonthFile.sessions[TODAY]) || {}).note;
 
-  /* ダンベル設定の変更 → 入力が落ち着いてから同期 */
+  /* ダンベル設定の変更 → 入力が落ち着いてから同期（settings.json 側） */
   calls = [];
   setGearItems([{kg: 6, n: 2}]); render();
   await wait(6000);
   r.gearAfter = calls.slice();
-  r.gearRemote = ((await remote()).gear || {}).items;
+  const settingsFile = await remoteSettings();
+  r.gearRemote = (settingsFile && settingsFile.gear) ? settingsFile.gear.items : null;
 
   /* 記録 → すぐ同期 */
   const first = items[0];
@@ -59,7 +64,8 @@
   stopRest();
   await wait(1500);
   r.recordAfter = calls.slice();
-  const e1 = ((await remote()).sessions[TODAY].entries || []).find(x => x.ex === first.ex);
+  const recordMonthFile = await remoteMonth();
+  const e1 = ((recordMonthFile && recordMonthFile.sessions[TODAY] && recordMonthFile.sessions[TODAY].entries) || []).find(x => x.ex === first.ex);
   r.recordRemoteSets = e1 ? e1.sets.length : 0;
 
   /* 修正で消す → すぐ同期 */
@@ -67,7 +73,8 @@
   delSet(first.ex, 0);
   await wait(1500);
   r.deleteAfter = calls.slice();
-  const e2 = ((await remote()).sessions[TODAY].entries || []).find(x => x.ex === first.ex);
+  const deleteMonthFile = await remoteMonth();
+  const e2 = ((deleteMonthFile && deleteMonthFile.sessions[TODAY] && deleteMonthFile.sessions[TODAY].entries) || []).find(x => x.ex === first.ex);
   r.deleteRemoteSets = e2 ? e2.sets.length : 0;
 
   window.fetch = realFetch;

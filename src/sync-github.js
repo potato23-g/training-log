@@ -1,6 +1,13 @@
 /* ============================================================
-   同期（GitHub）: この端末と、利用者自身の非公開GitHubリポジトリの trainlog.json を
+   同期（GitHub）: この端末と、利用者自身の非公開GitHubリポジトリの trainlog/ フォルダを
    突き合わせて、スマホとPCで記録を共有する。
+
+   リモートの形:
+     trainlog/YYYY-MM.json = {app:"trainlog", format:2, month:"YYYY-MM", sessions:{...その月の日付だけ}}
+     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}}
+   月ごとのファイルに分けているのは、記録するたびに全履歴を送らずに済ませるため
+   （1年続けると単一ファイルは約1.7MBになる。変わった月だけをやり取りする）。
+   旧形式（単一の trainlog.json、format:1）が残っていれば、初回だけ読み込んで取り込む（移行）。
 
    前提（環境が用意するグローバル。ここでは定義しない）:
      state        { sessions:{date:session}, program:[...], gear? }
@@ -16,8 +23,13 @@
 var SYNC_LS_KEY = "trainlog.sync.v1";
 var SYNC_API_OVERRIDE_KEY = "trainlog.sync.api";
 var SYNC_LAST_KEY = "trainlog.sync.lastAt";
+var SYNC_META_KEY = "trainlog.sync.meta.v2";
 var SYNC_REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 var SYNC_BACKOFF_MS = [800, 1600];
+var SYNC_DIR = "trainlog";
+var SYNC_SETTINGS_NAME = "settings.json";
+var SYNC_LEGACY_PATH = "trainlog.json";
+var SYNC_MONTH_FILE_RE = /^(\d{4}-\d{2})\.json$/;
 
 /* メモ・ダンベル設定の変更から同期までの待ち時間（入力中に何度も送らないため）。テストから縮めて使う */
 var SYNC_TUNE = { debounce: 4000 };
@@ -54,6 +66,7 @@ function syncSaveConfig(cfg){
 function syncClearConfig(){
   try{ localStorage.removeItem(SYNC_LS_KEY); }catch(e){}
   try{ localStorage.removeItem(SYNC_LAST_KEY); }catch(e){}
+  try{ localStorage.removeItem(SYNC_META_KEY); }catch(e){}
 }
 function syncLastDisplay(){
   try{
@@ -62,6 +75,26 @@ function syncLastDisplay(){
     if(!t) return "";
     return new Date(t).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
   }catch(e){ return ""; }
+}
+
+/* 端末ごとの同期メタ（どのファイルをどのshaまで見た・最後に送ったローカルの中身は何だったか）。
+   これが無いと、変わっていないファイルまで毎回読み書きすることになる。 */
+function syncLoadMeta(cfg){
+  var meta = null;
+  try{
+    var raw = localStorage.getItem(SYNC_META_KEY);
+    if(raw) meta = JSON.parse(raw);
+  }catch(e){ meta = null; }
+  if(!meta || typeof meta !== "object" || meta.repo !== cfg.repo){
+    meta = { repo: cfg.repo, seen: {}, localKey: {}, migrated: false };
+  }
+  meta.seen = meta.seen && typeof meta.seen === "object" ? meta.seen : {};
+  meta.localKey = meta.localKey && typeof meta.localKey === "object" ? meta.localKey : {};
+  meta.migrated = !!meta.migrated;
+  return meta;
+}
+function syncSaveMeta(meta){
+  try{ localStorage.setItem(SYNC_META_KEY, JSON.stringify(meta)); }catch(e){}
 }
 
 /* ============================================================
@@ -109,8 +142,8 @@ function syncCloneDeep(v){
 }
 
 /* ============================================================
-   マージ本体。純関数：引数を書き換えない。
-   mergeState は同期からも、バックアップ取り込み（applyBackup）からも呼ばれる。
+   マージ本体。純関数：引数を書き換えない。シグネチャ・挙動は変えない
+   （同期からだけでなく、バックアップ取り込み applyBackup からも呼ばれている）。
    ============================================================ */
 function mergeState(local, remote){
   var a = syncCloneDeep(local) || {};
@@ -154,7 +187,8 @@ function syncMergeSession(a, b){
   /* entries の並び: a のエントリ、続けて a に無い ex を持つ b のエントリ。
      ※ 仕様どおりの非対称な規則。両端末が同じ日に別々の新しい種目を足すと
      並び順そのものは端末ごとに食い違ったままになり得るが、セットの中身（データ）
-     は id で正しく収束する。並びだけの食い違いは無害（表示は日付・種目名基準）。 */
+     は id で正しく収束する。並びだけの食い違いは無害（表示は日付・種目名基準）。
+     アルファベット順などに揃える「修正」はしない — 表示順（viewHist）が崩れる。 */
   var aMap = {}, order = [];
   (a.entries || []).forEach(function(e){
     if(!(e.ex in aMap)) order.push(e.ex);
@@ -231,7 +265,7 @@ function syncErrorMessage(kind){
     case "public": return "公開リポジトリなので保存しません。非公開（Private）のリポジトリを指定してください";
     case "network": return "通信できませんでした。次に起動したときや記録したときに、まとめて同期します";
     case "conflict": return "同期が混み合っています。少し待ってからもう一度お試しください";
-    case "badformat": return "リポジトリの trainlog.json がこのアプリの形式ではありません";
+    case "badformat": return "リポジトリの記録データがこのアプリの形式ではありません";
     case "progress": return "同期しています…";
     case "needrepo": return "リポジトリと鍵の両方を入力してください";
     case "badrepo": return "リポジトリは「ユーザー名/リポジトリ名」の形式で入力してください";
@@ -246,10 +280,10 @@ function syncMakeError(kind, cause){
 }
 
 /* ============================================================
-   GitHub REST（Contents API）
+   GitHub REST（Contents API）— ディレクトリ一覧・ファイル読み書きの汎用部品
    ============================================================ */
-function syncContentsUrl(repo){
-  return syncApiBase() + "/repos/" + repo + "/contents/trainlog.json";
+function syncContentsUrl(repo, path){
+  return syncApiBase() + "/repos/" + repo + "/contents/" + path;
 }
 function syncHeaders(token, extra){
   var h = {
@@ -276,13 +310,31 @@ async function syncCheckRepo(repo, token){
   return true;
 }
 
-async function syncPull(cfg){
-  var url = syncContentsUrl(cfg.repo);
+/* trainlog ディレクトリの一覧。無ければ空配列（エラーではない） */
+async function syncListDir(cfg){
+  var url = syncContentsUrl(cfg.repo, SYNC_DIR);
   var res;
   try{
     res = await fetch(url, { headers: syncHeaders(cfg.token), cache: "no-store" });
   }catch(e){ throw syncMakeError("network", e); }
-  if(res.status === 404) return { remote: null, sha: null };
+  if(res.status === 404) return [];
+  if(res.status === 401) throw syncMakeError("auth");
+  if(res.status === 403) throw syncMakeError("forbidden");
+  if(!res.ok) throw syncMakeError("network");
+  var data;
+  try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
+  return Array.isArray(data) ? data : [];
+}
+
+/* 1ファイル読む。無ければ {parsed:null, sha:null}（エラーではない）。
+   app!=="trainlog" は badformat（この関数を直接使う場所はすべて厳密チェックが要る箇所）。 */
+async function syncGetFile(cfg, path){
+  var url = syncContentsUrl(cfg.repo, path);
+  var res;
+  try{
+    res = await fetch(url, { headers: syncHeaders(cfg.token), cache: "no-store" });
+  }catch(e){ throw syncMakeError("network", e); }
+  if(res.status === 404) return { parsed: null, sha: null };
   if(res.status === 401) throw syncMakeError("auth");
   if(res.status === 403) throw syncMakeError("forbidden");
   if(!res.ok) throw syncMakeError("network");
@@ -304,11 +356,23 @@ async function syncPull(cfg){
   var parsed;
   try{ parsed = JSON.parse(text); }catch(e){ throw syncMakeError("badformat", e); }
   if(!parsed || parsed.app !== "trainlog") throw syncMakeError("badformat");
-  return { remote: parsed, sha: data.sha };
+  return { parsed: parsed, sha: data.sha };
 }
 
-async function syncPush(cfg, payloadObj, sha){
-  var url = syncContentsUrl(cfg.repo);
+/* 移行専用: 旧 trainlog.json を読む。形式がおかしければ「無かった」ことにするだけで、
+   同期全体は止めない（移行はあくまで best-effort のボーナス処理）。
+   通信・権限のエラーはそのまま投げる（本物の問題なので隠さない）。 */
+async function syncGetFileLenient(cfg, path){
+  try{
+    return await syncGetFile(cfg, path);
+  }catch(e){
+    if(e && e.syncKind === "badformat") return { parsed: null, sha: null };
+    throw e;
+  }
+}
+
+async function syncPushFile(cfg, path, payloadObj, sha){
+  var url = syncContentsUrl(cfg.repo, path);
   var body = { message: "記録を同期", content: syncUtf8ToBase64(JSON.stringify(payloadObj)) };
   if(sha) body.sha = sha;
   var res;
@@ -376,33 +440,171 @@ function syncSafeRender(){
 }
 
 /* ============================================================
-   同期本体
+   同期本体 — 月ファイル単位
    ============================================================ */
 function syncDelay(ms){
   return new Promise(function(resolve){ setTimeout(resolve, ms); });
 }
+function syncMonthOf(date){ return String(date).slice(0, 7); }
+function syncSessionsForMonth(sessions, month){
+  var out = {};
+  Object.keys(sessions).forEach(function(date){
+    if(syncMonthOf(date) === month) out[date] = sessions[date];
+  });
+  return out;
+}
+/* state.sessions のうち、その月に属する日付だけを丸ごと置き換える（他の月には触れない） */
+function syncApplyMonthToState(monthSessions, month){
+  Object.keys(state.sessions).forEach(function(date){
+    if(syncMonthOf(date) === month) delete state.sessions[date];
+  });
+  Object.keys(monthSessions).forEach(function(date){
+    state.sessions[date] = monthSessions[date];
+  });
+}
+/* リモートに無い状態で、ローカルも空（作る価値が無い）パート */
+function syncPartIsEmpty(part, localPart){
+  if(part.kind === "settings") return localPart.gear === undefined || localPart.gear === null;
+  return Object.keys(localPart.sessions).length === 0;
+}
 
-async function syncAttempt(cfg){
-  var pulled = await syncPull(cfg);
-  var remote = pulled.remote, sha = pulled.sha;
+/* 同期対象の一覧（月ファイル + settings）を組み立てる。
+   対象になるのは「ローカルに記録がある月」「リモートに既にファイルがある月」の和集合、と settings。 */
+function syncBuildParts(listing){
+  var remoteMonths = {}; /* name -> sha */
+  var remoteSettingsSha = null;
+  listing.forEach(function(entry){
+    if(!entry || entry.type !== "file") return;
+    if(entry.name === SYNC_SETTINGS_NAME){ remoteSettingsSha = entry.sha; return; }
+    var m = SYNC_MONTH_FILE_RE.exec(entry.name);
+    if(m) remoteMonths[entry.name] = entry.sha;
+  });
 
-  var localSnapshot = { sessions: state.sessions, gear: state.gear };
-  var merged = mergeState(localSnapshot, remote || { sessions: {}, gear: undefined });
+  var monthSet = {};
+  /* 日付の形をしていないキーはファイル名（URLのパス）に使わない */
+  Object.keys(state.sessions).forEach(function(date){
+    var month = syncMonthOf(date);
+    if(/^\d{4}-\d{2}$/.test(month)) monthSet[month] = true;
+  });
+  Object.keys(remoteMonths).forEach(function(name){ monthSet[SYNC_MONTH_FILE_RE.exec(name)[1]] = true; });
 
-  var localKey = stableKey(localSnapshot);
-  var mergedKey = stableKey(merged);
-  if(mergedKey !== localKey){
-    state.sessions = merged.sessions;
-    state.gear = merged.gear;
-    saveLocal();
-    syncSafeRender();
+  var parts = Object.keys(monthSet).sort().map(function(month){
+    return { kind: "month", month: month, name: month + ".json", remoteSha: remoteMonths[month + ".json"] || null };
+  });
+  parts.push({ kind: "settings", name: SYNC_SETTINGS_NAME, remoteSha: remoteSettingsSha });
+  return parts;
+}
+
+function syncLocalPartOf(part){
+  return part.kind === "month"
+    ? { sessions: syncSessionsForMonth(state.sessions, part.month) }
+    : { gear: state.gear };
+}
+
+/* 1パート（1ファイル）ぶんの pull→merge→push。meta はその場で更新して呼び出し側が即persistする。
+   戻り値: このパートでローカルの state が変わったか */
+async function syncPart(cfg, part, meta){
+  var name = part.name;
+  var localPart = syncLocalPartOf(part);
+  var localKey = stableKey(localPart);
+  var remoteSha = part.remoteSha;
+
+  var remoteChanged = !!remoteSha && remoteSha !== meta.seen[name];
+  var localChanged = localKey !== meta.localKey[name];
+  if(!remoteChanged && !localChanged) return false;
+  if(!remoteSha && syncPartIsEmpty(part, localPart)) return false;
+
+  var merged = localPart;
+  var remoteContentKey = null; /* remoteChanged のときだけ使う: 取得したリモートの中身の正準key */
+  var changedLocally = false;
+
+  if(remoteChanged){
+    var got = await syncGetFile(cfg, SYNC_DIR + "/" + name);
+    remoteSha = got.sha || remoteSha; /* GET直後のshaの方が新しい */
+    /* 読み込みを待つあいだに記録が増えているかもしれないので、ローカル側はここで取り直す
+       （取り直さないと、そのあいだに付けたセットを古い中身で上書きして消してしまう） */
+    localPart = syncLocalPartOf(part);
+    localKey = stableKey(localPart);
+    var remoteContent = got.parsed || (part.kind === "month" ? { sessions: {} } : { gear: undefined });
+    if(part.kind === "month"){
+      merged = { sessions: mergeState({ sessions: localPart.sessions }, { sessions: remoteContent.sessions || {} }).sessions };
+      remoteContentKey = stableKey({ sessions: remoteContent.sessions || {} });
+    }else{
+      merged = { gear: syncMergeGear(localPart.gear, remoteContent.gear) };
+      remoteContentKey = stableKey({ gear: remoteContent.gear });
+    }
   }
 
-  var remoteForCompare = { sessions: (remote && remote.sessions) || {}, gear: remote && remote.gear };
-  var remoteKey = stableKey(remoteForCompare);
-  if(mergedKey !== remoteKey){
-    var payload = { app: "trainlog", format: 1, savedAt: new Date().toISOString(), sessions: merged.sessions, gear: merged.gear };
-    await syncPush(cfg, payload, sha);
+  var mergedKey = stableKey(merged);
+  if(mergedKey !== localKey){
+    if(part.kind === "month") syncApplyMonthToState(merged.sessions, part.month);
+    else state.gear = merged.gear;
+    changedLocally = true;
+    /* meta を進める前に端末へ保存する。途中で閉じられて「見た」印だけ残ると、
+       次の同期で取り込み前の中身を送り返してしまうため */
+    saveLocal();
+  }
+
+  var shouldPush;
+  if(!remoteSha) shouldPush = true;
+  else if(remoteChanged) shouldPush = mergedKey !== remoteContentKey;
+  else shouldPush = localChanged;
+
+  var newSha = remoteSha;
+  if(shouldPush){
+    var payload = part.kind === "month"
+      ? { app: "trainlog", format: 2, month: part.month, sessions: merged.sessions }
+      : { app: "trainlog", format: 2, gear: merged.gear };
+    var pushed = await syncPushFile(cfg, SYNC_DIR + "/" + name, payload, remoteSha);
+    newSha = pushed.sha || remoteSha;
+  }
+
+  meta.seen[name] = newSha;
+  meta.localKey[name] = mergedKey;
+  syncSaveMeta(meta);
+  return changedLocally;
+}
+
+/* ディレクトリが空/無く、この端末でまだ移行していなければ、旧単一ファイルを取り込む。
+   旧ファイル自体は書き換えない（他の端末がまだ見ているかもしれないため）。 */
+async function syncMaybeMigrate(cfg, listing, meta){
+  if(listing.length > 0 || meta.migrated) return false;
+  var old = await syncGetFileLenient(cfg, SYNC_LEGACY_PATH);
+  if(!old.parsed) return false;
+  var migrated = mergeState({ sessions: state.sessions, gear: state.gear }, old.parsed);
+  state.sessions = migrated.sessions;
+  state.gear = migrated.gear;
+  return true;
+}
+
+async function syncAttempt(cfg){
+  var meta = syncLoadMeta(cfg);
+  var listing = await syncListDir(cfg);
+
+  /* 判定は syncMaybeMigrate を呼ぶ前に確定させる。syncMaybeMigrate は meta.migrated を書き換えない
+     ので今は呼んだ後でも同じ値になるが、その前提が崩れても壊れないように先に固定しておく。 */
+  var migratedThisAttempt = listing.length === 0 && !meta.migrated; /* 移行を試みたかどうか（成否に関わらず） */
+  var changedByMigration = await syncMaybeMigrate(cfg, listing, meta);
+  if(changedByMigration) saveLocal();
+
+  var parts = syncBuildParts(listing);
+  var anyLocalChange = changedByMigration;
+  try{
+    for(var i = 0; i < parts.length; i++){
+      var changed = await syncPart(cfg, parts[i], meta);
+      if(changed) anyLocalChange = true;
+    }
+  }finally{
+    /* 途中のファイルで失敗しても、それまでに取り込んだ分は画面に出す（保存は syncPart 内で済んでいる） */
+    if(anyLocalChange){
+      saveLocal();
+      syncSafeRender();
+    }
+  }
+
+  if(migratedThisAttempt){
+    meta.migrated = true;
+    syncSaveMeta(meta);
   }
 
   syncOnSuccess();
@@ -454,7 +656,7 @@ async function syncNow(){
 }
 
 /* ============================================================
-   デバウンス起動・定期実行
+   デバウンス起動
    ============================================================ */
 function syncSchedule(){
   var cfg = syncLoadConfig();
@@ -555,7 +757,7 @@ function syncCard(){
           <li>下の欄に「GitHubのユーザー名/${SYNC_REPO_NAME}」と鍵を入れて「接続」を押す。</li>
           <li>スマホでも、ホーム画面に追加したアプリを開いて同じ欄に同じ2つを入れる（Safariで開いた画面とは別扱いになる）。</li>
         </ol>
-        <p class="lastline">鍵はこの端末のブラウザの中にだけ保存し、GitHub以外には送りません。記録はそのリポジトリの trainlog.json に保存されます。鍵が要らなくなったら、GitHubの Settings → Developer settings → Fine-grained tokens から削除できます。</p>
+        <p class="lastline">鍵はこの端末のブラウザの中にだけ保存し、GitHub以外には送りません。記録はそのリポジトリの trainlog フォルダに、月ごとのファイルで保存されます。鍵が要らなくなったら、GitHubの Settings → Developer settings → Fine-grained tokens から削除できます。</p>
       </details>
       <div class="fld" style="margin-top:12px"><label>リポジトリ（ユーザー名/リポジトリ名）</label>
         <input type="text" id="syncRepo" placeholder="ユーザー名/training-log-data" style="width:100%"></div>

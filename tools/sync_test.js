@@ -2,7 +2,8 @@
 /* sync-github.js のテスト。 `bun tools/sync_test.js` で実行する。
    src/ids.js + src/sync-github.js を node:vm の別コンテキストに読み込み、
    端末ごとに独立した state / localStorage / fetch を持たせて2台をシミュレートする。
-   結合テストは python 製のモック（tools/mock_github.py）を子プロセスで立てて相手にする。 */
+   結合テストは python 製のモック（tools/mock_github.py）を子プロセスで立てて相手にする。
+   リモートは trainlog/YYYY-MM.json + trainlog/settings.json の複数ファイル構成。 */
 
 import vm from "node:vm";
 import fs from "node:fs";
@@ -96,8 +97,8 @@ function startMock(port, token){
 async function waitReady(base){
   for(let i = 0; i < 100; i++){
     try{
-      const res = await fetch(base + "/_mock/file");
-      if(res.status === 200 || res.status === 404) return;
+      const res = await fetch(base + "/_mock/list");
+      if(res.status === 200) return;
     }catch(e){}
     await new Promise(r => setTimeout(r, 100));
   }
@@ -107,18 +108,44 @@ function stopAllMocks(){
   mockProcs.forEach(p => { try{ p.kill(); }catch(e){} });
 }
 
+/* ---------- モック制御の小道具 ---------- */
+async function mockList(base){
+  const res = await fetch(base + "/_mock/list");
+  const j = await res.json();
+  return j.paths;
+}
+async function mockFile(base, filePath){
+  const res = await fetch(base + "/_mock/file?path=" + encodeURIComponent(filePath));
+  if(res.status === 404) return null;
+  return JSON.parse(await res.text());
+}
+async function mockLog(base){
+  const res = await fetch(base + "/_mock/log");
+  return res.json();
+}
+async function mockLogReset(base){
+  await fetch(base + "/_mock/log/reset", { method: "POST" });
+}
+async function putLegacyFile(base, repo, token, payloadObj){
+  const contentB64 = Buffer.from(JSON.stringify(payloadObj), "utf8").toString("base64");
+  const res = await fetch(base + "/repos/" + repo + "/contents/trainlog.json", {
+    method: "PUT",
+    headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify({ message: "seed legacy", content: contentB64 })
+  });
+  if(!res.ok) throw new Error("failed to seed legacy file: " + res.status);
+}
+
 /* ============================================================
-   1. 単体テスト: mergeState / stableKey
+   1. 単体テスト: mergeState / stableKey（リモート形式には依存しない）
    ============================================================ */
 function runUnitTests(){
   console.log("\n-- unit: mergeState / stableKey --");
   const d = makeDevice("http://127.0.0.1:1"); // API は叩かないのでダミー
   const M = d.ctx;
 
-  // stableKey: キーの並びが違っても同じ
   ok(M.stableKey({ b: 2, a: 1 }) === M.stableKey({ a: 1, b: 2 }), "stableKey: オブジェクトのキー順は結果に影響しない");
 
-  // セットの和集合
   {
     const a = { sessions: { "2026-01-01": { date: "2026-01-01", entries: [{ ex: "squat", sets: [{ id: "s1", at: 1, w: 10, r: 10, rpe: 8 }] }] } } };
     const b = { sessions: { "2026-01-01": { date: "2026-01-01", entries: [{ ex: "squat", sets: [{ id: "s2", at: 2, w: 10, r: 8, rpe: 9 }] }] } } };
@@ -127,17 +154,13 @@ function runUnitTests(){
     ok(sets[0].at <= sets[1].at, "merge: セットは at 昇順で並ぶ");
   }
 
-  // 削除の墓標（どちらの向きでマージしても消えたままになる）
   {
     const withDel = { sessions: { "2026-01-02": { date: "2026-01-02", entries: [{ ex: "bench", sets: [{ id: "x1", at: 1, w: 20, r: 8, rpe: 8 }] }], del: ["x1"] } } };
     const withoutDel = { sessions: { "2026-01-02": { date: "2026-01-02", entries: [{ ex: "bench", sets: [{ id: "x1", at: 1, w: 20, r: 8, rpe: 8 }] }] } } };
-    // エントリ自体は a 側に存在する限り残る（空セットのエントリごと消えるのは remote 側だけにある場合）。
-    // 消えるべきなのはセットそのもの。
     ok(M.mergeState(withDel, withoutDel).sessions["2026-01-02"].entries[0].sets.length === 0, "merge: 削除したセットは相手側から復活しない(local側が削除)");
     ok(M.mergeState(withoutDel, withDel).sessions["2026-01-02"].entries[0].sets.length === 0, "merge: 削除したセットは相手側から復活しない(remote側が削除)");
   }
 
-  // note: noteAt が大きい方が勝つ／同点は a
   {
     const a = { sessions: { "2026-01-03": { date: "2026-01-03", entries: [], note: "A", noteAt: 100 } } };
     const b = { sessions: { "2026-01-03": { date: "2026-01-03", entries: [], note: "B", noteAt: 200 } } };
@@ -147,7 +170,6 @@ function runUnitTests(){
     ok(M.mergeState(a, bTie).sessions["2026-01-03"].note === "A", "merge: noteAt 同点なら local(a)");
   }
 
-  // plan: planAt が小さい方（先に決めた方）が勝つ。片側だけならそれを採用
   {
     const a = { sessions: { "2026-01-04": { date: "2026-01-04", entries: [], plan: [{ ex: "a" }], planAt: 500 } } };
     const b = { sessions: { "2026-01-04": { date: "2026-01-04", entries: [], plan: [{ ex: "b" }], planAt: 200 } } };
@@ -158,7 +180,6 @@ function runUnitTests(){
     ok(M.mergeState(onlyA, none).sessions["2026-01-04b"].plan[0].ex === "solo", "merge: plan は片側にしか無ければそれを採用");
   }
 
-  // gear: updatedAt が大きい方
   {
     const a = { sessions: {}, gear: { items: [{ kg: 5, n: 2 }], updatedAt: 10 } };
     const b = { sessions: {}, gear: { items: [{ kg: 10, n: 2 }], updatedAt: 20 } };
@@ -166,7 +187,6 @@ function runUnitTests(){
     ok(m.gear.updatedAt === 20 && m.gear.items[0].kg === 10, "merge: gear は updatedAt が大きい方");
   }
 
-  // 旧形式（idなし）のセットは両端末で同じIDになり重複しない
   {
     const legacy = () => ({ w: 10, r: 10, rpe: 8 });
     const a = { sessions: { "2026-01-05": { date: "2026-01-05", entries: [{ ex: "row", sets: [legacy()] }] } } };
@@ -174,7 +194,6 @@ function runUnitTests(){
     ok(M.mergeState(a, b).sessions["2026-01-05"].entries[0].sets.length === 1, "merge: 同一内容の旧形式セットは両端末で同じidになり重複しない");
   }
 
-  // remote側だけの空エントリは落ちる。local側の空エントリは残る
   {
     const a = { sessions: { "2026-01-06": { date: "2026-01-06", entries: [] } } };
     const b = { sessions: { "2026-01-06": { date: "2026-01-06", entries: [{ ex: "curl", sets: [] }] } } };
@@ -184,10 +203,10 @@ function runUnitTests(){
     ok(M.mergeState(a2, b2).sessions["2026-01-06b"].entries.length === 1, "merge: local側にある空エントリは残る");
   }
 
-  // syncCard / syncWire の最低限の健全性
   {
     const html = M.syncCard();
     ok(html.indexOf('id="syncRepo"') !== -1 && html.indexOf('data-sync="connect"') !== -1, "syncCard: 未設定時はリポジトリ欄・鍵欄・接続ボタンを含む");
+    ok(html.indexOf("trainlog フォルダ") !== -1, "syncCard: 保存先の説明がフォルダ表記になっている");
     let threw = false;
     try{ M.syncWire({ querySelector(){ return null; } }); }catch(e){ threw = true; }
     ok(!threw, "syncWire: カードが root に無くても例外を投げない");
@@ -195,10 +214,10 @@ function runUnitTests(){
 }
 
 /* ============================================================
-   2. 結合テスト: A/B 2端末 + モック
+   2. 結合テスト: A/B 2端末 + モック（月ファイル + settings.json）
    ============================================================ */
 async function runMainIntegration(port){
-  console.log("\n-- integration: two devices against the mock --");
+  console.log("\n-- integration: two devices against the mock (per-month layout) --");
   const token = "tok-main";
   const mock = startMock(port, token);
   await waitReady(mock.base);
@@ -206,29 +225,29 @@ async function runMainIntegration(port){
   try{
     const A = makeDevice(mock.base);
     const B = makeDevice(mock.base);
+    const day = "2026-02-01", month = "2026-02";
 
-    // A: 何かレコードを持った状態で接続 → 検証 → push でファイルが作られる
-    A.ctx.state.sessions["2026-02-01"] = {
-      date: "2026-02-01", entries: [{ ex: "squat", sets: [{ id: "a1", at: 1, w: 10, r: 10, rpe: 8 }] }], updatedAt: Date.now()
+    A.ctx.state.sessions[day] = {
+      date: day, entries: [{ ex: "squat", sets: [{ id: "a1", at: 1, w: 10, r: 10, rpe: 8 }] }], updatedAt: Date.now()
     };
     const connectedA = await A.ctx.syncConnect("acme/repo", token);
     ok(connectedA === true, "A: 接続に成功する");
-    const afterConnectCard = A.ctx.syncCard();
-    ok(afterConnectCard.indexOf("接続中: acme/repo") !== -1, "A: 接続後のカードは「接続中」表示になる");
+    ok(A.ctx.syncCard().indexOf("接続中: acme/repo") !== -1, "A: 接続後のカードは「接続中」表示になる");
 
-    let fileRes = await fetch(mock.base + "/_mock/file");
-    ok(fileRes.status === 200, "A接続後: リモートに trainlog.json が作られる");
-    let fileJson = JSON.parse(await fileRes.text());
-    ok(fileJson.app === "trainlog" && !!fileJson.sessions["2026-02-01"], "A接続後: 中身はAの記録を含む");
+    let paths = await mockList(mock.base);
+    ok(paths.indexOf("trainlog/" + month + ".json") !== -1, "A接続後: 月ファイルが作られる");
+    ok(paths.indexOf("trainlog/settings.json") === -1, "A接続後: gear未設定なのでsettings.jsonは作られない");
+    let monthFile = await mockFile(mock.base, "trainlog/" + month + ".json");
+    ok(!!monthFile && monthFile.app === "trainlog" && monthFile.format === 2 && monthFile.month === month, "A接続後: 月ファイルの形式(app/format/month)が正しい");
+    ok(!!monthFile.sessions[day], "A接続後: 中身はAの記録を含む");
 
-    // B: 空の状態で接続 → Aの記録を受け取る
     const connectedB = await B.ctx.syncConnect("acme/repo", token);
     ok(connectedB === true, "B: 接続に成功する");
-    ok(!!B.ctx.state.sessions["2026-02-01"], "B: 接続後にAの記録を受け取る");
-    ok(B.ctx.state.sessions["2026-02-01"].entries[0].sets[0].id === "a1", "B: 受け取ったセットのidが一致する");
+    ok(!!B.ctx.state.sessions[day], "B: 接続後にAの記録を受け取る");
+    ok(B.ctx.state.sessions[day].entries[0].sets[0].id === "a1", "B: 受け取ったセットのidが一致する");
 
     // B: 1セット削除、1セット追加、メモ編集 → 同期
-    const sB = B.ctx.state.sessions["2026-02-01"];
+    const sB = B.ctx.state.sessions[day];
     const removed = sB.entries[0].sets.shift();
     sB.del = (sB.del || []).concat(removed.id);
     sB.entries[0].sets.push({ id: "b-new-1", at: Date.now(), w: 12, r: 9, rpe: 9 });
@@ -237,40 +256,41 @@ async function runMainIntegration(port){
     sB.updatedAt = Date.now();
     await B.ctx.syncNow();
 
-    // A: 同期して3つの変化をすべて確認
     await A.ctx.syncNow();
-    const sA = A.ctx.state.sessions["2026-02-01"];
+    const sA = A.ctx.state.sessions[day];
     const idsA = sA.entries[0].sets.map(s => s.id);
     ok(idsA.indexOf("a1") === -1, "A: Bが削除したセットが消えている");
     ok(idsA.indexOf("b-new-1") !== -1, "A: Bが追加したセットが届いている");
     ok(sA.note === "Bからのメモ", "A: Bが編集したメモが届いている");
 
-    // 両端末が同じ日に別々の新しいセットを、同期せずに追加 → 両方同期 → 最終同期で両方に揃う
-    const day2 = "2026-02-05";
-    A.ctx.state.sessions[day2] = { date: day2, entries: [{ ex: "bench", sets: [{ id: "concurrentA", at: 1, w: 15, r: 8, rpe: 8 }] }], updatedAt: Date.now() };
-    B.ctx.state.sessions[day2] = { date: day2, entries: [{ ex: "bench", sets: [{ id: "concurrentB", at: 1, w: 16, r: 7, rpe: 8 }] }], updatedAt: Date.now() };
+    // 同じ月に、両端末が同期せずに別々のセットを追加 → 両方同期 → 最終同期で両方に揃う
+    A.ctx.state.sessions["2026-02-05"] = { date: "2026-02-05", entries: [{ ex: "bench", sets: [{ id: "concurrentA", at: 1, w: 15, r: 8, rpe: 8 }] }], updatedAt: Date.now() };
+    B.ctx.state.sessions["2026-02-05"] = { date: "2026-02-05", entries: [{ ex: "bench", sets: [{ id: "concurrentB", at: 1, w: 16, r: 7, rpe: 8 }] }], updatedAt: Date.now() };
     await A.ctx.syncNow();
     await B.ctx.syncNow();
     await A.ctx.syncNow(); // 最終同期
-    const idsDay2A = A.ctx.state.sessions[day2].entries[0].sets.map(s => s.id).sort();
-    const idsDay2B = B.ctx.state.sessions[day2].entries[0].sets.map(s => s.id).sort();
-    ok(idsDay2A.join(",") === "concurrentA,concurrentB", "同時追加: 最終同期後、Aは両方のセットを持つ");
-    ok(idsDay2B.join(",") === "concurrentA,concurrentB", "同時追加: Bは(自分が先にpushされているので)両方のセットを持つ");
+    const idsDay2A = A.ctx.state.sessions["2026-02-05"].entries[0].sets.map(s => s.id).sort();
+    const idsDay2B = B.ctx.state.sessions["2026-02-05"].entries[0].sets.map(s => s.id).sort();
+    ok(idsDay2A.join(",") === "concurrentA,concurrentB", "同時追加(同一月): 最終同期後、Aは両方のセットを持つ");
+    ok(idsDay2B.join(",") === "concurrentA,concurrentB", "同時追加(同一月): Bは両方のセットを持つ");
 
-    // gear の変更が B → A に届く
+    // gear の変更が settings.json 経由で B → A に届く
     B.ctx.state.gear = { items: [{ kg: 8, n: 2 }], updatedAt: Date.now() };
     await B.ctx.syncNow();
+    paths = await mockList(mock.base);
+    ok(paths.indexOf("trainlog/settings.json") !== -1, "gear: 変更されるとsettings.jsonが作られる");
+    const settingsFile = await mockFile(mock.base, "trainlog/settings.json");
+    ok(!!settingsFile && settingsFile.format === 2 && settingsFile.gear && settingsFile.gear.items[0].kg === 8, "gear: settings.jsonの中身が正しい");
     await A.ctx.syncNow();
-    ok(!!A.ctx.state.gear && A.ctx.state.gear.items[0].kg === 8, "gear: Bの変更がAに届く");
+    ok(!!A.ctx.state.gear && A.ctx.state.gear.items[0].kg === 8, "gear: settings.json経由でBの変更がAに届く");
 
     // 409を1回だけ強制 → 自動リトライで成功する
     await fetch(mock.base + "/_mock/conflict", { method: "POST" });
     A.ctx.state.sessions["2026-02-06"] = { date: "2026-02-06", entries: [{ ex: "curl", sets: [{ id: "retry1", at: 1, w: 6, r: 12, rpe: 7 }] }], updatedAt: Date.now() };
     await A.ctx.syncNow();
     ok(A.ctx.syncCard().indexOf("GitHubと同期しました") !== -1, "409を1回強制: 自動リトライの末に成功する");
-    fileRes = await fetch(mock.base + "/_mock/file");
-    fileJson = JSON.parse(await fileRes.text());
-    ok(!!fileJson.sessions["2026-02-06"], "409を1回強制: リトライ後の内容がリモートに反映されている");
+    monthFile = await mockFile(mock.base, "trainlog/" + month + ".json");
+    ok(!!monthFile.sessions["2026-02-06"], "409を1回強制: リトライ後の内容がリモートに反映されている");
 
     // 誤った鍵 → 401
     const C = makeDevice(mock.base);
@@ -284,7 +304,166 @@ async function runMainIntegration(port){
 }
 
 /* ============================================================
-   3. 公開リポジトリは拒否し、何も書き込まない
+   3(a). 記録1件ぶんの同期は「一覧GET + 当月PUT」だけ
+   ============================================================ */
+async function testMinimalTraffic(port){
+  console.log("\n-- (a): a single record only touches the listing + the current month --");
+  const token = "tok-min";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const D = makeDevice(mock.base);
+    const today = "2026-09-15", curMonth = "2026-09";
+    D.ctx.state.sessions[today] = { date: today, entries: [{ ex: "squat", sets: [{ id: "m1", at: 1, w: 10, r: 10, rpe: 8 }] }], updatedAt: Date.now() };
+    D.ctx.state.sessions["2026-07-01"] = { date: "2026-07-01", entries: [{ ex: "row", sets: [{ id: "m2", at: 1, w: 8, r: 10, rpe: 7 }] }], updatedAt: Date.now() };
+    D.ctx.state.sessions["2026-08-01"] = { date: "2026-08-01", entries: [{ ex: "bench", sets: [{ id: "m3", at: 1, w: 15, r: 8, rpe: 8 }] }], updatedAt: Date.now() };
+    await D.ctx.syncConnect("acme/min", token); // ベースライン同期（3か月ぶんPUT。gear未設定なのでsettingsは無し）
+
+    await mockLogReset(mock.base);
+    const s = D.ctx.state.sessions[today];
+    s.entries[0].sets.push({ id: "m4", at: Date.now(), w: 10, r: 9, rpe: 9 });
+    s.updatedAt = Date.now();
+    await D.ctx.syncNow();
+
+    const log = await mockLog(mock.base);
+    const totalBytes = log.reduce((a, e) => a + e.reqBytes + e.resBytes, 0);
+    console.log("  requests=" + log.length + " bytes=" + totalBytes + " :: " + log.map(e => e.method + " " + e.path + " (" + e.status + ")").join(", "));
+
+    ok(log.length === 2, "最小トラフィック: リクエストはちょうど2件");
+    ok(log.some(e => e.method === "GET" && e.path.endsWith("/contents/trainlog")), "最小トラフィック: 一覧のGETを含む");
+    ok(log.some(e => e.method === "PUT" && e.path.endsWith("/contents/trainlog/" + curMonth + ".json")), "最小トラフィック: 当月ファイルへのPUTを含む");
+    ok(!log.some(e => e.path.indexOf("settings.json") !== -1), "最小トラフィック: settings.json には触れない");
+    ok(!log.some(e => e.path.indexOf("/contents/trainlog/2026-07") !== -1 || e.path.indexOf("/contents/trainlog/2026-08") !== -1), "最小トラフィック: 他の月ファイルには触れない");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   3(b). 過去月の変更は、その月だけを取りに行く
+   ============================================================ */
+async function testPastMonthOnly(port){
+  console.log("\n-- (b): a change to a past month only pulls that month --");
+  const token = "tok-past";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const A = makeDevice(mock.base), B = makeDevice(mock.base);
+    const cur = "2026-09-10", past = "2026-06-05", pastMonth = "2026-06", curMonth = "2026-09";
+    A.ctx.state.sessions[cur] = { date: cur, entries: [{ ex: "squat", sets: [{ id: "cA1", at: 1, w: 10, r: 10, rpe: 8 }] }], updatedAt: Date.now() };
+    A.ctx.state.sessions[past] = { date: past, entries: [{ ex: "row", sets: [{ id: "pA1", at: 1, w: 8, r: 10, rpe: 7 }] }], updatedAt: Date.now() };
+    await A.ctx.syncConnect("acme/past", token);
+    await B.ctx.syncConnect("acme/past", token); // Bはベースラインを受け取る
+
+    const sb = B.ctx.state.sessions[past];
+    sb.entries[0].sets.push({ id: "pB1", at: Date.now(), w: 9, r: 9, rpe: 9 });
+    sb.updatedAt = Date.now();
+    await B.ctx.syncNow();
+
+    await mockLogReset(mock.base);
+    await A.ctx.syncNow();
+    const log = await mockLog(mock.base);
+    console.log("  requests=" + log.length + " :: " + log.map(e => e.method + " " + e.path).join(", "));
+
+    ok(log.some(e => e.method === "GET" && e.path.endsWith("/contents/trainlog/" + pastMonth + ".json")), "過去月のみ: 過去月ファイルを取得している");
+    ok(!log.some(e => e.path.indexOf(curMonth + ".json") !== -1), "過去月のみ: 当月ファイルには触れない");
+    ok(!log.some(e => e.path.indexOf("settings.json") !== -1), "過去月のみ: settingsには触れない");
+    ok(A.ctx.state.sessions[past].entries[0].sets.some(s => s.id === "pB1"), "過去月のみ: Bの変更をAが受け取る");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   3(c). 移行: 旧単一ファイル → 月ファイル + settings.json
+   ============================================================ */
+async function testMigration(port){
+  console.log("\n-- (c): migration from the legacy single file --");
+  const token = "tok-mig";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const legacyPayload = {
+      app: "trainlog", format: 1, savedAt: new Date().toISOString(),
+      sessions: { "2026-05-01": { date: "2026-05-01", entries: [{ ex: "squat", sets: [{ id: "leg1", at: 1, w: 20, r: 5, rpe: 9 }] }], updatedAt: Date.now() } },
+      gear: { items: [{ kg: 7, n: 2 }], updatedAt: Date.now() }
+    };
+    await putLegacyFile(mock.base, "acme/mig", token, legacyPayload);
+
+    const A = makeDevice(mock.base);
+    const connected = await A.ctx.syncConnect("acme/mig", token); // 空の状態で接続
+    ok(connected === true, "移行: 接続に成功する");
+    ok(!!A.ctx.state.sessions["2026-05-01"], "移行: 旧ファイルの記録を取り込む");
+    ok(!!A.ctx.state.gear && A.ctx.state.gear.items[0].kg === 7, "移行: 旧ファイルのgearも取り込む");
+
+    const paths = await mockList(mock.base);
+    ok(paths.indexOf("trainlog/2026-05.json") !== -1, "移行: 月ファイルが作られる");
+    ok(paths.indexOf("trainlog/settings.json") !== -1, "移行: settings.jsonが作られる");
+    ok(paths.indexOf("trainlog.json") !== -1, "移行: 旧ファイルはそのまま残る");
+    const oldStill = await mockFile(mock.base, "trainlog.json");
+    ok(!!oldStill && !!oldStill.sessions["2026-05-01"], "移行: 旧ファイルの中身は変わっていない");
+
+    // 2台目が後から接続しても、旧ファイルは読み直さない（ディレクトリに既にファイルがあるため）
+    const B = makeDevice(mock.base);
+    await B.ctx.syncConnect("acme/mig", token);
+    await mockLogReset(mock.base);
+    B.ctx.state.sessions["2026-05-02"] = { date: "2026-05-02", entries: [{ ex: "bench", sets: [{ id: "b1", at: 1, w: 20, r: 8, rpe: 8 }] }], updatedAt: Date.now() };
+    await B.ctx.syncNow();
+    const log = await mockLog(mock.base);
+    ok(!log.some(e => e.path.endsWith("/contents/trainlog.json")), "移行: 2台目は旧ファイルを読み直さない");
+    ok(B.ctx.state.sessions["2026-05-01"].entries[0].sets.some(s => s.id === "leg1"), "移行: 2台目もディレクトリ経由で旧記録を受け取っている");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   3(f). 同期の読み込み中に記録しても、そのセットが消えない
+   ============================================================ */
+async function testRecordDuringPull(port){
+  console.log("\n-- (f): a set recorded while a month file is being read survives --");
+  const token = "tok-race";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const A = makeDevice(mock.base), B = makeDevice(mock.base);
+    const day = "2026-09-12", day2 = "2026-09-13";
+    A.ctx.state.sessions[day] = { date: day, entries: [{ ex: "row", sets: [{ id: "a1", at: 1, w: 5, r: 10, rpe: 7 }] }], updatedAt: Date.now() };
+    await A.ctx.syncConnect("acme/race", token);
+    await B.ctx.syncConnect("acme/race", token);
+    B.ctx.state.sessions[day].entries[0].sets.push({ id: "b1", at: 2, w: 5, r: 10, rpe: 8 });
+    B.ctx.state.sessions[day].updatedAt = Date.now();
+    await B.ctx.syncNow();
+
+    const realFetch = A.ctx.fetch;
+    A.ctx.fetch = async function(url, opts){
+      const isMonthGet = String(url).endsWith("/contents/trainlog/2026-09.json")
+        && (!opts || !opts.method || String(opts.method).toUpperCase() === "GET");
+      const res = await realFetch(url, opts);
+      if(isMonthGet){
+        A.ctx.fetch = realFetch; // 1回きり
+        // 読み込みの応答を待っているあいだに、Aで同じ月の別の日（新しい日付）にセットを記録する
+        A.ctx.state.sessions[day2] = { date: day2, entries: [{ ex: "curl", sets: [{ id: "a2", at: 3, w: 5, r: 10, rpe: 9 }] }], updatedAt: Date.now() };
+        // 既存の日のセットも1つ足す
+        A.ctx.state.sessions[day].entries[0].sets.push({ id: "a3", at: 4, w: 5, r: 10, rpe: 9 });
+      }
+      return res;
+    };
+    await A.ctx.syncNow();
+    const ids = A.ctx.state.sessions[day].entries[0].sets.map(s => s.id).sort().join(",");
+    ok(ids === "a1,a3,b1", "読み込み中の記録: 既存の日のセットが残る (" + ids + ")");
+    ok(!!A.ctx.state.sessions[day2] && A.ctx.state.sessions[day2].entries[0].sets[0].id === "a2", "読み込み中の記録: 新しい日のセットが残る");
+    await A.ctx.syncNow();
+    const remote = await mockFile(mock.base, "trainlog/2026-09.json");
+    const rids = remote.sessions[day].entries[0].sets.map(s => s.id).sort().join(",");
+    ok(rids === "a1,a3,b1" && !!remote.sessions[day2], "読み込み中の記録: 次の同期でリモートにも届く (" + rids + ")");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   4. 公開リポジトリは拒否し、何も書き込まない
    ============================================================ */
 async function runPublicRepoTest(port){
   console.log("\n-- integration: public repo is refused --");
@@ -301,18 +480,15 @@ async function runPublicRepoTest(port){
     ok(D.ctx.syncCard().indexOf("公開リポジトリ") !== -1, "公開リポジトリ: 専用のメッセージを表示する");
     ok(D.ctx.localStorage.getItem("trainlog.sync.v1") === null, "公開リポジトリ: 設定は保存されない");
 
-    const fileRes = await fetch(mock.base + "/_mock/file");
-    ok(fileRes.status === 404, "公開リポジトリ: 何も書き込まれない");
+    const paths = await mockList(mock.base);
+    ok(paths.length === 0, "公開リポジトリ: 何も書き込まれない");
   } finally {
     mock.proc.kill();
   }
 }
 
 /* ============================================================
-   4. 422（sha無しでの既存ファイル上書き）からの回復
-      実際の競合（別端末が pull と push の間に先にファイルを作る）を fetch を
-      差し替えて再現する。403/409 をモックの制御エンドポイントで強制する
-      テストとは別に、本物の 422 が返る状況を作ることが目的。
+   5. 実際の422（月ファイルの新規作成が競合する）からの回復
    ============================================================ */
 async function run422RecoveryTest(port){
   console.log("\n-- integration: real 422 (concurrent create) recovers --");
@@ -321,19 +497,20 @@ async function run422RecoveryTest(port){
   await waitReady(mock.base);
   try{
     const B2 = makeDevice(mock.base);
-    await B2.ctx.syncConnect("acme/repo422", token); // 空のまま接続。まだファイルは無い
+    await B2.ctx.syncConnect("acme/repo422", token); // 空のまま接続。まだディレクトリは無い
 
     const A2 = makeDevice(mock.base);
     await A2.ctx.syncConnect("acme/repo422", token); // こちらも空のまま接続
 
+    const month = "2026-04";
     const realFetch = A2.ctx.fetch;
     A2.ctx.fetch = async function(url, opts){
-      const isPull = String(url).indexOf("/contents/trainlog.json") !== -1
+      const isListing = String(url).indexOf("/contents/trainlog") !== -1 && String(url).indexOf("/contents/trainlog/") === -1
         && (!opts || !opts.method || String(opts.method).toUpperCase() === "GET");
       const res = await realFetch(url, opts);
-      if(isPull){
+      if(isListing){
         A2.ctx.fetch = realFetch; // 1回きり
-        // Aのpullが終わった直後、Bが先にファイルを作る
+        // Aの一覧取得が終わった直後、Bが先に同じ月のファイルを作る
         B2.ctx.state.sessions["2026-04-09"] = { date: "2026-04-09", entries: [{ ex: "row", sets: [{ id: "b1", at: 1, w: 5, r: 10, rpe: 7 }] }], updatedAt: Date.now() };
         await B2.ctx.syncNow();
       }
@@ -341,12 +518,11 @@ async function run422RecoveryTest(port){
     };
 
     A2.ctx.state.sessions["2026-04-10"] = { date: "2026-04-10", entries: [{ ex: "squat", sets: [{ id: "a1", at: 1, w: 20, r: 5, rpe: 9 }] }], updatedAt: Date.now() };
-    await A2.ctx.syncNow(); // 1回目 push は sha無し×既存ファイルで422 → 自動で再pull・再push
+    await A2.ctx.syncNow(); // 月ファイルの新規作成が sha無し×既存で422 → 自動で再取得・再pushして回復するはず
 
     ok(A2.ctx.syncCard().indexOf("GitHubと同期しました") !== -1, "実際の422: 自動リトライの末に成功する");
-    const fileRes = await fetch(mock.base + "/_mock/file");
-    const fileJson = JSON.parse(await fileRes.text());
-    ok(!!fileJson.sessions["2026-04-09"] && !!fileJson.sessions["2026-04-10"], "実際の422: 双方の記録がマージされてリモートに残る");
+    const monthFile = await mockFile(mock.base, "trainlog/" + month + ".json");
+    ok(!!monthFile && !!monthFile.sessions["2026-04-09"] && !!monthFile.sessions["2026-04-10"], "実際の422: 双方の記録がマージされてリモートに残る");
     ok(!!A2.ctx.state.sessions["2026-04-09"] && !!A2.ctx.state.sessions["2026-04-10"], "実際の422: A自身も両方の記録を持つ");
   } finally {
     mock.proc.kill();
@@ -360,6 +536,10 @@ async function main(){
   try{
     runUnitTests();
     await runMainIntegration(8799);
+    await testMinimalTraffic(8802);
+    await testPastMonthOnly(8803);
+    await testMigration(8804);
+    await testRecordDuringPull(8805);
     await runPublicRepoTest(8810);
     await run422RecoveryTest(8811);
   }catch(e){
