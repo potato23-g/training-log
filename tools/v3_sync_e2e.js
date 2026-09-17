@@ -14,7 +14,7 @@
   localStorage.setItem("trainlog.sync.api", "http://127.0.0.1:8799");
   const connect = async () => {
     switchTab("hist");
-    T.q("#syncRepo").value = "potato23-g/training-log-data";
+    T.q("#syncRepo").value = "tester/training-log-data";
     T.q("#syncToken").value = "e2e-token";
     T.click('[data-sync="connect"]');
     r.connected = await until(() => syncLoadConfig() && /同期しました/.test(syncStatusText), 20000);

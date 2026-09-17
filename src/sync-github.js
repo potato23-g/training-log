@@ -554,7 +554,7 @@ function syncCard(){
         <p class="lastline">鍵はこの端末のブラウザの中にだけ保存し、GitHub以外には送りません。記録はそのリポジトリの trainlog.json に保存されます。</p>
       </details>
       <div class="fld" style="margin-top:12px"><label>リポジトリ（ユーザー名/リポジトリ名）</label>
-        <input type="text" id="syncRepo" placeholder="potato23-g/training-log-data" style="width:100%"></div>
+        <input type="text" id="syncRepo" placeholder="ユーザー名/training-log-data" style="width:100%"></div>
       <div class="fld" style="margin-top:8px"><label>鍵</label>
         <input type="password" id="syncToken" autocomplete="off" placeholder="github_pat_..." style="width:100%"></div>
       <div class="rowbtns"><button data-sync="connect">接続</button></div>

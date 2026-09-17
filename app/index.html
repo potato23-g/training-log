@@ -1821,7 +1821,8 @@ function gearCard(){
   <div class="card">
     ${rows.length ? rows.map(row).join("") : `<p style="margin:0;font-size:14px">登録なし</p>`}
     <div class="rowbtns"><button data-act="dbadd">${rows.length ? "別の重さを追加" : "ダンベルを追加"}</button></div>
-    <p class="lastline">${inv.length ? "登録中: " + inv.map(x => kgText(x.kg) + "×" + x.n + "本").join("、") : "ダンベルなし（ダンベルを使わない種目と、日用品での代用を提案します）"}</p>
+    ${!state.gear ? `<p class="lastline"><b>まだ登録されていません。</b>今は5kg×2本を持っている前提で提案しています。持っている分に直してください。</p>` : ""}
+    <p class="lastline">${inv.length ? (state.gear ? "登録中: " : "前提: ") + inv.map(x => kgText(x.kg) + "×" + x.n + "本").join("、") : "ダンベルなし（ダンベルを使わない種目と、日用品での代用を提案します）"}</p>
     <p class="lastline">持っている重さと本数だけ入れてください。種目ごとにどれを何本・どう持つかはアプリが決めます。持っていない重さは提案しません。足りないときは、タオルやリュックなどの日用品を使うやり方を出します。</p>
   </div>`;
 }
