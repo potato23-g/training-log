@@ -108,8 +108,8 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 .exrow{background:var(--panel);border:1px solid var(--rule);border-radius:4px;margin-bottom:10px;overflow:hidden}
 .exrow.done{border-color:var(--done)}
 .exhead{display:flex;align-items:center;gap:10px;padding:13px 14px;width:100%;background:none;border:none;text-align:left}
-.exhead .nm{font-weight:600;font-size:15px}
-.exhead .meta{font-size:12px;color:var(--ink-2);margin-top:1px}
+.exhead .nm{display:block;font-weight:600;font-size:15px}
+.exhead .meta{display:block;font-size:12px;color:var(--ink-2);margin-top:1px}
 .exhead .cnt{margin-left:auto;font-size:13px;color:var(--ink-3);white-space:nowrap}
 .exrow.done .cnt{color:var(--done);font-weight:600}
 .exbody{padding:0 14px 14px;border-top:1px solid var(--rule)}
@@ -190,7 +190,7 @@ table.hist td.n{font-family:"Archivo",system-ui,sans-serif;font-weight:600;text-
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .rowbtns button{background:none;border:1px solid var(--rule);border-radius:3px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
 
-select,textarea,input[type=text]{
+select,textarea,input[type=text],input[type=password]{
   font:inherit;color:var(--ink);background:var(--panel-2);
   border:1px solid var(--rule);border-radius:3px;padding:8px 10px;width:100%;
 }
@@ -225,14 +225,14 @@ textarea{min-height:64px;resize:vertical}
 .dianote{font-size:12.5px;color:var(--ink-2);margin:10px 0 0}
 .diahold{font-size:12px;color:var(--ink-2);margin:9px 0 0;padding:7px 9px;background:var(--panel-2);border-radius:3px}
 .diahold b{color:var(--ink-3);font-size:10.5px;font-weight:700}
-.rswitch{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px}
-.rswitch button{background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:8px 4px;
-  display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.3}
-.rswitch button b{font-family:"Archivo",system-ui,sans-serif;font-size:16px;color:var(--ink-3)}
-.rswitch button span{font-size:10.5px;color:var(--ink-3)}
-.rswitch button.on{border-color:var(--muscle);background:var(--panel)}
-.rswitch button.on b{color:var(--muscle)}
-.rswitch button.on span{color:var(--ink)}
+.exhead .fix{margin-left:8px;flex:0 0 auto;background:none;border:1px solid var(--rule);border-radius:999px;
+  padding:4px 12px;font-size:12px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.exrow.editing .exhead .fix{border-color:var(--ink-2);color:var(--ink)}
+.exbody.exedit{display:block;padding-top:4px}
+.dbrow{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--rule)}
+.dbrow:first-child{padding-top:0}
+.dbrow .dbdel{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:3px;width:38px;height:38px;
+  font-size:17px;line-height:1;color:var(--ink-3)}
 .side{font-size:10px;color:var(--muscle);border:1px solid var(--muscle);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
 .adv{font-size:10px;color:var(--ink-2);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
 .adv.warn{color:var(--muscle);border-color:var(--muscle)}
@@ -1988,6 +1988,48 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 </script>
 <script>
 /* ============================================================
+   記録1セットごとのID
+   端末間で記録を突き合わせる（同じセットを二重にしない・消したセットを復活させない）ために使う。
+   - 新しく記録したセット: 乱数ID + 記録時刻 at（ミリ秒）
+   - IDの無い古い記録: 日付・種目・順番・中身から決まるID（どの端末で振っても同じ値になる）
+   ============================================================ */
+function newSetId(){
+  let a, b;
+  try{
+    const r = crypto.getRandomValues(new Uint32Array(2));
+    a = r[0]; b = r[1];
+  }catch(e){
+    a = Math.floor(Math.random() * 4294967296); b = Math.floor(Math.random() * 4294967296);
+  }
+  return "s" + Date.now().toString(36) + a.toString(36) + b.toString(36);
+}
+function fnv1a(str){
+  let h = 0x811c9dc5;
+  for(let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
+function legacySetId(date, ex, i, set){
+  return "L" + fnv1a([date, ex, i, set.w === undefined ? "" : set.w, set.r, set.rpe || 0].join("|"));
+}
+/* IDや記録時刻の無いセットに値を振る（回数などの中身は変えない）。何か振ったら true */
+function ensureIds(st){
+  let changed = false;
+  Object.keys((st && st.sessions) || {}).forEach(date=>{
+    const s = st.sessions[date];
+    if(!s) return;
+    (s.entries || []).forEach(e=>{
+      (e.sets || []).forEach((set, i)=>{
+        if(!set.id){ set.id = legacySetId(date, e.ex, i, set); changed = true; }
+        if(set.at === undefined){ set.at = i; changed = true; }
+      });
+    });
+  });
+  return changed;
+}
+
+</script>
+<script>
+/* ============================================================
    筋肉グループ
    ============================================================ */
 const MUSCLES = {
@@ -2450,7 +2492,13 @@ let lastSaved = "";
 function loadLocal(){
   try{
     const raw = localStorage.getItem(LS);
-    if(raw){ const o = JSON.parse(raw); state.sessions = o.sessions||{}; state.program = o.program||DEFAULT_PROGRAM.slice(); }
+    if(raw){
+      const o = JSON.parse(raw);
+      state.sessions = o.sessions||{};
+      state.program = o.program||DEFAULT_PROGRAM.slice();
+      state.gear = readGear(o.gear);          /* 持っているダンベル（旧形式は読み替える） */
+      ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
+    }
   }catch(e){}
 }
 function saveLocal(){
@@ -2476,8 +2524,15 @@ async function initStore(){
   try{ localStorage.setItem(LS + ".bak", localStorage.getItem(LS) || ""); }catch(e){}
 }
 
-function persistSession(date){ saveLocal(); }
-function persistProgram(){ saveLocal(); }
+function persistSession(date){
+  if(state.sessions[date]) state.sessions[date].updatedAt = Date.now();
+  saveLocal();
+  if(typeof syncSchedule === "function") syncSchedule();
+}
+function persistProgram(){
+  saveLocal();
+  if(typeof syncSchedule === "function") syncSchedule();
+}
 
 /* ファイル書き出し（ブラウザのダウンロード） */
 async function saveFile(filename, text){
@@ -2496,7 +2551,7 @@ async function saveFile(filename, text){
 /* ---- バックアップ（JSON） ---- */
 function backupJSON(){
   return JSON.stringify({ app:"trainlog", version:1, savedAt:new Date().toISOString(),
-                          sessions: state.sessions, program: state.program }, null, 1);
+                          sessions: state.sessions, program: state.program, gear: state.gear }, null, 1);
 }
 async function backupSave(){
   const ok = await saveFile("trainlog-backup-" + TODAY + ".json", backupJSON());
@@ -2513,10 +2568,23 @@ function applyBackup(text){
   try{ o = JSON.parse(text); }catch(e){ alert("バックアップを読めませんでした（JSONの形式が違います）"); return; }
   if(!o || typeof o !== "object" || !o.sessions){ alert("このファイルはこのアプリのバックアップではないようです"); return; }
   const days = Object.keys(o.sessions).length;
-  if(!confirm("バックアップから " + days + "日分を取り込みます。同じ日付の記録は取り込んだ内容で置き換えます。よろしいですか？")) return;
-  Object.keys(o.sessions).forEach(d=>{ state.sessions[d] = o.sessions[d]; });
+  const merge = typeof mergeState === "function";
+  if(!confirm("バックアップから " + days + "日分を取り込みます。" + (merge
+      ? "同じ日付の記録は、この端末の記録とまとめます（どちらかにしかないセットも残ります）。"
+      : "同じ日付の記録は取り込んだ内容で置き換えます。") + "よろしいですか？")) return;
+  const incoming = {sessions: o.sessions, gear: readGear(o.gear)};
+  ensureIds(incoming);
+  if(merge){
+    const m = mergeState(state, incoming);
+    state.sessions = m.sessions;
+    if(m.gear) state.gear = m.gear;
+  }else{
+    Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
+    if(incoming.gear) state.gear = incoming.gear;
+  }
   if(Array.isArray(o.program) && o.program.length) state.program = o.program;
   saveLocal();
+  if(typeof syncSchedule === "function") syncSchedule();
   render();
   setStatus(days + "日分を取り込みました");
 }
@@ -2554,7 +2622,599 @@ function storeButtons(){
       <button data-act="restore">バックアップから復元</button>
       <button data-act="restorepaste">貼り付けて復元</button>
     </div>
-    <p class="lastline">記録はこの端末の中だけにあります。機種変更やブラウザの掃除で消えるので、ときどきバックアップを保存してください。</p>`;
+    <p class="lastline">共有を設定していない場合、記録はこの端末の中だけにあります。機種変更やブラウザの掃除で消えるので、ときどきバックアップを保存してください。</p>`;
+}
+
+/* ============================================================
+   同期（GitHub）: この端末と、利用者自身の非公開GitHubリポジトリの trainlog.json を
+   突き合わせて、スマホとPCで記録を共有する。
+
+   前提（環境が用意するグローバル。ここでは定義しない）:
+     state        { sessions:{date:session}, program:[...], gear? }
+     saveLocal()  state を localStorage に書く（同期は走らない）
+     render()     #view を今のタブで描き直す
+     setStatus(t) 画面下のステータス行
+     ensureIds(st) / newSetId()  src/ids.js
+
+   トップレベルでは document / window / localStorage に触れない（関数の中でだけ使う）。
+   classic script。import/export なし。var は Bun の node:vm からも直接触れるように。
+   ============================================================ */
+
+var SYNC_LS_KEY = "trainlog.sync.v1";
+var SYNC_API_OVERRIDE_KEY = "trainlog.sync.api";
+var SYNC_LAST_KEY = "trainlog.sync.lastAt";
+var SYNC_REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+var SYNC_BACKOFF_MS = [800, 1600];
+
+/* デバウンス・巡回間隔・可視化スロットル。テストから縮めて使う */
+var SYNC_TUNE = { debounce: 4000, interval: 5 * 60 * 1000, visThrottle: 15000 };
+
+var syncStatusText = "";
+var syncRunning = false;
+var syncRerunRequested = false;
+var syncDebounceTimer = null;
+var syncLastAttemptAt = 0;
+var syncRenderPending = false;
+var syncIntervalHandle = null;
+
+/* ============================================================
+   設定の保存（localStorage["trainlog.sync.v1"] = {repo, token}）
+   ============================================================ */
+function syncApiBase(){
+  try{
+    var v = localStorage.getItem(SYNC_API_OVERRIDE_KEY);
+    /* テスト用の差し替えは、この端末の中のサーバー（localhost）だけ受け付ける。鍵を外へ送らないため */
+    if(v && /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(v)) return v;
+  }catch(e){}
+  return "https://api.github.com";
+}
+function syncLoadConfig(){
+  try{
+    var raw = localStorage.getItem(SYNC_LS_KEY);
+    if(!raw) return null;
+    var o = JSON.parse(raw);
+    if(!o || typeof o !== "object" || !o.repo || !o.token) return null;
+    return { repo: String(o.repo), token: String(o.token) };
+  }catch(e){ return null; }
+}
+function syncSaveConfig(cfg){
+  try{ localStorage.setItem(SYNC_LS_KEY, JSON.stringify({ repo: cfg.repo, token: cfg.token })); }catch(e){}
+}
+function syncClearConfig(){
+  try{ localStorage.removeItem(SYNC_LS_KEY); }catch(e){}
+  try{ localStorage.removeItem(SYNC_LAST_KEY); }catch(e){}
+}
+function syncLastDisplay(){
+  try{
+    var raw = localStorage.getItem(SYNC_LAST_KEY);
+    var t = raw ? parseInt(raw, 10) : 0;
+    if(!t) return "";
+    return new Date(t).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+  }catch(e){ return ""; }
+}
+
+/* ============================================================
+   base64 ⇔ UTF-8（GitHub Contents API は base64。大きなデータでも
+   call stack を溢れさせないよう String.fromCharCode をチャンクに分ける）
+   ============================================================ */
+function syncUtf8ToBase64(str){
+  var bytes = new TextEncoder().encode(str);
+  var binary = "";
+  var chunk = 0x8000;
+  for(var i = 0; i < bytes.length; i += chunk){
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+function syncBase64ToUtf8(b64){
+  var cleaned = String(b64 || "").replace(/[\r\n]/g, "");
+  var binary = atob(cleaned);
+  var bytes = new Uint8Array(binary.length);
+  for(var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+/* ============================================================
+   正準化した JSON（オブジェクトのキーだけをソートする。配列の順は保持する）。
+   「何か変わったか」はこれで比較する。参照ではなく中身で見る。
+   ============================================================ */
+function syncCanon(v){
+  if(Array.isArray(v)) return v.map(syncCanon);
+  if(v && typeof v === "object"){
+    var out = {};
+    Object.keys(v).sort().forEach(function(k){
+      if(v[k] !== undefined) out[k] = syncCanon(v[k]);
+    });
+    return out;
+  }
+  return v;
+}
+function stableKey(obj){
+  return JSON.stringify(syncCanon(obj));
+}
+function syncCloneDeep(v){
+  if(v === undefined || v === null) return v;
+  return JSON.parse(JSON.stringify(v));
+}
+
+/* ============================================================
+   マージ本体。純関数：引数を書き換えない。
+   mergeState は同期からも、バックアップ取り込み（applyBackup）からも呼ばれる。
+   ============================================================ */
+function mergeState(local, remote){
+  var a = syncCloneDeep(local) || {};
+  var b = syncCloneDeep(remote) || {};
+  a.sessions = a.sessions || {};
+  b.sessions = b.sessions || {};
+  ensureIds(a);
+  ensureIds(b);
+
+  var dateSet = {};
+  Object.keys(a.sessions).forEach(function(d){ dateSet[d] = true; });
+  Object.keys(b.sessions).forEach(function(d){ dateSet[d] = true; });
+
+  var sessions = {};
+  Object.keys(dateSet).forEach(function(date){
+    var sa = a.sessions[date], sb = b.sessions[date];
+    sessions[date] = (sa && sb) ? syncMergeSession(sa, sb) : (sa || sb);
+  });
+
+  return { sessions: sessions, gear: syncMergeGear(a.gear, b.gear) };
+}
+
+/* del は集合として意味を持つだけで順序は決まっていない。ソートしておかないと
+   マージの向き（どちらを local と呼ぶか）で並びが変わり、正準JSONの比較が
+   食い違って延々とpushし合う羽目になる。 */
+function syncUnionIds(a, b){
+  var seen = {}, out = [];
+  (a || []).concat(b || []).forEach(function(id){
+    if(id !== undefined && id !== null && !seen[id]){ seen[id] = true; out.push(id); }
+  });
+  out.sort();
+  return out;
+}
+
+function syncMergeSession(a, b){
+  var date = a.date || b.date;
+  var del = syncUnionIds(a.del, b.del);
+  var delLookup = {};
+  del.forEach(function(id){ delLookup[id] = true; });
+
+  /* entries の並び: a のエントリ、続けて a に無い ex を持つ b のエントリ。
+     ※ 仕様どおりの非対称な規則。両端末が同じ日に別々の新しい種目を足すと
+     並び順そのものは端末ごとに食い違ったままになり得るが、セットの中身（データ）
+     は id で正しく収束する。並びだけの食い違いは無害（表示は日付・種目名基準）。 */
+  var aMap = {}, order = [];
+  (a.entries || []).forEach(function(e){
+    if(!(e.ex in aMap)) order.push(e.ex);
+    aMap[e.ex] = e;
+  });
+  var bMap = {};
+  (b.entries || []).forEach(function(e){
+    if(!(e.ex in bMap)) bMap[e.ex] = e;
+    if(!(e.ex in aMap) && order.indexOf(e.ex) === -1) order.push(e.ex);
+  });
+
+  var entries = [];
+  order.forEach(function(ex){
+    var ea = aMap[ex], eb = bMap[ex];
+    var setMap = {};
+    (eb ? eb.sets || [] : []).forEach(function(s){ setMap[s.id] = s; });
+    (ea ? ea.sets || [] : []).forEach(function(s){ setMap[s.id] = s; }); /* 同じidは a が勝つ */
+    var sets = Object.keys(setMap).map(function(id){ return setMap[id]; })
+      .filter(function(s){ return !delLookup[s.id]; });
+    sets.sort(function(x, y){
+      var ax = x.at === undefined ? 0 : x.at, ay = y.at === undefined ? 0 : y.at;
+      if(ax !== ay) return ax - ay;
+      var xi = String(x.id), yi = String(y.id);
+      return xi < yi ? -1 : (xi > yi ? 1 : 0);
+    });
+    if(sets.length > 0 || ea) entries.push({ ex: ex, sets: sets });
+  });
+
+  var noteAtA = a.noteAt || 0, noteAtB = b.noteAt || 0;
+  var noteWinner = noteAtB > noteAtA ? b : a;
+
+  var hasPlanA = a.plan !== undefined, hasPlanB = b.plan !== undefined;
+  var planWinner = null;
+  if(hasPlanA && hasPlanB){
+    var planAtA = a.planAt === undefined ? Infinity : a.planAt;
+    var planAtB = b.planAt === undefined ? Infinity : b.planAt;
+    planWinner = planAtB < planAtA ? b : a;
+  }else if(hasPlanA){ planWinner = a; }
+  else if(hasPlanB){ planWinner = b; }
+
+  var merged = { date: date, entries: entries };
+  if(del.length) merged.del = del;
+  if(a.note !== undefined || b.note !== undefined) merged.note = noteWinner.note;
+  if(noteWinner.noteAt !== undefined) merged.noteAt = noteWinner.noteAt;
+  if(planWinner){
+    merged.plan = planWinner.plan;
+    if(planWinner.planAt !== undefined) merged.planAt = planWinner.planAt;
+  }
+  var routine = a.routine || b.routine;
+  if(routine !== undefined) merged.routine = routine;
+  var updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
+  if(updatedAt) merged.updatedAt = updatedAt;
+  return merged;
+}
+
+/* gear は丸ごと勝ち負け（中身の形は問わない。updatedAt だけ見る）。
+   両者とも updatedAt が無い/同じなら local(a) を残す。 */
+function syncMergeGear(a, b){
+  var atA = (a && a.updatedAt) || 0;
+  var atB = (b && b.updatedAt) || 0;
+  if(atB > atA) return b;
+  if(a) return a;
+  return b;
+}
+
+/* ============================================================
+   エラー分類とメッセージ（日本語）
+   ============================================================ */
+function syncErrorMessage(kind){
+  switch(kind){
+    case "auth": return "鍵が無効か期限切れです。GitHubで作り直して入れ直してください";
+    case "forbidden": return "鍵にこのリポジトリへの書き込み権限がありません（Contents を Read and write に）";
+    case "repo404": return "リポジトリが見つかりません。名前と、鍵で選んだリポジトリを確認してください";
+    case "public": return "公開リポジトリなので保存しません。非公開（Private）のリポジトリを指定してください";
+    case "network": return "通信できませんでした。つながる場所で開くと自動で同期します";
+    case "conflict": return "同期が混み合っています。少し待ってからもう一度お試しください";
+    case "badformat": return "リポジトリの trainlog.json がこのアプリの形式ではありません";
+    case "progress": return "同期しています…";
+    case "needrepo": return "リポジトリと鍵の両方を入力してください";
+    case "badrepo": return "リポジトリは「ユーザー名/リポジトリ名」の形式で入力してください";
+    default: return "エラーが発生しました。しばらくしてからお試しください";
+  }
+}
+function syncMakeError(kind, cause){
+  var err = new Error(syncErrorMessage(kind));
+  err.syncKind = kind;
+  err.cause = cause;
+  return err;
+}
+
+/* ============================================================
+   GitHub REST（Contents API）
+   ============================================================ */
+function syncContentsUrl(repo){
+  return syncApiBase() + "/repos/" + repo + "/contents/trainlog.json";
+}
+function syncHeaders(token, extra){
+  var h = {
+    "Authorization": "Bearer " + token,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+  if(extra){ for(var k in extra){ if(extra.hasOwnProperty(k)) h[k] = extra[k]; } }
+  return h;
+}
+
+async function syncCheckRepo(repo, token){
+  var res;
+  try{
+    res = await fetch(syncApiBase() + "/repos/" + repo, { headers: syncHeaders(token), cache: "no-store" });
+  }catch(e){ throw syncMakeError("network", e); }
+  if(res.status === 401) throw syncMakeError("auth");
+  if(res.status === 404) throw syncMakeError("repo404");
+  if(res.status === 403) throw syncMakeError("forbidden");
+  if(!res.ok) throw syncMakeError("network");
+  var data;
+  try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
+  if(data.private !== true) throw syncMakeError("public");
+  return true;
+}
+
+async function syncPull(cfg){
+  var url = syncContentsUrl(cfg.repo);
+  var res;
+  try{
+    res = await fetch(url, { headers: syncHeaders(cfg.token), cache: "no-store" });
+  }catch(e){ throw syncMakeError("network", e); }
+  if(res.status === 404) return { remote: null, sha: null };
+  if(res.status === 401) throw syncMakeError("auth");
+  if(res.status === 403) throw syncMakeError("forbidden");
+  if(!res.ok) throw syncMakeError("network");
+  var data;
+  try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
+
+  var text;
+  if(!data.content || data.encoding === "none"){
+    var raw;
+    try{
+      raw = await fetch(url, { headers: syncHeaders(cfg.token, { "Accept": "application/vnd.github.raw+json" }), cache: "no-store" });
+    }catch(e){ throw syncMakeError("network", e); }
+    if(!raw.ok) throw syncMakeError("network");
+    text = await raw.text();
+  }else{
+    text = syncBase64ToUtf8(data.content);
+  }
+
+  var parsed;
+  try{ parsed = JSON.parse(text); }catch(e){ throw syncMakeError("badformat", e); }
+  if(!parsed || parsed.app !== "trainlog") throw syncMakeError("badformat");
+  return { remote: parsed, sha: data.sha };
+}
+
+async function syncPush(cfg, payloadObj, sha){
+  var url = syncContentsUrl(cfg.repo);
+  var body = { message: "記録を同期", content: syncUtf8ToBase64(JSON.stringify(payloadObj)) };
+  if(sha) body.sha = sha;
+  var res;
+  try{
+    res = await fetch(url, {
+      method: "PUT",
+      headers: syncHeaders(cfg.token, { "Content-Type": "application/json" }),
+      cache: "no-store",
+      body: JSON.stringify(body)
+    });
+  }catch(e){ throw syncMakeError("network", e); }
+  if(res.status === 401) throw syncMakeError("auth");
+  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 409 || res.status === 422) throw syncMakeError("conflict");
+  if(!res.ok) throw syncMakeError("network");
+  var data = null;
+  try{ data = await res.json(); }catch(e){}
+  return { sha: (data && data.content) ? data.content.sha : null };
+}
+
+/* ============================================================
+   ステータス表示（カード内の #syncStatus に直接反映。フル render は呼ばない）
+   ============================================================ */
+function syncUpdateStatusEl(text){
+  syncStatusText = text;
+  try{
+    var el = document.getElementById("syncStatus");
+    if(el) el.textContent = text;
+  }catch(e){}
+}
+
+/* 編集中の入力を巻き戻さないための安全な再描画。
+   #view 内の INPUT/TEXTAREA/SELECT にフォーカスがあれば、focusout まで待つ。 */
+function syncIsEditableFocus(){
+  try{
+    var el = document.activeElement;
+    if(!el) return false;
+    var tag = (el.tagName || "").toUpperCase();
+    if(tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") return false;
+    var view = document.getElementById("view");
+    return !!(view && view.contains && view.contains(el));
+  }catch(e){ return false; }
+}
+function syncSafeRender(){
+  if(syncIsEditableFocus()){
+    if(!syncRenderPending){
+      syncRenderPending = true;
+      try{
+        var view = document.getElementById("view");
+        if(view && view.addEventListener){
+          var handler = function(){
+            view.removeEventListener("focusout", handler);
+            syncRenderPending = false;
+            render();
+          };
+          view.addEventListener("focusout", handler);
+        }else{
+          syncRenderPending = false;
+        }
+      }catch(e){ syncRenderPending = false; }
+    }
+    return;
+  }
+  try{ render(); }catch(e){}
+}
+
+/* ============================================================
+   同期本体
+   ============================================================ */
+function syncDelay(ms){
+  return new Promise(function(resolve){ setTimeout(resolve, ms); });
+}
+
+async function syncAttempt(cfg){
+  var pulled = await syncPull(cfg);
+  var remote = pulled.remote, sha = pulled.sha;
+
+  var localSnapshot = { sessions: state.sessions, gear: state.gear };
+  var merged = mergeState(localSnapshot, remote || { sessions: {}, gear: undefined });
+
+  var localKey = stableKey(localSnapshot);
+  var mergedKey = stableKey(merged);
+  if(mergedKey !== localKey){
+    state.sessions = merged.sessions;
+    state.gear = merged.gear;
+    saveLocal();
+    syncSafeRender();
+  }
+
+  var remoteForCompare = { sessions: (remote && remote.sessions) || {}, gear: remote && remote.gear };
+  var remoteKey = stableKey(remoteForCompare);
+  if(mergedKey !== remoteKey){
+    var payload = { app: "trainlog", format: 1, savedAt: new Date().toISOString(), sessions: merged.sessions, gear: merged.gear };
+    await syncPush(cfg, payload, sha);
+  }
+
+  syncOnSuccess();
+}
+
+function syncOnSuccess(){
+  var hhmm = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+  try{ localStorage.setItem(SYNC_LAST_KEY, String(Date.now())); }catch(e){}
+  syncUpdateStatusEl("GitHubと同期しました（" + hhmm + "）");
+  setStatus("この端末とGitHubに保存しています（同期 " + hhmm + "）");
+}
+function syncReportError(err){
+  syncUpdateStatusEl((err && err.message) || syncErrorMessage("network"));
+}
+
+async function syncRunOnce(cfg){
+  syncLastAttemptAt = Date.now();
+  syncUpdateStatusEl(syncErrorMessage("progress"));
+  var lastErr = null;
+  for(var attempt = 0; attempt < 3; attempt++){
+    if(attempt > 0) await syncDelay(SYNC_BACKOFF_MS[attempt - 1]);
+    try{
+      await syncAttempt(cfg);
+      return;
+    }catch(e){
+      lastErr = e;
+      if(!e || e.syncKind !== "conflict") break;
+    }
+  }
+  syncReportError(lastErr);
+}
+
+/* 二重起動防止：実行中なら「終わったらもう一回」の印だけ残す */
+async function syncNow(){
+  var cfg = syncLoadConfig();
+  if(!cfg) return;
+  if(syncRunning){ syncRerunRequested = true; return; }
+  syncRunning = true;
+  try{
+    await syncRunOnce(cfg);
+  }finally{
+    syncRunning = false;
+    if(syncRerunRequested){
+      syncRerunRequested = false;
+      syncNow();
+    }
+  }
+}
+
+/* ============================================================
+   デバウンス起動・定期実行
+   ============================================================ */
+function syncSchedule(){
+  var cfg = syncLoadConfig();
+  if(!cfg) return;
+  if(syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = setTimeout(function(){
+    syncDebounceTimer = null;
+    syncNow();
+  }, SYNC_TUNE.debounce);
+}
+function syncFlushPending(){
+  if(syncDebounceTimer){
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = null;
+    syncNow();
+  }
+}
+
+function syncInit(){
+  var cfg = syncLoadConfig();
+  if(cfg) syncNow();
+
+  try{
+    document.addEventListener("visibilitychange", function(){
+      if(!document.hidden){
+        var now = Date.now();
+        if(now - syncLastAttemptAt >= SYNC_TUNE.visThrottle) syncNow();
+      }else{
+        syncFlushPending();
+      }
+    });
+  }catch(e){}
+  try{ window.addEventListener("online", function(){ syncNow(); }); }catch(e){}
+  try{ window.addEventListener("pagehide", function(){ syncFlushPending(); }); }catch(e){}
+  try{
+    syncIntervalHandle = setInterval(function(){
+      if(!document.hidden) syncNow();
+    }, SYNC_TUNE.interval);
+  }catch(e){}
+}
+
+/* ============================================================
+   接続・解除
+   ============================================================ */
+async function syncConnect(repoRaw, tokenRaw){
+  var repo = String(repoRaw || "").trim();
+  var token = String(tokenRaw || "").trim();
+  if(!repo || !token){ syncUpdateStatusEl(syncErrorMessage("needrepo")); return false; }
+  if(!SYNC_REPO_RE.test(repo)){ syncUpdateStatusEl(syncErrorMessage("badrepo")); return false; }
+
+  syncUpdateStatusEl(syncErrorMessage("progress"));
+  try{
+    await syncCheckRepo(repo, token);
+  }catch(e){
+    syncUpdateStatusEl((e && e.message) || syncErrorMessage("network"));
+    return false;
+  }
+
+  syncSaveConfig({ repo: repo, token: token });
+  syncUpdateStatusEl("");
+  render();
+  await syncNow();
+  return true;
+}
+function syncDisconnect(){
+  var ok = true;
+  try{ ok = confirm("同期を解除しますか？記録はこの端末には残ります。"); }catch(e){ ok = true; }
+  if(!ok) return;
+  syncClearConfig();
+  syncStatusText = "";
+  render();
+}
+
+/* ============================================================
+   UI（履歴タブに置くカード）
+   ============================================================ */
+function syncEsc(s){
+  return String(s === undefined || s === null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function syncCard(){
+  var cfg = syncLoadConfig();
+  if(!cfg){
+    return `<h3 class="sec">スマホとPCで記録を共有</h3>
+    <div class="card">
+      <p class="lastline" style="margin-top:0">GitHubの非公開リポジトリを介して、この記録をスマホとPCの両方から使えるようにします。</p>
+      <details>
+        <summary>はじめての設定（5分ほど）</summary>
+        <ol class="steps">
+          <li>GitHubで非公開（Private）のリポジトリを新しく作る。名前は何でもよい（例: training-log-data）。「Add a README file」にチェックを入れて作る。</li>
+          <li>GitHubの Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token を開く。Repository access は「Only select repositories」で1のリポジトリだけを選び、Permissions の Contents を「Read and write」にして作成する。</li>
+          <li>表示された鍵（github_pat_ で始まる文字列）と「ユーザー名/リポジトリ名」を下の欄に入れて「接続」を押す。</li>
+          <li>もう一方の端末でも、このアプリの同じ欄に同じ2つを入れる。</li>
+        </ol>
+        <p class="lastline">鍵はこの端末のブラウザの中にだけ保存し、GitHub以外には送りません。記録はそのリポジトリの trainlog.json に保存されます。</p>
+      </details>
+      <div class="fld" style="margin-top:12px"><label>リポジトリ（ユーザー名/リポジトリ名）</label>
+        <input type="text" id="syncRepo" placeholder="potato23-g/training-log-data" style="width:100%"></div>
+      <div class="fld" style="margin-top:8px"><label>鍵</label>
+        <input type="password" id="syncToken" autocomplete="off" placeholder="github_pat_..." style="width:100%"></div>
+      <div class="rowbtns"><button data-sync="connect">接続</button></div>
+      <p class="lastline" id="syncStatus">${syncEsc(syncStatusText)}</p>
+    </div>`;
+  }
+  var last = syncLastDisplay();
+  return `<h3 class="sec">スマホとPCで記録を共有</h3>
+    <div class="card">
+      <h4>接続中: ${syncEsc(cfg.repo)}</h4>
+      <p class="lastline" style="margin-top:0">${last ? "最終同期 " + last : "まだ同期していません"}</p>
+      <div class="rowbtns">
+        <button data-sync="now">今すぐ同期</button>
+        <button data-sync="disconnect">接続を解除</button>
+      </div>
+      <p class="lastline" id="syncStatus">${syncEsc(syncStatusText)}</p>
+    </div>`;
+}
+
+function syncWire(root){
+  if(!root || !root.querySelector) return;
+  var connectBtn = root.querySelector('[data-sync="connect"]');
+  if(connectBtn){
+    connectBtn.onclick = function(){
+      var repoEl = root.querySelector("#syncRepo");
+      var tokenEl = root.querySelector("#syncToken");
+      syncConnect(repoEl ? repoEl.value : "", tokenEl ? tokenEl.value : "");
+    };
+  }
+  var nowBtn = root.querySelector('[data-sync="now"]');
+  if(nowBtn) nowBtn.onclick = function(){ syncNow(); };
+  var discBtn = root.querySelector('[data-sync="disconnect"]');
+  if(discBtn) discBtn.onclick = function(){ syncDisconnect(); };
 }
 
 
@@ -2705,35 +3365,117 @@ const PREF = {
   get(k,d){ try{ const v=localStorage.getItem("trainlog."+k); return v===null?d:JSON.parse(v); }catch(e){ return d; } },
   set(k,v){ try{ localStorage.setItem("trainlog."+k, JSON.stringify(v)); }catch(e){} }
 };
-const PREF_DEFAULT = { sound:true, vib:false, notify:false, wake:true };
+const PREF_DEFAULT = { sound:true, sure:false, vib:false, notify:false, wake:true };
 let CAP = { sound:null, vib:null, notif:null, wake:null };
 
-/* ---- 音 ---- */
-let AC = null;
+/* ---- 音 ----
+   休憩終わりの合図は「記録」を押した瞬間（＝指で触れている間）に予約しておく。
+   スマホは、指で触れていないときに新しく鳴らそうとしても音を出させてくれないことがあるため。
+   既定（sure=オフ）: Web Audio。ほかのアプリの音楽と混ざる。iPhoneはマナーモード中だと鳴らない。
+   sure=オン: 休憩の長さの無音＋合図の音声を <audio> で流す。マナーモード中・画面ロック中も鳴るが、
+             休憩中はほかのアプリの音楽が止まる。 */
+const CHIME = [[0,784],[0.22,784],[0.44,1046]];
+let AC = null, chimeNodes = [], chimeAt = null;
 function unlockAudio(){
   try{
     const C = window.AudioContext || window.webkitAudioContext;
-    if(!C) { CAP.sound=false; return; }
+    if(!C){ CAP.sound = false; return null; }
     if(!AC) AC = new C();
-    if(AC.state === "suspended") AC.resume();
+    if(AC.state !== "running") AC.resume();          /* suspended / interrupted（iPhoneで電話などに止められた） */
     CAP.sound = true;
-  }catch(e){ CAP.sound = false; }
+    return AC;
+  }catch(e){ CAP.sound = false; return null; }
 }
-function beep(){
+/* どこかに触れたら、止められていた音声を使える状態に戻す */
+["pointerdown","touchend","keydown"].forEach(t=>document.addEventListener(t, ()=>{
+  if(AC && AC.state !== "running") unlockAudio();
+}, {capture:true, passive:true}));
+
+function cancelChime(){
+  chimeNodes.forEach(o=>{ try{ o.onended = null; o.stop(0); }catch(e){} try{ o.disconnect(); }catch(e){} });
+  chimeNodes = []; chimeAt = null;
+}
+/* delay 秒後に合図を鳴らす（0なら今すぐ） */
+function scheduleChime(delay){
+  cancelChime();
   if(!PREF.get("sound", true)) return;
+  const ac = unlockAudio(); if(!ac) return;
   try{
-    unlockAudio(); if(!AC) return;
-    [[0,784],[0.22,784],[0.44,1046]].forEach(([t,f])=>{
-      const o = AC.createOscillator(), g = AC.createGain();
+    const base = ac.currentTime + Math.max(0, delay);
+    CHIME.forEach(([t,f])=>{
+      const o = ac.createOscillator(), g = ac.createGain();
       o.type = "sine"; o.frequency.value = f;
-      const s0 = AC.currentTime + t;
+      const s0 = base + t;
       g.gain.setValueAtTime(0.0001, s0);
       g.gain.exponentialRampToValueAtTime(0.3, s0 + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, s0 + 0.2);
-      o.connect(g); g.connect(AC.destination);
+      o.connect(g); g.connect(ac.destination);
       o.start(s0); o.stop(s0 + 0.22);
+      chimeNodes.push(o);
     });
+    chimeAt = base;
   }catch(e){ CAP.sound = false; }
+}
+
+/* 確実に鳴らす方式: 無音 delay 秒 → 合図 の WAV を作る（8kHz・16bit・モノラル。外部ファイルなし） */
+function chimeWav(delay){
+  const rate = 8000, pre = Math.round(Math.max(0, delay) * rate), n = pre + Math.round(0.9 * rate);
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (o, s) => { for(let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVE");
+  str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, n * 2, true);
+  CHIME.forEach(([t,f])=>{
+    const s0 = pre + Math.round(t * rate), len = Math.round(0.2 * rate);
+    for(let i = 0; i < len && s0 + i < n; i++){
+      const env = Math.min(1, i / (0.02 * rate)) * Math.exp(-i / (0.07 * rate));
+      v.setInt16(44 + (s0 + i) * 2, Math.round(12000 * env * Math.sin(2 * Math.PI * f * i / rate)), true);
+    }
+  });
+  return new Blob([buf], {type:"audio/wav"});
+}
+let restAudio = null, restAudioUrl = null;
+function stopRestAudio(){
+  if(restAudio){ try{ restAudio.pause(); }catch(e){} restAudio = null; }
+  if(restAudioUrl){ try{ URL.revokeObjectURL(restAudioUrl); }catch(e){} restAudioUrl = null; }
+}
+function playRestAudio(delay){
+  stopRestAudio();
+  if(!PREF.get("sound", true)) return true;
+  try{
+    restAudioUrl = URL.createObjectURL(chimeWav(delay));
+    const a = new Audio(restAudioUrl);
+    restAudio = a;
+    const p = a.play();
+    /* 再生を断られたら Web Audio で鳴らす */
+    if(p && p.catch) p.catch(()=>{ if(restAudio === a){ stopRestAudio(); scheduleChime(Math.max(0, (restEnd - Date.now()) / 1000)); } });
+    return true;
+  }catch(e){ stopRestAudio(); return false; }
+}
+/* 休憩の残りに合わせて合図を予約し直す（記録・+30秒のタップの中で呼ぶ） */
+function armChime(){
+  const delay = Math.max(0, (restEnd - Date.now()) / 1000);
+  if(PREF.get("sure", false)){ cancelChime(); if(!playRestAudio(delay)) scheduleChime(delay); }
+  else { stopRestAudio(); scheduleChime(delay); }
+}
+/* 休憩が終わった時点で、予約した合図が遅れていたら（途中で音声が止められていたら）今鳴らす */
+function ensureChimeNow(){
+  if(!PREF.get("sound", true)) return;
+  if(restAudio){
+    const at = restAudio.duration ? Math.max(0, restAudio.duration - 0.9) : 0;
+    if(restAudio.paused || restAudio.currentTime < at - 0.5){
+      try{ restAudio.currentTime = at; const p = restAudio.play(); if(p && p.catch) p.catch(()=>scheduleChime(0)); }
+      catch(e){ scheduleChime(0); }
+    }
+    return;
+  }
+  if(!AC || AC.state !== "running" || chimeAt === null || AC.currentTime < chimeAt - 0.5) scheduleChime(0);
+}
+/* 設定画面の「鳴らしてみる」 */
+function testChime(){
+  if(PREF.get("sure", false)){ cancelChime(); if(!playRestAudio(0)) scheduleChime(0); }
+  else scheduleChime(0);
 }
 /* ---- 振動 ---- */
 function buzz(){
@@ -2744,10 +3486,19 @@ function buzz(){
 /* ---- 端末通知 ---- */
 function notifySupported(){ return typeof Notification !== "undefined"; }
 function notify(title, body){
-  if(!PREF.get("notify", false) || !notifySupported()) return;
+  if(!PREF.get("notify", false) || !notifySupported() || Notification.permission !== "granted") return;
+  const opts = {body, tag:"trainlog-rest", renotify:true};
+  const direct = ()=>{ try{ new Notification(title, opts); CAP.notif = true; }catch(e){ CAP.notif = false; } };
+  /* ホーム画面に追加したアプリ（Android など）は new Notification が使えないので、Service Worker 経由で出す */
   try{
-    if(Notification.permission === "granted"){ new Notification(title, {body, tag:"trainlog-rest"}); CAP.notif = true; }
-  }catch(e){ CAP.notif = false; }
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistration){
+      navigator.serviceWorker.getRegistration()
+        .then(reg=>{ if(reg && reg.showNotification) return reg.showNotification(title, opts).then(()=>{ CAP.notif = true; }); direct(); })
+        .catch(direct);
+      return;
+    }
+  }catch(e){}
+  direct();
 }
 async function askNotify(){
   if(!notifySupported()){ CAP.notif = false; setStatus("この画面では端末通知が使えません。音と振動で知らせます"); render(); return; }
@@ -2768,45 +3519,55 @@ async function keepAwake(on){
   }catch(e){ CAP.wake = false; wakeLock = null; }
 }
 document.addEventListener("visibilitychange", ()=>{
-  if(document.visibilityState === "visible" && PREF.get("wake", true) && restIv) keepAwake(true);
+  if(document.visibilityState !== "visible" || !restIv) return;
+  if(PREF.get("wake", true)) keepAwake(true);
+  tickRest();                               /* 画面を離れている間に休憩が終わっていたら、ここで知らせる */
 });
 
 /* ============================================================
    休憩タイマー
+   残り秒数を1秒ずつ減らすのではなく「終わる時刻」を持つ。
+   画面が消えたりアプリを切り替えたりしてタイマーが止められても、戻った時点で正しい残りになる。
    ============================================================ */
-let restLeft = 0, restIv = null, restLabel = "";
+let restEnd = 0, restIv = null, restLabel = "";
+function restLeftSec(){ return Math.max(0, Math.ceil((restEnd - Date.now()) / 1000)); }
 function startRest(sec, label){
-  restLeft = sec;
+  restEnd = Date.now() + sec * 1000;
   restLabel = label || "";
   document.getElementById("timer").classList.add("on");
   document.getElementById("timerLb").textContent = restLabel;
+  armChime();
   drawRest();
   clearInterval(restIv);
   if(PREF.get("wake", true)) keepAwake(true);
-  restIv = setInterval(()=>{
-    restLeft--;
-    if(restLeft<=0){
-      clearInterval(restIv); restIv = null;
-      document.getElementById("timerT").textContent = "0:00";
-      beep(); buzz();
-      notify("次のセットの時間です", restLabel || "休憩おわり");
-      setTimeout(stopRest, 4000);
-      return;
-    }
-    drawRest();
-  },1000);
+  restIv = setInterval(tickRest, 250);
+}
+function tickRest(){
+  if(!restIv) return;
+  if(restLeftSec() > 0){ drawRest(); return; }
+  clearInterval(restIv); restIv = null;
+  document.getElementById("timerT").textContent = "0:00";
+  ensureChimeNow(); buzz();
+  notify("次のセットの時間です", restLabel || "休憩おわり");
+  const mine = restEnd;
+  setTimeout(()=>{ if(restEnd === mine && !restIv) stopRest(); }, 4000);
 }
 function drawRest(){
-  const m = Math.floor(restLeft/60), s = restLeft%60;
-  document.getElementById("timerT").textContent = m+":"+String(s).padStart(2,"0");
+  const left = restLeftSec(), m = Math.floor(left / 60), s = left % 60;
+  document.getElementById("timerT").textContent = m + ":" + String(s).padStart(2, "0");
 }
 function stopRest(){
   clearInterval(restIv); restIv = null;
+  cancelChime(); stopRestAudio();
   document.getElementById("timer").classList.remove("on");
   keepAwake(false);
 }
 document.getElementById("timerStop").onclick = stopRest;
-document.getElementById("timerPlus").onclick = ()=>{ if(restIv){ restLeft += 30; drawRest(); } };
+document.getElementById("timerPlus").onclick = ()=>{
+  if(!restIv) return;
+  restEnd += 30000;
+  armChime(); drawRest();
+};
 
 /* ============================================================
    画面
@@ -3033,6 +3794,7 @@ function figThemeChanged(){
 
 function render(){
   stopAnim();
+  planMemo = null;
   document.getElementById("todayLabel").textContent = fmtDate(TODAY);
   const v = document.getElementById("view");
   v.className = "view-" + tab;
@@ -3064,9 +3826,118 @@ function routineToday(){
   }
   return "A";
 }
+
+/* ---- 今日のメニューを決める ----
+   土台は内部のローテーション（画面には出さない）。その上で
+   1. 同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日に1つだけ。しばらくやっていないほうを残す
+   2. 空いた枠は別の動きで埋める。条件は
+      ・その動きを前にやってから間隔が空いている（体幹は1日、それ以外は2日）
+      ・主に使う部位を、昨日しっかり使っていない
+      ・次の回のメニューで主に使う部位と重ならない（次の回の回復を邪魔しない）
+      ・今日その部位のセット数が多くなりすぎない
+      ・ダンベルが要る種目なら、持っているダンベルで作れる
+   記録を始めた日は、そのときのメニューを保存して、その日のうちは変えない。 */
+const PATTERN = {
+  goblet:"squat", split:"squat", rdl:"hinge", rdl1:"hinge", hipthrust:"bridge", calf:"calf",
+  pushup:"hpush", floorpress:"hpush", ohp:"vpush", lateral:"raise", row:"pull", farmer:"carry",
+  curl:"curl", triext:"ext", plank:"abs", deadbug:"abs", crunch:"abs", sideplank:"side"
+};
+const PATTERN_GAP = {abs:1, side:1};
+/* 昨日この有効セット数以上使った部位は、今日は主役にしない。体幹・ふくらはぎ・前腕は回復が早い */
+const RECOVER_SETS = {abs:10, obliques:10, calves:6, forearms:6};
+function patternOf(id){ return PATTERN[id] || PATTERN[baseOf(id)] || id; }
+function recoverLimit(m){ return RECOVER_SETS[m] || 3; }
+function daysSinceEx(id){ const l = lastPerformance(id, TODAY); return l ? daysAgo(l.date) : 9999; }
+function daysSincePattern(pat){
+  for(const d of sortedDates()){
+    if(d >= TODAY) continue;
+    if((state.sessions[d].entries||[]).some(e=>e.sets.length && patternOf(e.ex) === pat)) return daysAgo(d);
+  }
+  return 9999;
+}
+/* 昨日しっかり使った主働筋（なければ null） */
+function tiredMuscle(exId){
+  const ex = EXMAP[exId];
+  return ex.p.find(m => muscleLoadBetween(m, 1, 1) >= recoverLimit(m)) || null;
+}
+/* その日にやった組み方（片脚版などのラベル）。保存したメニュー、なければ当時のローテーションから読む */
+function variantUsed(date, exId){
+  const s = state.sessions[date];
+  const src = (s.plan && s.plan.length) ? s.plan : (s.routine && RMAP[s.routine] ? RMAP[s.routine].items : []);
+  const it = src.find(x=>x.ex===exId);
+  return it ? (it.label || "") : "";
+}
+function lastVariant(exId){
+  const l = lastPerformance(exId, TODAY);
+  return l ? variantUsed(l.date, exId) : null;
+}
+/* 全ローテーションに出てくる種目の組み方（同じ種目でも片脚版などは別の行） */
+function catalog(){
+  const out = [];
+  ROUTINES.forEach(r => r.items.forEach(it => {
+    if(!out.some(x => x.ex === it.ex && (x.label||"") === (it.label||""))) out.push(it);
+  }));
+  return out;
+}
+function catalogItem(exId){
+  const c = catalog().find(x => x.ex === exId), ex = EXMAP[exId];
+  return c ? Object.assign({}, c) : {ex:exId, sets:ex.sets || 3, r:ex.r};
+}
+let planMemo = null;                       /* 描画1回のあいだだけ使い回す */
+function buildPlan(){
+  if(planMemo) return planMemo;
+  const rid = routineToday();
+  const slots = RMAP[rid].items.map(x => Object.assign({}, x));
+  /* 1. 同じ動きは1つだけ */
+  const firstAt = {};
+  slots.forEach((it, i)=>{
+    const pat = patternOf(it.ex);
+    if(firstAt[pat] === undefined){ firstAt[pat] = i; return; }
+    const k = firstAt[pat];
+    if(daysSinceEx(it.ex) > daysSinceEx(slots[k].ex)) slots[k] = it;
+    slots[i] = null;
+  });
+  /* 2. 空いた枠を別の動きで埋める */
+  const load = {};
+  const addLoad = it => {
+    const ex = EXMAP[it.ex], n = it.sets || 3;
+    ex.p.forEach(m => load[m] = (load[m]||0) + n);
+    (ex.s||[]).forEach(m => load[m] = (load[m]||0) + n * 0.5);
+  };
+  slots.forEach(it => { if(it) addLoad(it); });
+  const next = RMAP[RORDER[(RORDER.indexOf(rid) + 1) % RORDER.length]];
+  const nextMuscles = new Set();
+  next.items.forEach(it => EXMAP[it.ex].p.forEach(m => { if(m !== "abs" && m !== "obliques") nextMuscles.add(m); }));
+  slots.forEach((it, i)=>{
+    if(it) return;
+    const used = new Set(slots.filter(Boolean).map(x => patternOf(x.ex)));
+    const cands = catalog().filter(c=>{
+      const ex = EXMAP[c.ex], pat = patternOf(c.ex), n = c.sets || 3;
+      if(used.has(pat)) return false;
+      if(daysSincePattern(pat) < (PATTERN_GAP[pat] || 2)) return false;
+      if(tiredMuscle(c.ex)) return false;
+      if(ex.p.some(m => nextMuscles.has(m))) return false;
+      if(ex.p.some(m => (load[m]||0) + n > 6)) return false;
+      if(ex.kind === "w" && !gearOptions(c.ex).length) return false;
+      return true;
+    });
+    if(!cands.length) return;
+    /* 久しぶりの動き → 前回と違う組み方 → 久しぶりの種目 の順に優先 */
+    const score = c => [daysSincePattern(patternOf(c.ex)), (c.label||"") !== lastVariant(c.ex) ? 1 : 0, daysSinceEx(c.ex)];
+    cands.sort((a, b)=>{
+      const sa = score(a), sb = score(b);
+      for(let k = 0; k < sa.length; k++){ if(sa[k] !== sb[k]) return sb[k] - sa[k]; }
+      return 0;
+    });
+    slots[i] = Object.assign({}, cands[0]);
+    addLoad(slots[i]);
+  });
+  planMemo = slots.filter(Boolean);
+  return planMemo;
+}
 function todayItems(){
-  const items = RMAP[routineToday()].items.map(x=>Object.assign({}, x));
   const s = session(TODAY);
+  const items = (s.plan && s.plan.length ? s.plan : buildPlan()).map(x=>Object.assign({}, x));
   (s.entries||[]).forEach(e=>{
     if(!items.some(i=>i.ex===e.ex) && EXMAP[e.ex]){
       const ex = EXMAP[e.ex];
@@ -3076,6 +3947,18 @@ function todayItems(){
   return items;
 }
 function itemOf(id){ return todayItems().find(i=>i.ex===id) || {ex:id, sets:3, r:EXMAP[id]?EXMAP[id].r:10}; }
+/* 記録を始めた時点のメニューを、その日の分として保存する */
+function fixPlan(s){
+  if(s.plan && s.plan.length) return;
+  if(!s.routine) s.routine = routineToday();
+  s.plan = buildPlan().map(x => Object.assign({}, x));
+  s.planAt = Date.now();
+}
+function isDoneToday(id){
+  const it = todayItems().find(i=>i.ex===id);
+  const e = entryFor(TODAY, id, false);
+  return !!(it && e && e.sets.length >= (it.sets || 3));
+}
 
 /* ---- きつさに応じて次のセットの回数を決める ---- */
 function clampR(kind, r){
@@ -3090,24 +3973,37 @@ function adjust(kind, r, rpe){
   if(rpe <= 9) return {r:clampR(kind, r), why:"狙いの範囲です。同じ数字で"};
   return {r:clampR(kind, r - st), why:"限界まで行ったので少し減らしました"};
 }
+/* 次のセットの提案。重さは持っているダンベルで作れる使い方の中からだけ選ぶ */
 function suggestNext(item, e, last){
-  const ex = EXMAP[item.ex], kind = ex.kind;
+  const id = item.ex, ex = EXMAP[id], kind = ex.kind;
   const sets = e ? e.sets : [];
-  let w = kind==="w" ? gearWeight(item.ex) : undefined;
+  const held = kind !== "w" && holdOf(id) ? defaultOption(id) : null;   /* 時間の種目でもダンベルを持つもの */
   if(sets.length){
     const prev = sets[sets.length-1];
-    if(kind==="w") w = prev.w;
     const a = adjust(kind, prev.r, prev.rpe);
-    return {r:a.r, w, why:a.why, src:"前のセットのきつさ " + (prev.rpe||"—")};
+    const w = kind==="w" ? prev.w : undefined;
+    return {r:a.r, w, opt: kind==="w" ? optionByTotal(id, w) : held, why:a.why, src:"前のセットのきつさ " + (prev.rpe||"—")};
   }
   if(last && last.sets.length){
     const first = last.sets[0];
-    if(kind==="w") w = first.w;
     const avg = last.sets.reduce((x,st)=>x+(st.rpe||0),0) / last.sets.length;
     const a = adjust(kind, first.r, avg ? Math.round(avg*2)/2 : 0);
-    return {r:a.r, w, why:a.why, src:"前回のきつさ平均 " + (avg ? Math.round(avg*10)/10 : "—")};
+    const src = "前回のきつさ平均 " + (avg ? Math.round(avg*10)/10 : "—");
+    if(kind !== "w") return {r:a.r, opt:held, why:a.why, src};
+    const p = weightPlan(item, last, avg);
+    if(!p.opt) return {r:a.r, w:first.w, opt:null, why:a.why, src};
+    const rr = repRange(id, item);
+    if(p.change === "up") return {r:clampR(kind, rr.lo), w:p.opt.total, opt:p.opt, change:"up", src,
+      why:"余裕があったので、持っているダンベルの中で一段重い使い方にしました。回数は" + rr.lo + "回から"};
+    if(p.change === "down") return {r:clampR(kind, item.r || rr.hi), w:p.opt.total, opt:p.opt, change:"down", src,
+      why:"限界で回数が届かなかったので、一段軽い使い方にしました"};
+    if(p.change === "snap") return {r:clampR(kind, item.r || ex.r), w:p.opt.total, opt:p.opt, change:"snap", src,
+      why:"前回の " + kgText(p.lastW) + " は登録しているダンベルでは作れないので、近い使い方にしました"};
+    return {r:a.r, w:p.opt.total, opt:p.opt, why:a.why, src};
   }
-  return {r:clampR(kind, item.r || ex.r), w, why:"初回はフォーム優先。余力を2〜3回残して終える", src:"初回"};
+  const opt = kind==="w" ? defaultOption(id) : held;
+  return {r:clampR(kind, item.r || ex.r), w: kind==="w" ? (opt ? opt.total : 0) : undefined, opt,
+          why:"初回はフォーム優先。余力を2〜3回残して終える", src:"初回"};
 }
 function sugText(item, sug){
   const ex = EXMAP[item.ex];
@@ -3117,7 +4013,6 @@ function sugText(item, sug){
 }
 
 function viewToday(){
-  const rid = routineToday(), R = RMAP[rid];
   const items = todayItems();
   const s = session(TODAY);
 
@@ -3127,16 +4022,12 @@ function viewToday(){
     if(!e || e.sets.length < (it.sets||3)){ next = it; break; }
   }
 
-  const switcher = `<div class="rswitch">` + ROUTINES.map(r=>
-    `<button data-act="setr" data-r="${r.id}" class="${r.id===rid?"on":""}">
-       <b>${r.id}</b><span>${r.name}</span></button>`).join("") + `</div>`;
-
   let hero;
   if(!next){
     const total = s.entries.reduce((a,e)=>a+e.sets.length,0);
-    hero = `<div class="hero"><p class="kicker">${rid}：${R.name}</p><h2>完了</h2>
+    hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>完了</h2>
       <div class="bigset"><span class="v num" style="color:var(--done)">${total}</span><span class="u">セット記録</span></div>
-      <p class="sub">次回は ${RORDER[(RORDER.indexOf(rid)+1)%RORDER.length]}：${RMAP[RORDER[(RORDER.indexOf(rid)+1)%RORDER.length]].name} です。</p></div>`;
+      <p class="sub">お疲れさまでした。直したい記録は、各種目の「修正」から消せます。</p></div>`;
   }else{
     const ex = EXMAP[next.ex];
     const e = entryFor(TODAY, next.ex, false);
@@ -3144,14 +4035,14 @@ function viewToday(){
     const inner = ex.kind==="w"
       ? `<div class="bigset"><span class="v num">${sug.w}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">kg・回</span></div>`
       : `<div class="bigset"><span class="v num">${sug.r}</span><span class="u">${ex.kind==="t"?"秒":"回"}${next.side?"・左右":""}</span></div>`;
-    hero = `<div class="hero"><p class="kicker">${rid}：${R.name}　—　次の種目</p>
+    hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${itemName(next)}</h2>${inner}
+      ${sug.opt ? `<p class="sub">${sug.opt.text}</p>` : ""}
       <p class="sub">${sug.src}${sug.why?"　→　"+sug.why:""}</p></div>`;
   }
 
   const rows = items.map(it=>exRow(it)).join("");
-
-  return switcher + hero + rows + `
+  return hero + rows + `
     <div class="rowbtns"><button data-act="addex">種目を追加</button></div>
     <h3 class="sec">今日のメモ</h3>
     <div class="card">
@@ -3162,112 +4053,237 @@ function viewToday(){
 }
 
 /* ============================================================
-   使える器具（設定で変える。既定は 5kg×2本＝引き継ぎ時の前提）
+   持っているダンベル
+   設定で入れるのは「何kgを何本持っているか」だけ。種目ごとにどれを何本・どう持つかはアプリが決める。
+   持っていない重さは提案しない。足りない分は日用品（タオル・リュック・ペットボトルなど）の工夫で補う。
+   既定は 5kg×2本（引き継ぎ時の前提）
    ============================================================ */
-const GEAR_DEFAULT = { unit: 5, count: 2, adjustable: false, max: 5 };
-function gear(){ return Object.assign({}, GEAR_DEFAULT, state.gear || {}); }
-function setGear(patch){
-  state.gear = Object.assign({}, gear(), patch);
-  if(state.gear.max < state.gear.unit) state.gear.max = state.gear.unit;
+const GEAR_DEFAULT_ITEMS = [{kg:5, n:2}];
+/* 保存データの器具設定を読む。旧形式 {unit,count,adjustable,max} は「unit kg を count 本」に読み替える */
+function readGear(g){
+  if(!g || typeof g !== "object") return undefined;
+  if(Array.isArray(g.items)){
+    return {items: g.items.filter(x => x && +x.kg > 0 && +x.n > 0).map(x => ({kg:+x.kg, n:Math.round(+x.n)})),
+            updatedAt: +g.updatedAt || 0};
+  }
+  if(g.unit !== undefined || g.count !== undefined){
+    const n = Math.round(+g.count || 0), kg = +g.unit || 5;
+    return {items: n > 0 ? [{kg, n}] : [], updatedAt: 0};
+  }
+  return undefined;
+}
+/* 入力欄に並べる行（入れたとおり） */
+function gearItems(){
+  const g = state.gear;
+  const items = g && Array.isArray(g.items) ? g.items : GEAR_DEFAULT_ITEMS;
+  return items.map(x => ({kg:+x.kg || 0, n:Math.max(0, Math.round(+x.n || 0))}));
+}
+function setGearItems(items){
+  state.gear = {items, updatedAt: Date.now()};
   persistProgram();
 }
-function kgText(v){ return (Math.round(v*10)/10) + "kg"; }
+/* 計算用: 同じ重さはまとめ、軽い順 */
+function inventory(){
+  const m = {};
+  gearItems().forEach(x => { if(x.kg > 0 && x.n > 0) m[x.kg] = (m[x.kg] || 0) + x.n; });
+  return Object.keys(m).map(Number).sort((a, b) => a - b).map(kg => ({kg, n:m[kg]}));
+}
+/* 引き継ぎ時の 5kg×2本 のままか（元の解説文・メモがそのまま当てはまる） */
+function isDefaultGear(){ const inv = inventory(); return inv.length === 1 && inv[0].kg === 5 && inv[0].n === 2; }
+function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
 
-/* 種目ごとのダンベルの使い方
-   each   = 両手に1つずつ（2本あれば2本使う）
-   stack  = 両手で1つ／体に乗せる（2本あれば重ねて倍にできる）
-   single = 片手に1つだけ（左右を入れ替えて行う）
-   none   = 使わない（自重・時間種目） */
-const GEAR_USE = {
-  goblet:{mode:"stack"}, rdl:{mode:"each"}, rdl1:{mode:"each"}, split:{mode:"each"},
-  hipthrust:{mode:"stack"}, row:{mode:"single"}, ohp:{mode:"each"}, lateral:{mode:"each"},
-  floorpress:{mode:"each"}, curl:{mode:"each"}, triext:{mode:"stack", cap:1},
-  calf:{mode:"each"}, farmer:{mode:"each"}
+/* 種目ごとの持ち方
+   pair   = 同じ重さを2つ使うときの持ち方 / one = 1つだけ使うときの持ち方
+   mixed  = 重さの違う2つを組み合わせてよい（体の上に置く種目だけ）
+   per    = "arm" なら片腕あたりの重さで重い・軽いを決める（腕の種目）。"total" なら合計で決める
+   prefer = 同じ重さになる使い方が複数あるとき、1つで持つほうを選ぶ（"one"） */
+const HOLD = {
+  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
+  rdl:       {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"},
+  split:     {pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
+  hipthrust: {pair:"骨盤の上に並べて置く", one:"骨盤の上に置く",         per:"total", prefer:"one", mixed:true},
+  row:       {one:"片手に持ち、左右を入れ替える",                          per:"total"},
+  ohp:       {pair:"両手に1つずつ持つ",    one:"片手ずつ押し上げ、左右を入れ替える", per:"arm"},
+  lateral:   {pair:"両手に1つずつ持つ",    one:"片手ずつ上げ、左右を入れ替える",     per:"arm"},
+  floorpress:{pair:"両手に1つずつ持つ",    one:"片手ずつ押し、反対の手は床に置く",   per:"arm"},
+  curl:      {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
+  triext:    {one:"両手でまとめて持つ",                                    per:"total"},
+  calf:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、反対の手で壁を支える",   per:"total"},
+  farmer:    {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で左右を持ち替える", per:"total"}
 };
-function gearUse(id){ return GEAR_USE[id] || GEAR_USE[baseOf(id)] || {mode:"none"}; }
+function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
 
-/* その種目で実際に持てる本数と合計重量 */
-function gearLoad(id){
-  const g = gear(), u = gearUse(id);
-  if(u.mode === "none") return {n:0, total:0, mode:"none", unit:g.unit};
-  const cap = u.cap || 2;
-  const n = u.mode === "single" ? Math.min(1, g.count) : Math.min(g.count, cap);
-  return {n, total: Math.round(g.unit * n * 10) / 10, mode:u.mode, unit:g.unit};
+/* 持っているダンベルで作れる使い方を、軽い順に並べる。同じ重さになる使い方は1つに絞る */
+function gearOptions(id){
+  const h = holdOf(id); if(!h) return [];
+  const inv = inventory(), out = [];
+  inv.forEach(({kg, n})=>{
+    if(h.pair && n >= 2) out.push({n:2, pieces:[kg, kg], total:kg * 2, key:h.per === "arm" ? kg : kg * 2, how:h.pair});
+    if(h.one && !(h.per === "arm" && h.pair && n >= 2)) out.push({n:1, pieces:[kg], total:kg, key:kg, how:h.one});
+  });
+  if(h.mixed){
+    for(let i = 0; i < inv.length; i++) for(let j = i + 1; j < inv.length; j++){
+      const a = inv[j].kg, b = inv[i].kg;
+      out.push({n:2, pieces:[a, b], total:a + b, key:a + b, how:h.pair, mixed:true});
+    }
+  }
+  const rank = o => h.prefer === "one" ? (o.n === 1 ? 0 : o.mixed ? 2 : 1) : (o.n === 2 && !o.mixed ? 0 : o.mixed ? 1 : 2);
+  out.sort((x, y) => (x.key - y.key) || (rank(x) - rank(y)));
+  const uniq = [];
+  out.forEach(o => { if(!uniq.length || Math.abs(uniq[uniq.length - 1].key - o.key) > 1e-9) uniq.push(o); });
+  uniq.forEach(o => {
+    o.total = Math.round(o.total * 10) / 10;
+    o.text = o.n === 1 ? kgText(o.pieces[0]) + "を1つ、" + o.how
+           : (o.mixed ? kgText(o.pieces[0]) + "と" + kgText(o.pieces[1]) + "を1つずつ、" : kgText(o.pieces[0]) + "を2つ、")
+             + o.how + "（合計" + kgText(o.total) + "）";
+  });
+  return uniq;
 }
-/* 記録欄に出す初期値。器具から決まる */
-function gearWeight(id){
-  const l = gearLoad(id);
-  return l.n ? l.total : 0;
+function optionIndex(opts, o){ return o ? opts.findIndex(x => Math.abs(x.key - o.key) < 1e-9) : -1; }
+function optionByTotal(id, w){
+  if(w === undefined || w === null || isNaN(w)) return null;
+  return gearOptions(id).find(o => Math.abs(o.total - w) < 0.01) || null;
 }
-/* 「5kg×2 = 10kg（両手に1つずつ）」のような説明 */
-function gearLine(id){
-  const g = gear(), l = gearLoad(id);
-  if(l.mode === "none") return "";
-  if(!g.count) return "ダンベルが0本の設定です。この種目は飛ばすか、自重で近い動きに置き換えてください。";
-  const how = l.mode === "each" ? (l.n >= 2 ? "両手に1つずつ" : "ダンベルが1本なので片手ずつ行う")
-            : l.mode === "stack" ? (l.n >= 2 ? "2本まとめて持つ" : "両手で1つを持つ")
-            : "片手に1つ（左右を入れ替える）";
-  const calc = l.n >= 2 ? kgText(g.unit) + "×" + l.n + " = " + kgText(l.total) : kgText(l.total);
-  return calc + "（" + how + "）";
+/* 持っている組み合わせにない重さ w に一番近い使い方（w 以下で一番重いもの。なければ一番軽いもの） */
+function nearestOption(opts, w){
+  let best = null;
+  opts.forEach(o => { if(o.total <= w + 1e-9 && (!best || o.total > best.total)) best = o; });
+  return best || opts.reduce((a, o) => o.total < a.total ? o : a, opts[0]);
 }
-/* 解説文の中の「5kg」を今の設定に合わせる（既定の5kgなら何も変わらない） */
+
+/* 記録がない種目の最初の重さの目安（per が arm の種目は片腕あたり）。この重さ以下で一番重い使い方から始める */
+const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity};
+function startKg(id){ const v = START_KG[id] !== undefined ? START_KG[id] : START_KG[baseOf(id)]; return v === undefined ? 8 : v; }
+function defaultOption(id){
+  const opts = gearOptions(id); if(!opts.length) return null;
+  const lim = startKg(id);
+  let pick = opts[0];
+  opts.forEach(o => { if(o.key <= lim + 1e-9) pick = o; });
+  return pick;
+}
+/* 種目の回数の目安（解説の「10〜15回」から読む） */
+function repRange(id, item){
+  const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
+  const m = /(\d+)〜(\d+)回/.exec(d.reps || "");
+  if(m) return {lo:+m[1], hi:+m[2]};
+  const r = (item && item.r) || EXMAP[id].r || 10;
+  return {lo:Math.max(4, r - 2), hi:r + 3};
+}
+/* 前回の記録から今日の使い方を決める。動くのは持っている使い方の中だけ。
+   up   : 余裕があって回数も伸びきった → 一段重い使い方（重さが一気に増えすぎる場合は動かさない）
+   down : 限界で回数が届かなかった → 一段軽い使い方
+   snap : 前回の重さが今の登録では作れない → 近い使い方 */
+function weightPlan(item, last, avg){
+  const id = item.ex, opts = gearOptions(id);
+  if(!opts.length) return {opt:null};
+  const lastW = last.sets[0].w;
+  if(lastW === undefined || lastW === null || isNaN(lastW)) return {opt:defaultOption(id), change:null};
+  let i = opts.findIndex(o => Math.abs(o.total - lastW) < 0.01);
+  if(i < 0) return {opt:nearestOption(opts, lastW), change:"snap", lastW};
+  const {lo, hi} = repRange(id, item);
+  const maxR = last.sets.reduce((a, s) => Math.max(a, s.r || 0), 0);
+  let change = null;
+  const nx = opts[i + 1];
+  if(avg && nx && (nx.key <= opts[i].key * 1.6 || nx.key - opts[i].key <= 3)
+     && ((avg <= 7 && maxR >= hi + 3) || (avg <= 6 && maxR >= hi))){ i++; change = "up"; }
+  else if(avg && i > 0 && avg >= 9.5 && maxR < lo){ i--; change = "down"; }
+  return {opt:opts[i], change, lastW};
+}
+
+/* 日用品で負荷を変えるやり方（ダンベルは買い足さない前提） */
+const HOUSE = {
+  goblet:    {up:"本や水を入れたペットボトルを詰めたリュックを背負い、ダンベルと一緒に使う", down:"水を入れた2Lのペットボトルを胸の前で抱える"},
+  rdl:       {up:"タオルを床に敷いて仰向けになり、かかとを乗せて引き寄せるレッグカールを足す（フローリング向き）", down:"水を入れた2Lのペットボトルを両手に持つ"},
+  split:     {up:"荷物を詰めたリュックを背負い、ダンベルと一緒に使う", down:"何も持たずに行う"},
+  hipthrust: {up:"荷物を詰めたリュックをダンベルと一緒に骨盤に乗せる（畳んだタオルを挟むと痛くない）", down:"何も持たずに行う"},
+  row:       {up:"本や水のペットボトルを詰めたリュックの持ち手を握って引く", down:"水を入れた2Lのペットボトルで行う"},
+  ohp:       {down:"水を入れたペットボトルで行う"},
+  lateral:   {down:"水を入れた500mlか2Lのペットボトルで行う"},
+  floorpress:{up:"腕立て伏せに切り替え、慣れたら荷物を詰めたリュックを背負う", down:"水を入れたペットボトルで行う"},
+  pushup:    {up:"荷物を詰めたリュックを背負う"},
+  curl:      {up:"タオルの真ん中を片足で踏み、両端を握って足の抵抗に逆らいながら巻き上げる", down:"水を入れたペットボトルで行う"},
+  triext:    {up:"椅子の座面の縁に手をついて体を沈めるディップスを足す（椅子は壁につけて動かないようにする）", down:"水を入れたペットボトルで行う"},
+  plank:     {up:"足の下にタオルを敷き、プランクの姿勢のまま体を前後に滑らせる（フローリング向き）"},
+  deadbug:   {up:"水を入れたペットボトルを両手で持って行う"},
+  crunch:    {up:"水を入れたペットボトルを胸に抱える"},
+  sideplank: {up:"上の手に水を入れたペットボトルを持ち、天井へ伸ばす"},
+  calf:      {up:"荷物を詰めたリュックを背負う"},
+  farmer:    {up:"持ち手にタオルを巻いて太くする（握る力の負荷が上がる）", down:"水を入れたペットボトルや荷物を入れた袋を持つ"}
+};
+function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
+
+/* 「使うダンベル」の一文 */
+function gearLine(id, sug){
+  if(!holdOf(id)) return "";
+  const opts = gearOptions(id);
+  if(!opts.length){
+    const hs = houseOf(id);
+    return "ダンベルが登録されていません。" + (hs.down ? "「" + hs.down + "」で代用できます。" : "この種目は飛ばしてください。");
+  }
+  const o = sug ? sug.opt : defaultOption(id);
+  if(!o){
+    if(sug && sug.w !== undefined && sug.w !== null && !isNaN(sug.w)) return kgText(sug.w) + "は、登録しているダンベルでは作れない重さです（日用品を足しているなら、そのままで構いません）。";
+    return defaultOption(id).text;
+  }
+  const hs = houseOf(id);
+  const heavy = optionIndex(opts, o) === 0 && o.key > startKg(id) * 2 && hs.down
+    ? "　持っている中で一番軽くても重めです。きつすぎたら「" + hs.down + "」に替えてください。" : "";
+  return o.text + heavy;
+}
+/* 解説文の「5kg」などの数字は、5kg×2本の前提で書いてある。登録が違えば数字を出さない言い方にする */
 function gearText(s){
-  const g = gear();
-  if(!s || g.unit === 5) return s || "";
-  return String(s).replace(/10\s*kg/g, kgText(g.unit * 2)).replace(/5\s*kg/g, kgText(g.unit));
+  if(!s) return "";
+  if(isDefaultGear()) return s;
+  return String(s).replace(/\d+(?:\.\d+)?\s*kg/g, "軽いダンベル");
 }
-/* 重量を上げる余地があるか（可変式で上限に未到達なら、まず重量を上げる） */
-function canAddWeight(){
-  const g = gear();
-  return !!(g.adjustable && g.max > g.unit);
-}
-function nextWeightStep(){
-  const g = gear();
-  return Math.min(g.max, Math.round((g.unit + Math.max(1, g.unit * 0.1)) * 2) / 2);
-}
-
-/* ルーチンの注記のうち、今の器具と食い違う一文を落とす（元データは書き換えない） */
-function noteForGear(note){
+/* メモのうち持ち方に触れた一文（「両手に1つずつ持つ」「2つ担げば10kgになる」）は、実際の使い方と合うときだけ残す */
+function noteFor(item, opt){
+  const note = item.note;
   if(!note) return "";
-  const g = gear();
-  if(g.count >= 2) return gearText(note);
-  const kept = note.split("。").filter(x => x && !/[2２]つ|両手に[1１]つずつ/.test(x));
-  return kept.length ? gearText(kept.join("。") + "。") : "";
+  if(isDefaultGear() && opt && opt.n === 2 && !opt.mixed) return note;
+  const kept = note.split("。").filter(x => x && !/kg|[2２]つ|両手に[1１]つずつ/.test(x));
+  return kept.length ? kept.join("。") + "。" : "";
 }
 
 function gearCard(){
-  const g = gear();
-  const countBtn = (n, label) => `<button data-act="gearcount" data-n="${n}" class="tg ${g.count===n?"on":""}">${label}</button>`;
-  return `<h3 class="sec">使える器具</h3>
+  const rows = gearItems(), inv = inventory();
+  const row = (x, i) => `<div class="dbrow">
+      <div class="fld"><label>重さ kg</label>
+        <div class="stepper">
+          <button data-act="dbstep" data-i="${i}" data-t="kg" data-d="-1" aria-label="軽く">−</button>
+          <input type="number" id="db_kg_${i}" value="${x.kg}" step="0.5" min="0.5" inputmode="decimal">
+          <button data-act="dbstep" data-i="${i}" data-t="kg" data-d="1" aria-label="重く">＋</button>
+        </div></div>
+      <div class="fld"><label>本数</label>
+        <div class="stepper">
+          <button data-act="dbstep" data-i="${i}" data-t="n" data-d="-1" aria-label="減らす">−</button>
+          <input type="number" id="db_n_${i}" value="${x.n}" step="1" min="1" inputmode="numeric">
+          <button data-act="dbstep" data-i="${i}" data-t="n" data-d="1" aria-label="増やす">＋</button>
+        </div></div>
+      <button class="dbdel" data-act="dbdel" data-i="${i}" aria-label="この重さを削除">×</button>
+    </div>`;
+  return `<h3 class="sec">持っているダンベル</h3>
   <div class="card">
-    <div class="entry">
-      <div class="fld"><label>ダンベル1本の重さ kg</label>
-        <div class="stepper">
-          <button data-act="gearstep" data-t="unit" data-d="-1">−</button>
-          <input type="number" id="gear_unit" value="${g.unit}" step="0.5" min="0.5" inputmode="decimal">
-          <button data-act="gearstep" data-t="unit" data-d="1">＋</button>
-        </div></div>
-    </div>
-    <div class="setrow"><span>本数</span>
-      <span style="margin-left:auto;display:flex;gap:6px">${countBtn(0,"0")}${countBtn(1,"1本")}${countBtn(2,"2本")}</span></div>
-    <div class="setrow"><span>重さを変えられる<small>可変式・プレート追加ができるダンベル</small></span>
-      <button data-act="gearadj" class="tg ${g.adjustable?"on":""}">${g.adjustable?"オン":"オフ"}</button></div>
-    ${g.adjustable ? `<div class="entry">
-      <div class="fld"><label>上限 kg（1本あたり）</label>
-        <div class="stepper">
-          <button data-act="gearstep" data-t="max" data-d="-1">−</button>
-          <input type="number" id="gear_max" value="${g.max}" step="0.5" min="${g.unit}" inputmode="decimal">
-          <button data-act="gearstep" data-t="max" data-d="1">＋</button>
-        </div></div>
-    </div>` : ""}
-    <p class="lastline">${g.count ? "今の設定: " + kgText(g.unit) + " × " + g.count + "本"
-      + (g.adjustable ? "（上限 " + kgText(g.max) + "）" : "（重さ固定）") : "ダンベルなし（自重種目のみ）"}</p>
-    <p class="lastline">記録欄の重さの初期値、種目ごとの持ち方、「軽くなったら」の案内、提案タブの判定が、この設定に合わせて変わります。</p>
+    ${rows.length ? rows.map(row).join("") : `<p style="margin:0;font-size:14px">登録なし</p>`}
+    <div class="rowbtns"><button data-act="dbadd">${rows.length ? "別の重さを追加" : "ダンベルを追加"}</button></div>
+    <p class="lastline">${inv.length ? "登録中: " + inv.map(x => kgText(x.kg) + "×" + x.n + "本").join("、") : "ダンベルなし（ダンベルを使わない種目と、日用品での代用を提案します）"}</p>
+    <p class="lastline">持っている重さと本数だけ入れてください。種目ごとにどれを何本・どう持つかはアプリが決めます。持っていない重さは提案しません。足りないときは、タオルやリュックなどの日用品を使うやり方を出します。</p>
   </div>`;
+}
+function dbStep(i, t, d){
+  const it = gearItems(); if(!it[i]) return;
+  if(t === "kg"){
+    const cur = it[i].kg;
+    const st = d > 0 ? (cur >= 20 ? 2.5 : cur >= 3 ? 1 : 0.5) : (cur > 20 ? 2.5 : cur > 3 ? 1 : 0.5);
+    it[i].kg = Math.max(0.5, Math.round((cur + d * st) * 10) / 10);
+  }else{
+    it[i].n = Math.max(1, Math.min(20, it[i].n + d));
+  }
+  setGearItems(it); render();
 }
 
 function settingsCard(){
-  const sound = PREF.get("sound", true), vib = PREF.get("vib", false),
+  const sound = PREF.get("sound", true), sure = PREF.get("sure", false), vib = PREF.get("vib", false),
         notif = PREF.get("notify", false), wake = PREF.get("wake", true);
   const notifState = !notifySupported() ? "この画面では使えません"
     : (typeof Notification !== "undefined" && Notification.permission === "denied") ? "ブラウザ側で拒否されています"
@@ -3276,6 +4292,8 @@ function settingsCard(){
   <div class="card">
     <div class="setrow"><span>音で知らせる</span>
       <button data-act="pref" data-k="sound" class="tg ${sound?"on":""}">${sound?"オン":"オフ"}</button></div>
+    <div class="setrow"><span>マナーモード・画面ロック中も鳴らす<small>オンにすると確実に鳴りますが、休憩中はほかのアプリの音楽が止まります</small></span>
+      <button data-act="pref" data-k="sure" class="tg ${sure?"on":""}">${sure?"オン":"オフ"}</button></div>
     <div class="setrow"><span>振動で知らせる<small>対応端末のみ。PCでは動きません</small></span>
       <button data-act="pref" data-k="vib" class="tg ${vib?"on":""}">${vib?"オン":"オフ"}</button></div>
     <div class="setrow"><span>端末に通知を出す<small>${notifState}</small></span>
@@ -3283,7 +4301,9 @@ function settingsCard(){
     <div class="setrow"><span>休憩中は画面を消さない</span>
       <button data-act="pref" data-k="wake" class="tg ${wake?"on":""}">${wake?"オン":"オフ"}</button></div>
     <div class="rowbtns"><button data-act="testalert">今の設定で鳴らしてみる</button></div>
-    <p class="lastline">知らせはこの端末の中で完結します。アプリを閉じている間は鳴りません。</p>
+    <p class="lastline">${sure
+      ? "休憩の長さぶんの音声を流しておき、終わりに合図が入るようにしています。画面を消していても鳴るようにしていますが、端末によっては止められることがあります。"
+      : "音楽と一緒に使えます。鳴るのはアプリを開いて画面がついている間だけで、iPhoneはマナーモード中だと鳴りません。画面から離れている間に休憩が終わったら、戻ったときに知らせます。"}</p>
   </div>`;
 }
 
@@ -3317,23 +4337,22 @@ function recentRpe(exId, count){
   if(!vals.length) return null;
   return vals.reduce((a,b)=>a+b,0)/vals.length;
 }
-/* 同じ主働筋で、今の器具でできる別の種目 */
+/* 同じ主働筋で、今の器具でできる別の種目（今日のメニューにすでにある動きは除く） */
 function altFor(exId, wantBodyweight){
   const ex = EXMAP[exId]; if(!ex) return null;
   const mine = ex.p[0];
+  const todayPats = new Set(todayItems().filter(t=>t.ex !== exId).map(t=>patternOf(t.ex)));
   const cands = EX.filter(c=>{
     if(c.id === exId || baseOf(c.id) === baseOf(exId)) return false;
     if(!c.p.includes(mine)) return false;
+    if(todayPats.has(patternOf(c.id))) return false;
     if(wantBodyweight && c.kind === "w") return false;
-    if(c.kind === "w" && gearLoad(c.id).n === 0) return false;
+    if(c.kind === "w" && !gearOptions(c.id).length) return false;
     return true;
   });
   if(!cands.length) return null;
   /* しばらくやっていないものを優先する（変化をつけるため） */
-  cands.sort((a,b)=>{
-    const la = lastPerformance(a.id, TODAY), lb = lastPerformance(b.id, TODAY);
-    return (la ? daysAgo(la.date) : 999) < (lb ? daysAgo(lb.date) : 999) ? 1 : -1;
-  });
+  cands.sort((a,b)=> daysSinceEx(b.id) - daysSinceEx(a.id));
   return cands[0];
 }
 /* 同じ種目が何回続けて出てきているか（直近のセッション連続数） */
@@ -3349,75 +4368,120 @@ function streakOf(exId){
 }
 
 /* 1種目ぶんの判断。優先度の高いものを1つだけ返す */
-function todayAdvice(item){
+function todayAdvice(item, sug){
   const id = item.ex, ex = EXMAP[id];
   if(!ex) return null;
   const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
+  const hs = houseOf(id);
+  if(!sug) sug = suggestNext(item, entryFor(TODAY, id, false), lastPerformance(id, TODAY));
+  const opts = holdOf(id) ? gearOptions(id) : [];
 
-  /* 1. 器具が足りない */
-  if(ex.kind === "w" && gearLoad(id).n === 0){
+  /* 1. ダンベルが要る種目なのに登録がない */
+  if(ex.kind === "w" && !opts.length){
     const alt = altFor(id, true);
-    return {level:"skip", warn:true, short:"器具なし",
-      text: "ダンベル0本の設定です。" + (alt ? "同じ" + MUSCLES[ex.p[0]] + "を使う「" + alt.name + "」に置き換えられます。" : "今日は飛ばしてください。"),
+    return {level:"skip", warn:true, short:"ダンベルなし",
+      text: "ダンベルが登録されていません。" + (hs.down ? "「" + hs.down + "」で代用できます。" : "")
+          + (alt ? "自重でやるなら、同じ" + MUSCLES[ex.p[0]] + "を使う「" + alt.name + "」に替えられます。" : (hs.down ? "" : "今日は飛ばしてください。")),
       alt: alt ? alt.id : null};
   }
 
-  /* 2. 主働筋が直前に働いている（回復優先） */
-  const m = ex.p[0];
-  const load2 = muscleLoadBetween(m, 1, 2);
-  if(load2 >= 6){
+  /* 2. 主働筋を昨日しっかり使っている（回復優先） */
+  const tired = tiredMuscle(id);
+  if(tired){
     return {level:"recover", warn:true, short:"回復優先",
-      text: MUSCLES[m] + "は1〜2日前に " + (Math.round(load2*10)/10) + " セット使っています。セット数を1つ減らすか、きつさ7くらいで止めておくほうが回復に有利です。"};
+      text: MUSCLES[tired] + "は昨日 " + (Math.round(muscleLoadBetween(tired, 1, 1)*10)/10) + " セット使っています。セット数を1つ減らすか、きつさ7くらいで止めておくほうが回復に有利です。"};
   }
 
-  /* 3. 限界が続いている → やさしくする */
+  /* 3. 前回の記録から、今日の持ち方を変えた */
+  if(sug.change === "up") return {level:"harder", short:"一段重く",
+    text: "前回は余裕があったので、今日は持っているダンベルの中で一段重い「" + sug.opt.text + "」にしています。重すぎたら重量の − で元に戻せます。"};
+  if(sug.change === "down") return {level:"easier", warn:true, short:"一段軽く",
+    text: "前回は限界で回数が届かなかったので、今日は一段軽い「" + sug.opt.text + "」にしています。"};
+  if(sug.change === "snap") return {level:"gear", short:"持ち方変更",
+    text: "前回の重さは、今登録しているダンベルでは作れません。今日は「" + sug.opt.text + "」にしています。"};
+
   const rpe2 = recentRpe(id, 2);
+  const cur = sug.opt || (opts.length && sug.w !== undefined && sug.w !== null && !isNaN(sug.w) ? nearestOption(opts, sug.w) : null);
+  const i = optionIndex(opts, cur);
+
+  /* 4. 限界が続いている → やさしくする */
   if(rpe2 !== null && rpe2 >= 9.5){
+    const tip = i > 0 ? "持っている中で一段軽い「" + opts[i-1].text + "」に替えてください。"
+      : (d.easy ? "今日は「" + gearText(d.easy) + "」でもいいです。" : "回数を落として余力を残してください。")
+        + (ex.kind === "w" && hs.down ? "ダンベル自体が重すぎるなら「" + hs.down + "」でも構いません。" : "");
     return {level:"easier", warn:true, short:"やさしく",
-      text: "直近2回のきつさが平均 " + rpe2.toFixed(1) + "。限界続きはフォームが崩れます。" + (d.easy ? "今日は「" + gearText(d.easy) + "」でもいいです。" : "回数を落として余力を残してください。")};
+      text: "直近2回のきつさが平均 " + rpe2.toFixed(1) + "。限界続きはフォームが崩れます。" + tip};
   }
 
-  /* 4. 余裕が続いている → 強くする */
+  /* 5. 余裕が続いている → 強くする。持っているダンベルの範囲で、足りなければやり方と日用品で */
   if(rpe2 !== null && rpe2 <= 6){
-    const step = ex.kind === "w" && canAddWeight() ? "1本 " + kgText(nextWeightStep()) + " に上げる"
-               : (d.hard ? gearText(d.hard) : (ex.up && ex.up[0] ? gearText(ex.up[0]) : ""));
+    let tip;
+    if(i >= 0 && i < opts.length - 1){
+      tip = "持っている中で一段重い「" + opts[i+1].text + "」に持ち替えてください。";
+    }else{
+      let way = d.hard ? gearText(d.hard) : (ex.up && ex.up[0] ? gearText(ex.up[0]) : "");
+      if(!inventory().length && /ダンベル/.test(way)) way = "";
+      tip = (ex.kind === "w" ? "持っているダンベルではこれ以上重くできません。" : "")
+          + (way ? "「" + way + "」を試してください。" : "")
+          + (hs.up ? (way ? "日用品を使うなら「" + hs.up + "」も手です。" : "「" + hs.up + "」を試してください。") : "")
+          + (!way && !hs.up ? "回数を増やしてください。" : "");
+    }
     return {level:"harder", short:"強めに",
-      text: "直近2回のきつさが平均 " + rpe2.toFixed(1) + "。8〜9に届いていません。" + (step ? "「" + step + "」を試してください。" : "回数を増やしてください。")};
+      text: "直近2回のきつさが平均 " + rpe2.toFixed(1) + "。8〜9に届いていません。" + tip};
   }
 
-  /* 5. 同じ種目が続いている → たまには変える（飽き対策） */
+  /* 6. 同じ種目が続いている → たまには変える */
   const st = streakOf(id);
   if(st >= 4){
     const alt = altFor(id, false);
     if(alt) return {level:"swap", short:"変えてもいい",
-      text: st + "回続けて同じ種目です。同じ" + MUSCLES[m] + "を使う「" + alt.name + "」に変えると刺激が変わります。",
+      text: st + "回続けて同じ種目です。同じ" + MUSCLES[ex.p[0]] + "を使う「" + alt.name + "」に替えると刺激が変わります。",
       alt: alt.id};
   }
   return null;
 }
 
+let editEx = null;                         /* 規定セットを終えた種目のうち「修正」を開いているもの */
 function exRow(item){
   const id = item.ex, ex = EXMAP[id]; if(!ex) return "";
   const e = entryFor(TODAY, id, false);
-  const n = e ? e.sets.length : 0;
+  const sets = e ? e.sets : [];
+  const n = sets.length;
   const target = item.sets || ex.sets || 3;
-  const done = n >= target;
-  const open = openEx === id;
-  const last = lastPerformance(id, TODAY);
-  const parts = ex.p.map(m=>MUSCLES[m]).join("・");
-  const sug = suggestNext(item, e, last);
-  const adv = todayAdvice(item);
-
-  let body = "";
-  if(open){
-    const sets = (e?e.sets:[]).map((st,i)=>`
+  const sideTag = item.side ? '<span class="side">左右</span>' : "";
+  const setLines = sets.map((st,i)=>`
       <div class="setline">
         <span class="i num">${i+1}</span>
         <span class="val num">${setText(st, ex.kind)}</span>
         ${st.rpe?`<span class="rpe">きつさ ${st.rpe}</span>`:""}
-        <button class="del" data-act="delset" data-ex="${id}" data-i="${i}" aria-label="削除">×</button>
+        <button class="del" data-act="delset" data-ex="${id}" data-i="${i}" aria-label="このセットを消す">×</button>
       </div>`).join("");
 
+  /* 規定のセット数を終えた種目は、もう記録できない。
+     「修正」で間違えたセットを消すと規定に届かなくなり、また記録できるようになる */
+  if(n >= target){
+    const editing = editEx === id;
+    return `<div class="exrow done${editing ? " editing" : ""}">
+      <div class="exhead">
+        <span><span class="nm">${itemName(item)}${sideTag}</span><span class="meta">${sets.map(x=>setText(x, ex.kind)).join(" / ")}</span></span>
+        <span class="cnt num">${n} / ${target}</span>
+        <button class="fix" data-act="edit" data-ex="${id}">${editing ? "閉じる" : "修正"}</button>
+      </div>
+      ${editing ? `<div class="exbody exedit">
+        ${setLines}
+        <p class="lastline">間違えたセットを × で消すと、この種目をもう一度記録できるようになります。</p>
+      </div>` : ""}
+    </div>`;
+  }
+
+  const open = openEx === id;
+  const last = lastPerformance(id, TODAY);
+  const parts = ex.p.map(m=>MUSCLES[m]).join("・");
+  const sug = suggestNext(item, e, last);
+  const adv = todayAdvice(item, sug);
+
+  let body = "";
+  if(open){
     const wfld = ex.kind==="w" ? `
       <div class="fld"><label>重量 kg</label>
         <div class="stepper">
@@ -3427,16 +4491,16 @@ function exRow(item){
         </div></div>` : "";
 
     body = `<div class="exbody"><div class="exmain">
-      ${sets || ""}
+      ${setLines}
       <div class="target">
         <span class="tl">次のセット</span>
         <span class="tv num">${sugText(item, sug)}</span>
         <span class="tw">${sug.src}${sug.why?"　→　"+sug.why:""}</span>
       </div>
-      ${gearLine(id)?`<p class="lastline"><b>器具</b>　${gearLine(id)}</p>`:""}
+      ${holdOf(id)?`<p class="lastline"><b>使うダンベル</b>　<span id="wh_${id}">${gearLine(id, sug)}</span></p>`:""}
       ${adv?`<p class="lastline"><b>今日の調整</b>　${adv.text}</p>`:""}
-      ${adv && adv.alt?`<div class="rowbtns"><button data-act="addtoday" data-ex="${adv.alt}">${EXMAP[adv.alt].name}を今日に追加</button></div>`:""}
-      ${noteForGear(item.note)?`<p class="lastline">${noteForGear(item.note)}</p>`:""}
+      ${adv && adv.alt && !n?`<div class="rowbtns"><button data-act="swapto" data-from="${id}" data-ex="${adv.alt}">${EXMAP[adv.alt].name}に替える</button></div>`:""}
+      ${noteFor(item, sug.opt)?`<p class="lastline">${noteFor(item, sug.opt)}</p>`:""}
       ${last?`<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${last.sets.map(x=>setText(x,ex.kind)).join(" / ")}</b></p>`:""}
       <div class="entry">
         ${wfld}
@@ -3462,9 +4526,9 @@ function exRow(item){
       </div><div class="exside">${diaHTML(id, true)}</div></div>`;
   }
 
-  return `<div class="exrow ${done?"done":""}">
+  return `<div class="exrow">
     <button class="exhead" data-act="toggle" data-ex="${id}">
-      <span><span class="nm">${itemName(item)}${item.side?'<span class="side">左右</span>':""}${adv?`<span class="adv ${adv.warn?"warn":""}">${adv.short}</span>`:""}</span><span class="meta">${parts}</span></span>
+      <span><span class="nm">${itemName(item)}${sideTag}${adv?`<span class="adv ${adv.warn?"warn":""}">${adv.short}</span>`:""}</span><span class="meta">${parts}</span></span>
       <span class="cnt num">${n} / ${target}</span>
     </button>
     ${body}
@@ -3473,7 +4537,11 @@ function exRow(item){
 
 /* ---------- 種目 ---------- */
 function viewEx(){
-  const ex = EXMAP[refEx], bid = baseOf(refEx), d = DETAIL[refEx] || DETAIL[bid] || {};
+  const ex = EXMAP[refEx], bid = baseOf(refEx), d = DETAIL[refEx] || DETAIL[bid] || {}, hs = houseOf(refEx);
+  const refItem = itemOf(refEx);
+  const refSug = suggestNext(refItem, entryFor(TODAY, refEx, false), lastPerformance(refEx, TODAY));
+  const refOpts = holdOf(refEx) ? gearOptions(refEx) : [];
+  const refNext = ex.kind === "w" && refSug.opt ? refOpts[optionIndex(refOpts, refSug.opt) + 1] : null;
   const opts = EX.map(e=>`<option value="${e.id}" ${e.id===refEx?"selected":""}>${e.name}</option>`).join("");
   const chips = ex.p.map(m=>`<span class="chip p">${MUSCLES[m]}</span>`).join("")
     + (ex.s||[]).map(m=>`<span class="chip s">${MUSCLES[m]}</span>`).join("");
@@ -3493,7 +4561,7 @@ function viewEx(){
     <div class="card">
       <h4>目安</h4>
       <p style="margin:0 0 6px;font-size:14px">${kindLabel}　${d.reps||""}</p>
-      ${gearLine(refEx)?`<p class="lastline" style="margin-top:0"><b>器具</b>　${gearLine(refEx)}</p>`:""}
+      ${holdOf(refEx)?`<p class="lastline" style="margin-top:0"><b>使うダンベル</b>　${gearLine(refEx, refSug)}</p>`:""}
       <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">今日のメニューに追加</button></div>
     </div>`;
 
@@ -3519,14 +4587,16 @@ function viewEx(){
     <div class="card">
       <h4>きつい／簡単すぎる場合</h4>
       ${d.easy?`<p style="margin:0 0 6px;font-size:14px"><b>きついとき</b>　${d.easy}</p>`:""}
-      ${d.hard?`<p style="margin:0;font-size:14px"><b>簡単すぎるとき</b>　${d.hard}</p>`:""}
+      ${d.hard?`<p style="margin:0;font-size:14px"><b>簡単すぎるとき</b>　${gearText(d.hard)}</p>`:""}
+      ${ex.kind==="w" && hs.down?`<p style="margin:6px 0 0;font-size:14px"><b>ダンベルが重すぎるとき</b>　${hs.down}</p>`:""}
     </div>
     <div class="card">
-      <h4>${kgText(gear().unit)}が軽くなったら</h4>
-      ${canAddWeight()
-        ? `<p style="margin:0 0 6px;font-size:14px"><b>まず重量を上げる</b>　可変式の設定なので、次は1本 ${kgText(nextWeightStep())} を試してください（上限 ${kgText(gear().max)}）。上げきったら下の順に進みます。</p>`
-        : `<p class="lastline" style="margin-top:0">ダンベルを買い足す前に、上から順に試してください。</p>`}
+      <h4>${ex.kind==="w" ? "今の重さが軽くなったら" : "楽にできるようになったら"}</h4>
+      ${refNext
+        ? `<p style="margin:0 0 6px;font-size:14px"><b>まず持ち替える</b>　持っているダンベルで次に重い使い方は「${refNext.text}」です。そこも軽くなったら、下の順に進みます。</p>`
+        : `<p class="lastline" style="margin-top:0">${ex.kind==="w" && refOpts.length ? "持っているダンベルでは今が一番重い使い方です。" : ""}上から順に試してください。</p>`}
       <ol class="steps">${exUp(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ol>
+      ${hs.up?`<p style="margin:6px 0 0;font-size:14px"><b>日用品を使う</b>　${hs.up}</p>`:""}
     </div>
     <div class="card">
       <h4 class="warn">中止する合図</h4>
@@ -3620,15 +4690,22 @@ function sessionSummary(exId, sets){
 }
 
 /* 種目ごとの「そろそろ変え時／まだ様子見／余裕あり」判定。
-   可変式で上限に余裕があれば重量を上げる案を先に出し、重さ固定なら
-   EX[id].up（可動域・テンポ・片側化など）を次の一手として出す。 */
-/* 次の一手。重量を上げられるならそれが最優先 */
+   持っているダンベルで一段重くできるならその持ち替えを先に出し、できなければ
+   EX[id].up（可動域・テンポ・片側化など）と日用品のやり方を次の一手として出す。 */
+function heavierOption(exId){
+  if(EXMAP[exId].kind !== "w") return null;
+  const hist = exerciseHistory(exId), opts = gearOptions(exId);
+  if(!hist.length || !opts.length) return null;
+  const w = hist[hist.length-1].sets[0].w;
+  const cur = optionByTotal(exId, w) || nearestOption(opts, +w || 0);
+  const i = optionIndex(opts, cur);
+  return i >= 0 && i < opts.length - 1 ? opts[i+1] : null;
+}
 function nextStepText(exId){
-  const ex = EXMAP[exId];
-  if(ex.kind === "w" && canAddWeight()){
-    return "1本 " + kgText(nextWeightStep()) + " に上げる（上限 " + kgText(gear().max) + "）";
-  }
-  return gearText(ex.up[0]);
+  const ex = EXMAP[exId], next = heavierOption(exId), hs = houseOf(exId);
+  if(next) return "持っているダンベルで一段重い「" + next.text + "」に持ち替える";
+  const up = exUp(exId), first = gearText(up && up[0] ? up[0] : "");
+  return first + (hs.up ? (first ? "。" : "") + "日用品を使うなら「" + hs.up + "」" : "");
 }
 
 function levelSuggestions(){
@@ -3647,7 +4724,9 @@ function levelSuggestions(){
       out.push({exId, kind:"levelup",
         title: itemName({ex:exId}) + "：そろそろ切り替え時",
         body: "次の一手 → " + nextStepText(exId),
-        why: "直近3回とも" + (ex.kind==="t" ? "秒数" : "回数") + "が上限付近で、きつさの平均が " + recent3[recent3.length-1].avgRpe.toFixed(1) + "。" + (canAddWeight() ? "重量を上げる余地があります。" : kgText(gear().unit) + "のままでは伸びしろが少ない状態です。")});
+        why: "直近3回とも" + (ex.kind==="t" ? "秒数" : "回数") + "が上限付近で、きつさの平均が " + recent3[recent3.length-1].avgRpe.toFixed(1) + "。" + (ex.kind !== "w" ? "今のやり方のままでは伸びしろが少ない状態です。"
+             : heavierOption(exId) ? "持っているダンベルで、まだ一段重くできます。"
+             : "持っているダンベルの一番重い使い方でも上限に来ています。")});
       return;
     }
 
@@ -3693,33 +4772,9 @@ function balanceSuggestions(){
   return out;
 }
 
-/* A/B/C/Dの実施頻度に偏りがないか */
-function routineSuggestions(){
-  const counts = {A:0,B:0,C:0,D:0};
-  let total = 0;
-  sortedDates().forEach(d=>{
-    if(daysAgo(d) >= 28) return;
-    const s = state.sessions[d];
-    if(!s.routine || !(s.entries||[]).some(e=>e.sets.length)) return;
-    counts[s.routine] = (counts[s.routine]||0) + 1;
-    total++;
-  });
-  if(total < 4) return [];
-  const out = [];
-  RORDER.forEach(id=>{
-    if(counts[id] === 0 && total >= 4){
-      out.push({kind:"routine",
-        title: id + "：" + RMAP[id].name + " をしばらく行っていません",
-        body: "",
-        why: "直近28日・" + total + "回のトレーニング中、このメニューは0回でした。"});
-    }
-  });
-  return out;
-}
-
 function planSummary(){
   const totalSessions = sortedDates().filter(d=>(state.sessions[d].entries||[]).some(e=>e.sets.length)).length;
-  return { totalSessions, level: levelSuggestions(), balance: balanceSuggestions(), routine: routineSuggestions() };
+  return { totalSessions, level: levelSuggestions(), balance: balanceSuggestions() };
 }
 
 /* ---------- 提案 ---------- */
@@ -3746,30 +4801,24 @@ function viewPlan(){
       </div>`).join("")
     : `<div class="card"><p style="margin:0;font-size:14px">直近30日、主要な部位はひと通り使えています。</p></div>`;
 
-  const routineCards = p.routine.length
-    ? p.routine.map(s=>`<div class="card">
-        <h4>${s.title}</h4>
-        <p class="lastline" style="margin-top:0">${s.why}</p>
-      </div>`).join("")
-    : `<div class="card"><p style="margin:0;font-size:14px">A〜Dはおおむね均等に回っています。</p></div>`;
-
   return `
     <h3 class="sec">種目の切り替え時</h3>
     ${levelCards}
     <h3 class="sec">部位のバランス</h3>
     ${balanceCards}
-    <h3 class="sec">メニューの偏り</h3>
-    ${routineCards}
     <div class="card">
       <h4>この提案の仕組み</h4>
-      <p style="margin:0;font-size:14px">Claudeや外部サーバーへの通信は行っていません。この端末に保存された記録だけを見て、あらかじめ決めたルールで判定しています。判定に使う「次の一手」は各種目の解説ページと同じ内容です。</p>
+      <p style="margin:0;font-size:14px">判定はこの端末の中で、記録と「持っているダンベル」の登録を見て、あらかじめ決めたルールで行っています。ClaudeなどのAIには送っていません。重さの提案は登録したダンベルで作れる使い方だけで、持っていない重さは勧めません。「次の一手」は各種目の解説ページと同じ内容です。</p>
     </div>`;
 }
 
 /* ---------- 履歴 ---------- */
 function viewHist(){
   const dates = sortedDates().filter(d=> (state.sessions[d].entries||[]).some(e=>e.sets.length));
-  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。</div>`;
+  /* 記録がない端末でも、共有の接続とバックアップからの復元はできるようにする（別の端末の記録を持ってくるため） */
+  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、下の共有か復元から取り込めます。</div>
+    ${typeof syncCard === "function" ? syncCard() : ""}
+    ${typeof storeButtons === "function" ? `<h3 class="sec">バックアップ</h3><div class="card">${storeButtons()}</div>` : ""}`;
 
   const streakDays = dates.length;
   const totalSets = dates.reduce((a,d)=>a+(state.sessions[d].entries||[]).reduce((x,e)=>x+e.sets.length,0),0);
@@ -3818,6 +4867,7 @@ function viewHist(){
     <div class="card overflowx">
       <table class="hist"><thead><tr><th>日付</th><th style="text-align:right">セット</th></tr></thead><tbody>${table}</tbody></table>
     </div>
+    ${typeof syncCard === "function" ? syncCard() : ""}
     <h3 class="sec">書き出し</h3>
     <div class="card">
       <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。</p>
@@ -3842,13 +4892,17 @@ function wire(){
       else if(a==="addset"){ addSet(el.dataset.ex); }
       else if(a==="delset"){ delSet(el.dataset.ex, +el.dataset.i); }
       else if(a==="step"){ step(el.dataset.t, el.dataset.ex, +el.dataset.d); }
-      else if(a==="setr"){ const s2 = session(TODAY); s2.routine = el.dataset.r; persistSession(TODAY); openEx=null; render(); }
       else if(a==="pref"){ const k = el.dataset.k; PREF.set(k, !PREF.get(k, PREF_DEFAULT[k])); render(); }
-      else if(a==="gearcount"){ setGear({count: +el.dataset.n}); render(); }
-      else if(a==="gearadj"){ const g = gear(); setGear({adjustable: !g.adjustable, max: Math.max(g.max, g.unit)}); render(); }
-      else if(a==="gearstep"){ gearStep(el.dataset.t, +el.dataset.d); }
+      else if(a==="edit"){ editEx = (editEx===el.dataset.ex) ? null : el.dataset.ex; render(); }
+      else if(a==="dbstep"){ dbStep(+el.dataset.i, el.dataset.t, +el.dataset.d); }
+      else if(a==="dbdel"){ const it = gearItems(); it.splice(+el.dataset.i, 1); setGearItems(it); render(); }
+      else if(a==="dbadd"){
+        const it = gearItems(), mx = it.reduce((m, x)=>Math.max(m, x.kg), 0);
+        it.push({kg: mx ? (mx < 10 ? mx + 2 : mx + 5) : 5, n: 2}); setGearItems(it); render();
+      }
+      else if(a==="swapto"){ replaceInPlan(el.dataset.from, el.dataset.ex); }
       else if(a==="asknotify"){ if(PREF.get("notify",false)){ PREF.set("notify",false); render(); } else askNotify(); }
-      else if(a==="testalert"){ unlockAudio(); beep(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
+      else if(a==="testalert"){ testChime(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
       else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
       else if(a==="addex"){ openPicker("add"); }
       else if(a==="addtoday"){ addToProgramToday(el.dataset.ex); }
@@ -3865,14 +4919,23 @@ function wire(){
   const sel = v.querySelector("#exSel");
   if(sel) sel.onchange = ()=>{ refEx = sel.value; render(); };
 
-  ["unit","max"].forEach(k=>{
-    const inp = v.querySelector("#gear_" + k);
-    if(!inp) return;
+  /* 持っているダンベルの入力欄 */
+  v.querySelectorAll('input[id^="db_"]').forEach(inp=>{
     inp.onchange = ()=>{
-      const val = parseFloat(inp.value || "0");
-      if(isNaN(val) || val <= 0) { render(); return; }
-      setGear(k === "max" ? {max: val} : {unit: val});
-      render();
+      const [, t, i] = inp.id.split("_");
+      const it = gearItems(), val = parseFloat(inp.value || "0");
+      if(!it[+i] || isNaN(val) || val <= 0){ render(); return; }
+      if(t === "kg") it[+i].kg = Math.round(val * 10) / 10;
+      else it[+i].n = Math.max(1, Math.round(val));
+      setGearItems(it); render();
+    };
+  });
+  /* 重量を手で打ち替えたら「使うダンベル」の一文も合わせる */
+  v.querySelectorAll('input[id^="w_"]').forEach(inp=>{
+    inp.oninput = ()=>{
+      const id = inp.id.slice(2), h = document.getElementById("wh_" + id);
+      const w = parseFloat(inp.value);
+      if(h) h.textContent = gearLine(id, {opt: optionByTotal(id, w), w});
     };
   });
 
@@ -3881,7 +4944,7 @@ function wire(){
     let t=null;
     note.oninput = ()=>{
       clearTimeout(t);
-      t = setTimeout(()=>{ session(TODAY).note = note.value; persistSession(TODAY); }, 600);
+      t = setTimeout(()=>{ const s = session(TODAY); s.note = note.value; s.noteAt = Date.now(); persistSession(TODAY); }, 600);
     };
   }
 
@@ -3899,6 +4962,7 @@ function wire(){
       el.onclick = ()=>{ selMuscle = el.getAttribute("data-m"); render(); };
     });
   }
+  if(typeof syncWire === "function") syncWire(v);
 }
 function switchTab(t){
   tab = t;
@@ -3911,40 +4975,47 @@ function step(t, id, d){
   const inp = document.getElementById(map[t]+id);
   if(!inp) return;
   let val = parseFloat(inp.value||"0");
-  if(t==="w") val = Math.max(0, val + d*0.5);
+  if(t==="w"){
+    /* 重量は、持っているダンベルで作れる使い方だけを順にたどる */
+    const opts = gearOptions(id);
+    if(opts.length){
+      let i = opts.findIndex(o => Math.abs(o.total - val) < 0.01);
+      i = i < 0 ? opts.indexOf(nearestOption(opts, isNaN(val) ? 0 : val)) : Math.max(0, Math.min(opts.length - 1, i + d));
+      inp.value = String(opts[i].total);
+      const h = document.getElementById("wh_" + id);
+      if(h) h.textContent = gearLine(id, {opt: opts[i]});
+      return;
+    }
+    val = Math.max(0, val + d*0.5);
+  }
   else if(t==="e") val = Math.min(10, Math.max(1, val + d));
   else val = Math.max(1, val + d);
   inp.value = (t==="w") ? String(val) : String(Math.round(val));
 }
 
-function gearStep(which, d){
-  const g = gear();
-  const cur = which === "max" ? g.max : g.unit;
-  const step = cur >= 20 ? 2.5 : (cur >= 10 ? 1 : 0.5);
-  const v = Math.max(which === "max" ? g.unit : 0, Math.round((cur + d*step) * 10) / 10);
-  setGear(which === "max" ? {max: v} : {unit: v});
-  render();
-}
-
 function addSet(id){
   const ex = EXMAP[id];
-  const r = Math.round(parseFloat(document.getElementById("r_"+id).value||"0"));
-  const rpe = Math.round(parseFloat(document.getElementById("e_"+id).value||"0"));
+  const rIn = document.getElementById("r_"+id), eIn = document.getElementById("e_"+id);
+  if(!rIn || !eIn) return;
+  const r = Math.round(parseFloat(rIn.value||"0"));
+  const rpe = Math.round(parseFloat(eIn.value||"0"));
   if(!r || r<1) return;
+  const item = itemOf(id);
+  if(isDoneToday(id)){ render(); return; }          /* 規定のセット数を終えた種目は、修正で消すまで記録できない */
   unlockAudio();
-  const st = {r, rpe};
+  const st = {id:newSetId(), at:Date.now(), r, rpe};
   if(ex.kind==="w"){
     const w = parseFloat(document.getElementById("w_"+id).value||"0");
     st.w = isNaN(w)?0:w;
   }
+  const s = session(TODAY);
+  fixPlan(s);
   const e = entryFor(TODAY, id, true);
   e.sets.push(st);
-  const s = session(TODAY);
-  if(!s.routine) s.routine = routineToday();
   persistSession(TODAY);
 
-  const item = itemOf(id);
   const doneNow = e.sets.length >= (item.sets||3);
+  if(doneNow){ openEx = null; editEx = null; }
   let label;
   if(doneNow){
     const items = todayItems();
@@ -3959,19 +5030,46 @@ function addSet(id){
 }
 function delSet(id, i){
   const e = entryFor(TODAY, id, false);
-  if(!e) return;
-  e.sets.splice(i,1);
-  if(!e.sets.length && !state.program.includes(id)){
-    const s = session(TODAY);
+  if(!e || !e.sets[i]) return;
+  const s = session(TODAY);
+  const wasDone = isDoneToday(id);
+  const gone = e.sets.splice(i,1)[0];
+  if(gone && gone.id) s.del = (s.del || []).concat(gone.id);        /* 別の端末から復活しないように、消した印を残す */
+  const inPlan = todayItems().some(x => x.ex === id && !x.extra);
+  if(!e.sets.length && !inPlan && !state.program.includes(id)){
     s.entries = s.entries.filter(x => x !== e);
   }
   persistSession(TODAY);
+  /* 修正で規定に届かなくなったら、そのまま記録できる状態で開く */
+  if(wasDone && !isDoneToday(id)){ editEx = null; openEx = id; }
   render();
 }
 function addToProgramToday(id){
+  if(isDoneToday(id)){
+    openEx = null; editEx = null;
+    switchTab("today");
+    setStatus("「" + itemNameOf(id) + "」は今日の分を記録済みです。直すときは「修正」を押してください");
+    return;
+  }
   entryFor(TODAY, id, true);
   persistSession(TODAY);
-  openEx = id;
+  openEx = id; editEx = null;
+  switchTab("today");
+}
+/* 今日のメニューの種目を別の種目に替える（「今日の調整」から） */
+function replaceInPlan(fromId, toId){
+  const s = session(TODAY);
+  fixPlan(s);
+  const e = entryFor(TODAY, fromId, false);
+  const i = s.plan.findIndex(x => x.ex === fromId);
+  if(i >= 0 && !(e && e.sets.length)){
+    s.plan[i] = catalogItem(toId);
+    if(e) s.entries = s.entries.filter(x => x !== e);
+  }else if(!s.plan.some(x => x.ex === toId)){
+    s.plan.push(catalogItem(toId));
+  }
+  persistSession(TODAY);
+  openEx = toId; editEx = null;
   switchTab("today");
 }
 
@@ -4080,7 +5178,7 @@ const themeBtn = document.getElementById("themeBtn");
 
 /* ---------- 起動 ---------- */
 render();
-initStore();
+initStore().then(()=>{ if(typeof syncInit === "function") syncInit(); });
 </script>
 <script>
 if('serviceWorker' in navigator){

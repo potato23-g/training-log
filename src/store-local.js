@@ -9,7 +9,13 @@ let lastSaved = "";
 function loadLocal(){
   try{
     const raw = localStorage.getItem(LS);
-    if(raw){ const o = JSON.parse(raw); state.sessions = o.sessions||{}; state.program = o.program||DEFAULT_PROGRAM.slice(); }
+    if(raw){
+      const o = JSON.parse(raw);
+      state.sessions = o.sessions||{};
+      state.program = o.program||DEFAULT_PROGRAM.slice();
+      state.gear = readGear(o.gear);          /* 持っているダンベル（旧形式は読み替える） */
+      ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
+    }
   }catch(e){}
 }
 function saveLocal(){
@@ -35,8 +41,15 @@ async function initStore(){
   try{ localStorage.setItem(LS + ".bak", localStorage.getItem(LS) || ""); }catch(e){}
 }
 
-function persistSession(date){ saveLocal(); }
-function persistProgram(){ saveLocal(); }
+function persistSession(date){
+  if(state.sessions[date]) state.sessions[date].updatedAt = Date.now();
+  saveLocal();
+  if(typeof syncSchedule === "function") syncSchedule();
+}
+function persistProgram(){
+  saveLocal();
+  if(typeof syncSchedule === "function") syncSchedule();
+}
 
 /* ファイル書き出し（ブラウザのダウンロード） */
 async function saveFile(filename, text){
@@ -55,7 +68,7 @@ async function saveFile(filename, text){
 /* ---- バックアップ（JSON） ---- */
 function backupJSON(){
   return JSON.stringify({ app:"trainlog", version:1, savedAt:new Date().toISOString(),
-                          sessions: state.sessions, program: state.program }, null, 1);
+                          sessions: state.sessions, program: state.program, gear: state.gear }, null, 1);
 }
 async function backupSave(){
   const ok = await saveFile("trainlog-backup-" + TODAY + ".json", backupJSON());
@@ -72,10 +85,23 @@ function applyBackup(text){
   try{ o = JSON.parse(text); }catch(e){ alert("バックアップを読めませんでした（JSONの形式が違います）"); return; }
   if(!o || typeof o !== "object" || !o.sessions){ alert("このファイルはこのアプリのバックアップではないようです"); return; }
   const days = Object.keys(o.sessions).length;
-  if(!confirm("バックアップから " + days + "日分を取り込みます。同じ日付の記録は取り込んだ内容で置き換えます。よろしいですか？")) return;
-  Object.keys(o.sessions).forEach(d=>{ state.sessions[d] = o.sessions[d]; });
+  const merge = typeof mergeState === "function";
+  if(!confirm("バックアップから " + days + "日分を取り込みます。" + (merge
+      ? "同じ日付の記録は、この端末の記録とまとめます（どちらかにしかないセットも残ります）。"
+      : "同じ日付の記録は取り込んだ内容で置き換えます。") + "よろしいですか？")) return;
+  const incoming = {sessions: o.sessions, gear: readGear(o.gear)};
+  ensureIds(incoming);
+  if(merge){
+    const m = mergeState(state, incoming);
+    state.sessions = m.sessions;
+    if(m.gear) state.gear = m.gear;
+  }else{
+    Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
+    if(incoming.gear) state.gear = incoming.gear;
+  }
   if(Array.isArray(o.program) && o.program.length) state.program = o.program;
   saveLocal();
+  if(typeof syncSchedule === "function") syncSchedule();
   render();
   setStatus(days + "日分を取り込みました");
 }
@@ -113,5 +139,5 @@ function storeButtons(){
       <button data-act="restore">バックアップから復元</button>
       <button data-act="restorepaste">貼り付けて復元</button>
     </div>
-    <p class="lastline">記録はこの端末の中だけにあります。機種変更やブラウザの掃除で消えるので、ときどきバックアップを保存してください。</p>`;
+    <p class="lastline">共有を設定していない場合、記録はこの端末の中だけにあります。機種変更やブラウザの掃除で消えるので、ときどきバックアップを保存してください。</p>`;
 }

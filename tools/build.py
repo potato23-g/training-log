@@ -26,6 +26,8 @@ def embed_common(src, target):
     """保存層の差し替えと <!--INLINE:...--> の展開。全ターゲット共通。"""
     store = 'src/store-local.js' if target in ('local', 'site') else 'src/store-artifact.js'
     src = src.replace('/*INLINE-JS:STORE*/', read(store))
+    # スマホとPCの同期（GitHub）は、この端末に保存する版（local / site）だけに入れる
+    src = src.replace('/*INLINE-JS:SYNC*/', read('src/sync-github.js') if target in ('local', 'site') else '')
     src = re.sub(r'<!--INLINE:(.+?)-->', lambda m: '<script>\n' + read(m.group(1)) + '\n</script>', src)
     return src
 

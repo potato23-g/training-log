@@ -8,7 +8,13 @@ let state = { sessions:{}, program: DEFAULT_PROGRAM.slice() };
 function loadLocal(){
   try{
     const raw = localStorage.getItem(LS);
-    if(raw){ const o = JSON.parse(raw); state.sessions = o.sessions||{}; state.program = o.program||DEFAULT_PROGRAM.slice(); }
+    if(raw){
+      const o = JSON.parse(raw);
+      state.sessions = o.sessions||{};
+      state.program = o.program||DEFAULT_PROGRAM.slice();
+      state.gear = readGear(o.gear);          /* 持っているダンベル（旧形式は読み替える） */
+      ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
+    }
   }catch(e){}
 }
 function saveLocal(){
