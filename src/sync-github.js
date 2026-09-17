@@ -537,6 +537,20 @@ function syncEsc(s){
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/* GitHub の作成画面を、名前・公開範囲・権限を入れた状態で開くリンク（GitHub公式のURLパラメータ） */
+var SYNC_REPO_NAME = "training-log-data";
+function syncNewRepoUrl(){
+  return "https://github.com/new?name=" + SYNC_REPO_NAME + "&visibility=private";
+}
+function syncNewTokenUrl(){
+  /* 鍵の名前は重複できないので、作った日時を付けて端末ごとに別の名前にする */
+  var d = new Date(), p = function(n){ return String(n).padStart(2, "0"); };
+  var name = "trainlog-" + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes());
+  return "https://github.com/settings/personal-access-tokens/new?name=" + name
+    + "&description=" + encodeURIComponent("トレーニング記録アプリの同期用")
+    + "&expires_in=none&contents=write";
+}
+
 function syncCard(){
   var cfg = syncLoadConfig();
   if(!cfg){
@@ -546,12 +560,13 @@ function syncCard(){
       <details>
         <summary>はじめての設定（5分ほど）</summary>
         <ol class="steps">
-          <li>GitHubで非公開（Private）のリポジトリを新しく作る。名前は何でもよい（例: training-log-data）。「Add a README file」にチェックを入れて作る。</li>
-          <li>GitHubの Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token を開く。Repository access は「Only select repositories」で1のリポジトリだけを選び、Permissions の Contents を「Read and write」にして作成する。</li>
-          <li>表示された鍵（github_pat_ で始まる文字列）と「ユーザー名/リポジトリ名」を下の欄に入れて「接続」を押す。</li>
-          <li>もう一方の端末でも、このアプリの同じ欄に同じ2つを入れる。</li>
+          <li><a href="${syncNewRepoUrl()}" target="_blank" rel="noopener">リポジトリ作成画面を開く</a>。名前（${SYNC_REPO_NAME}）と「Private」は入力済み。「Add README」をオンにして「Create repository」を押す。</li>
+          <li><a href="${syncNewTokenUrl()}" target="_blank" rel="noopener">鍵の作成画面を開く</a>。名前・期限なし・Contents の書き込み権限は入力済み。Repository access で「Only select repositories」を選び、${SYNC_REPO_NAME} を選んでから、一番下の「Generate token」を押す。</li>
+          <li>表示された鍵（github_pat_ で始まる文字列）をコピーする。この画面を閉じると二度と表示されない。</li>
+          <li>下の欄に「GitHubのユーザー名/${SYNC_REPO_NAME}」と鍵を入れて「接続」を押す。</li>
+          <li>スマホでも、ホーム画面に追加したアプリを開いて同じ欄に同じ2つを入れる（Safariで開いた画面とは別扱いになる）。</li>
         </ol>
-        <p class="lastline">鍵はこの端末のブラウザの中にだけ保存し、GitHub以外には送りません。記録はそのリポジトリの trainlog.json に保存されます。</p>
+        <p class="lastline">鍵はこの端末のブラウザの中にだけ保存し、GitHub以外には送りません。記録はそのリポジトリの trainlog.json に保存されます。鍵が要らなくなったら、GitHubの Settings → Developer settings → Fine-grained tokens から削除できます。</p>
       </details>
       <div class="fld" style="margin-top:12px"><label>リポジトリ（ユーザー名/リポジトリ名）</label>
         <input type="text" id="syncRepo" placeholder="ユーザー名/training-log-data" style="width:100%"></div>
