@@ -4219,8 +4219,8 @@ function todayItems(){
   const items = (s.plan && s.plan.length ? s.plan : buildPlan()).map(x=>Object.assign({}, x));
   (s.entries||[]).forEach(e=>{
     if(!items.some(i=>i.ex===e.ex) && EXMAP[e.ex]){
-      const ex = EXMAP[e.ex];
-      items.push({ex:e.ex, sets:ex.sets||3, r:ex.r, extra:true});
+      /* 自分で追加した種目も、メニューに入るときと同じ組み方（セット数・回数・左右・メモ）で出す */
+      items.push(Object.assign(catalogItem(e.ex), {extra:true}));
     }
   });
   return items;

@@ -1,7 +1,7 @@
 /* 今日のメニュー決定・手持ちダンベルの使い方・提案文の検証（ページ内で実行）
    window.__result に結果、window.__ready = true で完了 */
 (async () => {
-  const out = {days: [], dupPatterns: [], recoverOnPlan: [], recoverViolations: [], dayCapViolations: [], sessionCapViolations: [],
+  const out = {days: [], dupPatterns: [], recoverOnPlan: [], recoverViolations: [], dayCapViolations: [], sessionCapViolations: [], weekCapViolations: [],
                unowned: [], optionErrors: [], sweep: []};
   const shiftKey = (k, n) => { const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + n);
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
@@ -32,6 +32,9 @@
     /* 1日の負荷: どの部位も上限（大きい部位8・ほか6）を超えない（補助で使った分も含む） */
     Object.keys(dayLoad).forEach(m => { if(dayLoad[m] > dayMax(m)) out.dayCapViolations.push({day, m, load: dayLoad[m]}); });
     if(setsToday > SESSION_MAX.sets || plan.length > SESSION_MAX.exercises) out.sessionCapViolations.push({day, sets: setsToday, exercises: plan.length});
+    /* 週の上限: 保証しているのは各種目の主役（p[0]）の部位だけ。大殿筋・腹直筋・僧帽筋などは補助で使う分が上限を超えることがある */
+    plan.forEach(it => { const m = EXMAP[it.ex].p[0], total = muscleLoadBetween(m, 1, 6) + (dayLoad[m] || 0);
+      if(total > WEEK_MAX) out.weekCapViolations.push({day, ex: it.ex, m, total}); });
     out.days.push(plan.map(it => itemName(it) + "×" + (it.sets || 3)).join(" / ") || "（休み）");
     /* その日のメニューを全部こなしたことにする */
     fixPlan(s);
