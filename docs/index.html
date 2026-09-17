@@ -3236,7 +3236,15 @@ function asDate(k){ const [y,m,d] = k.split("-").map(Number); return new Date(y,
 function daysAgo(k){
   return Math.round((asDate(todayKey()) - asDate(k)) / 86400000);
 }
-const TODAY = todayKey();
+let TODAY = todayKey();
+/* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
+function rollDay(){
+  const k = todayKey();
+  if(k === TODAY) return false;
+  TODAY = k;
+  openEx = null; editEx = null;
+  return true;
+}
 
 function session(date){
   if(!state.sessions[date]) state.sessions[date] = { date, entries:[], note:"" };
@@ -3796,6 +3804,7 @@ function figThemeChanged(){
 
 function render(){
   stopAnim();
+  rollDay();
   planMemo = null;
   document.getElementById("todayLabel").textContent = fmtDate(TODAY);
   const v = document.getElementById("view");
@@ -5007,6 +5016,8 @@ function addSet(id){
   const r = Math.round(parseFloat(rIn.value||"0"));
   const rpe = Math.round(parseFloat(eIn.value||"0"));
   if(!r || r<1) return;
+  /* 前日の画面のまま押された場合は、前日に記録せず今日のメニューに切り替える */
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const item = itemOf(id);
   if(isDoneToday(id)){ render(); return; }          /* 規定のセット数を終えた種目は、修正で消すまで記録できない */
   unlockAudio();
@@ -5037,6 +5048,7 @@ function addSet(id){
   startRest(restFor(item), label);
 }
 function delSet(id, i){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const e = entryFor(TODAY, id, false);
   if(!e || !e.sets[i]) return;
   const s = session(TODAY);
@@ -5184,6 +5196,17 @@ const themeBtn = document.getElementById("themeBtn");
     figThemeChanged(); render();
   };
 })();
+
+/* ---------- 日付の切り替わり ----------
+   画面に戻ったとき・1分ごとに確かめる（入力中は邪魔しないよう次の機会にする） */
+function checkNewDay(){
+  const el = document.activeElement;
+  if(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && document.getElementById("view").contains(el)) return;
+  if(rollDay()) render();
+}
+document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") checkNewDay(); });
+window.addEventListener("pageshow", checkNewDay);
+setInterval(checkNewDay, 60000);
 
 /* ---------- 起動 ---------- */
 render();
