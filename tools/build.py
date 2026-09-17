@@ -59,9 +59,10 @@ def add_pwa_tags(src):
     sw_register = (
         '<script>\n'
         "if('serviceWorker' in navigator){\n"
+        "  var __hadController = !!navigator.serviceWorker.controller;\n"  # 初回インストール時は false
         "  navigator.serviceWorker.register('./service-worker.js').catch(function(){});\n"
         "  navigator.serviceWorker.addEventListener('controllerchange', function(){\n"
-        "    if(!window.__swReloaded){ window.__swReloaded = true; location.reload(); }\n"
+        "    if(__hadController && !window.__swReloaded){ window.__swReloaded = true; location.reload(); }\n"
         "  });\n"
         "}\n"
         '</script>\n'
