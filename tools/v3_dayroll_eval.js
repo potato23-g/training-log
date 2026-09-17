@@ -14,7 +14,7 @@ setTimeout(async () => {
   stopRest();
   const day1 = TODAY;
   r.day1 = {today: day1, label: document.getElementById("todayLabel").textContent,
-            items: todayItems().map(i => i.ex), routine: session(day1).routine, sets: entryFor(day1, first.ex, false).sets.length};
+            items: todayItems().map(i => i.ex), plan: (session(day1).plan || []).map(i => i.ex), sets: entryFor(day1, first.ex, false).sets.length};
 
   /* 時計を1日進める（アプリは開いたまま。画面は前日のまま） */
   const RealDate = Date, shift = 24 * 3600 * 1000;
@@ -24,7 +24,7 @@ setTimeout(async () => {
   }
   window.Date = ShiftedDate;
   const snap = () => ({today: TODAY, label: document.getElementById("todayLabel").textContent,
-    hero: (document.querySelector(".hero h2") || {}).textContent, items: todayItems().map(i => i.ex), routine: routineToday(),
+    hero: (document.querySelector(".hero h2") || {}).textContent, items: todayItems().map(i => i.ex),
     day1Sets: entryFor(day1, first.ex, false).sets.length, day2Entries: (state.sessions[TODAY] || {entries: []}).entries.length});
 
   if(window.__phase === "interval"){
@@ -42,7 +42,7 @@ setTimeout(async () => {
     openEx = d2first.ex; render();
     document.querySelector(`[data-act="addset"][data-ex="${d2first.ex}"]`).click();
     stopRest();
-    r.day2Record = {ex: d2first.ex, sets: entryFor(TODAY, d2first.ex, false).sets.length, planFixed: (session(TODAY).plan || []).length, routine: session(TODAY).routine};
+    r.day2Record = {ex: d2first.ex, sets: entryFor(TODAY, d2first.ex, false).sets.length, planFixed: (session(TODAY).plan || []).length};
     window.scrollTo(0, 0);
   }
   window.Date = RealDate;

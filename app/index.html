@@ -555,7 +555,8 @@ function exNg(id){ const e=EXMAP[id]; return e.ng || EXMAP[baseOf(id)].ng; }
 function exUp(id){ const e=EXMAP[id]; return e.up || EXMAP[baseOf(id)].up; }
 
 /* ============================================================
-   A/B/C/D ローテーション
+   種目ごとのセット数・回数・メモ（もとはA/B/C/Dのローテーション）
+   今日のメニューはここから buildPlan() が選ぶ。A〜Dの順に回すことはしない
    ============================================================ */
 const ROUTINES = [
  {id:"A", name:"脚（前側）", items:[
@@ -1378,38 +1379,40 @@ function restFor(item){
   if(ex.kind === "t") return 60;
   return REST[item.ex] || 90;
 }
-function routineToday(){
-  const s = session(TODAY);
-  if(s.routine && RMAP[s.routine]) return s.routine;
-  for(const d of sortedDates()){
-    if(d >= TODAY) continue;
-    const sd = state.sessions[d];
-    if(sd && sd.routine && (sd.entries||[]).some(e=>e.sets.length)){
-      const i = RORDER.indexOf(sd.routine);
-      if(i >= 0) return RORDER[(i+1) % RORDER.length];
-    }
-  }
-  return "A";
-}
-
 /* ---- 今日のメニューを決める ----
-   土台は内部のローテーション（画面には出さない）。その上で
-   1. 同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日に1つだけ。しばらくやっていないほうを残す
-   2. 空いた枠は別の動きで埋める。条件は
-      ・その動きを前にやってから間隔が空いている（体幹は1日、それ以外は2日）
-      ・主に使う部位を、昨日しっかり使っていない
-      ・次の回のメニューで主に使う部位と重ならない（次の回の回復を邪魔しない）
-      ・今日その部位のセット数が多くなりすぎない
-      ・ダンベルが要る種目なら、持っているダンベルで作れる
+   回復の間隔と、1日・1週間にかける負荷から組む。数字は一般的な目安で、研究間のばらつきも個人差も大きいので絶対視しない。
+   数え方は「からだ」タブと同じ有効セット（主に効く部位は1セット=1.0、補助的に使う部位は0.5）。
+   ・間隔: 昨日しっかり使った部位（3セット以上。回復の早い腹直筋・腹斜筋は10、ふくらはぎ・前腕は6）が主役の種目は、
+          今日は出さない（48時間空ける）
+   ・1日の負荷: 大きい部位（脚・尻・胸・背中）は8セット、ほかの部位は6セットまで。1回は16セット・6種目・50分くらいまで
+   ・1週間の量: 直近7日で各部位10セットを目標に、足りない分を多く埋められる種目から入れる。
+               脚・尻・胸・背中の種目を先に入れ、まだ足りなければその種目のセットを増やし（4セットまで）、
+               残りの時間で肩・腕・ふくらはぎ・体幹の種目を足す。
+               目標に届いた部位も、16セットまでは少しだけ優先度を残す（毎日やる人の分）
+   これまでの決まりもそのまま守る:
+   ・同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日1つ
+   ・前回トレーニングした日に手を付けた種目は、次のトレーニング日に出さない
+   ・ダンベルが要る種目は、持っているダンベルで作れるものだけ
+   A〜Dの各メニュー（ROUTINES）は、種目ごとのセット数・回数・メモの出どころとしてだけ使う。
    記録を始めた日は、そのときのメニューを保存して、その日のうちは変えない。 */
 const PATTERN = {
   goblet:"squat", split:"squat", rdl:"hinge", rdl1:"hinge", hipthrust:"bridge", calf:"calf",
   pushup:"hpush", floorpress:"hpush", ohp:"vpush", lateral:"raise", row:"pull", farmer:"carry",
   curl:"curl", triext:"ext", plank:"abs", deadbug:"abs", crunch:"abs", sideplank:"side"
 };
-const PATTERN_GAP = {abs:1, side:1};
+/* メニューに並べる順（大きい動きを先に、体幹は最後に） */
+const PATTERN_ORDER = ["squat","hinge","hpush","pull","vpush","bridge","carry","raise","curl","ext","calf","abs","side"];
 /* 昨日この有効セット数以上使った部位は、今日は主役にしない。体幹・ふくらはぎ・前腕は回復が早い */
 const RECOVER_SETS = {abs:10, obliques:10, calves:6, forearms:6};
+const WEEK_TARGET = 10, WEEK_MAX = 16;
+const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
+/* 1日にかける上限（有効セット） */
+function dayMax(m){ return BIG_MUSCLES.includes(m) ? 8 : 6; }
+const SESSION_MAX = {sets:16, exercises:6, minutes:50};
+/* 足りないときに優先する度合い（大きい部位ほど高い） */
+const PRIORITY = {quads:1, glutes:1, hams:1, chest:1, lats:1, shoulders:0.8,
+                  triceps:0.5, biceps:0.5, calves:0.5, abs:0.4, obliques:0.4, traps:0.4,
+                  erectors:0.2, forearms:0.2, adductors:0.2};
 function patternOf(id){ return PATTERN[id] || PATTERN[baseOf(id)] || id; }
 function recoverLimit(m){ return RECOVER_SETS[m] || 3; }
 function daysSinceEx(id){ const l = lastPerformance(id, TODAY); return l ? daysAgo(l.date) : 9999; }
@@ -1423,19 +1426,12 @@ function lastDayTouched(){
   }
   return new Set();
 }
-function daysSincePattern(pat){
-  for(const d of sortedDates()){
-    if(d >= TODAY) continue;
-    if((state.sessions[d].entries||[]).some(e=>e.sets.length && patternOf(e.ex) === pat)) return daysAgo(d);
-  }
-  return 9999;
-}
-/* 昨日しっかり使った主働筋（なければ null） */
+/* 昨日しっかり使った主働筋（なければ null）。メニュー作りと「今日の調整」の回復優先の両方で使う */
 function tiredMuscle(exId){
   const ex = EXMAP[exId];
   return ex.p.find(m => muscleLoadBetween(m, 1, 1) >= recoverLimit(m)) || null;
 }
-/* その日にやった組み方（片脚版などのラベル）。保存したメニュー、なければ当時のローテーションから読む */
+/* その日にやった組み方（片脚版などのラベル）。保存したメニュー、なければ当時のA〜Dから読む */
 function variantUsed(date, exId){
   const s = state.sessions[date];
   const src = (s.plan && s.plan.length) ? s.plan : (s.routine && RMAP[s.routine] ? RMAP[s.routine].items : []);
@@ -1446,7 +1442,7 @@ function lastVariant(exId){
   const l = lastPerformance(exId, TODAY);
   return l ? variantUsed(l.date, exId) : null;
 }
-/* 全ローテーションに出てくる種目の組み方（同じ種目でも片脚版などは別の行） */
+/* 種目ごとの組み方の一覧（A〜Dに書いてあるセット数・回数・メモ。同じ種目でも片脚版などは別の行） */
 function catalog(){
   const out = [];
   ROUTINES.forEach(r => r.items.forEach(it => {
@@ -1458,70 +1454,117 @@ function catalogItem(exId){
   const c = catalog().find(x => x.ex === exId), ex = EXMAP[exId];
   return c ? Object.assign({}, c) : {ex:exId, sets:ex.sets || 3, r:ex.r};
 }
+/* 部位ごとの有効セット（fromDaysAgo〜toDaysAgo 日前。今日は含めない） */
+function loadMap(fromDaysAgo, toDaysAgo){
+  const out = {};
+  Object.keys(MUSCLES).forEach(m => out[m] = muscleLoadBetween(m, fromDaysAgo, toDaysAgo));
+  return out;
+}
+/* 種目を n セットやったときの部位ごとの有効セット（muscleLoadBetween と同じ数え方） */
+function exLoad(exId, n){
+  const ex = EXMAP[exId], out = {};
+  ex.p.forEach(m => out[m] = n);
+  (ex.s||[]).forEach(m => { if(!ex.p.includes(m)) out[m] = n * 0.5; });
+  return out;
+}
+/* 1種目にかかる時間（分）の目安。1回4秒（秒数の種目はその秒数）、左右ありは2倍と持ち替え、
+   セット間は休憩タイマーの秒数、種目の切り替えに1分 */
+function itemMinutes(it){
+  const ex = EXMAP[it.ex], sets = it.sets || 3, side = !!it.side;
+  const reps = suggestNext(it, null, lastPerformance(it.ex, TODAY)).r;
+  const work = ex.kind === "t" ? reps * (side ? 2 : 1) + 15 : reps * 4 * (side ? 2 : 1) + (side ? 15 : 0) + 15;
+  return (sets * work + (sets - 1) * restFor(it) + 60) / 60;
+}
+
 let planMemo = null;                       /* 描画1回のあいだだけ使い回す */
 function buildPlan(){
   if(planMemo) return planMemo;
-  const rid = routineToday();
-  const slots = RMAP[rid].items.map(x => Object.assign({}, x));
-  /* 1. 同じ動きは1つだけ */
-  const firstAt = {};
-  slots.forEach((it, i)=>{
-    const pat = patternOf(it.ex);
-    if(firstAt[pat] === undefined){ firstAt[pat] = i; return; }
-    const k = firstAt[pat];
-    if(daysSinceEx(it.ex) > daysSinceEx(slots[k].ex)) slots[k] = it;
-    slots[i] = null;
-  });
-  /* 1b. 前回手を付けた種目は出さない。同じ動きの別の種目に替えられればそれに（間隔が空いている場合だけ）、
-         替えられなければ枠を空けて、下で別の動きで埋める */
+  const week = loadMap(1, 6);              /* 直近7日 = 1〜6日前 + 今日の分 */
+  const yesterday = loadMap(1, 1);
   const touched = lastDayTouched();
-  slots.forEach((it, i)=>{
-    if(!it || !touched.has(it.ex)) return;
-    const pat = patternOf(it.ex);
-    const alt = daysSincePattern(pat) >= (PATTERN_GAP[pat] || 2)
-      ? catalog().filter(c => patternOf(c.ex) === pat && !touched.has(c.ex) && (EXMAP[c.ex].kind !== "w" || gearOptions(c.ex).length))
-                 .sort((a, b) => daysSinceEx(b.ex) - daysSinceEx(a.ex))[0]
-      : null;
-    slots[i] = alt ? Object.assign({}, alt) : null;
-  });
-  /* 2. 空いた枠を別の動きで埋める */
-  const load = {};
-  const addLoad = it => {
-    const ex = EXMAP[it.ex], n = it.sets || 3;
-    ex.p.forEach(m => load[m] = (load[m]||0) + n);
-    (ex.s||[]).forEach(m => load[m] = (load[m]||0) + n * 0.5);
+  const today = {}, plan = [];
+  let sets = 0, minutes = 0;
+  const minutesMemo = {};
+  const mins = it => {
+    const k = it.ex + "|" + (it.label || "") + "|" + (it.sets || 3);
+    if(minutesMemo[k] === undefined) minutesMemo[k] = itemMinutes(it);
+    return minutesMemo[k];
   };
-  slots.forEach(it => { if(it) addLoad(it); });
-  const next = RMAP[RORDER[(RORDER.indexOf(rid) + 1) % RORDER.length]];
-  const nextMuscles = new Set();
-  next.items.forEach(it => EXMAP[it.ex].p.forEach(m => { if(m !== "abs" && m !== "obliques") nextMuscles.add(m); }));
-  slots.forEach((it, i)=>{
-    if(it) return;
-    const used = new Set(slots.filter(Boolean).map(x => patternOf(x.ex)));
-    const cands = catalog().filter(c=>{
-      const ex = EXMAP[c.ex], pat = patternOf(c.ex), n = c.sets || 3;
-      if(used.has(pat)) return false;
-      if(touched.has(c.ex)) return false;                                         /* 前回手を付けた */
-      if(daysSincePattern(pat) < (PATTERN_GAP[pat] || 2)) return false;
-      if(tiredMuscle(c.ex)) return false;
-      if(ex.p.some(m => nextMuscles.has(m))) return false;
-      if(ex.p.some(m => (load[m]||0) + n > 6)) return false;
-      if(ex.kind === "w" && !gearOptions(c.ex).length) return false;
-      return true;
-    });
-    if(!cands.length) return;
-    /* 久しぶりの動き → 前回と違う組み方 → 久しぶりの種目 の順に優先 */
-    const score = c => [daysSincePattern(patternOf(c.ex)), (c.label||"") !== lastVariant(c.ex) ? 1 : 0, daysSinceEx(c.ex)];
-    cands.sort((a, b)=>{
-      const sa = score(a), sb = score(b);
-      for(let k = 0; k < sa.length; k++){ if(sa[k] !== sb[k]) return sb[k] - sa[k]; }
-      return 0;
-    });
-    slots[i] = Object.assign({}, cands[0]);
-    addLoad(slots[i]);
-  });
-  planMemo = slots.filter(Boolean);
+
+  /* 部位 m に add セット足したときの価値。週の目標までは1、目標を超えて上限までは0.35 */
+  const worth = (m, add) => {
+    const have = (week[m] || 0) + (today[m] || 0);
+    const under = Math.max(0, Math.min(add, WEEK_TARGET - have));
+    const over = Math.max(0, Math.min(add - under, WEEK_MAX - Math.max(have, WEEK_TARGET)));
+    return (PRIORITY[m] || 0) * (under + over * 0.35);
+  };
+  const gain = c => { const add = exLoad(c.ex, c.sets || 3); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
+  const allowed = c => {
+    const ex = EXMAP[c.ex], n = c.sets || 3, main = ex.p[0], add = exLoad(c.ex, n);
+    if(plan.some(p => patternOf(p.ex) === patternOf(c.ex))) return false;          /* 同じ動きは1日1つ */
+    if(touched.has(c.ex)) return false;                                             /* 前回手を付けた */
+    if(ex.kind === "w" && !gearOptions(c.ex).length) return false;                  /* 持っているダンベルで作れない */
+    if(ex.p.some(m => (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役 */
+    if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m))) return false;   /* 1日の上限（補助で使う部位も含む） */
+    if((week[main] || 0) + (today[main] || 0) + n > WEEK_MAX) return false;       /* 週の上限 */
+    if(plan.length >= SESSION_MAX.exercises || sets + n > SESSION_MAX.sets) return false;
+    if(minutes + mins(c) > SESSION_MAX.minutes) return false;
+    return true;
+  };
+  /* 同じくらい役に立つなら、しばらくやっていない種目・前回と違う組み方を選ぶ */
+  const score = c => {
+    const fresh = Math.min(daysSinceEx(c.ex), 14) / 14;
+    return gain(c) * (1 + 0.15 * fresh) * ((c.label || "") !== lastVariant(c.ex) ? 1.05 : 1);
+  };
+  const take = c => {
+    const it = Object.assign({}, c), add = exLoad(it.ex, it.sets || 3);
+    Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
+    sets += it.sets || 3; minutes += mins(it);
+    plan.push(it);
+  };
+  const fill = (minGain, upTo, only) => {
+    while(plan.length < upTo){
+      const best = catalog().filter(c => (!only || only(c)) && allowed(c)).map(c => ({c, g: gain(c), s: score(c)}))
+        .filter(x => x.g >= minGain).sort((a, b) => b.s - a.s)[0];
+      if(!best) return;
+      take(best.c);
+    }
+  };
+  const need = it => { const m = EXMAP[it.ex].p[0]; return WEEK_TARGET - (week[m] || 0) - (today[m] || 0); };
+  /* 大きい部位が週の目標に届いていなければ、その部位が主役の種目を1セットずつ増やす（足りない部位から、4セットまで） */
+  const addSets = () => {
+    for(;;){
+      const it = plan.filter(x => {
+        const ex = EXMAP[x.ex], n = x.sets || 3, add = exLoad(x.ex, 1);
+        if(!BIG_MUSCLES.includes(ex.p[0]) || n >= 4 || need(x) < 1) return false;
+        if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m)) || sets + 1 > SESSION_MAX.sets) return false;
+        return minutes + mins(Object.assign({}, x, {sets: n + 1})) - mins(x) <= SESSION_MAX.minutes;
+      }).sort((p, q) => need(q) - need(p))[0];
+      if(!it) return;
+      const n = it.sets || 3, add = exLoad(it.ex, 1);
+      Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
+      sets += 1; minutes += mins(Object.assign({}, it, {sets: n + 1})) - mins(it); it.sets = n + 1;
+    }
+  };
+  const isBig = c => BIG_MUSCLES.includes(EXMAP[c.ex].p[0]);
+  fill(1, SESSION_MAX.exercises, isBig);   /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
+  addSets();                               /* 2. まだ足りなければ、その種目のセットを増やす */
+  fill(1, SESSION_MAX.exercises);          /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
+  fill(0.5, 3);                            /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+
+  plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
+  planMemo = plan;
   return planMemo;
+}
+/* 今日のメニューが空の日（休み）に出す説明 */
+function restText(){
+  const big = ["quads","glutes","hams","chest","lats","shoulders"];
+  const tired = big.filter(m => muscleLoadBetween(m, 1, 1) >= recoverLimit(m));
+  const enough = big.filter(m => !tired.includes(m) && muscleLoadBetween(m, 1, 6) >= WEEK_TARGET);
+  const names = ms => ms.map(m => MUSCLES[m]).join("・");
+  return (tired.length ? "昨日しっかり使った" + names(tired) + "は、回復を待つ日です。" : "")
+       + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
+       + "今日は休むのがいちばん効率的です。体を動かしたいときは「種目を追加」から選べます。";
 }
 function todayItems(){
   const s = session(TODAY);
@@ -1538,8 +1581,9 @@ function itemOf(id){ return todayItems().find(i=>i.ex===id) || {ex:id, sets:3, r
 /* 記録を始めた時点のメニューを、その日の分として保存する */
 function fixPlan(s){
   if(s.plan && s.plan.length) return;
-  if(!s.routine) s.routine = routineToday();
-  s.plan = buildPlan().map(x => Object.assign({}, x));
+  const plan = buildPlan();
+  if(!plan.length) return;                 /* 休みの日（メニューが空）は保存しない。別の端末の今日のメニューを空で上書きしないため */
+  s.plan = plan.map(x => Object.assign({}, x));
   s.planAt = Date.now();
 }
 function isDoneToday(id){
@@ -1611,7 +1655,10 @@ function viewToday(){
   }
 
   let hero;
-  if(!next){
+  if(!items.length){
+    hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>休み</h2>
+      <p class="sub">${restText()}</p></div>`;
+  }else if(!next){
     const total = s.entries.reduce((a,e)=>a+e.sets.length,0);
     hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>完了</h2>
       <div class="bigset"><span class="v num" style="color:var(--done)">${total}</span><span class="u">セット記録</span></div>
@@ -1626,7 +1673,8 @@ function viewToday(){
     hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${itemName(next)}</h2>${inner}
       ${sug.opt ? `<p class="sub">${sug.opt.text}</p>` : ""}
-      <p class="sub">${sug.src}${sug.why?"　→　"+sug.why:""}</p></div>`;
+      <p class="sub">${sug.src}${sug.why?"　→　"+sug.why:""}</p>
+      ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">昨日使った部位の回復待ちや、今週の量が足りている部位が多いので、今日は短めです。</p>` : ""}</div>`;
   }
 
   const rows = items.map(it=>exRow(it)).join("");

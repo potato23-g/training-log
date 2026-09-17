@@ -1,7 +1,8 @@
 /* 今日のメニュー決定・手持ちダンベルの使い方・提案文の検証（ページ内で実行）
    window.__result に結果、window.__ready = true で完了 */
 (async () => {
-  const out = {days: [], dupPatterns: [], recoverOnPlan: [], gapViolations: [], unowned: [], optionErrors: [], sweep: []};
+  const out = {days: [], dupPatterns: [], recoverOnPlan: [], recoverViolations: [], dayCapViolations: [], sessionCapViolations: [],
+               unowned: [], optionErrors: [], sweep: []};
   const shiftKey = (k, n) => { const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + n);
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
   const setInv = items => { state.gear = {items, updatedAt: 1}; planMemo = null; };
@@ -17,13 +18,21 @@
     /* 同じ動きが重なっていないか */
     const pats = plan.map(it => patternOf(it.ex));
     if(new Set(pats).size !== pats.length) out.dupPatterns.push({day, pats});
+    const dayLoad = {};
+    let setsToday = 0;
     plan.forEach(it => {
       const adv = todayAdvice(it, suggestNext(it, null, lastPerformance(it.ex, TODAY)));
       if(adv && adv.level === "recover") out.recoverOnPlan.push({day, ex: it.ex, text: adv.text});
-      const gap = PATTERN_GAP[patternOf(it.ex)] || 2, since = daysSincePattern(patternOf(it.ex));
-      if(since < gap) out.gapViolations.push({day, ex: it.ex, since});
+      /* 間隔: 主役の部位を昨日しっかり使っていない */
+      EXMAP[it.ex].p.forEach(m => { const y = muscleLoadBetween(m, 1, 1); if(y >= recoverLimit(m)) out.recoverViolations.push({day, ex: it.ex, m, y}); });
+      const add = exLoad(it.ex, it.sets || 3);
+      Object.keys(add).forEach(m => dayLoad[m] = (dayLoad[m] || 0) + add[m]);
+      setsToday += it.sets || 3;
     });
-    out.days.push(routineToday() + ": " + plan.map(it => itemName(it)).join(" / "));
+    /* 1日の負荷: どの部位も上限（大きい部位8・ほか6）を超えない（補助で使った分も含む） */
+    Object.keys(dayLoad).forEach(m => { if(dayLoad[m] > dayMax(m)) out.dayCapViolations.push({day, m, load: dayLoad[m]}); });
+    if(setsToday > SESSION_MAX.sets || plan.length > SESSION_MAX.exercises) out.sessionCapViolations.push({day, sets: setsToday, exercises: plan.length});
+    out.days.push(plan.map(it => itemName(it) + "×" + (it.sets || 3)).join(" / ") || "（休み）");
     /* その日のメニューを全部こなしたことにする */
     fixPlan(s);
     plan.forEach(it => {
@@ -87,7 +96,7 @@
   /* ---------- 3. 全タブの文言に、持っていない重さの勧めや A〜D の表示が残っていないか ---------- */
   state.sessions = {};
   setInv([{kg:4, n:2}, {kg:9, n:1}]);
-  const bad = [/可変式/, /買い足/, /に上げる/, /上限\s*\d/, /[ABCD]：/, /rswitch/, /メニューの偏り/];
+  const bad = [/可変式/, /買い足/, /kgに上げる/, /上限\s*\d/, /[ABCD]：/, /rswitch/, /メニューの偏り/];
   const views = [["today", null]].concat(EX.map(e => ["ex", e.id])).concat([["body", null], ["hist", null], ["plan", null]]);
   for(const [t, id] of views){
     if(id) refEx = id;

@@ -1,7 +1,7 @@
 /* 途中までしかやらなかった日（1〜2セットだけ等）も「手を付けた」として、翌日は別の種目になるか。
    毎日、各種目をランダムに 0〜規定セット数だけこなした履歴を21日分つくり、翌日のメニューを確かめる。 */
 setTimeout(() => {
-  const out = {days: [], repeatedNextDay: [], notAdvanced: [], dupPatterns: [], recoverOnPlan: [], firstDayPartial: null};
+  const out = {days: [], repeatedNextDay: [], dupPatterns: [], recoverOnPlan: [], emptyDays: [], firstDayPartial: null};
   const shiftKey = (k, n) => { const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + n);
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
   let seed = 7;
@@ -23,19 +23,20 @@ setTimeout(() => {
 
   /* A. 最初の日に、最初の種目を1セットだけ */
   state.sessions = {}; state.gear = {items: [{kg: 5, n: 2}], updatedAt: 1}; planMemo = null;
-  const p0 = buildPlan(), r0 = routineToday();
+  const p0 = buildPlan();
   fixPlan(session(TODAY)); doSets(p0[0], 1);
   nextDay();
   const p1 = buildPlan();
-  out.firstDayPartial = {day1: r0 + ": " + p0.map(i => i.ex).join(","), touched: p0[0].ex,
-                         day2: routineToday() + ": " + p1.map(i => i.ex).join(","), touchedAgain: p1.some(i => i.ex === p0[0].ex)};
+  out.firstDayPartial = {day1: p0.map(i => i.ex).join(","), touched: p0[0].ex,
+                         day2: p1.map(i => i.ex).join(","), touchedAgain: p1.some(i => i.ex === p0[0].ex)};
 
   /* B. 21日分、毎日ランダムに途中でやめる */
   state.sessions = {}; planMemo = null;
-  let prevTouched = [], prevRoutine = null;
+  let prevTouched = [];
   for(let day = 0; day < 21; day++){
     const s = session(TODAY);
-    const plan = buildPlan(), rid = routineToday();
+    const plan = buildPlan();
+    if(!plan.length) out.emptyDays.push(day);
     const pats = plan.map(it => patternOf(it.ex));
     if(new Set(pats).size !== pats.length) out.dupPatterns.push({day, pats});
     plan.forEach(it => {
@@ -43,7 +44,6 @@ setTimeout(() => {
       const adv = todayAdvice(it, suggestNext(it, null, lastPerformance(it.ex, TODAY)));
       if(adv && adv.level === "recover") out.recoverOnPlan.push({day, ex: it.ex});
     });
-    if(prevRoutine && prevTouched.length && rid === prevRoutine) out.notAdvanced.push({day, rid});
     /* 途中でやめる: 各種目 0〜規定セット（全部0の日も作る） */
     fixPlan(s);
     const touched = [];
@@ -52,11 +52,11 @@ setTimeout(() => {
       const n = skipDay ? 0 : Math.floor(rand() * ((it.sets || 3) + 1));
       if(n > 0){ doSets(it, n); touched.push(it.ex); }
     });
-    if(!touched.length){ delete s.plan; delete s.planAt; delete s.routine; }
-    out.days.push((skipDay ? "（休み）" : "") + rid + ": " + plan.map(it => {
+    if(!touched.length){ delete s.plan; delete s.planAt; }
+    out.days.push((skipDay ? "（休み）" : "") + plan.map(it => {
       const e = entryFor(TODAY, it.ex, false); return it.ex + "×" + (e ? e.sets.length : 0) + "/" + (it.sets || 3); }).join(" "));
     /* 休みの日は「前回トレーニングした日」を更新しない */
-    if(touched.length){ prevTouched = touched; prevRoutine = rid; }
+    if(touched.length) prevTouched = touched;
     nextDay();
   }
   state.sessions = {}; state.gear = undefined; planMemo = null;
