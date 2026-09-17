@@ -234,6 +234,8 @@ textarea{min-height:64px;resize:vertical}
 .rswitch button.on b{color:var(--muscle)}
 .rswitch button.on span{color:var(--ink)}
 .side{font-size:10px;color:var(--muscle);border:1px solid var(--muscle);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
+.adv{font-size:10px;color:var(--ink-2);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
+.adv.warn{color:var(--muscle);border-color:var(--muscle)}
 .target{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;background:var(--panel-2);
   border-left:2px solid var(--muscle);padding:9px 11px;margin-top:12px;border-radius:0 3px 3px 0}
 .target .tl{font-size:11px;color:var(--ink-3)}
@@ -3285,6 +3287,115 @@ function settingsCard(){
   </div>`;
 }
 
+/* ============================================================
+   今日の調整（種目ごとに、きつさ・部位の回復・器具・マンネリから判断する）
+   メニュー自体は勝手に書き換えず、提案だけ出す。
+   ============================================================ */
+
+/* 指定した部位を、fromDaysAgo〜toDaysAgo 日前に何セット使ったか（今日は含めない） */
+function muscleLoadBetween(muscle, fromDaysAgo, toDaysAgo){
+  let n = 0;
+  sortedDates().forEach(d=>{
+    const ago = daysAgo(d);
+    if(ago < fromDaysAgo || ago > toDaysAgo) return;
+    (state.sessions[d].entries||[]).forEach(e=>{
+      const ex = EXMAP[e.ex]; if(!ex) return;
+      if(ex.p.includes(muscle)) n += e.sets.length;
+      else if((ex.s||[]).includes(muscle)) n += e.sets.length * 0.5;
+    });
+  });
+  return n;
+}
+/* 直近2回の平均きつさ（記録が2回に満たなければ null） */
+function recentRpe(exId, count){
+  const hist = exerciseHistory(exId).slice(-(count || 2));
+  if(hist.length < (count || 2)) return null;
+  const vals = hist.map(h=>{
+    const rs = h.sets.map(s=>s.rpe||0).filter(x=>x>0);
+    return rs.length ? rs.reduce((a,b)=>a+b,0)/rs.length : 0;
+  }).filter(x=>x>0);
+  if(!vals.length) return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+/* 同じ主働筋で、今の器具でできる別の種目 */
+function altFor(exId, wantBodyweight){
+  const ex = EXMAP[exId]; if(!ex) return null;
+  const mine = ex.p[0];
+  const cands = EX.filter(c=>{
+    if(c.id === exId || baseOf(c.id) === baseOf(exId)) return false;
+    if(!c.p.includes(mine)) return false;
+    if(wantBodyweight && c.kind === "w") return false;
+    if(c.kind === "w" && gearLoad(c.id).n === 0) return false;
+    return true;
+  });
+  if(!cands.length) return null;
+  /* しばらくやっていないものを優先する（変化をつけるため） */
+  cands.sort((a,b)=>{
+    const la = lastPerformance(a.id, TODAY), lb = lastPerformance(b.id, TODAY);
+    return (la ? daysAgo(la.date) : 999) < (lb ? daysAgo(lb.date) : 999) ? 1 : -1;
+  });
+  return cands[0];
+}
+/* 同じ種目が何回続けて出てきているか（直近のセッション連続数） */
+function streakOf(exId){
+  let n = 0;
+  for(const d of sortedDates()){
+    const s = state.sessions[d];
+    if(!(s.entries||[]).some(e=>e.sets.length)) continue;
+    if((s.entries||[]).some(e=>e.ex===exId && e.sets.length)) n++;
+    else break;
+  }
+  return n;
+}
+
+/* 1種目ぶんの判断。優先度の高いものを1つだけ返す */
+function todayAdvice(item){
+  const id = item.ex, ex = EXMAP[id];
+  if(!ex) return null;
+  const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
+
+  /* 1. 器具が足りない */
+  if(ex.kind === "w" && gearLoad(id).n === 0){
+    const alt = altFor(id, true);
+    return {level:"skip", warn:true, short:"器具なし",
+      text: "ダンベル0本の設定です。" + (alt ? "同じ" + MUSCLES[ex.p[0]] + "を使う「" + alt.name + "」に置き換えられます。" : "今日は飛ばしてください。"),
+      alt: alt ? alt.id : null};
+  }
+
+  /* 2. 主働筋が直前に働いている（回復優先） */
+  const m = ex.p[0];
+  const load2 = muscleLoadBetween(m, 1, 2);
+  if(load2 >= 6){
+    return {level:"recover", warn:true, short:"回復優先",
+      text: MUSCLES[m] + "は1〜2日前に " + (Math.round(load2*10)/10) + " セット使っています。セット数を1つ減らすか、きつさ7くらいで止めておくほうが回復に有利です。"};
+  }
+
+  /* 3. 限界が続いている → やさしくする */
+  const rpe2 = recentRpe(id, 2);
+  if(rpe2 !== null && rpe2 >= 9.5){
+    return {level:"easier", warn:true, short:"やさしく",
+      text: "直近2回のきつさが平均 " + rpe2.toFixed(1) + "。限界続きはフォームが崩れます。" + (d.easy ? "今日は「" + gearText(d.easy) + "」でもいいです。" : "回数を落として余力を残してください。")};
+  }
+
+  /* 4. 余裕が続いている → 強くする */
+  if(rpe2 !== null && rpe2 <= 6){
+    const step = ex.kind === "w" && canAddWeight() ? "1本 " + kgText(nextWeightStep()) + " に上げる"
+               : (d.hard ? gearText(d.hard) : (ex.up && ex.up[0] ? gearText(ex.up[0]) : ""));
+    return {level:"harder", short:"強めに",
+      text: "直近2回のきつさが平均 " + rpe2.toFixed(1) + "。8〜9に届いていません。" + (step ? "「" + step + "」を試してください。" : "回数を増やしてください。")};
+  }
+
+  /* 5. 同じ種目が続いている → たまには変える（飽き対策） */
+  const st = streakOf(id);
+  if(st >= 4){
+    const alt = altFor(id, false);
+    if(alt) return {level:"swap", short:"変えてもいい",
+      text: st + "回続けて同じ種目です。同じ" + MUSCLES[m] + "を使う「" + alt.name + "」に変えると刺激が変わります。",
+      alt: alt.id};
+  }
+  return null;
+}
+
 function exRow(item){
   const id = item.ex, ex = EXMAP[id]; if(!ex) return "";
   const e = entryFor(TODAY, id, false);
@@ -3295,6 +3406,7 @@ function exRow(item){
   const last = lastPerformance(id, TODAY);
   const parts = ex.p.map(m=>MUSCLES[m]).join("・");
   const sug = suggestNext(item, e, last);
+  const adv = todayAdvice(item);
 
   let body = "";
   if(open){
@@ -3322,6 +3434,8 @@ function exRow(item){
         <span class="tw">${sug.src}${sug.why?"　→　"+sug.why:""}</span>
       </div>
       ${gearLine(id)?`<p class="lastline"><b>器具</b>　${gearLine(id)}</p>`:""}
+      ${adv?`<p class="lastline"><b>今日の調整</b>　${adv.text}</p>`:""}
+      ${adv && adv.alt?`<div class="rowbtns"><button data-act="addtoday" data-ex="${adv.alt}">${EXMAP[adv.alt].name}を今日に追加</button></div>`:""}
       ${noteForGear(item.note)?`<p class="lastline">${noteForGear(item.note)}</p>`:""}
       ${last?`<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${last.sets.map(x=>setText(x,ex.kind)).join(" / ")}</b></p>`:""}
       <div class="entry">
@@ -3350,7 +3464,7 @@ function exRow(item){
 
   return `<div class="exrow ${done?"done":""}">
     <button class="exhead" data-act="toggle" data-ex="${id}">
-      <span><span class="nm">${itemName(item)}${item.side?'<span class="side">左右</span>':""}</span><span class="meta">${parts}</span></span>
+      <span><span class="nm">${itemName(item)}${item.side?'<span class="side">左右</span>':""}${adv?`<span class="adv ${adv.warn?"warn":""}">${adv.short}</span>`:""}</span><span class="meta">${parts}</span></span>
       <span class="cnt num">${n} / ${target}</span>
     </button>
     ${body}
