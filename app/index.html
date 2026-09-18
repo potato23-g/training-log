@@ -791,6 +791,9 @@ function asDate(k){ const [y,m,d] = k.split("-").map(Number); return new Date(y,
 function daysAgo(k){
   return Math.round((asDate(todayKey()) - asDate(k)) / 86400000);
 }
+/* この画面がいつ作られた版か（build.py が日時に置き換える）。
+   端末に保存された古い版を見ていないか確かめるために出す */
+const BUILD_VERSION = "__BUILD__";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -1685,7 +1688,8 @@ function viewToday(){
       <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${(s.note||"").replace(/</g,"&lt;")}</textarea>
     </div>
     ${gearCard()}
-    ${settingsCard()}`;
+    ${settingsCard()}
+    <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${BUILD_VERSION}　新しい版は、アプリを開き直すと切り替わります</p>`;
 }
 
 /* ============================================================

@@ -7,6 +7,7 @@
                                   （local と同じ埋め込みに加え、PWA化。ホーム画面に追加して
                                    オフラインで使える。docs/ がそのまま Pages の公開フォルダ）
 """
+import datetime
 import hashlib
 import io
 import os
@@ -23,7 +24,8 @@ def read(rel):
 
 
 def embed_common(src, target):
-    """保存層の差し替えと <!--INLINE:...--> の展開。全ターゲット共通。"""
+    """保存層の差し替えと <!--INLINE:...--> の展開、版の日時の埋め込み。全ターゲット共通。"""
+    src = src.replace('"__BUILD__"', '"%s"' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
     store = 'src/store-local.js' if target in ('local', 'site') else 'src/store-artifact.js'
     src = src.replace('/*INLINE-JS:STORE*/', read(store))
     # スマホとPCの同期（GitHub）は、この端末に保存する版（local / site）だけに入れる
