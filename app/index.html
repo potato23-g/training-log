@@ -1605,7 +1605,13 @@ function replanToday(){
   const s = session(TODAY);
   const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
   if(done.length && !confirm("今日記録したぶんはそのままで、まだ手を付けていない種目を今の決まりで入れ替えます。よろしいですか？")) return;
-  const keep = (s.plan || []).filter(it => done.includes(it.ex));
+  /* 今日1セットでも記録した種目は、終わったものも途中のものも、セット数・回数・並びをそのまま残す */
+  const before = todayItems();
+  const keep = done.map(id => {
+    const it = Object.assign({}, before.find(x => x.ex === id) || catalogItem(id));
+    delete it.extra;
+    return it;
+  });
   s.entries = (s.entries || []).filter(e => e.sets.length);   /* まだ1セットも入れていない枠は捨てる（前のメニューの残り） */
   delete s.plan; delete s.planAt;
   planMemo = null;

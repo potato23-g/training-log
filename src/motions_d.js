@@ -39,12 +39,12 @@
       'upperarmR.abd': 3, 'upperarmL.abd': 3
     },
     keys: [
-      { t: 0.0, hold: true, d: { 'pelvis.y': 0.925, 'pelvis.pitch': 5, 'upperarmR.flex': 10, 'upperarmL.flex': 10, 'neck.flex': -3 } },
-      { t: 0.9, d: { 'pelvis.y': 0.900, 'pelvis.pitch': 24, 'upperarmR.flex': 29, 'upperarmL.flex': 29, 'neck.flex': -9 } },
-      { t: 2.1, d: { 'pelvis.y': 0.862, 'pelvis.pitch': 52, 'upperarmR.flex': 57, 'upperarmL.flex': 57, 'neck.flex': -17 } },
-      { t: 3.4, hold: true, d: { 'pelvis.y': 0.840, 'pelvis.pitch': 72, 'upperarmR.flex': 77, 'upperarmL.flex': 77, 'neck.flex': -23 } },
-      { t: 4.2, d: { 'pelvis.y': 0.878, 'pelvis.pitch': 38, 'upperarmR.flex': 43, 'upperarmL.flex': 43, 'neck.flex': -12 } },
-      { t: 4.9, hold: true, d: { 'pelvis.y': 0.925, 'pelvis.pitch': 5, 'upperarmR.flex': 10, 'upperarmL.flex': 10, 'neck.flex': -3 } }
+      { t: 0.0, hold: true, d: { 'pelvis.y': 0.949, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3 } },
+      { t: 0.9, d: { 'pelvis.y': 0.943, 'pelvis.pitch': 24, 'upperarmR.flex': 23, 'upperarmL.flex': 23, 'neck.flex': -9 } },
+      { t: 2.1, d: { 'pelvis.y': 0.923, 'pelvis.pitch': 52, 'upperarmR.flex': 35, 'upperarmL.flex': 35, 'neck.flex': -17 } },
+      { t: 3.4, hold: true, d: { 'pelvis.y': 0.909, 'pelvis.pitch': 72, 'upperarmR.flex': 47, 'upperarmL.flex': 47, 'neck.flex': -23 } },
+      { t: 4.2, d: { 'pelvis.y': 0.934, 'pelvis.pitch': 38, 'upperarmR.flex': 28, 'upperarmL.flex': 28, 'neck.flex': -12 } },
+      { t: 4.9, hold: true, d: { 'pelvis.y': 0.949, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3 } }
     ]
   });
 
@@ -68,17 +68,17 @@
     /* 自由脚（左）: 股関節・膝を大きめに曲げて浮かせておき、骨盤の前傾が深くなるほど
        後方へ伸びて釣り合いを取る（股関節の相対角はむしろ緩める） */
     keys: [
-      { t: 0.0, hold: true, d: { 'pelvis.y': 0.928, 'pelvis.pitch': 5, 'upperarmR.flex': 10, 'upperarmL.flex': 10, 'neck.flex': -3,
+      { t: 0.0, hold: true, d: { 'pelvis.y': 0.942, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3,
                                  'thighL.flex': -15, 'shankL.flex': 35, 'footL.flex': 12, 'toesL.flex': 15 } },
-      { t: 0.9, d: { 'pelvis.y': 0.904, 'pelvis.pitch': 24, 'upperarmR.flex': 29, 'upperarmL.flex': 29, 'neck.flex': -9,
+      { t: 0.9, d: { 'pelvis.y': 0.940, 'pelvis.pitch': 24, 'upperarmR.flex': 22, 'upperarmL.flex': 22, 'neck.flex': -9,
                      'thighL.flex': -12, 'shankL.flex': 27, 'footL.flex': 5, 'toesL.flex': 8 } },
-      { t: 2.1, d: { 'pelvis.y': 0.868, 'pelvis.pitch': 52, 'upperarmR.flex': 57, 'upperarmL.flex': 57, 'neck.flex': -17,
+      { t: 2.1, d: { 'pelvis.y': 0.929, 'pelvis.pitch': 52, 'upperarmR.flex': 32, 'upperarmL.flex': 32, 'neck.flex': -17,
                      'thighL.flex': -8, 'shankL.flex': 16, 'footL.flex': -5, 'toesL.flex': -1 } },
-      { t: 3.4, hold: true, d: { 'pelvis.y': 0.846, 'pelvis.pitch': 72, 'upperarmR.flex': 77, 'upperarmL.flex': 77, 'neck.flex': -23,
+      { t: 3.4, hold: true, d: { 'pelvis.y': 0.918, 'pelvis.pitch': 72, 'upperarmR.flex': 44, 'upperarmL.flex': 44, 'neck.flex': -23,
                                  'thighL.flex': -5, 'shankL.flex': 8, 'footL.flex': -12, 'toesL.flex': -8 } },
-      { t: 4.2, d: { 'pelvis.y': 0.882, 'pelvis.pitch': 38, 'upperarmR.flex': 43, 'upperarmL.flex': 43, 'neck.flex': -12,
+      { t: 4.2, d: { 'pelvis.y': 0.935, 'pelvis.pitch': 38, 'upperarmR.flex': 26, 'upperarmL.flex': 26, 'neck.flex': -12,
                      'thighL.flex': -10, 'shankL.flex': 22, 'footL.flex': 0, 'toesL.flex': 4 } },
-      { t: 4.9, hold: true, d: { 'pelvis.y': 0.928, 'pelvis.pitch': 5, 'upperarmR.flex': 10, 'upperarmL.flex': 10, 'neck.flex': -3,
+      { t: 4.9, hold: true, d: { 'pelvis.y': 0.942, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3,
                                  'thighL.flex': -15, 'shankL.flex': 35, 'footL.flex': 12, 'toesL.flex': 15 } }
     ]
   });

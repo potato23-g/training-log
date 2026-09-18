@@ -95,24 +95,24 @@
     ],
     feet: { R: toeFoot(-1.30, 0.11), L: toeFoot(-1.30, -0.11) },
     hands: {
-      R: { at: [0.20, 0, 0.18], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+      R: { at: [0.44, 0, 0.18], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
            pins: [HAND.palmSurf], pole: [-1, 0, 0.2] },
-      L: { at: [0.20, 0, -0.18], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+      L: { at: [0.44, 0, -0.18], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
            pins: [HAND.palmSurf], pole: [-1, 0, -0.2] }
     },
     base: {
-      'pelvis.x': -0.357, 'pelvis.z': 0, 'pelvis.y': 0.246, 'pelvis.pitch': 86,
+      'pelvis.x': -0.357, 'pelvis.z': 0, 'pelvis.y': 0.310, 'pelvis.pitch': 86,
       'neck.flex': -6, 'head.flex': -4, 'toesR.flex': 78, 'toesL.flex': 78,
       'forearmR.rot': 90, 'forearmL.rot': 90
     },
     keys: [
-      { t: 0.0, hold: true, d: { 'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'pelvis.y': 0.246, 'pelvis.pitch': 86 } },
-      { t: 2.5, hold: true, d: { 'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'pelvis.y': 0.246, 'pelvis.pitch': 86 } },
-      { t: 3.0, d: { 'spineL.flex': -7, 'spineT.flex': -4, 'spineC.flex': -1.5, 'pelvis.y': 0.20, 'pelvis.pitch': 88 } },
-      { t: 3.5, hold: true, d: { 'spineL.flex': -14, 'spineT.flex': -8, 'spineC.flex': -3, 'pelvis.y': 0.155, 'pelvis.pitch': 90 } },
-      { t: 4.5, hold: true, d: { 'spineL.flex': -14, 'spineT.flex': -8, 'spineC.flex': -3, 'pelvis.y': 0.155, 'pelvis.pitch': 90 } },
-      { t: 5.0, d: { 'spineL.flex': -7, 'spineT.flex': -4, 'spineC.flex': -1.5, 'pelvis.y': 0.20, 'pelvis.pitch': 88 } },
-      { t: 6.0, hold: true, d: { 'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'pelvis.y': 0.246, 'pelvis.pitch': 86 } }
+      { t: 0.0, hold: true, d: { 'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'pelvis.y': 0.310, 'pelvis.pitch': 86 } },
+      { t: 2.5, hold: true, d: { 'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'pelvis.y': 0.310, 'pelvis.pitch': 86 } },
+      { t: 3.0, d: { 'spineL.flex': -7, 'spineT.flex': -4, 'spineC.flex': -1.5, 'pelvis.y': 0.264, 'pelvis.pitch': 88 } },
+      { t: 3.5, hold: true, d: { 'spineL.flex': -14, 'spineT.flex': -8, 'spineC.flex': -3, 'pelvis.y': 0.220, 'pelvis.pitch': 90 } },
+      { t: 4.5, hold: true, d: { 'spineL.flex': -14, 'spineT.flex': -8, 'spineC.flex': -3, 'pelvis.y': 0.220, 'pelvis.pitch': 90 } },
+      { t: 5.0, d: { 'spineL.flex': -7, 'spineT.flex': -4, 'spineC.flex': -1.5, 'pelvis.y': 0.264, 'pelvis.pitch': 88 } },
+      { t: 6.0, hold: true, d: { 'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'pelvis.y': 0.310, 'pelvis.pitch': 86 } }
     ]
   });
 

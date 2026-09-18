@@ -103,8 +103,8 @@
     },
     keys: [
       { t: 0.0, hold: true, d: { 'forearmR.flex': 5, 'forearmL.flex': 5 } },
-      { t: 1.3, d: { 'forearmR.flex': 125, 'forearmL.flex': 125 } },
-      { t: 1.6, hold: true, d: { 'forearmR.flex': 125, 'forearmL.flex': 125 } },
+      { t: 1.3, d: { 'forearmR.flex': 142, 'forearmL.flex': 142 } },
+      { t: 1.6, hold: true, d: { 'forearmR.flex': 142, 'forearmL.flex': 142 } },
       { t: 5.1, hold: true, d: { 'forearmR.flex': 5, 'forearmL.flex': 5 } }
     ]
   });

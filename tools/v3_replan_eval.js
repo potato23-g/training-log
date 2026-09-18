@@ -59,6 +59,26 @@ setTimeout(() => {
   r.splitGone3 = !todayItems().some(it => it.ex === "split");
   r.emptyEntriesLeft3 = (session(TODAY).entries || []).filter(e => !e.sets.length).length;
 
+  /* 4. 完了した種目・途中の種目・自分で追加した種目は、組み直しても中身が変わらない */
+  setup(0);
+  const s4 = session(TODAY);
+  const plan4 = (s4.plan || []).map(it => it.ex);
+  const doneEx = plan4[0], partEx = plan4[2];
+  s4.entries.push(mk(doneEx, 3, 10));                       /* 完了（3/3） */
+  s4.entries.push(mk(partEx, 1, 10));                       /* 途中（1/3） */
+  s4.entries.push(mk("curl", 2, 10));                       /* 自分で追加して2セット */
+  planMemo = null; render();
+  const beforeItems = todayItems().filter(it => [doneEx, partEx, "curl"].includes(it.ex))
+    .map(it => it.ex + ":" + (it.sets || 3) + "x" + it.r);
+  document.querySelector('[data-act="replan"]').click();
+  const afterItems = todayItems().filter(it => [doneEx, partEx, "curl"].includes(it.ex))
+    .map(it => it.ex + ":" + (it.sets || 3) + "x" + it.r);
+  r.keepSame4 = beforeItems.join(" / ") === afterItems.join(" / ") ? "同じ" : beforeItems.join(" / ") + " → " + afterItems.join(" / ");
+  r.sets4 = [doneEx, partEx, "curl"].map(id => id + "=" + (entryFor(TODAY, id, false) || {sets: []}).sets.length);
+  r.after4 = menu();
+  r.patternsOk4 = pats();
+  r.doneLocked4 = isDoneToday(doneEx);
+
   state.sessions = {}; state.gear = undefined; planMemo = null;
   window.__result = r; window.__ready = true;
 }, 0);
