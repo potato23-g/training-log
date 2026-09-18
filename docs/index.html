@@ -3441,7 +3441,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-18 20:09";
+const BUILD_VERSION = "2026-09-18 20:26";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -4142,6 +4142,16 @@ function buildPlan(){
     return minutesMemo[k];
   };
 
+  /* 今日すでに記録したぶんは先に数えておく（メニューを組み直したときに、同じ動きや同じ部位が重ならないように） */
+  const doneToday = (session(TODAY).entries || []).filter(e => e.sets.length && EXMAP[e.ex]);
+  const donePattern = new Set(doneToday.map(e => patternOf(e.ex)));
+  doneToday.forEach(e => {
+    const add = exLoad(e.ex, e.sets.length);
+    Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
+    sets += e.sets.length;
+    minutes += itemMinutes({ex: e.ex, sets: e.sets.length, r: EXMAP[e.ex].r});
+  });
+
   /* 部位 m に add セット足したときの価値。週の目標までは1、目標を超えて上限までは0.35 */
   const worth = (m, add) => {
     const have = (week[m] || 0) + (today[m] || 0);
@@ -4153,6 +4163,7 @@ function buildPlan(){
   const allowed = c => {
     const ex = EXMAP[c.ex], n = c.sets || 3, main = ex.p[0], add = exLoad(c.ex, n);
     if(plan.some(p => patternOf(p.ex) === patternOf(c.ex))) return false;          /* 同じ動きは1日1つ */
+    if(donePattern.has(patternOf(c.ex))) return false;                              /* 今日もうやった動き */
     if(touched.has(c.ex)) return false;                                             /* 前回手を付けた */
     if(ex.kind === "w" && !gearOptions(c.ex).length) return false;                  /* 持っているダンベルで作れない */
     if(ex.p.some(m => (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役 */
@@ -4236,6 +4247,25 @@ function fixPlan(s){
   if(!plan.length) return;                 /* 休みの日（メニューが空）は保存しない。別の端末の今日のメニューを空で上書きしないため */
   s.plan = plan.map(x => Object.assign({}, x));
   s.planAt = Date.now();
+}
+/* 今日のメニューを、今の記録と決まりで組み直す。今日すでに記録した種目はそのまま残す */
+function replanToday(){
+  const s = session(TODAY);
+  const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
+  if(done.length && !confirm("今日記録したぶんはそのままで、まだ手を付けていない種目を今の決まりで入れ替えます。よろしいですか？")) return;
+  const keep = (s.plan || []).filter(it => done.includes(it.ex));
+  delete s.plan; delete s.planAt;
+  planMemo = null;
+  if(keep.length){
+    s.plan = keep.concat(buildPlan().map(x => Object.assign({}, x)));
+    s.planAt = Date.now();
+    planMemo = null;
+  }
+  persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
+  openEx = null; editEx = null;
+  render();
+  setStatus("今日のメニューを組み直しました");
 }
 function isDoneToday(id){
   const it = todayItems().find(i=>i.ex===id);
@@ -4330,7 +4360,7 @@ function viewToday(){
 
   const rows = items.map(it=>exRow(it)).join("");
   return hero + rows + `
-    <div class="rowbtns"><button data-act="addex">種目を追加</button></div>
+    <div class="rowbtns"><button data-act="addex">種目を追加</button><button data-act="replan">メニューを組み直す</button></div>
     <h3 class="sec">今日のメモ</h3>
     <div class="card">
       <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${(s.note||"").replace(/</g,"&lt;")}</textarea>
@@ -5197,6 +5227,7 @@ function wire(){
       else if(a==="testalert"){ testChime(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
       else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
       else if(a==="addex"){ openPicker("add"); }
+      else if(a==="replan"){ replanToday(); }
       else if(a==="addtoday"){ addToProgramToday(el.dataset.ex); }
       else if(a==="days"){ bodyDays = +el.dataset.d; selMuscle=null; render(); }
       else if(a==="play"){ togglePlay(el.dataset.ex); }
