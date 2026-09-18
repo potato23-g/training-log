@@ -48,6 +48,17 @@ setTimeout(() => {
   r.dayCapOk2 = Object.keys(load).every(m => load[m] <= dayMax(m));
   r.sets2 = todayItems().reduce((a, it) => a + (it.sets || 3), 0);
 
+  /* 3. 今日まだ記録していないのに、前のメニューの枠（0セットのentry）が残っている */
+  setup(0);
+  const s3 = session(TODAY);
+  s3.entries.push({ex: "split", sets: []});          /* 記録を消した後などに残る空の枠 */
+  planMemo = null; render();
+  r.before3 = menu();
+  document.querySelector('[data-act="replan"]').click();
+  r.after3 = menu();
+  r.splitGone3 = !todayItems().some(it => it.ex === "split");
+  r.emptyEntriesLeft3 = (session(TODAY).entries || []).filter(e => !e.sets.length).length;
+
   state.sessions = {}; state.gear = undefined; planMemo = null;
   window.__result = r; window.__ready = true;
 }, 0);

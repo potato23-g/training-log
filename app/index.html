@@ -1606,6 +1606,7 @@ function replanToday(){
   const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
   if(done.length && !confirm("今日記録したぶんはそのままで、まだ手を付けていない種目を今の決まりで入れ替えます。よろしいですか？")) return;
   const keep = (s.plan || []).filter(it => done.includes(it.ex));
+  s.entries = (s.entries || []).filter(e => e.sets.length);   /* まだ1セットも入れていない枠は捨てる（前のメニューの残り） */
   delete s.plan; delete s.planAt;
   planMemo = null;
   if(keep.length){

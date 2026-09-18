@@ -3441,7 +3441,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-18 20:26";
+const BUILD_VERSION = "2026-09-18 20:31";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -4254,6 +4254,7 @@ function replanToday(){
   const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
   if(done.length && !confirm("今日記録したぶんはそのままで、まだ手を付けていない種目を今の決まりで入れ替えます。よろしいですか？")) return;
   const keep = (s.plan || []).filter(it => done.includes(it.ex));
+  s.entries = (s.entries || []).filter(e => e.sets.length);   /* まだ1セットも入れていない枠は捨てる（前のメニューの残り） */
   delete s.plan; delete s.planAt;
   planMemo = null;
   if(keep.length){
