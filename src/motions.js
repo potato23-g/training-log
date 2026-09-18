@@ -18,9 +18,9 @@
 
   /* 胸の前で両手にダンベルを抱える（ゴブレット持ち） */
   const gobletHands = {
-    R: { at: { bone: 'spineC', local: [0.150, 0.020, 0.052] }, local: HAND.palm, pitch: 180, yaw: -25,
+    R: { at: { bone: 'spineC', local: [0.210, 0.060, 0.052] }, local: HAND.palm, pitch: 158, yaw: -25,
          pole: [0.05, -1, 0.14] },
-    L: { at: { bone: 'spineC', local: [0.150, 0.020, -0.052] }, local: HAND.palm, pitch: 180, yaw: 25,
+    L: { at: { bone: 'spineC', local: [0.210, 0.060, -0.052] }, local: HAND.palm, pitch: 158, yaw: 25,
          pole: [0.05, -1, -0.14] }
   };
 
@@ -34,7 +34,7 @@
     ],
     feet: { R: flatFoot(0, 0.17, 16), L: flatFoot(0, -0.17, -16) },
     hands: gobletHands,
-    dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, local: HAND.grip, offset: [0.01, 0.075, 0] }],
+    dumbbells: [{ grip: 'both', axis: 'bone', bone: 'spineC', kg: 5, local: HAND.grip, offset: [0.01, 0.075, 0] }],
     balance: { axes: ['x'] },
     base: {
       'pelvis.y': 0.955, 'pelvis.pitch': 4,
@@ -118,7 +118,7 @@
     base: {
       'pelvis.y': 1.049, 'pelvis.pitch': 2,
       'spineT.flex': 2, 'neck.flex': 0,
-      'upperarmR.flex': 2, 'upperarmR.abd': -4, 'forearmR.flex': 4, 'forearmR.rot': 86,
+      'upperarmR.flex': 2, 'upperarmR.abd': 4, 'forearmR.flex': 4, 'forearmR.rot': 86,
       'upperarmL.flex': 6, 'upperarmL.abd': -7, 'forearmL.flex': 12, 'forearmL.rot': 84, 'handL.flex': -4,
       footPitch: 22, 'toesR.flex': -22, 'toesL.flex': -22
     },

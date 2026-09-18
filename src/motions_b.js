@@ -26,30 +26,30 @@
       'pelvis.y': 0.95, 'pelvis.pitch': 0,
       'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
       'clavR.prot': 0, 'clavL.prot': 0,
-      'upperarmR.rot': -65, 'upperarmL.rot': -65,
+      'upperarmR.rot': -45, 'upperarmL.rot': -45,
       'forearmR.rot': 0, 'forearmL.rot': 0,
       'handR.flex': -8, 'handL.flex': -8
     },
     keys: [
       { t: 0.0, hold: true, d: {
           'clavR.elev': 0, 'clavL.elev': 0,
-          'upperarmR.flex': 15, 'upperarmR.abd': 80, 'upperarmL.flex': 15, 'upperarmL.abd': 80,
-          'forearmR.flex': 140, 'forearmL.flex': 140
+          'upperarmR.flex': 22, 'upperarmR.abd': 35, 'upperarmL.flex': 22, 'upperarmL.abd': 35,
+          'forearmR.flex': 130, 'forearmL.flex': 130
       } },
       { t: 1.0, d: {
           'clavR.elev': 12, 'clavL.elev': 12,
-          'upperarmR.flex': 165, 'upperarmR.abd': 12, 'upperarmL.flex': 165, 'upperarmL.abd': 12,
-          'forearmR.flex': 10, 'forearmL.flex': 10
+          'upperarmR.flex': 172, 'upperarmR.abd': 7, 'upperarmL.flex': 172, 'upperarmL.abd': 7,
+          'forearmR.flex': 6, 'forearmL.flex': 6
       } },
       { t: 1.3, hold: true, d: {
           'clavR.elev': 12, 'clavL.elev': 12,
-          'upperarmR.flex': 165, 'upperarmR.abd': 12, 'upperarmL.flex': 165, 'upperarmL.abd': 12,
-          'forearmR.flex': 10, 'forearmL.flex': 10
+          'upperarmR.flex': 172, 'upperarmR.abd': 7, 'upperarmL.flex': 172, 'upperarmL.abd': 7,
+          'forearmR.flex': 6, 'forearmL.flex': 6
       } },
       { t: 4.3, hold: true, d: {
           'clavR.elev': 0, 'clavL.elev': 0,
-          'upperarmR.flex': 15, 'upperarmR.abd': 80, 'upperarmL.flex': 15, 'upperarmL.abd': 80,
-          'forearmR.flex': 140, 'forearmL.flex': 140
+          'upperarmR.flex': 22, 'upperarmR.abd': 35, 'upperarmL.flex': 22, 'upperarmL.abd': 35,
+          'forearmR.flex': 130, 'forearmL.flex': 130
       } }
     ]
   });
@@ -69,7 +69,7 @@
       'pelvis.y': 0.95, 'pelvis.pitch': 0,
       'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
       'clavR.elev': 0, 'clavL.elev': 0, 'clavR.prot': 0, 'clavL.prot': 0,
-      'upperarmR.flex': 8, 'upperarmL.flex': 8, 'upperarmR.rot': 0, 'upperarmL.rot': 0,
+      'upperarmR.flex': 14, 'upperarmL.flex': 14, 'upperarmR.rot': 0, 'upperarmL.rot': 0,
       'forearmR.flex': 15, 'forearmL.flex': 15, 'forearmR.rot': 90, 'forearmL.rot': 90,
       'handR.flex': 0, 'handL.flex': 0
     },
@@ -96,15 +96,15 @@
       'pelvis.y': 0.95, 'pelvis.pitch': 0,
       'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
       'clavR.elev': 0, 'clavL.elev': 0, 'clavR.prot': 0, 'clavL.prot': 0,
-      'upperarmR.flex': 8, 'upperarmR.abd': -8, 'upperarmR.rot': 0,
-      'upperarmL.flex': 8, 'upperarmL.abd': -8, 'upperarmL.rot': 0,
-      'forearmR.rot': 85, 'forearmL.rot': 85,
+      'upperarmR.flex': 15, 'upperarmR.abd': -4, 'upperarmR.rot': 0,
+      'upperarmL.flex': 15, 'upperarmL.abd': -4, 'upperarmL.rot': 0,
+      'forearmR.rot': 10, 'forearmL.rot': 10,
       'handR.flex': -6, 'handL.flex': -6
     },
     keys: [
       { t: 0.0, hold: true, d: { 'forearmR.flex': 5, 'forearmL.flex': 5 } },
-      { t: 1.3, d: { 'forearmR.flex': 145, 'forearmL.flex': 145 } },
-      { t: 1.6, hold: true, d: { 'forearmR.flex': 145, 'forearmL.flex': 145 } },
+      { t: 1.3, d: { 'forearmR.flex': 125, 'forearmL.flex': 125 } },
+      { t: 1.6, hold: true, d: { 'forearmR.flex': 125, 'forearmL.flex': 125 } },
       { t: 5.1, hold: true, d: { 'forearmR.flex': 5, 'forearmL.flex': 5 } }
     ]
   });
@@ -158,27 +158,27 @@
       { t: 0.0, hold: true, d: {
           'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
           'clavR.elev': -4, 'clavL.elev': -4, 'clavR.prot': 6, 'clavL.prot': -6,
-          'upperarmR.flex': 3, 'upperarmR.abd': -5, 'upperarmL.flex': 3, 'upperarmL.abd': -5
+          'upperarmR.flex': 3, 'upperarmR.abd': 10, 'upperarmL.flex': 3, 'upperarmL.abd': 10
       } },
       { t: 1.5, hold: true, d: {
           'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
           'clavR.elev': -4, 'clavL.elev': -4, 'clavR.prot': 6, 'clavL.prot': -6,
-          'upperarmR.flex': 3, 'upperarmR.abd': -5, 'upperarmL.flex': 3, 'upperarmL.abd': -5
+          'upperarmR.flex': 3, 'upperarmR.abd': 10, 'upperarmL.flex': 3, 'upperarmL.abd': 10
       } },
       { t: 2.5, hold: true, d: {
           'spineT.flex': 14, 'spineC.flex': 12, 'neck.flex': -8,
-          'clavR.elev': 25, 'clavL.elev': 25, 'clavR.prot': -18, 'clavL.prot': 18,
-          'upperarmR.flex': 40, 'upperarmR.abd': -22, 'upperarmL.flex': 40, 'upperarmL.abd': -22
+          'clavR.elev': 15, 'clavL.elev': 15, 'clavR.prot': -8, 'clavL.prot': 8,
+          'upperarmR.flex': 30, 'upperarmR.abd': 6, 'upperarmL.flex': 30, 'upperarmL.abd': 6
       } },
       { t: 4.0, hold: true, d: {
           'spineT.flex': 14, 'spineC.flex': 12, 'neck.flex': -8,
-          'clavR.elev': 25, 'clavL.elev': 25, 'clavR.prot': -18, 'clavL.prot': 18,
-          'upperarmR.flex': 40, 'upperarmR.abd': -22, 'upperarmL.flex': 40, 'upperarmL.abd': -22
+          'clavR.elev': 15, 'clavL.elev': 15, 'clavR.prot': -8, 'clavL.prot': 8,
+          'upperarmR.flex': 30, 'upperarmR.abd': 6, 'upperarmL.flex': 30, 'upperarmL.abd': 6
       } },
       { t: 5.0, hold: true, d: {
           'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
           'clavR.elev': -4, 'clavL.elev': -4, 'clavR.prot': 6, 'clavL.prot': -6,
-          'upperarmR.flex': 3, 'upperarmR.abd': -5, 'upperarmL.flex': 3, 'upperarmL.abd': -5
+          'upperarmR.flex': 3, 'upperarmR.abd': 10, 'upperarmL.flex': 3, 'upperarmL.abd': 10
       } }
     ]
   });

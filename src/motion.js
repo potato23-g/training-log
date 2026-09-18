@@ -540,7 +540,9 @@
         const a = at(frame, 'handR', d.local || HAND.grip);
         const b = at(frame, 'handL', d.local || HAND.grip);
         const pos = V.mul(V.add(a, b), 0.5);
+        /* vertical=床に対して垂直 / bone=その骨に沿わせる（胸に抱えるなど、体が傾けば一緒に傾く） */
         const quat = d.axis === 'vertical' ? Q.axis([1, 0, 0], Math.PI / 2)
+          : d.axis === 'bone' ? Q.mul(frame.b[d.bone].quat, Q.axis([1, 0, 0], Math.PI / 2))
           : Q.between([0, 0, 1], V.norm(V.len(V.sub(a, b)) > 1e-4 ? V.sub(a, b) : [0, 0, 1]));
         out.push({ pos: V.add(pos, d.offset || [0, 0, 0]), quat, kg, both: true });
       } else {
