@@ -5,7 +5,7 @@
 globalThis.window = undefined;
 await import('../src/motion.js');
 await import('../src/motions.js');
-for (const f of ['b', 'c', 'd']) { try { await import('../src/motions_' + f + '.js'); } catch (e) {} }
+for (const f of ['b', 'c', 'd', 'e']) { try { await import('../src/motions_' + f + '.js'); } catch (e) {} }
 const M = globalThis.MOTION, V = M.V, Q = M.Q;
 const DEG = 180 / Math.PI;
 
@@ -49,7 +49,30 @@ const WANT = {
   /* 両手に1つずつ、体の横 */
   split: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' }],
   /* NASM: 腕は天井へ。手のひらは向かい合わせ（内側） */
-  deadbug: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '天井へ伸ばす腕: 手のひらは内側' }]
+  deadbug: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '天井へ伸ばす腕: 手のひらは内側' }],
+  /* ---- 追加種目 ---- */
+  /* ゴブレットと同じ持ち方（縦のダンベルを下から支える） */
+  sumo: [{ t: 0, hand: 'handR', to: [0, 1, 0], label: '胸の前: 手のひらは上（下から支える）' }],
+  /* 両手に1つずつ、体の横（ニュートラル） */
+  splitfloor: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' }],
+  /* 床に手をつく */
+  bridge: [{ t: 0, hand: 'handR', to: [0, -1, 0], label: '体の横につく手: 手のひらは下' }],
+  pushupknee: [{ t: 0, hand: 'handR', to: [0, -1, 0], label: '床につく手: 手のひらは下' }],
+  /* 解説文「手のひらは向かい合わせ」。開いた位置でも前腕の向きは変えない */
+  fly: [{ t: 2.6, hand: 'handR', to: [0, 0, -1], label: '胸の上: 手のひらは向かい合わせ' },
+        { t: 0, hand: 'handR', to: [0, 1, 0], label: '開いた位置: 手のひらは上（向かい合わせのまま開く）' }],
+  /* ニュートラルグリップの三頭筋伸展。手のひらは向かい合わせ */
+  skull: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは向かい合わせ' }],
+  /* 解説文「手のひらを下に向ける」。下では太もも側、肩の高さでは下向き */
+  front: [{ t: 0, hand: 'handR', to: [-1, 0, 0], label: '下: 手のひらは体の方（pronated）' },
+          { t: 1.5, hand: 'handR', to: [0, -1, 0], label: '肩の高さ: 手のひらは下' }],
+  /* 解説文「手のひらを向かい合わせにする」。下でも上でも変えない */
+  hammer: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '下: 手のひらは向かい合わせ' },
+           { t: 1.6, hand: 'handR', to: [0, 0, -1], label: '上: 手のひらは向かい合わせ' }],
+  /* 体の横に垂らす。ニュートラル */
+  shrug: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' }],
+  /* 前傾して垂らす。ニュートラル（手のひらは向かい合わせ） */
+  row2: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '下: 手のひらは向かい合わせ' }]
 };
 
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(WANT);

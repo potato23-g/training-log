@@ -27,8 +27,8 @@
     id: 'floorpress',
     view: { az: 12, el: 16, dist: 3.2, target: [0.15, 0.2, 0] },
     phases: [
-      { t: 0, label: '肘を床に' }, { t: 1.0, label: '押し上げる 1秒' },
-      { t: 1.3, label: '下ろす 3秒' }, { t: 4.0, label: '肘を床に' }
+      { t: 0, label: '肘を床につけた位置' }, { t: 1.0, label: '押し上げる 1秒' },
+      { t: 1.3, label: '下ろす 3秒' }, { t: 4.0, label: '肘を床につけた位置' }
     ],
     feet: { R: hookFoot(0.13), L: hookFoot(-0.13) },
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
@@ -57,8 +57,8 @@
     id: 'pushup',
     view: { az: 8, el: 7, dist: 3.6, target: [-0.4, 0.3, 0] },
     phases: [
-      { t: 0, label: '上' }, { t: 0.3, label: '下ろす 3秒' },
-      { t: 3.0, label: '下' }, { t: 4.0, label: '押す 1秒 → 上' }
+      { t: 0, label: '腕を伸ばした位置' }, { t: 0.3, label: '下ろす 3秒' },
+      { t: 3.0, label: '胸が床の手前' }, { t: 4.0, label: '押し上げる 1秒' }
     ],
     hands: {
       R: { at: [0.15, 0, 0.30], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
@@ -90,8 +90,8 @@
     id: 'plank',
     view: { az: 8, el: 7, dist: 3.6, target: [-0.4, 0.2, 0] },
     phases: [
-      { t: 0, label: '正しい' }, { t: 2.5, label: '崩れへ' },
-      { t: 3.5, label: 'よくある崩れ（腰が落ちる）', wrong: true }, { t: 4.5, label: '正しいへ戻す' }
+      { t: 0, label: '正しい姿勢' }, { t: 2.5, label: '崩れていく' },
+      { t: 3.5, label: '崩れた姿勢（腰が落ちる）', wrong: true }, { t: 4.5, label: '正しい姿勢に戻す' }
     ],
     feet: { R: toeFoot(-1.30, 0.11), L: toeFoot(-1.30, -0.11) },
     hands: {
@@ -121,7 +121,7 @@
     id: 'crunch',
     view: { az: 12, el: 16, dist: 3.2, target: [0.15, 0.2, 0] },
     phases: [
-      { t: 0, label: '寝た状態' }, { t: 1.5, label: '肩甲骨を浮かす 1.5秒' }, { t: 4.0, label: '戻す 2.5秒' }
+      { t: 0, label: '仰向けで構える' }, { t: 1.5, label: '肩甲骨を浮かせる 1.5秒' }, { t: 4.0, label: '戻す 2.5秒' }
     ],
     feet: { R: hookFoot(0.13), L: hookFoot(-0.13) },
     base: {
@@ -150,8 +150,8 @@
     id: 'deadbug',
     view: { az: 12, el: 16, dist: 3.3, target: [0.15, 0.35, 0] },
     phases: [
-      { t: 0, label: '90度で構える' }, { t: 2.0, label: '右腕+左脚を伸ばす' },
-      { t: 4.0, label: '戻す' }, { t: 6.0, label: '左腕+右脚を伸ばす' }, { t: 8.0, label: '戻す' }
+      { t: 0, label: '股関節と膝を90度に' }, { t: 2.0, label: '右腕と左脚を伸ばす' },
+      { t: 4.0, label: '戻す' }, { t: 6.0, label: '左腕と右脚を伸ばす' }, { t: 8.0, label: '戻す' }
     ],
     base: {
       'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,
@@ -179,8 +179,8 @@
     id: 'sideplank',
     view: { az: 88, el: 10, dist: 3.4, target: [0, 0.22, -0.2] },
     phases: [
-      { t: 0, label: '正しい姿勢' }, { t: 2.0, label: '崩れへ' },
-      { t: 3.0, label: 'よくある崩れ（腰が落ちる）', wrong: true }, { t: 4.0, label: '正しい姿勢へ戻す' }
+      { t: 0, label: '正しい姿勢' }, { t: 2.0, label: '崩れていく' },
+      { t: 3.0, label: '崩れた姿勢（腰が落ちる）', wrong: true }, { t: 4.0, label: '正しい姿勢に戻す' }
     ],
     /* 下側の前腕の裏を床に固定する。肘は肩の真下、前腕は前方（+X）に伸びる */
     anchor: { bone: 'forearmR', local: [0.043, -0.13, 0], at: [0.13, 0, 0] },

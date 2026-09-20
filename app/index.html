@@ -316,6 +316,7 @@ textarea{min-height:64px;resize:vertical}
 <!--INLINE:src/motions_b.js-->
 <!--INLINE:src/motions_c.js-->
 <!--INLINE:src/motions_d.js-->
+<!--INLINE:src/motions_e.js-->
 <!--INLINE:src/figure3d.js-->
 <!--INLINE:src/ids.js-->
 <script>
@@ -336,7 +337,7 @@ const MUSCLES = {
    ============================================================ */
 const EX = [
   {
-    id:"goblet", name:"ゴブレットスクワット", kind:"w", w:5, r:12, sets:3,
+    id:"goblet", name:"ゴブレットスクワット", kind:"w", w:5, r:12, sets:3, level:2,
     p:["quads","glutes"], s:["adductors","abs","erectors"],
     how:[
       "ダンベルを縦に持ち、胸の前で両手で抱える。肘は体の内側に落とす。",
@@ -357,7 +358,7 @@ const EX = [
     ]
   },
   {
-    id:"rdl", name:"ルーマニアンデッドリフト", kind:"w", w:5, r:12, sets:3,
+    id:"rdl", name:"ルーマニアンデッドリフト", kind:"w", w:5, r:12, sets:3, level:2,
     p:["hams","glutes"], s:["erectors","lats","forearms"],
     how:[
       "ダンベルを体の前で持ち、足は腰幅。膝は軽く曲げた角度で固定する。",
@@ -377,7 +378,7 @@ const EX = [
     ]
   },
   {
-    id:"split", name:"ブルガリアンスクワット", kind:"w", w:5, r:10, sets:3,
+    id:"split", name:"ブルガリアンスクワット", kind:"w", w:5, r:10, sets:3, level:3,
     p:["quads","glutes"], s:["adductors","abs"],
     how:[
       "椅子やベッドに片足の甲を乗せ、前脚は椅子から70cmほど前に置く。",
@@ -392,7 +393,7 @@ const EX = [
     up:["深さを広げる","ダンベルを両手に持つ","下ろす動作をゆっくりにする"]
   },
   {
-    id:"hipthrust", name:"ヒップスラスト", kind:"w", w:5, r:15, sets:3,
+    id:"hipthrust", name:"ヒップスラスト", kind:"w", w:5, r:15, sets:3, level:2,
     p:["glutes"], s:["hams","abs"],
     how:[
       "肩甲骨をベッドや椅子の縁に乗せ、膝を90度に立てる。",
@@ -404,7 +405,7 @@ const EX = [
     up:["一番上で3秒静止","片脚で行う","可動域いっぱいまで下ろす"]
   },
   {
-    id:"row", name:"ワンハンドロウ", kind:"w", w:5, r:12, sets:3,
+    id:"row", name:"ワンハンドロウ", kind:"w", w:5, r:12, sets:3, level:2,
     p:["lats","traps"], s:["biceps","forearms","erectors"],
     how:[
       "椅子に片手と片膝をつき、背中を床と平行に近い角度で保つ。",
@@ -420,7 +421,7 @@ const EX = [
     up:["下ろしきって一瞬止める","引き上げた位置で2秒静止","下ろす動作に3秒かける"]
   },
   {
-    id:"ohp", name:"ダンベルショルダープレス", kind:"w", w:5, r:12, sets:3,
+    id:"ohp", name:"ダンベルショルダープレス", kind:"w", w:5, r:12, sets:3, level:2,
     p:["shoulders"], s:["triceps","traps","abs"],
     how:[
       "立つか椅子に浅く座る。ダンベルを肩の高さ、耳の横あたりに構える。",
@@ -432,7 +433,7 @@ const EX = [
     up:["片手ずつ行う（体幹の負荷も上がる）","下ろす動作に3秒かける","上で1秒静止"]
   },
   {
-    id:"lateral", name:"サイドレイズ", kind:"w", w:5, r:15, sets:3,
+    id:"lateral", name:"サイドレイズ", kind:"w", w:5, r:15, sets:3, level:1,
     p:["shoulders"], s:["traps"],
     how:[
       "ダンベルを体の横に持ち、肘をわずかに曲げて固定する。",
@@ -443,7 +444,7 @@ const EX = [
     up:["下ろす動作を5秒に延ばす","一番上で2秒静止","回数を20回まで伸ばす"]
   },
   {
-    id:"floorpress", name:"ダンベルフロアプレス", kind:"w", w:5, r:12, sets:3,
+    id:"floorpress", name:"ダンベルフロアプレス", kind:"w", w:5, r:12, sets:3, level:2,
     p:["chest"], s:["triceps","shoulders"],
     how:[
       "床に仰向けになり、膝を立てる。ダンベルを胸の横に構える。",
@@ -454,7 +455,7 @@ const EX = [
     up:["下ろす動作に3秒かける","床につく直前で2秒静止","腕立て伏せに切り替える"]
   },
   {
-    id:"pushup", name:"腕立て伏せ", kind:"b", r:10, sets:3,
+    id:"pushup", name:"腕立て伏せ", kind:"b", r:10, sets:3, level:2,
     p:["chest"], s:["triceps","shoulders","abs"],
     how:[
       "手は肩幅よりやや広く、指先はやや外向き。",
@@ -465,7 +466,7 @@ const EX = [
     up:["足を台に乗せて角度をきつくする","下ろす動作に3秒かける","片手を前後にずらす"]
   },
   {
-    id:"curl", name:"ダンベルカール", kind:"w", w:5, r:12, sets:3,
+    id:"curl", name:"ダンベルカール", kind:"w", w:5, r:12, sets:3, level:1,
     p:["biceps"], s:["forearms"],
     how:[
       "ダンベルを体の横に持ち、肘を体側に固定する。",
@@ -476,7 +477,7 @@ const EX = [
     up:["下ろす動作に4秒かける","上で2秒静止","両手同時ではなく片手ずつ集中して行う"]
   },
   {
-    id:"triext", name:"トライセプスエクステンション", kind:"w", w:5, r:12, sets:3,
+    id:"triext", name:"トライセプスエクステンション", kind:"w", w:5, r:12, sets:3, level:2,
     p:["triceps"], s:[],
     how:[
       "ダンベルを両手で持ち、頭の後ろに構える。",
@@ -487,7 +488,7 @@ const EX = [
     up:["下ろす動作に4秒かける","片手ずつ行う"]
   },
   {
-    id:"plank", name:"プランク", kind:"t", r:40, sets:3,
+    id:"plank", name:"プランク", kind:"t", r:40, sets:3, level:1,
     p:["abs"], s:["obliques","shoulders","erectors"],
     how:[
       "肘を肩の真下につき、つま先で支える。",
@@ -498,7 +499,7 @@ const EX = [
     up:["片脚を上げる","片手を前に伸ばす","肘を前方に遠ざける"]
   },
   {
-    id:"deadbug", name:"デッドバグ", kind:"b", r:10, sets:3,
+    id:"deadbug", name:"デッドバグ", kind:"b", r:10, sets:3, level:1,
     p:["abs"], s:["obliques"],
     how:[
       "仰向けで、両腕を天井に、股関節と膝を90度に曲げる。",
@@ -509,7 +510,7 @@ const EX = [
     up:["動作をさらにゆっくりにする","手足を床すれすれまで伸ばす","かかとに軽い負荷を足す"]
   },
   {
-    id:"crunch", name:"腹筋（クランチ）", kind:"b", r:20, sets:3,
+    id:"crunch", name:"腹筋（クランチ）", kind:"b", r:20, sets:3, level:1,
     p:["abs"], s:["obliques"],
     how:[
       "仰向けで膝を立て、手は胸か側頭部に。",
@@ -520,29 +521,141 @@ const EX = [
     up:["ダンベルを胸に抱えて行う","上で2秒静止","動作をゆっくりにする"]
   },
   {
-    id:"sideplank", name:"サイドプランク", kind:"t", r:30, sets:2,
+    id:"sideplank", name:"サイドプランク", kind:"t", r:30, sets:2, level:2,
     p:["obliques"], s:["abs","glutes"],
     how:["横向きで肘を肩の真下につく。","腰を持ち上げ、頭から足まで一直線を保つ。","左右それぞれ行う。"],
     ng:["腰が落ちる。","体が前後に傾く。"],
     up:["上の脚を上げる","時間を延ばす"]
   },
   {
-    id:"calf", name:"カーフレイズ", kind:"w", w:5, r:20, sets:3,
+    id:"calf", name:"カーフレイズ", kind:"w", w:5, r:20, sets:3, level:1,
     p:["calves"], s:[],
     how:["段差のふちにつま先を乗せ、かかとを下げる。","限界まで背伸びする。","ゆっくりかかとを下げる。"],
     ng:["反動で跳ねる。","可動域が狭い。下も上も限界まで。"],
     up:["片脚で行う","一番上で2秒静止","下ろす動作をゆっくりにする"]
   },
   {
-    id:"farmer", name:"ファーマーズウォーク", kind:"t", r:45, sets:3,
+    id:"farmer", name:"ファーマーズウォーク", kind:"t", r:45, sets:3, level:1,
     p:["forearms","traps"], s:["abs","obliques","calves"],
     how:["ダンベルを持って、胸を張ったまま歩く（狭ければその場で保持）。","肩をすくめず、下に引き下げたまま。","時間または距離で区切る。"],
     ng:["前傾する。","持ち手が滑る前に肩がすくむ。"],
     up:["片手だけで持つ（体幹への負荷が大きく上がる）","時間を延ばす"]
+  },
+  {
+    id:"sumo", name:"ワイドスクワット", kind:"w", w:5, r:15, sets:3, level:2,
+    p:["quads","glutes"], s:["adductors","erectors","abs"],
+    how:[
+      "足を肩幅の1.5倍に開き、つま先を30度ほど外へ向ける。",
+      "ダンベルを縦に持ち、胸の前で両手で支える。",
+      "膝をつま先と同じ方向に開きながら、まっすぐ下に沈む。",
+      "内ももと尻で床を押して立ち上がる。"
+    ],
+    ng:["膝が内側に入る。つま先と同じ方向に開いたまま動かす。","上体が前に倒れる。胸を張って垂直に沈む。"],
+    up:["下ろす動作に3秒かける","一番下で2秒止める","台に乗って可動域を広げる"]
+  },
+  {
+    id:"splitfloor", name:"スプリットスクワット", kind:"w", w:5, r:12, sets:3, side:true, level:2,
+    p:["quads","glutes"], s:["adductors","abs"],
+    how:[
+      "足を前後に大きく開いて立ち、後ろのかかとは上げたままにする。",
+      "上体を立てたまま、後ろの膝を床に近づけるように沈む。",
+      "前脚のかかとで床を押して戻る。"
+    ],
+    ng:["歩幅が狭く、前の膝がつま先より大きく前に出る。","後ろ脚で蹴って戻っている。押すのは前脚。"],
+    up:["下ろす動作を3秒に","一番下で2秒止める","後ろ足を台に乗せる（ブルガリアンスクワット）"]
+  },
+  {
+    id:"bridge", name:"ヒップリフト", kind:"b", r:15, sets:3, level:1,
+    p:["glutes"], s:["hams","abs"],
+    how:[
+      "仰向けで膝を立て、かかとを尻から30cmほどの位置に置く。",
+      "かかとで床を押し、肩・腰・膝が一直線になるまで尻を持ち上げる。",
+      "一番上で1〜2秒締めてから下ろす。"
+    ],
+    ng:["腰を反って上げている。上げるのは股関節。","もも裏がつる。かかとを体に近づけすぎている。"],
+    up:["片脚で行う","一番上で3秒止める","背中を台に乗せる（ヒップスラスト）"]
+  },
+  {
+    id:"pushupknee", name:"膝つき腕立て伏せ", kind:"b", r:12, sets:3, level:1,
+    p:["chest"], s:["triceps","shoulders","abs"],
+    how:[
+      "膝を床につき、手は肩幅よりやや広く置く。",
+      "頭から膝までを一直線に保つ。",
+      "胸が床に近づくまで下ろし、押し返す。"
+    ],
+    ng:["腰が反る。腹を締めて一直線を保つ。","膝の位置が手に近すぎる。体を長く伸ばす。"],
+    up:["下ろす動作を3秒に","膝を離して通常の腕立て伏せへ"]
+  },
+  {
+    id:"fly", name:"ダンベルフライ", kind:"w", w:5, r:12, sets:3, level:2,
+    p:["chest"], s:["shoulders","biceps"],
+    how:[
+      "仰向けで膝を立て、ダンベルを胸の上に持つ。手のひらは向かい合わせ。",
+      "肘を軽く曲げた角度のまま、腕を横に開く。",
+      "上腕が床についたら、胸を寄せるように戻す。"
+    ],
+    ng:["肘を伸ばしきる。肘の角度は固定したまま。","重すぎて肩が前に出る。軽くして可動域を優先する。"],
+    up:["開く動作を4秒に","開いた位置で2秒止める"]
+  },
+  {
+    id:"skull", name:"フロアトライセプスエクステンション", kind:"w", w:5, r:12, sets:3, level:2,
+    p:["triceps"], s:[],
+    how:[
+      "仰向けで膝を立て、上腕を床に垂直に立てる。",
+      "上腕の位置を動かさずに、肘だけを曲げてダンベルを耳の横へ下ろす。",
+      "肘を伸ばして戻す。"
+    ],
+    ng:["上腕が倒れて肩の動きになる。肘の位置を固定する。","勢いで戻す。肘の関節に負担がかかる。"],
+    up:["下ろす動作を4秒に","片手ずつ行う"]
+  },
+  {
+    id:"front", name:"フロントレイズ", kind:"w", w:5, r:15, sets:3, level:2,
+    p:["shoulders"], s:["chest","traps"],
+    how:[
+      "ダンベルを体の前に持ち、手のひらを下に向ける。",
+      "肘を軽く曲げた角度のまま、肩の高さまで前に上げる。",
+      "3秒かけて下ろす。"
+    ],
+    ng:["反動で上げる。腰を反らせない。","肩の高さより上げる。そこから先は別の部位の仕事。"],
+    up:["下ろす動作を5秒に","一番上で2秒止める","片手ずつ行う"]
+  },
+  {
+    id:"hammer", name:"ハンマーカール", kind:"w", w:5, r:12, sets:3, level:2,
+    p:["biceps","forearms"], s:[],
+    how:[
+      "ダンベルを体の横に持ち、手のひらを向かい合わせにする。",
+      "手首の向きを変えずに巻き上げる。",
+      "ゆっくり下ろし、肘を伸ばしきる。"
+    ],
+    ng:["肘が前に出る。体側に固定する。","手首が反る。まっすぐ保つ。"],
+    up:["下ろす動作を4秒に","一番上で2秒止める","片手ずつ行う"]
+  },
+  {
+    id:"shrug", name:"シュラッグ", kind:"w", w:5, r:15, sets:3, level:1,
+    p:["traps"], s:["forearms"],
+    how:[
+      "ダンベルを体の横に持ち、肩の力を抜いて下ろす。",
+      "肩を耳に近づけるように、まっすぐすくめる。",
+      "上で1秒止めてから、ゆっくり下ろす。"
+    ],
+    ng:["肩を回す。まっすぐ上下させる。","肘を曲げて腕で引く。腕は吊り下げるだけ。"],
+    up:["上で2秒止める","下ろす動作を4秒に"]
+  },
+  {
+    id:"row2", name:"ベントオーバーロウ", kind:"w", w:5, r:12, sets:3, level:3,
+    p:["lats","traps"], s:["biceps","forearms","erectors"],
+    how:[
+      "足は腰幅。膝を軽く曲げ、股関節から上体を倒す。",
+      "背中を床と平行に近い角度で保ち、ダンベルを両手で垂らす。",
+      "肘を腰の方向に引き上げ、肩甲骨を背骨側に寄せる。",
+      "ゆっくり下ろす。"
+    ],
+    ng:["上体が起き上がってくる。角度を保つ。","腰が丸まる。丸まる手前までしか倒さない。","腕で引いている。起点は肩甲骨。"],
+    up:["引いた位置で2秒止める","下ろす動作を3秒に","片手ずつ（ワンハンドロウ）で可動域を広げる"]
   }
 ];
 EX.push({
-  id:"rdl1", name:"片脚ルーマニアンデッドリフト", kind:"w", w:5, r:10, sets:3, base:"rdl",
+  id:"rdl1", name:"片脚ルーマニアンデッドリフト", kind:"w", w:5, r:10, sets:3, level:3, base:"rdl",
   p:["hams","glutes"], s:["erectors","abs","obliques","calves"],
   variant:"両脚版と動きは同じです。片脚で立ち、反対の脚を後ろに伸ばしながら上体を倒します。負荷が倍になるうえ、バランスを保つために体幹と足首も使います。壁や椅子に指先を添えて構いません。",
   how:null, ng:null, up:null
@@ -766,7 +879,107 @@ farmer:{
  feel:"前腕と肩の上、腹。肩がすくんできたらそこが限界。",
  easy:"保持時間を短くする",
  hard:"片手だけで持つ（体幹の負荷が大きく上がる）",
- reps:"3セット × 30〜60秒"}
+ reps:"3セット × 30〜60秒"},
+sumo:{
+ why:"足幅を広げると、内ももと尻の関与が増える。同じダンベルでも刺激の当たる場所が変わるので、スクワット系を続けるときの変化になる。",
+ setup:"足は肩幅の1.5倍、つま先は30度ほど外向き。ダンベルは縦に持ち、胸の前で両手で支える。",
+ breath:"立った位置で息を吸って腹を固め、立ち上がりきってから吐く。",
+ tempo:"下ろす2〜3秒 → 立ち上がる1秒。",
+ rom:"太ももが床と平行になるまで。内ももが伸びきる手前が限界。",
+ feel:"内ももと尻。膝の内側が痛むなら、つま先と膝の向きがずれている。",
+ easy:"ダンベルを持たずに行う",
+ hard:"一番下で2秒止める、または下ろす動作を4秒に",
+ reps:"3セット × 12〜20回"},
+splitfloor:{
+ why:"ブルガリアンスクワットより安定して行える片脚種目。左右差を整えながら、前ももと尻を鍛えられる。",
+ setup:"足を前後に大きく開き、後ろのかかとを上げる。ダンベルは両手に1つずつ。上体はやや前傾。",
+ breath:"上で吸い、沈んで戻るまで止める。",
+ tempo:"下ろす2〜3秒 → 戻す1秒。",
+ rom:"後ろの膝が床に近づくまで。前の膝が内に入る手前で止める。",
+ feel:"前脚の太もも前と尻。後ろ脚の付け根が伸びる感覚は正常。",
+ easy:"何も持たずに行う、または壁に指先を添えてバランスを取る",
+ hard:"後ろ足を台に乗せる（ブルガリアンスクワット）",
+ reps:"左右それぞれ3セット × 8〜12回"},
+bridge:{
+ why:"道具なしで尻を鍛えられる。ヒップスラストの前段階として、股関節を伸ばす動きを覚えるのに向いている。",
+ setup:"仰向けで膝を立て、かかとは尻から30cmほど。足は腰幅。腕は体の横に置く。",
+ breath:"上げながら吐く。",
+ tempo:"上げる1秒 → 一番上で2秒 → 下ろす2秒。",
+ rom:"肩・腰・膝が一直線になるまで。それ以上は腰を反らせているだけ。",
+ feel:"尻の上部。もも裏がつるなら、かかとを少し体から遠ざける。",
+ easy:"持ち上げる高さを下げる",
+ hard:"片脚で行う、または背中を台に乗せてヒップスラストにする",
+ reps:"3セット × 15〜20回"},
+pushupknee:{
+ why:"腕立て伏せがまだきつい段階で、同じ動きを軽くして練習できる。膝の位置を後ろにずらすほど負荷が上がるので、細かく調整しやすい。",
+ setup:"膝をついて、手は肩幅よりやや広く。頭から膝までを一直線に。膝の下にタオルを敷くと痛くない。",
+ breath:"下ろしながら吸い、押しながら吐く。",
+ tempo:"下ろす2〜3秒 → 押す1秒。",
+ rom:"胸が床から拳一つ分のところまで。",
+ feel:"胸、肩の前、腕の後ろ。腰が痛むなら一直線が崩れている。",
+ easy:"手を机や椅子に乗せて角度を緩める",
+ hard:"膝を離して通常の腕立て伏せへ",
+ reps:"3セット × 8〜15回"},
+fly:{
+ why:"押す動きでは使いにくい胸の内側まで、開いて閉じる動きで使える。床で行えば肩が伸びすぎないので安全。",
+ setup:"仰向けで膝を立てる。ダンベルを胸の上で向かい合わせに持ち、肘を20〜30度曲げて固定する。",
+ breath:"開きながら吸い、閉じながら吐く。",
+ tempo:"開く3秒 → 閉じる1〜2秒。",
+ rom:"上腕が床につくまで。肩の前が突っ張る手前で止める。",
+ feel:"胸の外側から中央。肩の前だけが痛むなら開きすぎ。",
+ easy:"可動域を狭くする",
+ hard:"開いた位置で2秒止める",
+ reps:"3セット × 12〜15回"},
+skull:{
+ why:"頭の上で行うより肩への負担が少なく、上腕三頭筋の長い部分まで使える。床が肘の位置の目印になる。",
+ setup:"仰向けで膝を立てる。ダンベルを両手に1つずつ持ち、上腕を床に垂直に立てる。手のひらは向かい合わせ。",
+ breath:"伸ばしながら吐く。",
+ tempo:"下ろす3秒 → 伸ばす1秒。",
+ rom:"耳の横まで下ろす。肘に違和感が出る手前で止める。",
+ feel:"二の腕の裏。肘の関節そのものが痛むなら中止する。",
+ easy:"片手ずつ行い、反対の手で肘を支える",
+ hard:"下ろす動作を4秒に、または一番下で1秒止める",
+ reps:"3セット × 10〜15回"},
+front:{
+ why:"肩の前側を狙う種目。押す種目でも使われる部分だが、直接狙うと可動域を広く取れる。",
+ setup:"立って、ダンベルを体の前に。手のひらは下向き、肘は10度ほど曲げて固定する。",
+ breath:"上げながら吐く。",
+ tempo:"上げる1〜2秒 → 下ろす3〜4秒。",
+ rom:"肩の高さまで。それ以上は僧帽筋の仕事に変わる。",
+ feel:"肩の前。首の付け根が張るなら重すぎる。",
+ easy:"片手ずつ行う",
+ hard:"下ろす動作を5秒に、または一番上で2秒静止",
+ reps:"3セット × 12〜15回"},
+hammer:{
+ why:"手のひらを向かい合わせにすると、力こぶの下にある筋肉と前腕にも効く。握力が伸びると、他の種目でも持ちやすくなる。",
+ setup:"立って、ダンベルを体の横に。手のひらを向かい合わせにし、肘を体側につけて固定する。",
+ breath:"上げながら吐く。",
+ tempo:"上げる1〜2秒 → 下ろす3〜4秒。",
+ rom:"下は肘を伸ばしきるところまで、上は前腕が立つところまで。",
+ feel:"力こぶの外側と前腕。",
+ easy:"片手ずつ行う",
+ hard:"下ろす動作を5秒に",
+ reps:"3セット × 10〜15回"},
+shrug:{
+ why:"首から肩にかけての僧帽筋の上部を直接使える。姿勢を支える部分で、ほかの種目では補助的にしか使われない。",
+ setup:"立って、ダンベルを体の横に。腕は伸ばしたまま、肩の力を抜いて下ろす。",
+ breath:"上げながら吐く。",
+ tempo:"上げる1秒 → 上で1秒 → 下ろす2〜3秒。",
+ rom:"肩が上がりきるところまで。首をすくめるのではなく、肩だけを上げる。",
+ feel:"首の付け根から肩の上。",
+ easy:"軽いもので回数を増やす",
+ hard:"一番上で2秒止める",
+ reps:"3セット × 15〜20回"},
+row2:{
+ why:"片手ずつのロウより、一度に多くの背中を使える。姿勢を保つために腰と脚も働く。",
+ setup:"足は腰幅。膝を10〜15度曲げ、股関節から上体を倒す。背中は床と平行に近く、腰は反らず丸めず。",
+ breath:"引くときに吐く、下ろすときに吸う。",
+ tempo:"引く1秒 → 上で1秒 → 下ろす2〜3秒。",
+ rom:"下は肩甲骨が前に出て脇が伸びきるまで。上は肘が体の横を通り、腰の高さまで。",
+ feel:"脇の下から背中の外側。腰だけが張るなら、上体が起きすぎているか丸まっている。",
+ easy:"片手ずつ、椅子に手をついて行う（ワンハンドロウ）",
+ hard:"引いた位置で2秒静止、下ろす3秒",
+ reps:"3セット × 10〜12回"}
 };
 
 /* 既定メニュー（週3・全身） */
@@ -1180,7 +1393,17 @@ const PHYS = {
   sideplank:{hold:"下側の前腕と足の外側だけが床に接する"},
   deadbug:{hold:"背中と腰は床につけたまま。手足だけを動かす"},
   crunch:{hold:"腰と足裏は床につけたまま。肩甲骨だけを浮かせる"},
-  calf:{hold:"母趾球だけが段差に乗り、かかとは空中。手すりや壁に軽く触れてよい"}
+  calf:{hold:"母趾球だけが段差に乗り、かかとは空中。手すりや壁に軽く触れてよい"},
+  sumo:{hold:"両足は床につけたまま。ダンベルは胸の前で両手で支える"},
+  splitfloor:{hold:"前足は床、後ろ足はつま先立ち。ダンベルは両手に1つずつ"},
+  bridge:{hold:"肩と足裏は床。腰だけを持ち上げる"},
+  pushupknee:{hold:"手のひらと膝が床に接する"},
+  fly:{hold:"背中と足裏は床。ダンベルは胸の上で開閉する"},
+  skull:{hold:"背中と足裏は床。上腕は床に垂直のまま"},
+  front:{hold:"両足は床。ダンベルは両手に1つずつ"},
+  hammer:{hold:"両足は床。肘は体側に固定。ダンベルは両手に1つずつ"},
+  shrug:{hold:"両足は床。腕は伸ばしたまま、ダンベルは両手に1つずつ"},
+  row2:{hold:"両足は床。上体を倒したまま、ダンベルは両手に1つずつ"}
 };
 
 /* ---------- 図解（3Dマネキン） ---------- */
@@ -1202,6 +1425,16 @@ const DIANOTE = {
   sideplank: "肘は肩の真下。腰が落ちるか、体が前後に傾いたら終了の合図。",
   calf: "段差のふちにつま先を乗せる。下も上も可動域いっぱいまで使う。",
   farmer: "肩は下げて後ろに引いたまま。すくんで前に丸まり、肩幅が狭くなってきたらそこが限界。",
+  sumo: "つま先と膝を同じ方向に開いたまま、まっすぐ下に沈む。",
+  splitfloor: "上体を立てたまま真下に沈む。前の膝はつま先より前に出しすぎない。",
+  bridge: "上げるのは股関節。腰を反らせて高さを稼がない。",
+  pushupknee: "頭から膝までを一直線に保つ。腰が反らないよう腹を締める。",
+  fly: "肘の角度は固定したまま。肩の前が突っ張る手前で止める。",
+  skull: "上腕は床に垂直のまま。動かすのは肘から先だけ。",
+  front: "肩の高さまで。反動を使わず、下ろす動作をゆっくり。",
+  hammer: "手のひらは向かい合わせのまま。肘の位置を動かさない。",
+  shrug: "肩をまっすぐ上下させる。回さない。",
+  row2: "上体の角度を保ったまま、肘を腰へ引く。起点は肩甲骨。",
 };
 
 let FIG = null, animRAF = null, playingId = null, playSlot = null, playBtn = null;
@@ -1376,7 +1609,8 @@ function render(){
 }
 
 /* ---------- 今日 ---------- */
-const REST = {split:120, goblet:120, rdl:120, rdl1:120, hipthrust:105, row:105, ohp:105, pushup:105, floorpress:105};
+const REST = {split:120, goblet:120, sumo:120, splitfloor:120, rdl:120, rdl1:120, hipthrust:105, bridge:90,
+              row:105, row2:105, ohp:105, pushup:105, pushupknee:105, floorpress:105, fly:90};
 function restFor(item){
   const ex = EXMAP[item.ex];
   if(ex.kind === "t") return 60;
@@ -1401,10 +1635,12 @@ function restFor(item){
 const PATTERN = {
   goblet:"squat", split:"squat", rdl:"hinge", rdl1:"hinge", hipthrust:"bridge", calf:"calf",
   pushup:"hpush", floorpress:"hpush", ohp:"vpush", lateral:"raise", row:"pull", farmer:"carry",
-  curl:"curl", triext:"ext", plank:"abs", deadbug:"abs", crunch:"abs", sideplank:"side"
+  curl:"curl", triext:"ext", plank:"abs", deadbug:"abs", crunch:"abs", sideplank:"side",
+  sumo:"squat", splitfloor:"squat", bridge:"bridge", pushupknee:"hpush", fly:"fly",
+  skull:"ext", front:"raise", hammer:"curl", shrug:"shrug", row2:"pull"
 };
 /* メニューに並べる順（大きい動きを先に、体幹は最後に） */
-const PATTERN_ORDER = ["squat","hinge","hpush","pull","vpush","bridge","carry","raise","curl","ext","calf","abs","side"];
+const PATTERN_ORDER = ["squat","hinge","hpush","fly","pull","vpush","bridge","carry","shrug","raise","curl","ext","calf","abs","side"];
 /* 昨日この有効セット数以上使った部位は、今日は主役にしない。体幹・ふくらはぎ・前腕は回復が早い */
 const RECOVER_SETS = {abs:10, obliques:10, calves:6, forearms:6};
 const WEEK_TARGET = 10, WEEK_MAX = 16;
@@ -1419,6 +1655,28 @@ const PRIORITY = {quads:1, glutes:1, hams:1, chest:1, lats:1, shoulders:0.8,
 function patternOf(id){ return PATTERN[id] || PATTERN[baseOf(id)] || id; }
 function recoverLimit(m){ return RECOVER_SETS[m] || 3; }
 function daysSinceEx(id){ const l = lastPerformance(id, TODAY); return l ? daysAgo(l.date) : 9999; }
+/* 種目の難しさ（1=やさしい, 2=標準, 3=難しい）。書いていなければ標準 */
+function levelOf(id){ return (EXMAP[id] || {}).level || (EXMAP[baseOf(id)] || {}).level || 2; }
+/* 直近2回のトレーニング日の、記録したきつさの平均 */
+function recentHardness(){
+  const vals = [];
+  for(const d of sortedDates()){
+    if(d >= TODAY) continue;
+    const rs = [];
+    (state.sessions[d].entries || []).forEach(e => (e.sets || []).forEach(st => { if(st.rpe) rs.push(st.rpe); }));
+    if(rs.length) vals.push(rs.reduce((a, b) => a + b, 0) / rs.length);
+    if(vals.length >= 2) break;
+  }
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+/* やさしい種目と難しい種目のどちらに寄せるか。限界続きならやさしく、余裕続きなら難しく */
+function levelBias(){
+  const h = recentHardness();
+  if(h === null) return 0;
+  if(h >= 9) return -1;
+  if(h <= 6.5) return 1;
+  return 0;
+}
 /* 前回トレーニングした日（今日より前で1セットでも記録がある日）に手を付けた種目。
    規定セットをやりきっていなくても、手を付けたものは次のトレーニング日には出さない */
 function lastDayTouched(){
@@ -1445,12 +1703,19 @@ function lastVariant(exId){
   const l = lastPerformance(exId, TODAY);
   return l ? variantUsed(l.date, exId) : null;
 }
-/* 種目ごとの組み方の一覧（A〜Dに書いてあるセット数・回数・メモ。同じ種目でも片脚版などは別の行） */
+/* メニューの候補一覧。A〜Dに書いてある組み方（セット数・回数・メモ）を先に並べ、
+   そこに無い種目は種目表の既定値で足す。種目を増やせば自動で候補に入る */
 function catalog(){
   const out = [];
   ROUTINES.forEach(r => r.items.forEach(it => {
     if(!out.some(x => x.ex === it.ex && (x.label||"") === (it.label||""))) out.push(it);
   }));
+  EX.forEach(e => {
+    if(out.some(x => x.ex === e.id)) return;
+    const it = {ex:e.id, sets:e.sets || 3, r:e.r};
+    if(e.side) it.side = true;
+    out.push(it);
+  });
   return out;
 }
 function catalogItem(exId){
@@ -1514,7 +1779,7 @@ function buildPlan(){
   };
   const gain = c => { const add = exLoad(c.ex, c.sets || 3); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
   const allowed = c => {
-    const ex = EXMAP[c.ex], n = c.sets || 3, main = ex.p[0], add = exLoad(c.ex, n);
+    const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n);
     if(plan.some(p => patternOf(p.ex) === patternOf(c.ex))) return false;          /* 同じ動きは1日1つ */
     if(donePattern.has(patternOf(c.ex))) return false;                              /* 今日もうやった動き */
     if(planAvoid && planAvoid.has(c.ex)) return false;                              /* 組み直しで避ける種目 */
@@ -1522,15 +1787,20 @@ function buildPlan(){
     if(ex.kind === "w" && !gearOptions(c.ex).length) return false;                  /* 持っているダンベルで作れない */
     if(ex.p.some(m => (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役 */
     if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m))) return false;   /* 1日の上限（補助で使う部位も含む） */
-    if((week[main] || 0) + (today[main] || 0) + n > WEEK_MAX) return false;       /* 週の上限 */
+    /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
+       （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
+    if(Object.keys(add).some(m => (week[m] || 0) + (today[m] || 0) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4))) return false;
     if(plan.length >= SESSION_MAX.exercises || sets + n > SESSION_MAX.sets) return false;
     if(minutes + mins(c) > SESSION_MAX.minutes) return false;
     return true;
   };
-  /* 同じくらい役に立つなら、しばらくやっていない種目・前回と違う組み方を選ぶ */
+  /* 同じくらい役に立つなら、しばらくやっていない種目・前回と違う組み方を選ぶ。
+     直近のきつさが高すぎる／低すぎるときは、やさしい種目・難しい種目のほうへ少し寄せる */
+  const bias = levelBias();
   const score = c => {
     const fresh = Math.min(daysSinceEx(c.ex), 14) / 14;
-    return gain(c) * (1 + 0.15 * fresh) * ((c.label || "") !== lastVariant(c.ex) ? 1.05 : 1);
+    const lv = 1 + 0.12 * bias * (levelOf(c.ex) - 2);
+    return gain(c) * (1 + 0.15 * fresh) * ((c.label || "") !== lastVariant(c.ex) ? 1.05 : 1) * lv;
   };
   const take = c => {
     const it = Object.assign({}, c), add = exLoad(it.ex, it.sets || 3);
@@ -1567,6 +1837,27 @@ function buildPlan(){
   addSets();                               /* 2. まだ足りなければ、その種目のセットを増やす */
   fill(1, SESSION_MAX.exercises);          /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
   fill(0.5, 3);                            /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+
+  /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
+     超えていたら、その部位が主役の種目のセットを1つずつ減らし、2セットを切るなら外す */
+  for(let guard = 0; guard < 24; guard++){
+    const over = Object.keys(today).find(m => (week[m] || 0) + today[m] > WEEK_MAX
+                                          && plan.some(p => EXMAP[p.ex].p[0] === m));
+    if(!over) break;
+    const hit = plan.map((p, i) => ({p, i})).filter(x => EXMAP[x.p.ex].p[0] === over)
+                    .sort((a, b) => (b.p.sets || 3) - (a.p.sets || 3))[0];
+    if(!hit) break;
+    const n = hit.p.sets || 3;
+    if(n <= 2){
+      const all = exLoad(hit.p.ex, n);
+      Object.keys(all).forEach(m => today[m] -= all[m]);
+      sets -= n; minutes -= mins(hit.p); plan.splice(hit.i, 1);
+    }else{
+      const cut = exLoad(hit.p.ex, 1);
+      Object.keys(cut).forEach(m => today[m] -= cut[m]);
+      sets -= 1; minutes -= mins(hit.p) - mins(Object.assign({}, hit.p, {sets: n - 1})); hit.p.sets = n - 1;
+    }
+  }
 
   plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
   planMemo = plan;
@@ -1796,7 +2087,15 @@ const HOLD = {
   curl:      {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
   triext:    {one:"両手でまとめて持つ",                                    per:"total"},
   calf:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、反対の手で壁を支える",   per:"total"},
-  farmer:    {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で左右を持ち替える", per:"total"}
+  farmer:    {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で左右を持ち替える", per:"total"},
+  sumo:      {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
+  splitfloor:{pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
+  fly:       {pair:"両手に1つずつ持つ",    one:"片手ずつ行い、反対の手は床に置く",   per:"arm"},
+  skull:     {pair:"両手に1つずつ持つ",    one:"片手ずつ行い、反対の手で肘を支える", per:"arm"},
+  front:     {pair:"両手に1つずつ持つ",    one:"片手ずつ上げ、左右を入れ替える",     per:"arm"},
+  hammer:    {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
+  shrug:     {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で持ち替える",       per:"total"},
+  row2:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、左右を入れ替える",       per:"total"}
 };
 function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
 
@@ -1895,7 +2194,17 @@ const HOUSE = {
   crunch:    {up:"水を入れたペットボトルを胸に抱える"},
   sideplank: {up:"上の手に水を入れたペットボトルを持ち、天井へ伸ばす"},
   calf:      {up:"荷物を詰めたリュックを背負う"},
-  farmer:    {up:"持ち手にタオルを巻いて太くする（握る力の負荷が上がる）", down:"水を入れたペットボトルや荷物を入れた袋を持つ"}
+  farmer:    {up:"持ち手にタオルを巻いて太くする（握る力の負荷が上がる）", down:"水を入れたペットボトルや荷物を入れた袋を持つ"},
+  sumo:      {up:"荷物を詰めたリュックを背負い、ダンベルと一緒に使う", down:"水を入れた2Lのペットボトルを胸の前で抱える"},
+  splitfloor:{up:"荷物を詰めたリュックを背負う", down:"何も持たずに行う"},
+  bridge:    {up:"荷物を詰めたリュックを骨盤に乗せる（畳んだタオルを挟むと痛くない）"},
+  pushupknee:{up:"膝を離して通常の腕立て伏せへ"},
+  fly:       {down:"水を入れたペットボトルで行う"},
+  skull:     {down:"水を入れたペットボトルで行う"},
+  front:     {down:"水を入れた500mlのペットボトルで行う"},
+  hammer:    {up:"タオルの真ん中を片足で踏み、両端を握って足の抵抗に逆らいながら巻き上げる", down:"水を入れたペットボトルで行う"},
+  shrug:     {up:"荷物を詰めたリュックの持ち手を両手で持つ", down:"水を入れた2Lのペットボトルを両手に持つ"},
+  row2:      {up:"本や水のペットボトルを詰めたリュックの持ち手を握って引く", down:"水を入れた2Lのペットボトルで行う"}
 };
 function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
 

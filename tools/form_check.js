@@ -4,7 +4,7 @@
 globalThis.window = undefined;
 await import('../src/motion.js');
 await import('../src/motions.js');
-for (const f of ['b', 'c', 'd']) { try { await import('../src/motions_' + f + '.js'); } catch (e) {} }
+for (const f of ['b', 'c', 'd', 'e']) { try { await import('../src/motions_' + f + '.js'); } catch (e) {} }
 const M = globalThis.MOTION, V = M.V;
 const DEG = 180 / Math.PI;
 
@@ -267,6 +267,168 @@ const CHECKS = {
         M.boneAngles(deepest.fr.pose, 'shankL').flex < 35],
       ['後ろ脚は体幹と一直線に近い（ACE）', `体幹と後ろ腿のなす角 ${(180 - ang3(deepest.fr.b.spineC.tip, deepest.fr.b.pelvis.pos, deepest.fr.b.shankL.pos)).toFixed(0)}°ずれ`,
         ang3(deepest.fr.b.spineC.tip, deepest.fr.b.pelvis.pos, deepest.fr.b.shankL.pos) > 140]
+    ];
+  },
+
+  /* ============ 追加種目 ============ */
+  sumo: (m) => {
+    const bottom = findT(m, (fr) => -fr.b.pelvis.pos[1]);
+    const thigh = fromHoriz(dir(bottom.fr, 'thighR'));
+    const heel = M.at(bottom.fr, 'footR', M.FOOT.heel)[1];
+    const stance = Math.abs(bottom.fr.b.footR.pos[2] - bottom.fr.b.footL.pos[2]);
+    const shoulder = Math.abs(bottom.fr.b.upperarmR.pos[2] - bottom.fr.b.upperarmL.pos[2]);
+    const toeOut = Math.abs(M.at(bottom.fr, 'footR', M.FOOT.ball)[2] - M.at(bottom.fr, 'footR', M.FOOT.heel)[2]);
+    return [
+      ['一番下で太ももが床と平行（ワイドなので厳密な平行までは求めない）', `太ももの傾き ${thigh.toFixed(0)}°（0=平行）`, Math.abs(thigh) <= 12],
+      ['一番下で股関節が膝と同じ高さ以下（ゴブレットと同じ基準）', `股関節 ${(bottom.fr.b.thighR.pos[1] * 100).toFixed(0)}cm / 膝 ${(bottom.fr.b.shankR.pos[1] * 100).toFixed(0)}cm`,
+        bottom.fr.b.thighR.pos[1] <= bottom.fr.b.shankR.pos[1] + 0.02],
+      ['かかとが浮かない', `かかとの高さ ${(heel * 100).toFixed(1)}cm`, heel < 0.02],
+      ['足幅は肩幅より広い（解説文「肩幅の1.5倍」）', `足幅 ${(stance * 100).toFixed(0)}cm / 肩幅 ${(shoulder * 100).toFixed(0)}cm`, stance > shoulder * 1.2],
+      ['つま先を外へ向ける', `つま先の横ずれ ${(toeOut * 100).toFixed(1)}cm`, toeOut > 0.04]
+    ];
+  },
+  splitfloor: (m) => {
+    const bottom = findT(m, (fr) => -fr.b.pelvis.pos[1]);
+    const rearKnee = bottom.fr.b.shankL.pos[1];
+    const rearHeel = M.at(bottom.fr, 'footL', M.FOOT.heel)[1];
+    const frontKnee = M.boneAngles(bottom.fr.pose, 'shankR').flex;
+    const torso = fromHoriz(dir(bottom.fr, 'spineT'));
+    return [
+      ['一番下で後ろの膝が床に近づく', `後ろ膝の高さ ${(rearKnee * 100).toFixed(0)}cm`, rearKnee < 0.30],
+      ['後ろのかかとは上げたまま', `後ろかかとの高さ ${(rearHeel * 100).toFixed(0)}cm`, rearHeel > 0.06],
+      ['前脚の膝は深く曲がる', `前膝の屈曲 ${frontKnee.toFixed(0)}°`, frontKnee > 80],
+      ['上体はやや前傾（倒しすぎない）', `体幹の傾き ${torso.toFixed(0)}°（90=直立）`, torso > 60 && torso < 88]
+    ];
+  },
+  bridge: (m) => {
+    const top = findT(m, (fr) => fr.b.pelvis.pos[1]);
+    const sh = top.fr.b.upperarmR.pos, hip = top.fr.b.thighR.pos, knee = top.fr.b.shankR.pos;
+    const line = ang3(sh, hip, knee);
+    const kneeAng = M.boneAngles(top.fr.pose, 'shankR').flex;
+    return [
+      ['一番上で肩・腰・膝が一直線に近づく（肩が床にあるぶん、この骨格では150°前後が限界）',
+        `肩-腰-膝 ${line.toFixed(0)}°（180=一直線）`, line > 148],
+      ['膝は90度前後', `膝屈曲 ${kneeAng.toFixed(0)}°`, kneeAng > 70 && kneeAng < 115],
+      ['肩は床につけたまま', `肩の高さ ${(sh[1] * 100).toFixed(0)}cm`, sh[1] < 0.32]
+    ];
+  },
+  pushupknee: (m) => {
+    const bottom = findT(m, (fr) => -fr.b.spineC.pos[1]);
+    const line = ang3(bottom.fr.b.neck.pos, bottom.fr.b.pelvis.pos, bottom.fr.b.shankR.pos);
+    const chest = bottom.fr.b.spineC.pos[1];
+    const knee = bottom.fr.b.shankR.pos[1];
+    const top = findT(m, (fr) => fr.b.spineC.pos[1]);
+    const elbowTop = M.boneAngles(top.fr.pose, 'forearmR').flex;
+    const elbowBottom = M.boneAngles(bottom.fr.pose, 'forearmR').flex;
+    return [
+      ['頭から膝までが一直線', `首-腰-膝 ${line.toFixed(0)}°（180=一直線）`, line > 160],
+      ['胸が床に近づくまで下ろす', `胸の高さ ${(chest * 100).toFixed(0)}cm`, chest < 0.34],
+      ['膝は床についたまま', `膝の高さ ${(knee * 100).toFixed(1)}cm`, knee < 0.10],
+      ['上では肘が伸びる（腕立てと同じく、体を支える腕は完全には伸びきらない）', `肘屈曲 上${elbowTop.toFixed(0)}° / 下${elbowBottom.toFixed(0)}°`, elbowBottom - elbowTop > 30]
+    ];
+  },
+  fly: (m) => {
+    const T = M.cycleTime(m);
+    let minE = 999, maxE = -999, openY = 999, closeGap = 999;
+    for (let i = 0; i <= 60; i++) {
+      const fr = at(m, T * i / 60), e = M.boneAngles(fr.pose, 'forearmR').flex;
+      minE = Math.min(minE, e); maxE = Math.max(maxE, e);
+      openY = Math.min(openY, fr.b.forearmR.pos[1]);
+      closeGap = Math.min(closeGap, Math.abs(fr.b.handR.pos[2] - fr.b.handL.pos[2]));
+    }
+    return [
+      ['肘の角度は固定したまま（伸ばしきらない）', `肘屈曲 ${minE.toFixed(0)}〜${maxE.toFixed(0)}°`, maxE - minE < 12 && minE > 12],
+      ['上腕が床につくまで開く', `開いたときの肘の高さ ${(openY * 100).toFixed(0)}cm`, openY < 0.22],
+      ['閉じたとき両手が胸の上で近づく', `両手の間隔 ${(closeGap * 100).toFixed(0)}cm`, closeGap < 0.30]
+    ];
+  },
+  skull: (m) => {
+    const T = M.cycleTime(m);
+    let maxTilt = 0, deepest = 0, straight = 999;
+    for (let i = 0; i <= 60; i++) {
+      const fr = at(m, T * i / 60);
+      maxTilt = Math.max(maxTilt, angWith(V.sub(fr.b.forearmR.pos, fr.b.upperarmR.pos), [0, 1, 0]));
+      const e = M.boneAngles(fr.pose, 'forearmR').flex;
+      deepest = Math.max(deepest, e); straight = Math.min(straight, e);
+    }
+    return [
+      ['上腕は床に垂直のまま（肘の位置を動かさない）', `上腕の傾き 最大${maxTilt.toFixed(0)}°（0=垂直）`, maxTilt < 22],
+      ['耳の横まで下ろす（肘を深く曲げる）', `肘屈曲 ${deepest.toFixed(0)}°`, deepest > 70],
+      ['最後は肘を伸ばす', `肘屈曲 ${straight.toFixed(0)}°`, straight < 20]
+    ];
+  },
+  front: (m) => {
+    const top = findT(m, (fr) => fr.b.handR.pos[1]);
+    const armH = fromHoriz(dir(top.fr, 'upperarmR'));
+    const handVsShoulder = top.fr.b.handR.pos[1] - top.fr.b.upperarmR.pos[1];
+    const T = M.cycleTime(m);
+    let minE = 999, maxE = -999, lean = 0;
+    for (let i = 0; i <= 60; i++) {
+      const fr = at(m, T * i / 60);
+      const e = M.boneAngles(fr.pose, 'forearmR').flex;
+      minE = Math.min(minE, e); maxE = Math.max(maxE, e);
+      lean = Math.max(lean, Math.abs(90 - fromHoriz(dir(fr, 'spineT'))));
+    }
+    return [
+      ['肩の高さまで（それ以上上げない）', `上腕の傾き ${armH.toFixed(0)}°（0=水平）`, armH > -8 && armH < 14],
+      ['手は肩の高さ付近まで', `手と肩の高さの差 ${(handVsShoulder * 100).toFixed(0)}cm`, Math.abs(handVsShoulder) < 0.14],
+      ['肘の角度は固定したまま', `肘屈曲 ${minE.toFixed(0)}〜${maxE.toFixed(0)}°`, maxE - minE < 12],
+      ['反動で腰を反らせない', `体幹の傾きの振れ ${lean.toFixed(0)}°`, lean < 8]
+    ];
+  },
+  hammer: (m) => {
+    const T = M.cycleTime(m);
+    let ex = 0, minE = 999, maxE = -999;
+    const elbow0 = at(m, 0).b.forearmR.pos;
+    for (let i = 0; i <= 60; i++) {
+      const fr = at(m, T * i / 60), e = M.boneAngles(fr.pose, 'forearmR').flex;
+      minE = Math.min(minE, e); maxE = Math.max(maxE, e);
+      ex = Math.max(ex, V.dist(fr.b.forearmR.pos, elbow0));
+    }
+    const top = findT(m, (fr) => fr.b.handR.pos[1]);
+    const fore = fromHoriz(dir(top.fr, 'forearmR'));
+    return [
+      ['肘の位置を動かさない', `肘の移動 ${(ex * 100).toFixed(1)}cm`, ex < 0.07],
+      ['下で肘を伸ばしきる', `肘屈曲 ${minE.toFixed(0)}°`, minE < 18],
+      ['上まで巻き上げる', `肘屈曲 ${maxE.toFixed(0)}°`, maxE > 120],
+      ['上では前腕が立つ', `前腕の傾き ${fore.toFixed(0)}°（90=垂直）`, fore > 45]
+    ];
+  },
+  shrug: (m) => {
+    const T = M.cycleTime(m);
+    let lo = 999, hi = -999, side = 0, maxE = 0, handOut = 0;
+    const sh0 = at(m, 0).b.upperarmR.pos, hand0 = at(m, 0).b.handR.pos;
+    for (let i = 0; i <= 60; i++) {
+      const fr = at(m, T * i / 60), sh = fr.b.upperarmR.pos;
+      lo = Math.min(lo, sh[1]); hi = Math.max(hi, sh[1]);
+      side = Math.max(side, Math.hypot(sh[0] - sh0[0], sh[2] - sh0[2]));
+      maxE = Math.max(maxE, M.boneAngles(fr.pose, 'forearmR').flex);
+      handOut = Math.max(handOut, Math.abs(fr.b.handR.pos[2] - hand0[2]));
+    }
+    return [
+      ['肩がはっきり上がる', `肩の上下 ${((hi - lo) * 100).toFixed(1)}cm`, hi - lo > 0.02],
+      ['肩をまっすぐ上下させる（回さない）', `前後左右のずれ ${(side * 100).toFixed(1)}cm`, side < 0.04],
+      ['腕は伸ばしたまま（肘で引かない）', `肘屈曲 最大${maxE.toFixed(0)}°`, maxE < 20],
+      ['腕は体の横に垂らしたまま（外へ開かない）', `手の横ずれ ${(handOut * 100).toFixed(1)}cm`, handOut < 0.04]
+    ];
+  },
+  row2: (m) => {
+    const T = M.cycleTime(m);
+    let loT = 999, hiT = -999, minE = 999, maxE = -999;
+    for (let i = 0; i <= 60; i++) {
+      const fr = at(m, T * i / 60), tor = fromHoriz(dir(fr, 'spineT'));
+      loT = Math.min(loT, tor); hiT = Math.max(hiT, tor);
+      const e = M.boneAngles(fr.pose, 'forearmR').flex;
+      minE = Math.min(minE, e); maxE = Math.max(maxE, e);
+    }
+    const top = findT(m, (fr) => M.boneAngles(fr.pose, 'forearmR').flex);
+    const elbowBack = top.fr.b.forearmR.pos[0] - top.fr.b.upperarmR.pos[0];
+    const back = fromHoriz(dir(at(m, 0), 'spineT'));
+    return [
+      ['上体の角度を保つ（起き上がってこない）', `体幹の傾き ${loT.toFixed(0)}〜${hiT.toFixed(0)}°`, hiT - loT < 8],
+      ['上体は床と平行に近い', `体幹の傾き ${back.toFixed(0)}°（0=床と平行）`, Math.abs(back) < 35],
+      ['下では腕が垂れる', `肘屈曲 ${minE.toFixed(0)}°`, minE < 20],
+      ['肘を腰の方向へ引き上げる', `肘は肩より後ろへ ${(elbowBack * 100).toFixed(0)}cm`, elbowBack < -0.02 && maxE > 100]
     ];
   }
 };

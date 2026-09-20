@@ -29,8 +29,8 @@
     id: 'goblet',
     view: { az: 36, el: 8 },
     phases: [
-      { t: 0, label: '立つ' }, { t: 0.5, label: '下ろす 3秒' }, { t: 3.5, label: '一番下' },
-      { t: 4.1, label: '立ち上がる' }, { t: 5.0, label: '立つ' }
+      { t: 0, label: '立った位置' }, { t: 0.5, label: '下ろす 3秒' }, { t: 3.5, label: '一番下' },
+      { t: 4.1, label: '立ち上がる 1秒' }, { t: 5.0, label: '立った位置' }
     ],
     feet: { R: flatFoot(0, 0.17, 16), L: flatFoot(0, -0.17, -16) },
     hands: gobletHands,
@@ -61,8 +61,8 @@
     view: { az: -28, el: 16 },
     props: [CHAIR],
     phases: [
-      { t: 0, label: '下で伸ばす' }, { t: 0.4, label: '肘を引き上げる 1秒' },
-      { t: 1.4, label: '上で1秒' }, { t: 2.4, label: '下ろす 3秒' }, { t: 5.4, label: '下で伸ばす' }
+      { t: 0, label: '腕を垂らした位置' }, { t: 0.4, label: '肘を引き上げる 1秒' },
+      { t: 1.4, label: '上で1秒止める' }, { t: 2.4, label: '下ろす 3秒' }, { t: 5.4, label: '腕を垂らした位置' }
     ],
     /* 左膝を座面に固定し、そこから骨盤の位置が決まる */
     anchor: { bone: 'shankL', local: [0.075, 0, 0], at: [0.10, 0.45, -0.26] },
@@ -109,8 +109,8 @@
     view: { az: 24, el: 8 },
     props: [STEP],
     phases: [
-      { t: 0, label: 'かかとを下げる' }, { t: 0.6, label: '上げる 1秒' }, { t: 1.6, label: '一番上で2秒' },
-      { t: 3.6, label: '下ろす 3秒' }, { t: 6.6, label: 'かかとを下げきる' }
+      { t: 0, label: 'かかとを下げた位置' }, { t: 0.6, label: 'かかとを上げる 1秒' }, { t: 1.6, label: '一番上で2秒止める' },
+      { t: 3.6, label: '下ろす 3秒' }, { t: 6.6, label: 'かかとを下げた位置' }
     ],
     feet: { R: calfFoot(0.10), L: calfFoot(-0.10) },
     dumbbells: [{ grip: 'handR', kg: 5 }],

@@ -2,7 +2,7 @@
 globalThis.window = undefined;
 const ROOT = '../src/';
 await import(ROOT + 'motion.js'); await import(ROOT + 'motions.js');
-for (const f of ['b','c','d']) { try { await import(ROOT + 'motions_' + f + '.js'); } catch(e){} }
+for (const f of ['b','c','d','e']) { try { await import(ROOT + 'motions_' + f + '.js'); } catch(e){} }
 const M = globalThis.MOTION;
 /* 荷重時に現実的な目安（度） */
 const REAL = {
