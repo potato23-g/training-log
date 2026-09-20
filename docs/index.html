@@ -3443,7 +3443,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-19 02:10";
+const BUILD_VERSION = "2026-09-20 17:04";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -4130,6 +4130,7 @@ function itemMinutes(it){
 }
 
 let planMemo = null;                       /* 描画1回のあいだだけ使い回す */
+let planAvoid = null;                      /* 組み直しのとき、さっきまで出ていた（まだ手を付けていない）種目を避ける */
 function buildPlan(){
   if(planMemo) return planMemo;
   const week = loadMap(1, 6);              /* 直近7日 = 1〜6日前 + 今日の分 */
@@ -4166,6 +4167,7 @@ function buildPlan(){
     const ex = EXMAP[c.ex], n = c.sets || 3, main = ex.p[0], add = exLoad(c.ex, n);
     if(plan.some(p => patternOf(p.ex) === patternOf(c.ex))) return false;          /* 同じ動きは1日1つ */
     if(donePattern.has(patternOf(c.ex))) return false;                              /* 今日もうやった動き */
+    if(planAvoid && planAvoid.has(c.ex)) return false;                              /* 組み直しで避ける種目 */
     if(touched.has(c.ex)) return false;                                             /* 前回手を付けた */
     if(ex.kind === "w" && !gearOptions(c.ex).length) return false;                  /* 持っているダンベルで作れない */
     if(ex.p.some(m => (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役 */
@@ -4254,7 +4256,6 @@ function fixPlan(s){
 function replanToday(){
   const s = session(TODAY);
   const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
-  if(done.length && !confirm("今日記録したぶんはそのままで、まだ手を付けていない種目を今の決まりで入れ替えます。よろしいですか？")) return;
   /* 今日1セットでも記録した種目は、終わったものも途中のものも、セット数・回数・並びをそのまま残す */
   const before = todayItems();
   const keep = done.map(id => {
@@ -4262,19 +4263,27 @@ function replanToday(){
     delete it.extra;
     return it;
   });
+  const untouched = before.filter(it => !done.includes(it.ex)).map(it => it.ex);
   s.entries = (s.entries || []).filter(e => e.sets.length);   /* まだ1セットも入れていない枠は捨てる（前のメニューの残り） */
   delete s.plan; delete s.planAt;
   planMemo = null;
-  if(keep.length){
-    s.plan = keep.concat(buildPlan().map(x => Object.assign({}, x)));
+  planAvoid = untouched.length ? new Set(untouched) : null;    /* さっきまで出ていた種目は避けて選び直す */
+  let fresh = buildPlan().map(x => Object.assign({}, x));
+  if(!fresh.length && planAvoid){                              /* 代わりが無ければ、元の候補も許してもう一度 */
+    planAvoid = null; planMemo = null;
+    fresh = buildPlan().map(x => Object.assign({}, x));
+  }
+  planAvoid = null; planMemo = null;
+  if(keep.length || fresh.length){
+    s.plan = keep.concat(fresh);
     s.planAt = Date.now();
-    planMemo = null;
   }
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
   openEx = null; editEx = null;
   render();
-  setStatus("今日のメニューを組み直しました");
+  setStatus(fresh.length ? "今日のメニューを組み直しました（" + fresh.length + "種目を入れ替え）"
+                         : "いま入れ替えられる種目がありません（部位の回復と1日の上限のため）");
 }
 function isDoneToday(id){
   const it = todayItems().find(i=>i.ex===id);
