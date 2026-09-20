@@ -296,7 +296,7 @@ async function runMainIntegration(port){
     const C = makeDevice(mock.base);
     const connectedC = await C.ctx.syncConnect("acme/repo", "wrong-token");
     ok(connectedC === false, "誤った鍵: connect() は false を返す");
-    ok(C.ctx.syncCard().indexOf("鍵が無効か期限切れです") !== -1, "誤った鍵: 401のメッセージを表示する");
+    ok(C.ctx.syncCard().indexOf("鍵が無効か、期限が切れています") !== -1, "誤った鍵: 401のメッセージを表示する");
     ok(C.ctx.localStorage.getItem("trainlog.sync.v1") === null, "誤った鍵: 設定は保存されない");
   } finally {
     mock.proc.kill();

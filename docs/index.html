@@ -1466,10 +1466,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       { t: 3.0, label: 'よくある崩れ（腰が落ちる）', wrong: true }, { t: 4.0, label: '正しい姿勢へ戻す' }
     ],
     /* 下側の前腕の裏を床に固定する。肘は肩の真下、前腕は前方（+X）に伸びる */
-    anchor: { bone: 'forearmR', local: [-0.043, -0.13, 0], at: [0.13, 0, 0] },
+    anchor: { bone: 'forearmR', local: [0.043, -0.13, 0], at: [0.13, 0, 0] },
     contacts: [
-      { name: 'elbowR', bone: 'forearmR', local: [-0.043, -0.02, 0] },
-      { name: 'wristR', bone: 'forearmR', local: [-0.040, -0.24, 0] },
+      /* 前腕を回した向きに合わせて、床に着く側（手のひら側）の点を取る */
+      { name: 'elbowR', bone: 'forearmR', local: [0.043, -0.02, 0] },
+      { name: 'wristR', bone: 'forearmR', local: [0.040, -0.24, 0] },
       { name: 'footR', bone: 'footR', local: [0.06, -0.02, 0.045] }
     ],
     base: {
@@ -2894,17 +2895,17 @@ function syncMergeGear(a, b){
    ============================================================ */
 function syncErrorMessage(kind){
   switch(kind){
-    case "auth": return "鍵が無効か期限切れです。GitHubで作り直して入れ直してください";
-    case "forbidden": return "鍵にこのリポジトリへの書き込み権限がありません（Contents を Read and write に）";
-    case "repo404": return "リポジトリが見つかりません。名前と、鍵で選んだリポジトリを確認してください";
-    case "public": return "公開リポジトリなので保存しません。非公開（Private）のリポジトリを指定してください";
+    case "auth": return "鍵が無効か、期限が切れています。GitHubで作り直して入れ直してください";
+    case "forbidden": return "鍵にこのリポジトリへの書き込み権限がありません。Contents を Read and write にしてください";
+    case "repo404": return "リポジトリが見つかりません。名前と、鍵で選んだリポジトリを確かめてください";
+    case "public": return "公開リポジトリには保存しません。非公開（Private）のリポジトリを指定してください";
     case "network": return "通信できませんでした。次に起動したときや記録したときに、まとめて同期します";
-    case "conflict": return "同期が混み合っています。少し待ってからもう一度お試しください";
-    case "badformat": return "リポジトリの記録データがこのアプリの形式ではありません";
+    case "conflict": return "同期が混み合っています。少し待ってから、もう一度お試しください";
+    case "badformat": return "リポジトリにある記録が、このアプリの形式ではありません";
     case "progress": return "同期しています…";
     case "needrepo": return "リポジトリと鍵の両方を入力してください";
     case "badrepo": return "リポジトリは「ユーザー名/リポジトリ名」の形式で入力してください";
-    default: return "エラーが発生しました。しばらくしてからお試しください";
+    default: return "うまくいきませんでした。しばらく待ってから、もう一度お試しください";
   }
 }
 function syncMakeError(kind, cause){
@@ -3347,7 +3348,7 @@ async function syncConnect(repoRaw, tokenRaw){
 }
 function syncDisconnect(){
   var ok = true;
-  try{ ok = confirm("同期を解除しますか？記録はこの端末には残ります。"); }catch(e){ ok = true; }
+  try{ ok = confirm("同期を解除しますか？　この端末の記録はそのまま残ります。"); }catch(e){ ok = true; }
   if(!ok) return;
   syncClearConfig();
   syncStatusText = "";
@@ -3364,7 +3365,7 @@ function syncEsc(s){
 
 /* GitHub の作成画面を、名前・公開範囲・権限を入れた状態で開くリンク（GitHub公式のURLパラメータ） */
 var SYNC_REPO_NAME = "training-log-data";
-var SYNC_WHEN = "同期するのは、アプリを起動したとき、セットを記録・修正したとき、メモやダンベル設定を変えたときです。";
+var SYNC_WHEN = "同期するのは、アプリを開いたとき、セットを記録・修正したとき、メモやダンベルの登録を変えたときです。";
 function syncNewRepoUrl(){
   return "https://github.com/new?name=" + SYNC_REPO_NAME + "&visibility=private";
 }
@@ -3386,11 +3387,11 @@ function syncCard(){
       <details>
         <summary>はじめての設定（5分ほど）</summary>
         <ol class="steps">
-          <li><a href="${syncNewRepoUrl()}" target="_blank" rel="noopener">リポジトリ作成画面を開く</a>。名前（${SYNC_REPO_NAME}）と「Private」は入力済み。「Add README」をオンにして「Create repository」を押す。</li>
-          <li><a href="${syncNewTokenUrl()}" target="_blank" rel="noopener">鍵の作成画面を開く</a>。名前・期限なし・Contents の書き込み権限は入力済み。Repository access で「Only select repositories」を選び、${SYNC_REPO_NAME} を選んでから、一番下の「Generate token」を押す。</li>
-          <li>表示された鍵（github_pat_ で始まる文字列）をコピーする。この画面を閉じると二度と表示されない。</li>
-          <li>下の欄に「GitHubのユーザー名/${SYNC_REPO_NAME}」と鍵を入れて「接続」を押す。</li>
-          <li>スマホでも、ホーム画面に追加したアプリを開いて同じ欄に同じ2つを入れる（Safariで開いた画面とは別扱いになる）。</li>
+          <li><a href="${syncNewRepoUrl()}" target="_blank" rel="noopener">リポジトリ作成画面を開く</a>。名前（${SYNC_REPO_NAME}）と「Private」は入力済みです。「Add README」をオンにして「Create repository」を押します。</li>
+          <li><a href="${syncNewTokenUrl()}" target="_blank" rel="noopener">鍵の作成画面を開く</a>。名前・期限なし・Contents の書き込み権限は入力済みです。Repository access で「Only select repositories」を選び、${SYNC_REPO_NAME} を選んでから、一番下の「Generate token」を押します。</li>
+          <li>表示された鍵（github_pat_ で始まる文字列）をコピーします。この画面を閉じると二度と表示されません。</li>
+          <li>下の欄に「GitHubのユーザー名/${SYNC_REPO_NAME}」と鍵を入れて、「接続」を押します。</li>
+          <li>スマホでも、ホーム画面に追加したアプリを開いて、同じ2つを入れます（Safariで開いた画面とは別扱いになります）。</li>
         </ol>
         <p class="lastline">鍵はこの端末のブラウザの中にだけ保存し、GitHub以外には送りません。記録はそのリポジトリの trainlog フォルダに、月ごとのファイルで保存されます。鍵が要らなくなったら、GitHubの Settings → Developer settings → Fine-grained tokens から削除できます。</p>
       </details>
@@ -3450,7 +3451,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-20 22:17";
+const BUILD_VERSION = "2026-09-20 22:22";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -3726,13 +3727,13 @@ function notify(title, body){
   direct();
 }
 async function askNotify(){
-  if(!notifySupported()){ CAP.notif = false; setStatus("この画面では端末通知が使えません。音と振動で知らせます"); render(); return; }
+  if(!notifySupported()){ CAP.notif = false; setStatus("この画面では端末の通知が使えません。音と振動でお知らせします"); render(); return; }
   try{
     const r = await Notification.requestPermission();
     const ok = (r === "granted");
     PREF.set("notify", ok); CAP.notif = ok;
-    setStatus(ok ? "" : "通知が許可されませんでした。音と振動で知らせます");
-  }catch(e){ CAP.notif = false; PREF.set("notify", false); setStatus("この画面では端末通知が使えません。音と振動で知らせます"); }
+    setStatus(ok ? "" : "通知が許可されませんでした。音と振動でお知らせします");
+  }catch(e){ CAP.notif = false; PREF.set("notify", false); setStatus("この画面では端末の通知が使えません。音と振動でお知らせします"); }
   render();
 }
 /* ---- 画面を消さない ---- */
@@ -3773,7 +3774,7 @@ function tickRest(){
   clearInterval(restIv); restIv = null;
   document.getElementById("timerT").textContent = "0:00";
   ensureChimeNow(); buzz();
-  notify("次のセットの時間です", restLabel || "休憩おわり");
+  notify("休憩が終わりました", restLabel || "次のセットへ");
   const mine = restEnd;
   setTimeout(()=>{ if(restEnd === mine && !restIv) stopRest(); }, 4000);
 }
@@ -4235,9 +4236,9 @@ function restText(){
   const tired = big.filter(m => muscleLoadBetween(m, 1, 1) >= recoverLimit(m));
   const enough = big.filter(m => !tired.includes(m) && muscleLoadBetween(m, 1, 6) >= WEEK_TARGET);
   const names = ms => ms.map(m => MUSCLES[m]).join("・");
-  return (tired.length ? "昨日しっかり使った" + names(tired) + "は、回復を待つ日です。" : "")
+  return (tired.length ? names(tired) + "は、昨日しっかり使ったので回復の途中です。" : "")
        + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
-       + "今日は休むのがいちばん効率的です。体を動かしたいときは「種目を追加」から選べます。";
+       + "今日は休むほうが伸びます。体を動かしたいときは、「種目を追加」から選べます。";
 }
 function todayItems(){
   const s = session(TODAY);
@@ -4290,7 +4291,7 @@ function replanToday(){
   openEx = null; editEx = null;
   render();
   setStatus(fresh.length ? "今日のメニューを組み直しました（" + fresh.length + "種目を入れ替え）"
-                         : "いま入れ替えられる種目がありません（部位の回復と1日の上限のため）");
+                         : "入れ替えられる種目がありません。部位の回復と1日の上限のためです");
 }
 function isDoneToday(id){
   const it = todayItems().find(i=>i.ex===id);
@@ -4308,7 +4309,7 @@ function adjust(kind, r, rpe){
   if(!rpe) return {r:clampR(kind,r), why:""};
   if(rpe <= 5) return {r:clampR(kind, r + st*2), why:"かなり余裕があったので増やしました"};
   if(rpe <= 6) return {r:clampR(kind, r + st), why:"まだ余力があるので少し増やしました"};
-  if(rpe <= 9) return {r:clampR(kind, r), why:"狙いの範囲です。同じ数字で"};
+  if(rpe <= 9) return {r:clampR(kind, r), why:"狙いの範囲です。同じ数字で続けます"};
   return {r:clampR(kind, r - st), why:"限界まで行ったので少し減らしました"};
 }
 /* 次のセットの提案。重さは持っているダンベルで作れる使い方の中からだけ選ぶ */
@@ -4341,7 +4342,7 @@ function suggestNext(item, e, last){
   }
   const opt = kind==="w" ? defaultOption(id) : held;
   return {r:clampR(kind, item.r || ex.r), w: kind==="w" ? (opt ? opt.total : 0) : undefined, opt,
-          why:"初回はフォーム優先。余力を2〜3回残して終える", src:"初回"};
+          why:"初回はフォームを優先します。余力を2〜3回残して終えてください", src:"初回"};
 }
 function sugText(item, sug){
   const ex = EXMAP[item.ex];
@@ -4362,12 +4363,12 @@ function viewToday(){
 
   let hero;
   if(!items.length){
-    hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>休み</h2>
+    hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>今日は休み</h2>
       <p class="sub">${restText()}</p></div>`;
   }else if(!next){
     const total = s.entries.reduce((a,e)=>a+e.sets.length,0);
     hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>完了</h2>
-      <div class="bigset"><span class="v num" style="color:var(--done)">${total}</span><span class="u">セット記録</span></div>
+      <div class="bigset"><span class="v num" style="color:var(--done)">${total}</span><span class="u">セット</span></div>
       <p class="sub">お疲れさまでした。直したい記録は、各種目の「修正」から消せます。</p></div>`;
   }else{
     const ex = EXMAP[next.ex];
@@ -4380,7 +4381,7 @@ function viewToday(){
       <h2>${itemName(next)}</h2>${inner}
       ${sug.opt ? `<p class="sub">${sug.opt.text}</p>` : ""}
       <p class="sub">${sug.src}${sug.why?"　→　"+sug.why:""}</p>
-      ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">昨日使った部位の回復待ちや、今週の量が足りている部位が多いので、今日は短めです。</p>` : ""}</div>`;
+      ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">回復の途中の部位と、今週の量が足りている部位が多いため、今日は種目を少なめにしています。</p>` : ""}</div>`;
   }
 
   const rows = items.map(it=>exRow(it)).join("");
@@ -4392,7 +4393,7 @@ function viewToday(){
     </div>
     ${gearCard()}
     ${settingsCard()}
-    <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${BUILD_VERSION}　新しい版は、アプリを開き直すと切り替わります</p>`;
+    <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${BUILD_VERSION}（更新があるときは、アプリを開き直すと切り替わります）</p>`;
 }
 
 /* ============================================================
@@ -4610,8 +4611,8 @@ function gearCard(){
   <div class="card">
     ${rows.length ? rows.map(row).join("") : `<p style="margin:0;font-size:14px">登録なし</p>`}
     <div class="rowbtns"><button data-act="dbadd">${rows.length ? "別の重さを追加" : "ダンベルを追加"}</button></div>
-    ${!state.gear ? `<p class="lastline"><b>まだ登録されていません。</b>今は5kg×2本を持っている前提で提案しています。持っている分に直してください。</p>` : ""}
-    <p class="lastline">${inv.length ? (state.gear ? "登録中: " : "前提: ") + inv.map(x => kgText(x.kg) + "×" + x.n + "本").join("、") : "ダンベルなし（ダンベルを使わない種目と、日用品での代用を提案します）"}</p>
+    ${!state.gear ? `<p class="lastline"><b>ダンベルがまだ登録されていません。</b>いまは5kg×2本をお持ちの前提で提案しています。実際の内容に直してください。</p>` : ""}
+    <p class="lastline">${inv.length ? (state.gear ? "登録中: " : "前提: ") + inv.map(x => kgText(x.kg) + "×" + x.n + "本").join("、") : "登録なし。ダンベルを使わない種目と、日用品で代用するやり方を提案します"}</p>
     <p class="lastline">持っている重さと本数だけ入れてください。種目ごとにどれを何本・どう持つかはアプリが決めます。持っていない重さは提案しません。足りないときは、タオルやリュックなどの日用品を使うやり方を出します。</p>
   </div>`;
 }
@@ -4633,7 +4634,7 @@ function settingsCard(){
   const notifState = !notifySupported() ? "この画面では使えません"
     : (typeof Notification !== "undefined" && Notification.permission === "denied") ? "ブラウザ側で拒否されています"
     : (notif ? "オン" : "オフ");
-  return `<h3 class="sec">休憩おわりの知らせ</h3>
+  return `<h3 class="sec">休憩の終わりを知らせる</h3>
   <div class="card">
     <div class="setrow"><span>音で知らせる</span>
       <button data-act="pref" data-k="sound" class="tg ${sound?"on":""}">${sound?"オン":"オフ"}</button></div>
@@ -4736,7 +4737,7 @@ function todayAdvice(item, sug){
   const tired = tiredMuscle(id);
   if(tired){
     return {level:"recover", warn:true, short:"回復優先",
-      text: MUSCLES[tired] + "は昨日 " + (Math.round(muscleLoadBetween(tired, 1, 1)*10)/10) + " セット使っています。セット数を1つ減らすか、きつさ7くらいで止めておくほうが回復に有利です。"};
+      text: MUSCLES[tired] + "を昨日 " + (Math.round(muscleLoadBetween(tired, 1, 1)*10)/10) + " セット使っています。今日はセット数を1つ減らすか、きつさ7くらいで止めると回復が進みます。"};
   }
 
   /* 3. 前回の記録から、今日の持ち方を変えた */
@@ -4782,7 +4783,7 @@ function todayAdvice(item, sug){
   if(st >= 4){
     const alt = altFor(id, false);
     if(alt) return {level:"swap", short:"変えてもいい",
-      text: st + "回続けて同じ種目です。同じ" + MUSCLES[ex.p[0]] + "を使う「" + alt.name + "」に替えると刺激が変わります。",
+      text: st + "回続けて同じ種目です。" + MUSCLES[ex.p[0]] + "を同じように使う「" + alt.name + "」に替えると、刺激が変わります。",
       alt: alt.id};
   }
   return null;
@@ -4866,7 +4867,7 @@ function exRow(item){
         <button class="addbtn" data-act="addset" data-ex="${id}">記録</button>
       </div>
       <p class="lastline">きつさは 8〜9 が狙いです。10は限界、7以下は軽すぎます。入れた数字で次のセットの回数が変わります。</p>
-      <p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットをやっていい時間になると音で知らせます。</p>
+      <p class="lastline">「記録」を押すと休憩のカウントダウンが始まります。次のセットに入っていい時間になると、音でお知らせします。</p>
       <div class="rowbtns">
         <button data-act="goref" data-ex="${id}">解説を見る</button>
       </div>
@@ -4896,7 +4897,7 @@ function viewEx(){
 
   const left = `
     <div class="card">
-      <h4>動き<span class="refhead">${motionOf(refEx) ? "再生中は横にドラッグで回せます" : ""}</span></h4>
+      <h4>動き<span class="refhead">${motionOf(refEx) ? "再生中は左右にドラッグすると回せます" : ""}</span></h4>
       ${diaHTML(refEx, false)}
     </div>
     <div class="card" id="refFig">
@@ -5128,7 +5129,7 @@ function planSummary(){
 function viewPlan(){
   const p = planSummary();
   if(p.totalSessions < 3){
-    return `<div class="empty">まだデータが少ないため提案できません。<br>あと${3 - p.totalSessions}回ほど記録すると、傾向が見えてきます。</div>`;
+    return `<div class="empty">記録がまだ少ないため、提案はもう少し先になります。<br>あと${3 - p.totalSessions}回ほど記録すると、傾向が見えてきます。</div>`;
   }
 
   const levelCards = p.level.length
@@ -5138,7 +5139,7 @@ function viewPlan(){
         <p class="lastline" style="margin-top:0">${s.why}</p>
         <div class="rowbtns"><button data-act="goref" data-ex="${s.exId}">種目を見る</button></div>
       </div>`).join("")
-    : `<div class="card"><p style="margin:0;font-size:14px">今のところ、切り替えが必要な種目はありません。今のメニューのまま続けてください。</p></div>`;
+    : `<div class="card"><p style="margin:0;font-size:14px">切り替えが必要な種目はありません。いまのメニューのまま続けてください。</p></div>`;
 
   const balanceCards = p.balance.length
     ? p.balance.map(s=>`<div class="card">
@@ -5205,7 +5206,7 @@ function viewHist(){
   return `
     <div class="card">
       <h4>これまで</h4>
-      <div class="bigset"><span class="v num">${streakDays}</span><span class="u">回のトレーニング・${totalSets}セット</span></div>
+      <div class="bigset"><span class="v num">${streakDays}</span><span class="u">回のトレーニング（合計 ${totalSets} セット）</span></div>
       <p class="lastline">直近7日で ${last7} 回。</p>
     </div>
     <h3 class="sec">種目ごとの推移</h3>
@@ -5251,7 +5252,7 @@ function wire(){
       else if(a==="asknotify"){ if(PREF.get("notify",false)){ PREF.set("notify",false); render(); } else askNotify(); }
       else if(a==="testalert"){ testChime(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
       else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
-      else if(a==="addex"){ openPicker("add"); }
+      else if(a==="addex"){ openPicker(); }
       else if(a==="replan"){ replanToday(); }
       else if(a==="addtoday"){ addToProgramToday(el.dataset.ex); }
       else if(a==="days"){ bodyDays = +el.dataset.d; selMuscle=null; render(); }
@@ -5391,7 +5392,7 @@ function delSet(id, i){
   const gone = e.sets.splice(i,1)[0];
   if(gone && gone.id) s.del = (s.del || []).concat(gone.id);        /* 別の端末から復活しないように、消した印を残す */
   const inPlan = todayItems().some(x => x.ex === id && !x.extra);
-  if(!e.sets.length && !inPlan && !state.program.includes(id)){
+  if(!e.sets.length && !inPlan){
     s.entries = s.entries.filter(x => x !== e);
   }
   persistSession(TODAY);
@@ -5434,36 +5435,13 @@ const sheet = document.getElementById("sheet");
 const sheetInner = document.getElementById("sheetInner");
 sheet.onclick = (e)=>{ if(e.target===sheet) sheet.classList.remove("on"); };
 
-function openPicker(mode){
-  if(mode==="add"){
-    sheetInner.innerHTML = `<h4>今日のメニューに追加</h4><div class="picklist">` +
-      EX.map(e=>`<button data-pick="${e.id}">${e.name}<span>${e.p.map(m=>MUSCLES[m]).join("・")}</span></button>`).join("") +
-      `</div>`;
-    sheetInner.querySelectorAll("[data-pick]").forEach(b=>{
-      b.onclick = ()=>{ sheet.classList.remove("on"); addToProgramToday(b.dataset.pick); };
-    });
-  }else{
-    sheetInner.innerHTML = `<h4>基本メニュー</h4>
-      <p class="lastline" style="margin-top:0">毎回のトレーニングで表示される種目です。タップで入れ替えできます。</p>
-      <div class="picklist">` +
-      EX.map(e=>{
-        const on = state.program.includes(e.id);
-        return `<button data-tog="${e.id}" style="${on?'border-color:var(--muscle);':''}">${on?"■ ":"□ "}${e.name}<span>${e.p.map(m=>MUSCLES[m]).join("・")}</span></button>`;
-      }).join("") +
-      `</div><div class="rowbtns"><button data-reset="1">既定に戻す</button><button data-close="1">閉じる</button></div>`;
-    sheetInner.querySelectorAll("[data-tog]").forEach(b=>{
-      b.onclick = ()=>{
-        const id = b.dataset.tog;
-        if(state.program.includes(id)) state.program = state.program.filter(x=>x!==id);
-        else state.program.push(id);
-        persistProgram(); openPicker("prog"); render();
-      };
-    });
-    const rs = sheetInner.querySelector("[data-reset]");
-    if(rs) rs.onclick = ()=>{ state.program = DEFAULT_PROGRAM.slice(); persistProgram(); openPicker("prog"); render(); };
-    const cl = sheetInner.querySelector("[data-close]");
-    if(cl) cl.onclick = ()=> sheet.classList.remove("on");
-  }
+function openPicker(){
+  sheetInner.innerHTML = `<h4>今日のメニューに追加</h4><div class="picklist">` +
+    EX.map(e=>`<button data-pick="${e.id}">${e.name}<span>${e.p.map(m=>MUSCLES[m]).join("・")}</span></button>`).join("") +
+    `</div>`;
+  sheetInner.querySelectorAll("[data-pick]").forEach(b=>{
+    b.onclick = ()=>{ sheet.classList.remove("on"); addToProgramToday(b.dataset.pick); };
+  });
   sheet.classList.add("on");
 }
 

@@ -183,10 +183,11 @@
       { t: 3.0, label: 'よくある崩れ（腰が落ちる）', wrong: true }, { t: 4.0, label: '正しい姿勢へ戻す' }
     ],
     /* 下側の前腕の裏を床に固定する。肘は肩の真下、前腕は前方（+X）に伸びる */
-    anchor: { bone: 'forearmR', local: [-0.043, -0.13, 0], at: [0.13, 0, 0] },
+    anchor: { bone: 'forearmR', local: [0.043, -0.13, 0], at: [0.13, 0, 0] },
     contacts: [
-      { name: 'elbowR', bone: 'forearmR', local: [-0.043, -0.02, 0] },
-      { name: 'wristR', bone: 'forearmR', local: [-0.040, -0.24, 0] },
+      /* 前腕を回した向きに合わせて、床に着く側（手のひら側）の点を取る */
+      { name: 'elbowR', bone: 'forearmR', local: [0.043, -0.02, 0] },
+      { name: 'wristR', bone: 'forearmR', local: [0.040, -0.24, 0] },
       { name: 'footR', bone: 'footR', local: [0.06, -0.02, 0.045] }
     ],
     base: {

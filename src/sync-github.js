@@ -259,17 +259,17 @@ function syncMergeGear(a, b){
    ============================================================ */
 function syncErrorMessage(kind){
   switch(kind){
-    case "auth": return "鍵が無効か期限切れです。GitHubで作り直して入れ直してください";
-    case "forbidden": return "鍵にこのリポジトリへの書き込み権限がありません（Contents を Read and write に）";
-    case "repo404": return "リポジトリが見つかりません。名前と、鍵で選んだリポジトリを確認してください";
-    case "public": return "公開リポジトリなので保存しません。非公開（Private）のリポジトリを指定してください";
+    case "auth": return "鍵が無効か、期限が切れています。GitHubで作り直して入れ直してください";
+    case "forbidden": return "鍵にこのリポジトリへの書き込み権限がありません。Contents を Read and write にしてください";
+    case "repo404": return "リポジトリが見つかりません。名前と、鍵で選んだリポジトリを確かめてください";
+    case "public": return "公開リポジトリには保存しません。非公開（Private）のリポジトリを指定してください";
     case "network": return "通信できませんでした。次に起動したときや記録したときに、まとめて同期します";
-    case "conflict": return "同期が混み合っています。少し待ってからもう一度お試しください";
-    case "badformat": return "リポジトリの記録データがこのアプリの形式ではありません";
+    case "conflict": return "同期が混み合っています。少し待ってから、もう一度お試しください";
+    case "badformat": return "リポジトリにある記録が、このアプリの形式ではありません";
     case "progress": return "同期しています…";
     case "needrepo": return "リポジトリと鍵の両方を入力してください";
     case "badrepo": return "リポジトリは「ユーザー名/リポジトリ名」の形式で入力してください";
-    default: return "エラーが発生しました。しばらくしてからお試しください";
+    default: return "うまくいきませんでした。しばらく待ってから、もう一度お試しください";
   }
 }
 function syncMakeError(kind, cause){
@@ -712,7 +712,7 @@ async function syncConnect(repoRaw, tokenRaw){
 }
 function syncDisconnect(){
   var ok = true;
-  try{ ok = confirm("同期を解除しますか？記録はこの端末には残ります。"); }catch(e){ ok = true; }
+  try{ ok = confirm("同期を解除しますか？　この端末の記録はそのまま残ります。"); }catch(e){ ok = true; }
   if(!ok) return;
   syncClearConfig();
   syncStatusText = "";
@@ -729,7 +729,7 @@ function syncEsc(s){
 
 /* GitHub の作成画面を、名前・公開範囲・権限を入れた状態で開くリンク（GitHub公式のURLパラメータ） */
 var SYNC_REPO_NAME = "training-log-data";
-var SYNC_WHEN = "同期するのは、アプリを起動したとき、セットを記録・修正したとき、メモやダンベル設定を変えたときです。";
+var SYNC_WHEN = "同期するのは、アプリを開いたとき、セットを記録・修正したとき、メモやダンベルの登録を変えたときです。";
 function syncNewRepoUrl(){
   return "https://github.com/new?name=" + SYNC_REPO_NAME + "&visibility=private";
 }
@@ -751,11 +751,11 @@ function syncCard(){
       <details>
         <summary>はじめての設定（5分ほど）</summary>
         <ol class="steps">
-          <li><a href="${syncNewRepoUrl()}" target="_blank" rel="noopener">リポジトリ作成画面を開く</a>。名前（${SYNC_REPO_NAME}）と「Private」は入力済み。「Add README」をオンにして「Create repository」を押す。</li>
-          <li><a href="${syncNewTokenUrl()}" target="_blank" rel="noopener">鍵の作成画面を開く</a>。名前・期限なし・Contents の書き込み権限は入力済み。Repository access で「Only select repositories」を選び、${SYNC_REPO_NAME} を選んでから、一番下の「Generate token」を押す。</li>
-          <li>表示された鍵（github_pat_ で始まる文字列）をコピーする。この画面を閉じると二度と表示されない。</li>
-          <li>下の欄に「GitHubのユーザー名/${SYNC_REPO_NAME}」と鍵を入れて「接続」を押す。</li>
-          <li>スマホでも、ホーム画面に追加したアプリを開いて同じ欄に同じ2つを入れる（Safariで開いた画面とは別扱いになる）。</li>
+          <li><a href="${syncNewRepoUrl()}" target="_blank" rel="noopener">リポジトリ作成画面を開く</a>。名前（${SYNC_REPO_NAME}）と「Private」は入力済みです。「Add README」をオンにして「Create repository」を押します。</li>
+          <li><a href="${syncNewTokenUrl()}" target="_blank" rel="noopener">鍵の作成画面を開く</a>。名前・期限なし・Contents の書き込み権限は入力済みです。Repository access で「Only select repositories」を選び、${SYNC_REPO_NAME} を選んでから、一番下の「Generate token」を押します。</li>
+          <li>表示された鍵（github_pat_ で始まる文字列）をコピーします。この画面を閉じると二度と表示されません。</li>
+          <li>下の欄に「GitHubのユーザー名/${SYNC_REPO_NAME}」と鍵を入れて、「接続」を押します。</li>
+          <li>スマホでも、ホーム画面に追加したアプリを開いて、同じ2つを入れます（Safariで開いた画面とは別扱いになります）。</li>
         </ol>
         <p class="lastline">鍵はこの端末のブラウザの中にだけ保存し、GitHub以外には送りません。記録はそのリポジトリの trainlog フォルダに、月ごとのファイルで保存されます。鍵が要らなくなったら、GitHubの Settings → Developer settings → Fine-grained tokens から削除できます。</p>
       </details>
