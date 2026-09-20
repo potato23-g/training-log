@@ -123,16 +123,16 @@
     base: {
       'pelvis.y': 0.95, 'pelvis.pitch': 0,
       'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': -5,
-      'upperarmR.flex': 168, 'upperarmR.abd': -20, 'upperarmR.rot': 0,
-      'upperarmL.flex': 168, 'upperarmL.abd': -20, 'upperarmL.rot': 0,
+      'upperarmR.flex': 176, 'upperarmR.abd': -6, 'upperarmR.rot': 0,
+      'upperarmL.flex': 176, 'upperarmL.abd': -6, 'upperarmL.rot': 0,
       'forearmR.rot': 0, 'forearmL.rot': 0,
       'handR.flex': -10, 'handL.flex': -10
     },
     keys: [
-      { t: 0.0, hold: true, d: { 'forearmR.flex': 115, 'forearmL.flex': 115 } },
+      { t: 0.0, hold: true, d: { 'forearmR.flex': 95, 'forearmL.flex': 95 } },
       { t: 1.0, d: { 'forearmR.flex': 10, 'forearmL.flex': 10 } },
       { t: 1.3, hold: true, d: { 'forearmR.flex': 10, 'forearmL.flex': 10 } },
-      { t: 4.3, hold: true, d: { 'forearmR.flex': 115, 'forearmL.flex': 115 } }
+      { t: 4.3, hold: true, d: { 'forearmR.flex': 95, 'forearmL.flex': 95 } }
     ]
   });
 

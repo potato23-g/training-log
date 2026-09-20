@@ -993,13 +993,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     },
     keys: [
       { t: 0.0, hold: true, d: { 'pelvis.y': 0.955, 'pelvis.pitch': 4, 'neck.flex': -2 } },
-      { t: 0.5, d: { 'pelvis.y': 0.925, 'pelvis.pitch': 7, 'neck.flex': -3 } },
-      { t: 1.3, d: { 'pelvis.y': 0.830, 'pelvis.pitch': 14, 'neck.flex': -6 } },
-      { t: 2.2, d: { 'pelvis.y': 0.690, 'pelvis.pitch': 22, 'neck.flex': -10 } },
-      { t: 3.5, hold: true, d: { 'pelvis.y': 0.520, 'pelvis.pitch': 30, 'spineT.flex': 5, 'neck.flex': -14 } },
-      { t: 4.1, hold: true, d: { 'pelvis.y': 0.520, 'pelvis.pitch': 30, 'spineT.flex': 5, 'neck.flex': -14 } },
-      { t: 4.6, d: { 'pelvis.y': 0.700, 'pelvis.pitch': 26, 'neck.flex': -11 } },
-      { t: 5.0, d: { 'pelvis.y': 0.870, 'pelvis.pitch': 12, 'neck.flex': -5 } },
+      { t: 0.5, d: { 'pelvis.y': 0.918, 'pelvis.pitch': 7, 'neck.flex': -3 } },
+      { t: 1.3, d: { 'pelvis.y': 0.799, 'pelvis.pitch': 14, 'neck.flex': -6 } },
+      { t: 2.2, d: { 'pelvis.y': 0.624, 'pelvis.pitch': 22, 'neck.flex': -10 } },
+      { t: 3.5, hold: true, d: { 'pelvis.y': 0.412, 'pelvis.pitch': 30, 'spineT.flex': 5, 'neck.flex': -14 } },
+      { t: 4.1, hold: true, d: { 'pelvis.y': 0.412, 'pelvis.pitch': 30, 'spineT.flex': 5, 'neck.flex': -14 } },
+      { t: 4.6, d: { 'pelvis.y': 0.637, 'pelvis.pitch': 26, 'neck.flex': -11 } },
+      { t: 5.0, d: { 'pelvis.y': 0.849, 'pelvis.pitch': 12, 'neck.flex': -5 } },
       { t: 5.3, hold: true, d: { 'pelvis.y': 0.955, 'pelvis.pitch': 4, 'neck.flex': -2 } }
     ]
   });
@@ -1018,7 +1018,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     /* 左膝を座面に固定し、そこから骨盤の位置が決まる */
     anchor: { bone: 'shankL', local: [0.075, 0, 0], at: [0.10, 0.45, -0.26] },
     feet: { R: { at: [-0.24, 0, 0.14], local: sole, yaw: 6, pins: [FOOT.heel, FOOT.ball] } },
-    hands: { L: { at: [0.46, 0.45, -0.31], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+    hands: { L: { at: [0.54, 0.45, -0.31], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
                   pins: [HAND.palmSurf], pole: [-1, -0.3, 0.3] } },
     dumbbells: [{ grip: 'handR', kg: 5 }],
     contacts: [{ name: 'kneeL', bone: 'shankL', local: [0.075, 0, 0], weight: 1 },
@@ -1026,7 +1026,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     base: {
       'pelvis.y': 0.80, 'pelvis.x': -0.02, 'pelvis.z': -0.11, 'pelvis.pitch': 76, 'pelvis.yaw': -5, 'pelvis.roll': -5,
       'spineL.flex': -4, 'spineT.flex': -3, 'spineC.flex': -2, 'spineC.rot': 0, 'neck.flex': -14, 'head.flex': -6,
-      'thighL.flex': 121, 'thighL.abd': -7, 'thighL.rot': 5, 'shankL.flex': 135,
+      'thighL.flex': 100, 'thighL.abd': -7, 'thighL.rot': 5, 'shankL.flex': 128,
       'footL.flex': -34, 'toesL.flex': 2,
       'clavR.prot': 6, 'clavR.elev': -4,
       'upperarmR.flex': 67, 'upperarmR.abd': 1, 'upperarmR.rot': 4,
@@ -1067,19 +1067,19 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     dumbbells: [{ grip: 'handR', kg: 5 }],
     balance: { axes: ['x'] },
     base: {
-      'pelvis.y': 1.049, 'pelvis.pitch': 2,
+      'pelvis.y': 1.085, 'pelvis.pitch': 2,
       'spineT.flex': 2, 'neck.flex': 0,
       'upperarmR.flex': 2, 'upperarmR.abd': 4, 'forearmR.flex': 4, 'forearmR.rot': 86,
       'upperarmL.flex': 6, 'upperarmL.abd': -7, 'forearmL.flex': 12, 'forearmL.rot': 84, 'handL.flex': -4,
       footPitch: 22, 'toesR.flex': -22, 'toesL.flex': -22
     },
     keys: [
-      { t: 0.0, hold: true, d: { footPitch: 22, 'toesR.flex': -22, 'toesL.flex': -22, 'pelvis.y': 1.049 } },
-      { t: 0.6, d: { footPitch: 8, 'toesR.flex': -8, 'toesL.flex': -8, 'pelvis.y': 1.085 } },
-      { t: 1.6, hold: true, d: { footPitch: -36, 'toesR.flex': 36, 'toesL.flex': 36, 'pelvis.y': 1.170 } },
-      { t: 3.6, hold: true, d: { footPitch: -36, 'toesR.flex': 36, 'toesL.flex': 36, 'pelvis.y': 1.170 } },
-      { t: 4.8, d: { footPitch: -6, 'toesR.flex': 6, 'toesL.flex': 6, 'pelvis.y': 1.119 } },
-      { t: 6.6, hold: true, d: { footPitch: 22, 'toesR.flex': -22, 'toesL.flex': -22, 'pelvis.y': 1.049 } }
+      { t: 0.0, hold: true, d: { footPitch: 22, 'toesR.flex': -22, 'toesL.flex': -22, 'pelvis.y': 1.085 } },
+      { t: 0.6, d: { footPitch: 8, 'toesR.flex': -8, 'toesL.flex': -8, 'pelvis.y': 1.112 } },
+      { t: 1.6, hold: true, d: { footPitch: -36, 'toesR.flex': 36, 'toesL.flex': 36, 'pelvis.y': 1.219 } },
+      { t: 3.6, hold: true, d: { footPitch: -36, 'toesR.flex': 36, 'toesL.flex': 36, 'pelvis.y': 1.219 } },
+      { t: 4.8, d: { footPitch: -6, 'toesR.flex': 6, 'toesL.flex': 6, 'pelvis.y': 1.138 } },
+      { t: 6.6, hold: true, d: { footPitch: 22, 'toesR.flex': -22, 'toesL.flex': -22, 'pelvis.y': 1.085 } }
     ]
   });
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -1211,16 +1211,16 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     base: {
       'pelvis.y': 0.95, 'pelvis.pitch': 0,
       'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': -5,
-      'upperarmR.flex': 168, 'upperarmR.abd': -20, 'upperarmR.rot': 0,
-      'upperarmL.flex': 168, 'upperarmL.abd': -20, 'upperarmL.rot': 0,
+      'upperarmR.flex': 176, 'upperarmR.abd': -6, 'upperarmR.rot': 0,
+      'upperarmL.flex': 176, 'upperarmL.abd': -6, 'upperarmL.rot': 0,
       'forearmR.rot': 0, 'forearmL.rot': 0,
       'handR.flex': -10, 'handL.flex': -10
     },
     keys: [
-      { t: 0.0, hold: true, d: { 'forearmR.flex': 115, 'forearmL.flex': 115 } },
+      { t: 0.0, hold: true, d: { 'forearmR.flex': 95, 'forearmL.flex': 95 } },
       { t: 1.0, d: { 'forearmR.flex': 10, 'forearmL.flex': 10 } },
       { t: 1.3, hold: true, d: { 'forearmR.flex': 10, 'forearmL.flex': 10 } },
-      { t: 4.3, hold: true, d: { 'forearmR.flex': 115, 'forearmL.flex': 115 } }
+      { t: 4.3, hold: true, d: { 'forearmR.flex': 95, 'forearmL.flex': 95 } }
     ]
   });
 
@@ -1337,10 +1337,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       { t: 3.0, label: '下' }, { t: 4.0, label: '押す 1秒 → 上' }
     ],
     hands: {
-      R: { at: [0.15, 0, 0.22], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
-           pins: [HAND.palmSurf], pole: [-1, -0.1, 0.4] },
-      L: { at: [0.15, 0, -0.22], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
-           pins: [HAND.palmSurf], pole: [-1, -0.1, -0.4] }
+      R: { at: [0.15, 0, 0.30], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+           pins: [HAND.palmSurf], pole: [-1, -0.1, 0.8] },
+      L: { at: [0.15, 0, -0.30], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+           pins: [HAND.palmSurf], pole: [-1, -0.1, -0.8] }
     },
     contacts: [
       { name: 'toeR', bone: 'footR', local: FOOT.ball, weight: 1 },
@@ -1534,9 +1534,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     keys: [
       { t: 0.0, hold: true, d: { 'pelvis.y': 0.949, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3 } },
       { t: 0.9, d: { 'pelvis.y': 0.943, 'pelvis.pitch': 24, 'upperarmR.flex': 23, 'upperarmL.flex': 23, 'neck.flex': -9 } },
-      { t: 2.1, d: { 'pelvis.y': 0.923, 'pelvis.pitch': 52, 'upperarmR.flex': 35, 'upperarmL.flex': 35, 'neck.flex': -17 } },
-      { t: 3.4, hold: true, d: { 'pelvis.y': 0.909, 'pelvis.pitch': 72, 'upperarmR.flex': 47, 'upperarmL.flex': 47, 'neck.flex': -23 } },
-      { t: 4.2, d: { 'pelvis.y': 0.934, 'pelvis.pitch': 38, 'upperarmR.flex': 28, 'upperarmL.flex': 28, 'neck.flex': -12 } },
+      { t: 2.1, d: { 'pelvis.y': 0.919, 'pelvis.pitch': 58, 'upperarmR.flex': 38, 'upperarmL.flex': 38, 'neck.flex': -17 } },
+      { t: 3.4, hold: true, d: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 55, 'upperarmL.flex': 55, 'neck.flex': -23 } },
+      { t: 4.2, d: { 'pelvis.y': 0.931, 'pelvis.pitch': 42, 'upperarmR.flex': 30, 'upperarmL.flex': 30, 'neck.flex': -12 } },
       { t: 4.9, hold: true, d: { 'pelvis.y': 0.949, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3 } }
     ]
   });
@@ -1565,11 +1565,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
                                  'thighL.flex': -15, 'shankL.flex': 35, 'footL.flex': 12, 'toesL.flex': 15 } },
       { t: 0.9, d: { 'pelvis.y': 0.940, 'pelvis.pitch': 24, 'upperarmR.flex': 22, 'upperarmL.flex': 22, 'neck.flex': -9,
                      'thighL.flex': -12, 'shankL.flex': 27, 'footL.flex': 5, 'toesL.flex': 8 } },
-      { t: 2.1, d: { 'pelvis.y': 0.929, 'pelvis.pitch': 52, 'upperarmR.flex': 32, 'upperarmL.flex': 32, 'neck.flex': -17,
+      { t: 2.1, d: { 'pelvis.y': 0.926, 'pelvis.pitch': 58, 'upperarmR.flex': 35, 'upperarmL.flex': 35, 'neck.flex': -17,
                      'thighL.flex': -8, 'shankL.flex': 16, 'footL.flex': -5, 'toesL.flex': -1 } },
-      { t: 3.4, hold: true, d: { 'pelvis.y': 0.918, 'pelvis.pitch': 72, 'upperarmR.flex': 44, 'upperarmL.flex': 44, 'neck.flex': -23,
+      { t: 3.4, hold: true, d: { 'pelvis.y': 0.913, 'pelvis.pitch': 82, 'upperarmR.flex': 52, 'upperarmL.flex': 52, 'neck.flex': -23,
                                  'thighL.flex': -5, 'shankL.flex': 8, 'footL.flex': -12, 'toesL.flex': -8 } },
-      { t: 4.2, d: { 'pelvis.y': 0.935, 'pelvis.pitch': 38, 'upperarmR.flex': 26, 'upperarmL.flex': 26, 'neck.flex': -12,
+      { t: 4.2, d: { 'pelvis.y': 0.934, 'pelvis.pitch': 42, 'upperarmR.flex': 27, 'upperarmL.flex': 27, 'neck.flex': -12,
                      'thighL.flex': -10, 'shankL.flex': 22, 'footL.flex': 0, 'toesL.flex': 4 } },
       { t: 4.9, hold: true, d: { 'pelvis.y': 0.942, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3,
                                  'thighL.flex': -15, 'shankL.flex': 35, 'footL.flex': 12, 'toesL.flex': 15 } }
@@ -1627,7 +1627,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       { t: 0, label: '下ろす' }, { t: 0.3, label: '持ち上げる 1秒' }, { t: 1.3, label: '上で2秒' },
       { t: 3.3, label: '下ろす 2秒' }, { t: 5.3, label: '下ろす' }
     ],
-    feet: { R: flatFoot(0.65, 0.11, 4), L: flatFoot(0.65, -0.11, -4) },
+    feet: { R: flatFoot(0.60, 0.11, 4), L: flatFoot(0.60, -0.11, -4) },
     hands: {
       R: { at: { bone: 'pelvis', local: [0.16, 0.17, 0.085] }, local: HAND.palm, pitch: 60, yaw: -30, pole: [-0.87, -0.5, 0.15] },
       L: { at: { bone: 'pelvis', local: [0.16, 0.17, -0.085] }, local: HAND.palm, pitch: 60, yaw: 30, pole: [-0.87, -0.5, -0.15] }
@@ -1640,8 +1640,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     keys: [
       { t: 0.0, hold: true, d: { 'pelvis.pitch': -30, 'neck.flex': 8, 'head.flex': 4 } },
       { t: 1.0, d: { 'pelvis.pitch': -75, 'neck.flex': 16, 'head.flex': 8 } },
-      { t: 1.3, hold: true, d: { 'pelvis.pitch': -90, 'neck.flex': 18, 'head.flex': 9 } },
-      { t: 3.3, hold: true, d: { 'pelvis.pitch': -90, 'neck.flex': 18, 'head.flex': 9 } },
+      { t: 1.3, hold: true, d: { 'pelvis.pitch': -95, 'neck.flex': 18, 'head.flex': 9 } },
+      { t: 3.3, hold: true, d: { 'pelvis.pitch': -95, 'neck.flex': 18, 'head.flex': 9 } },
       { t: 4.6, d: { 'pelvis.pitch': -52, 'neck.flex': 11, 'head.flex': 5 } },
       { t: 5.3, hold: true, d: { 'pelvis.pitch': -30, 'neck.flex': 8, 'head.flex': 4 } }
     ]
@@ -3443,7 +3443,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-20 17:04";
+const BUILD_VERSION = "2026-09-20 17:18";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){

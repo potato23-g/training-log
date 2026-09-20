@@ -34,7 +34,10 @@ const CHECKS = {
     return [
       ['一番下で太ももが床と平行かそれ以下', `太ももの傾き ${thigh.toFixed(0)}°（0=平行、負=お尻が下）`, thigh <= 5],
       ['かかとが浮かない', `かかとの高さ ${(heel * 100).toFixed(1)}cm`, heel < 0.02],
-      ['肘は体の内側に落とす（外に開かない）', `肘は肩より内側に ${(-elbowIn * 100).toFixed(0)}cm`, elbowIn < 0.02]
+      ['肘は体の内側に落とす（外に開かない）', `肘は肩より内側に ${(-elbowIn * 100).toFixed(0)}cm`, elbowIn < 0.02],
+      /* ACE: "the hips are below the knees" */
+      ['一番下で股関節が膝より下（ACE）', `股関節 ${(bottom.fr.b.thighR.pos[1] * 100).toFixed(0)}cm / 膝 ${(bottom.fr.b.shankR.pos[1] * 100).toFixed(0)}cm`,
+        bottom.fr.b.thighR.pos[1] <= bottom.fr.b.shankR.pos[1] + 0.02]
     ];
   },
   rdl: (m) => {
@@ -50,7 +53,10 @@ const CHECKS = {
     return [
       ['膝の角度は10〜15度で固定（変えない）', `膝屈曲 ${kmin.toFixed(0)}〜${kmax.toFixed(0)}°`, kmax - kmin <= 6 && kmin >= 5 && kmax <= 22],
       ['一番下でも背中は丸めない（体幹はほぼ一直線）', `体幹の傾き ${torso.toFixed(0)}°`, torso > 5 && torso < 60],
-      ['ダンベルは脚のすぐ前をこする', `手と膝の水平距離 ${(gap * 100).toFixed(0)}cm`, gap < 0.25]
+      ['ダンベルは脚のすぐ前をこする', `手と膝の水平距離 ${(gap * 100).toFixed(0)}cm`, gap < 0.25],
+      /* NASM: "typically at mid-shin height or slightly above" */
+      ['一番下でダンベルは膝より下（NASMの目安はすね半ば。解説文は「膝下まで下りない人も珍しくない」）',
+        `手の高さ ${(hand[1] * 100).toFixed(0)}cm / 膝 ${(knee[1] * 100).toFixed(0)}cm`, hand[1] < knee[1] + 0.02]
     ];
   },
   split: (m) => {
@@ -71,7 +77,9 @@ const CHECKS = {
     const kneeAng = M.boneAngles(top.fr.pose, 'shankR').flex;
     return [
       ['一番上で肩・腰・膝が一直線', `肩-腰-膝の角度 ${line.toFixed(0)}°（180=一直線）`, line > 160],
-      ['膝は90度前後', `膝屈曲 ${kneeAng.toFixed(0)}°`, kneeAng > 70 && kneeAng < 110]
+      ['膝は90度前後', `膝屈曲 ${kneeAng.toFixed(0)}°`, kneeAng > 70 && kneeAng < 110],
+      /* ACE: "hips are fully extended" */
+      ['一番上で股関節を伸ばしきる（ACE "hips are fully extended"。この骨格では165°前後が限界）', `肩-腰-膝 ${line.toFixed(0)}°`, line > 163]
     ];
   },
   row: (m) => {
@@ -85,7 +93,12 @@ const CHECKS = {
       ['背中は床と平行に近い', `体幹の傾き ${back.toFixed(0)}°（0=床と平行）`, Math.abs(back) < 30],
       ['下では腕を真下に垂らす', `腕と鉛直のなす角 ${armDown.toFixed(0)}°`, armDown < 20],
       ['肘は腰の高さまで引く', `肘の高さ ${(elbowY * 100).toFixed(0)}cm / 腰 ${(hipY * 100).toFixed(0)}cm`, elbowY >= hipY - 0.08],
-      ['肘は外に開かない（体側に沿わせる）', `肘は肩より外に ${(elbowOut * 100).toFixed(0)}cm`, elbowOut < 0.12]
+      ['肘は外に開かない（体側に沿わせる）', `肘は肩より外に ${(elbowOut * 100).toFixed(0)}cm`, elbowOut < 0.12],
+      /* ACE: "placed directly under your shoulder" / "directly under your hips" */
+      ['支える手は肩の真下（ACE）', `手と肩の水平差 ${(Math.hypot(t0.b.handL.pos[0] - t0.b.upperarmL.pos[0], t0.b.handL.pos[2] - t0.b.upperarmL.pos[2]) * 100).toFixed(0)}cm`,
+        Math.hypot(t0.b.handL.pos[0] - t0.b.upperarmL.pos[0], t0.b.handL.pos[2] - t0.b.upperarmL.pos[2]) < 0.18],
+      ['支える膝は股関節の真下（ACE）', `膝と股関節の水平差 ${(Math.hypot(t0.b.shankL.pos[0] - t0.b.thighL.pos[0], t0.b.shankL.pos[2] - t0.b.thighL.pos[2]) * 100).toFixed(0)}cm`,
+        Math.hypot(t0.b.shankL.pos[0] - t0.b.thighL.pos[0], t0.b.shankL.pos[2] - t0.b.thighL.pos[2]) <= 0.19]
     ];
   },
   ohp: (m) => {
@@ -101,7 +114,10 @@ const CHECKS = {
       ['構えは肩〜耳の高さ', `手の高さ ${(handY * 100).toFixed(0)}cm / 耳 ${(earY * 100).toFixed(0)}cm`, Math.abs(handY - earY) < 0.18],
       ['構えで前腕は立てる', `前腕と鉛直のなす角 ${foreUp.toFixed(0)}°`, foreUp < 25],
       ['上で肘を伸ばしきる', `肘屈曲 ${elbow.toFixed(0)}°`, elbow < 15],
-      ['上で腕が耳の横に来る（真上）', `腕と鉛直のなす角 ${armUp.toFixed(0)}° / 手と頭の左右差 ${(handNearEar * 100).toFixed(0)}cm`, armUp < 20]
+      ['上で腕が耳の横に来る（真上）', `腕と鉛直のなす角 ${armUp.toFixed(0)}° / 手と頭の左右差 ${(handNearEar * 100).toFixed(0)}cm`, armUp < 20],
+      /* ACE: "keep your elbows pointed in front of you" */
+      ['構えで肘は体の前を向く（ACE）', `肘の向き ${(() => { const d = V.sub(start.b.forearmR.pos, start.b.upperarmR.pos); return (Math.atan2(Math.abs(d[2]), d[0]) * DEG).toFixed(0); })()}°（0=真正面、90=真横）`,
+        (() => { const d = V.sub(start.b.forearmR.pos, start.b.upperarmR.pos); return Math.atan2(Math.abs(d[2]), d[0]) * DEG < 62; })()]
     ];
   },
   lateral: (m) => {
@@ -136,9 +152,11 @@ const CHECKS = {
     const dbBehind = start.dumbbells[0].pos[0] - start.b.head.pos[0];
     return [
       ['構えでダンベルは頭の後ろ', `ダンベルは頭より前後 ${(dbBehind * 100).toFixed(0)}cm（負=後ろ）`, dbBehind < 0],
-      ['上腕は耳の横（真上）に固定', `上腕と鉛直のなす角 ${upArm.toFixed(0)}°`, upArm < 25],
+      ['上腕は耳の横（真上）に固定（ACE "keep your upper arms vertical"）', `上腕と鉛直のなす角 ${upArm.toFixed(0)}°`, upArm < 15],
       ['肘は開かない', `肘は肩より外に ${(elbowWide * 100).toFixed(0)}cm`, elbowWide < 0.16],
-      ['上で肘を伸ばしきる', `肘屈曲 ${elbowTop.toFixed(0)}°`, elbowTop < 20]
+      ['上で肘を伸ばしきる（完全にロックはしない）', `肘屈曲 ${elbowTop.toFixed(0)}°`, elbowTop < 20],
+      /* ACE: "a 90 degree bend or until your upper arms begin to move backwards" */
+      ['下ろすのは肘90度くらいまで（ACE）', `構えの肘屈曲 ${elbowStart.toFixed(0)}°`, elbowStart > 80 && elbowStart < 110]
     ];
   },
   floorpress: (m) => {
@@ -164,7 +182,7 @@ const CHECKS = {
     return [
       ['胸が床から拳一つ分まで下りる', `胸の下端 ${(chest * 100).toFixed(0)}cm`, chest < 0.14],
       ['頭からかかとまで一直線', `頭-骨盤-足の角度 ${line.toFixed(0)}°`, line > 160],
-      ['肘を真横に開かない', `体幹とのなす角 ${flare.toFixed(0)}°`, flare < 75]
+      ['肘は体幹から45度くらい（NASM）', `体幹とのなす角 ${flare.toFixed(0)}°`, flare > 28 && flare < 62]
     ];
   },
   plank: (m) => {
@@ -205,7 +223,10 @@ const CHECKS = {
     const pelvisMove = Math.abs(top.fr.b.pelvis.pos[1] - start.b.pelvis.pos[1]);
     return [
       ['肩甲骨が床から離れるところまで', `胸郭の持ち上がり ${(lift * 100).toFixed(0)}cm`, lift > 0.04 && lift < 0.25],
-      ['腰は床につけたまま', `骨盤の上下 ${(pelvisMove * 100).toFixed(0)}cm`, pelvisMove < 0.05]
+      ['腰は床につけたまま', `骨盤の上下 ${(pelvisMove * 100).toFixed(0)}cm`, pelvisMove < 0.05],
+      /* ACE: heels 12-18 inches (30-46cm) from the tailbone */
+      ['かかとは尾骨から30〜46cm（ACE）', `${(V.dist(M.at(start, 'footR', M.FOOT.heel), start.b.pelvis.pos) * 100).toFixed(0)}cm`,
+        (() => { const d = V.dist(M.at(start, 'footR', M.FOOT.heel), start.b.pelvis.pos); return d > 0.28 && d < 0.50; })()]
     ];
   },
   calf: (m) => {
@@ -215,7 +236,10 @@ const CHECKS = {
     const stepTop = 0.18;
     return [
       ['かかとは段差より下まで下がる', `足首の最低 ${(lo * 100).toFixed(0)}cm（段差の上面 ${(stepTop * 100).toFixed(0)}cm）`, lo < stepTop + 0.075],
-      ['上は限界まで背伸びする', `足首の可動 ${((hi - lo) * 100).toFixed(0)}cm`, hi - lo > 0.06]
+      ['上は限界まで背伸びする', `足首の可動 ${((hi - lo) * 100).toFixed(0)}cm`, hi - lo > 0.06],
+      /* NASM: "straight knees" */
+      ['膝は伸ばしたまま（NASM）', `膝屈曲 ${M.boneAngles(at(m, 0).pose, 'shankR').flex.toFixed(0)}°`,
+        M.boneAngles(at(m, 0).pose, 'shankR').flex < 12]
     ];
   },
   farmer: (m) => {
@@ -237,7 +261,12 @@ const CHECKS = {
     return [
       ['上体と後ろ脚が一直線に近づく', `体幹の傾き ${back.toFixed(0)}°（0=床と平行）`, Math.abs(back) < 35],
       ['後ろ脚は上がる', `後ろ膝の高さ ${(freeLeg * 100).toFixed(0)}cm`, freeLeg > 0.35],
-      ['支持脚の膝は軽く曲げたまま', `膝屈曲 ${stanceKnee.toFixed(0)}°`, stanceKnee >= 5 && stanceKnee <= 30]
+      ['支持脚の膝は軽く曲げたまま', `膝屈曲 ${stanceKnee.toFixed(0)}°`, stanceKnee >= 5 && stanceKnee <= 30],
+      /* ACE: "straightening the leg directly behind the body" */
+      ['後ろ脚はまっすぐ伸ばす（ACE）', `後ろ膝の屈曲 ${M.boneAngles(deepest.fr.pose, 'shankL').flex.toFixed(0)}°`,
+        M.boneAngles(deepest.fr.pose, 'shankL').flex < 35],
+      ['後ろ脚は体幹と一直線に近い（ACE）', `体幹と後ろ腿のなす角 ${(180 - ang3(deepest.fr.b.spineC.tip, deepest.fr.b.pelvis.pos, deepest.fr.b.shankL.pos)).toFixed(0)}°ずれ`,
+        ang3(deepest.fr.b.spineC.tip, deepest.fr.b.pelvis.pos, deepest.fr.b.shankL.pos) > 140]
     ];
   }
 };

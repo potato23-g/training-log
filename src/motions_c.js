@@ -61,10 +61,10 @@
       { t: 3.0, label: '下' }, { t: 4.0, label: '押す 1秒 → 上' }
     ],
     hands: {
-      R: { at: [0.15, 0, 0.22], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
-           pins: [HAND.palmSurf], pole: [-1, -0.1, 0.4] },
-      L: { at: [0.15, 0, -0.22], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
-           pins: [HAND.palmSurf], pole: [-1, -0.1, -0.4] }
+      R: { at: [0.15, 0, 0.30], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+           pins: [HAND.palmSurf], pole: [-1, -0.1, 0.8] },
+      L: { at: [0.15, 0, -0.30], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+           pins: [HAND.palmSurf], pole: [-1, -0.1, -0.8] }
     },
     contacts: [
       { name: 'toeR', bone: 'footR', local: FOOT.ball, weight: 1 },

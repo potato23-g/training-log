@@ -41,9 +41,9 @@
     keys: [
       { t: 0.0, hold: true, d: { 'pelvis.y': 0.949, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3 } },
       { t: 0.9, d: { 'pelvis.y': 0.943, 'pelvis.pitch': 24, 'upperarmR.flex': 23, 'upperarmL.flex': 23, 'neck.flex': -9 } },
-      { t: 2.1, d: { 'pelvis.y': 0.923, 'pelvis.pitch': 52, 'upperarmR.flex': 35, 'upperarmL.flex': 35, 'neck.flex': -17 } },
-      { t: 3.4, hold: true, d: { 'pelvis.y': 0.909, 'pelvis.pitch': 72, 'upperarmR.flex': 47, 'upperarmL.flex': 47, 'neck.flex': -23 } },
-      { t: 4.2, d: { 'pelvis.y': 0.934, 'pelvis.pitch': 38, 'upperarmR.flex': 28, 'upperarmL.flex': 28, 'neck.flex': -12 } },
+      { t: 2.1, d: { 'pelvis.y': 0.919, 'pelvis.pitch': 58, 'upperarmR.flex': 38, 'upperarmL.flex': 38, 'neck.flex': -17 } },
+      { t: 3.4, hold: true, d: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 55, 'upperarmL.flex': 55, 'neck.flex': -23 } },
+      { t: 4.2, d: { 'pelvis.y': 0.931, 'pelvis.pitch': 42, 'upperarmR.flex': 30, 'upperarmL.flex': 30, 'neck.flex': -12 } },
       { t: 4.9, hold: true, d: { 'pelvis.y': 0.949, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3 } }
     ]
   });
@@ -72,11 +72,11 @@
                                  'thighL.flex': -15, 'shankL.flex': 35, 'footL.flex': 12, 'toesL.flex': 15 } },
       { t: 0.9, d: { 'pelvis.y': 0.940, 'pelvis.pitch': 24, 'upperarmR.flex': 22, 'upperarmL.flex': 22, 'neck.flex': -9,
                      'thighL.flex': -12, 'shankL.flex': 27, 'footL.flex': 5, 'toesL.flex': 8 } },
-      { t: 2.1, d: { 'pelvis.y': 0.929, 'pelvis.pitch': 52, 'upperarmR.flex': 32, 'upperarmL.flex': 32, 'neck.flex': -17,
+      { t: 2.1, d: { 'pelvis.y': 0.926, 'pelvis.pitch': 58, 'upperarmR.flex': 35, 'upperarmL.flex': 35, 'neck.flex': -17,
                      'thighL.flex': -8, 'shankL.flex': 16, 'footL.flex': -5, 'toesL.flex': -1 } },
-      { t: 3.4, hold: true, d: { 'pelvis.y': 0.918, 'pelvis.pitch': 72, 'upperarmR.flex': 44, 'upperarmL.flex': 44, 'neck.flex': -23,
+      { t: 3.4, hold: true, d: { 'pelvis.y': 0.913, 'pelvis.pitch': 82, 'upperarmR.flex': 52, 'upperarmL.flex': 52, 'neck.flex': -23,
                                  'thighL.flex': -5, 'shankL.flex': 8, 'footL.flex': -12, 'toesL.flex': -8 } },
-      { t: 4.2, d: { 'pelvis.y': 0.935, 'pelvis.pitch': 38, 'upperarmR.flex': 26, 'upperarmL.flex': 26, 'neck.flex': -12,
+      { t: 4.2, d: { 'pelvis.y': 0.934, 'pelvis.pitch': 42, 'upperarmR.flex': 27, 'upperarmL.flex': 27, 'neck.flex': -12,
                      'thighL.flex': -10, 'shankL.flex': 22, 'footL.flex': 0, 'toesL.flex': 4 } },
       { t: 4.9, hold: true, d: { 'pelvis.y': 0.942, 'pelvis.pitch': 5, 'upperarmR.flex': 18, 'upperarmL.flex': 18, 'neck.flex': -3,
                                  'thighL.flex': -15, 'shankL.flex': 35, 'footL.flex': 12, 'toesL.flex': 15 } }
@@ -134,7 +134,7 @@
       { t: 0, label: '下ろす' }, { t: 0.3, label: '持ち上げる 1秒' }, { t: 1.3, label: '上で2秒' },
       { t: 3.3, label: '下ろす 2秒' }, { t: 5.3, label: '下ろす' }
     ],
-    feet: { R: flatFoot(0.65, 0.11, 4), L: flatFoot(0.65, -0.11, -4) },
+    feet: { R: flatFoot(0.60, 0.11, 4), L: flatFoot(0.60, -0.11, -4) },
     hands: {
       R: { at: { bone: 'pelvis', local: [0.16, 0.17, 0.085] }, local: HAND.palm, pitch: 60, yaw: -30, pole: [-0.87, -0.5, 0.15] },
       L: { at: { bone: 'pelvis', local: [0.16, 0.17, -0.085] }, local: HAND.palm, pitch: 60, yaw: 30, pole: [-0.87, -0.5, -0.15] }
@@ -147,8 +147,8 @@
     keys: [
       { t: 0.0, hold: true, d: { 'pelvis.pitch': -30, 'neck.flex': 8, 'head.flex': 4 } },
       { t: 1.0, d: { 'pelvis.pitch': -75, 'neck.flex': 16, 'head.flex': 8 } },
-      { t: 1.3, hold: true, d: { 'pelvis.pitch': -90, 'neck.flex': 18, 'head.flex': 9 } },
-      { t: 3.3, hold: true, d: { 'pelvis.pitch': -90, 'neck.flex': 18, 'head.flex': 9 } },
+      { t: 1.3, hold: true, d: { 'pelvis.pitch': -95, 'neck.flex': 18, 'head.flex': 9 } },
+      { t: 3.3, hold: true, d: { 'pelvis.pitch': -95, 'neck.flex': 18, 'head.flex': 9 } },
       { t: 4.6, d: { 'pelvis.pitch': -52, 'neck.flex': 11, 'head.flex': 5 } },
       { t: 5.3, hold: true, d: { 'pelvis.pitch': -30, 'neck.flex': 8, 'head.flex': 4 } }
     ]
