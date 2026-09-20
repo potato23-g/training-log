@@ -35,7 +35,7 @@
     base: {
       'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,
       'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 2, 'head.flex': 0,
-      'forearmR.rot': 90, 'forearmL.rot': 90, 'handR.flex': 0, 'handL.flex': 0
+      'forearmR.rot': 0, 'forearmL.rot': 0, 'handR.flex': 0, 'handL.flex': 0
     },
     keys: [
       { t: 0.0, hold: true, d: { 'upperarmR.flex': -15, 'upperarmR.abd': 45, 'upperarmL.flex': -15, 'upperarmL.abd': 45,
@@ -192,7 +192,7 @@
     base: {
       'pelvis.roll': 74.7, 'pelvis.pitch': 0, 'pelvis.yaw': 0,
       'upperarmR.abd': 90, 'upperarmR.flex': 0, 'upperarmR.rot': 0,
-      'forearmR.flex': 90, 'forearmR.rot': 0, 'handR.flex': 0,
+      'forearmR.flex': 90, 'forearmR.rot': 180, 'handR.flex': 0,
       'upperarmL.flex': 8, 'upperarmL.abd': 26, 'forearmL.flex': 96, 'forearmL.rot': 80, 'handL.flex': 0,
       'thighR.flex': 0, 'thighR.abd': 0, 'shankR.flex': 2, 'footR.flex': -12, 'footR.abd': 10,
       'thighL.flex': 0, 'thighL.abd': -3, 'shankL.flex': 2, 'footL.flex': -12,

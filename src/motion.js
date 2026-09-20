@@ -544,7 +544,10 @@
         const quat = d.axis === 'vertical' ? Q.axis([1, 0, 0], Math.PI / 2)
           : d.axis === 'bone' ? Q.mul(frame.b[d.bone].quat, Q.axis([1, 0, 0], Math.PI / 2))
           : Q.between([0, 0, 1], V.norm(V.len(V.sub(a, b)) > 1e-4 ? V.sub(a, b) : [0, 0, 1]));
-        out.push({ pos: V.add(pos, d.offset || [0, 0, 0]), quat, kg, both: true });
+        /* ずらす向きは、骨に沿わせるときはその骨の向きで（体が傾いても手との位置関係が変わらない） */
+        const off = d.offset || [0, 0, 0];
+        const shifted = d.axis === 'bone' ? Q.rot(frame.b[d.bone].quat, off) : off;
+        out.push({ pos: V.add(pos, shifted), quat, kg, both: true });
       } else {
         const bone = d.grip;
         const pos = at(frame, bone, d.local || HAND.grip);

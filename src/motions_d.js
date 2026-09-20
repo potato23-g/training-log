@@ -136,8 +136,8 @@
     ],
     feet: { R: flatFoot(0.60, 0.11, 4), L: flatFoot(0.60, -0.11, -4) },
     hands: {
-      R: { at: { bone: 'pelvis', local: [0.16, 0.17, 0.085] }, local: HAND.palm, pitch: 60, yaw: -30, pole: [-0.87, -0.5, 0.15] },
-      L: { at: { bone: 'pelvis', local: [0.16, 0.17, -0.085] }, local: HAND.palm, pitch: 60, yaw: 30, pole: [-0.87, -0.5, -0.15] }
+      R: { at: { bone: 'pelvis', local: [0.16, 0.17, 0.085] }, local: HAND.palm, pitch: 90, yaw: -30, pole: [-0.87, -0.5, 0.15] },
+      L: { at: { bone: 'pelvis', local: [0.16, 0.17, -0.085] }, local: HAND.palm, pitch: 90, yaw: 30, pole: [-0.87, -0.5, -0.15] }
     },
     dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }],
     contacts: [{ name: 'scap', bone: 'spineT', local: [-0.1, 0, 0], weight: 1 }],

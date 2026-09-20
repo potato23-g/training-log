@@ -874,7 +874,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         const quat = d.axis === 'vertical' ? Q.axis([1, 0, 0], Math.PI / 2)
           : d.axis === 'bone' ? Q.mul(frame.b[d.bone].quat, Q.axis([1, 0, 0], Math.PI / 2))
           : Q.between([0, 0, 1], V.norm(V.len(V.sub(a, b)) > 1e-4 ? V.sub(a, b) : [0, 0, 1]));
-        out.push({ pos: V.add(pos, d.offset || [0, 0, 0]), quat, kg, both: true });
+        /* ずらす向きは、骨に沿わせるときはその骨の向きで（体が傾いても手との位置関係が変わらない） */
+        const off = d.offset || [0, 0, 0];
+        const shifted = d.axis === 'bone' ? Q.rot(frame.b[d.bone].quat, off) : off;
+        out.push({ pos: V.add(pos, shifted), quat, kg, both: true });
       } else {
         const bone = d.grip;
         const pos = at(frame, bone, d.local || HAND.grip);
@@ -969,9 +972,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   /* 胸の前で両手にダンベルを抱える（ゴブレット持ち） */
   const gobletHands = {
-    R: { at: { bone: 'spineC', local: [0.210, 0.060, 0.052] }, local: HAND.palm, pitch: 158, yaw: -25,
+    R: { at: { bone: 'spineC', local: [0.210, 0.060, 0.052] }, local: HAND.palm, pitch: 120, yaw: -25,
          pole: [0.05, -1, 0.14] },
-    L: { at: { bone: 'spineC', local: [0.210, 0.060, -0.052] }, local: HAND.palm, pitch: 158, yaw: 25,
+    L: { at: { bone: 'spineC', local: [0.210, 0.060, -0.052] }, local: HAND.palm, pitch: 120, yaw: 25,
          pole: [0.05, -1, -0.14] }
   };
 
@@ -985,7 +988,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     ],
     feet: { R: flatFoot(0, 0.17, 16), L: flatFoot(0, -0.17, -16) },
     hands: gobletHands,
-    dumbbells: [{ grip: 'both', axis: 'bone', bone: 'spineC', kg: 5, local: HAND.grip, offset: [0.01, 0.075, 0] }],
+    dumbbells: [{ grip: 'both', axis: 'bone', bone: 'spineC', kg: 5, local: HAND.grip, offset: [0, -0.085, 0] }],
     balance: { axes: ['x'] },
     base: {
       'pelvis.y': 0.955, 'pelvis.pitch': 4,
@@ -1114,29 +1117,33 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       'pelvis.y': 0.95, 'pelvis.pitch': 0,
       'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
       'clavR.prot': 0, 'clavL.prot': 0,
-      'upperarmR.rot': -45, 'upperarmL.rot': -45,
-      'forearmR.rot': 0, 'forearmL.rot': 0,
+      'upperarmR.rot': -40, 'upperarmL.rot': -40,
+      'forearmR.rot': 130, 'forearmL.rot': 130,
       'handR.flex': -8, 'handL.flex': -8
     },
     keys: [
       { t: 0.0, hold: true, d: {
           'clavR.elev': 0, 'clavL.elev': 0,
-          'upperarmR.flex': 22, 'upperarmR.abd': 35, 'upperarmL.flex': 22, 'upperarmL.abd': 35,
+          'upperarmR.flex': 22, 'upperarmR.abd': 35, 'upperarmR.rot': -40,
+          'upperarmL.flex': 22, 'upperarmL.abd': 35, 'upperarmL.rot': -40,
           'forearmR.flex': 130, 'forearmL.flex': 130
       } },
       { t: 1.0, d: {
           'clavR.elev': 12, 'clavL.elev': 12,
-          'upperarmR.flex': 172, 'upperarmR.abd': 7, 'upperarmL.flex': 172, 'upperarmL.abd': 7,
+          'upperarmR.flex': 172, 'upperarmR.abd': 7, 'upperarmR.rot': 40,
+          'upperarmL.flex': 172, 'upperarmL.abd': 7, 'upperarmL.rot': 40,
           'forearmR.flex': 6, 'forearmL.flex': 6
       } },
       { t: 1.3, hold: true, d: {
           'clavR.elev': 12, 'clavL.elev': 12,
-          'upperarmR.flex': 172, 'upperarmR.abd': 7, 'upperarmL.flex': 172, 'upperarmL.abd': 7,
+          'upperarmR.flex': 172, 'upperarmR.abd': 7, 'upperarmR.rot': 40,
+          'upperarmL.flex': 172, 'upperarmL.abd': 7, 'upperarmL.rot': 40,
           'forearmR.flex': 6, 'forearmL.flex': 6
       } },
       { t: 4.3, hold: true, d: {
           'clavR.elev': 0, 'clavL.elev': 0,
-          'upperarmR.flex': 22, 'upperarmR.abd': 35, 'upperarmL.flex': 22, 'upperarmL.abd': 35,
+          'upperarmR.flex': 22, 'upperarmR.abd': 35, 'upperarmR.rot': -40,
+          'upperarmL.flex': 22, 'upperarmL.abd': 35, 'upperarmL.rot': -40,
           'forearmR.flex': 130, 'forearmL.flex': 130
       } }
     ]
@@ -1206,14 +1213,14 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       { t: 1.3, label: '上で伸ばしきる' }, { t: 4.3, label: '戻す 3秒' }
     ],
     feet: standFeet,
-    dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5 }],
+    dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, -0.05, 0] }],
     balance: { axes: ['x'] },
     base: {
       'pelvis.y': 0.95, 'pelvis.pitch': 0,
       'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': -5,
       'upperarmR.flex': 176, 'upperarmR.abd': -6, 'upperarmR.rot': 0,
       'upperarmL.flex': 176, 'upperarmL.abd': -6, 'upperarmL.rot': 0,
-      'forearmR.rot': 0, 'forearmL.rot': 0,
+      'forearmR.rot': 180, 'forearmL.rot': 180,
       'handR.flex': -10, 'handL.flex': -10
     },
     keys: [
@@ -1311,7 +1318,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     base: {
       'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,
       'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 2, 'head.flex': 0,
-      'forearmR.rot': 90, 'forearmL.rot': 90, 'handR.flex': 0, 'handL.flex': 0
+      'forearmR.rot': 0, 'forearmL.rot': 0, 'handR.flex': 0, 'handL.flex': 0
     },
     keys: [
       { t: 0.0, hold: true, d: { 'upperarmR.flex': -15, 'upperarmR.abd': 45, 'upperarmL.flex': -15, 'upperarmL.abd': 45,
@@ -1468,7 +1475,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     base: {
       'pelvis.roll': 74.7, 'pelvis.pitch': 0, 'pelvis.yaw': 0,
       'upperarmR.abd': 90, 'upperarmR.flex': 0, 'upperarmR.rot': 0,
-      'forearmR.flex': 90, 'forearmR.rot': 0, 'handR.flex': 0,
+      'forearmR.flex': 90, 'forearmR.rot': 180, 'handR.flex': 0,
       'upperarmL.flex': 8, 'upperarmL.abd': 26, 'forearmL.flex': 96, 'forearmL.rot': 80, 'handL.flex': 0,
       'thighR.flex': 0, 'thighR.abd': 0, 'shankR.flex': 2, 'footR.flex': -12, 'footR.abd': 10,
       'thighL.flex': 0, 'thighL.abd': -3, 'shankL.flex': 2, 'footL.flex': -12,
@@ -1629,8 +1636,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     ],
     feet: { R: flatFoot(0.60, 0.11, 4), L: flatFoot(0.60, -0.11, -4) },
     hands: {
-      R: { at: { bone: 'pelvis', local: [0.16, 0.17, 0.085] }, local: HAND.palm, pitch: 60, yaw: -30, pole: [-0.87, -0.5, 0.15] },
-      L: { at: { bone: 'pelvis', local: [0.16, 0.17, -0.085] }, local: HAND.palm, pitch: 60, yaw: 30, pole: [-0.87, -0.5, -0.15] }
+      R: { at: { bone: 'pelvis', local: [0.16, 0.17, 0.085] }, local: HAND.palm, pitch: 90, yaw: -30, pole: [-0.87, -0.5, 0.15] },
+      L: { at: { bone: 'pelvis', local: [0.16, 0.17, -0.085] }, local: HAND.palm, pitch: 90, yaw: 30, pole: [-0.87, -0.5, -0.15] }
     },
     dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }],
     contacts: [{ name: 'scap', bone: 'spineT', local: [-0.1, 0, 0], weight: 1 }],
@@ -3443,7 +3450,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-20 17:18";
+const BUILD_VERSION = "2026-09-20 22:17";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
