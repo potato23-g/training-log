@@ -154,13 +154,6 @@
             5.5: { 'upperarmR.abd': 4, 'upperarmL.abd': 4, 'upperarmR.flex': 8, 'upperarmL.flex': 8 } }
   });
 
-  /* ---------------- ハンマーカール ----------------
-     手のひらを向かい合わせにしたまま巻き上げる */
-  derive('curl', {
-    id: 'hammer',
-    base: { 'forearmR.rot': 90, 'forearmL.rot': 90, 'upperarmR.abd': 9, 'upperarmL.abd': 9 }
-  });
-
   /* ---------------- シュラッグ ----------------
      肩をすくめて僧帽筋の上部だけを動かす */
   derive('farmer', {
@@ -201,4 +194,93 @@
             4.9: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 55, 'upperarmL.flex': 55,
                    'forearmR.flex': 8, 'forearmL.flex': 8, 'neck.flex': -23 } }
   });
+
+  /* ---------------- サイドベンド ----------------
+     片手にダンベルを持ち、体を真横に倒して戻す。腹斜筋を直接使う */
+  const sbPose = (bend) => ({
+    'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
+    'clavR.elev': -4, 'clavL.elev': -4, 'clavR.prot': 6, 'clavL.prot': -6,
+    'spineL.abd': bend * 22, 'spineT.abd': bend * 16, 'spineC.abd': bend * 9, 'neck.abd': -bend * 6,
+    /* 腕は重力で垂れたまま。体が傾くぶんだけ肩を開いて、ダンベルが真下へ下りるようにする */
+    'upperarmR.flex': 3, 'upperarmR.abd': 8 + bend * 40, 'upperarmL.flex': 4, 'upperarmL.abd': -24
+  });
+  derive('farmer', {
+    id: 'sidebend',
+    set: {
+      view: { az: 86, el: 6, dist: 3.3, target: [0, 1.0, 0] },
+      phases: [{ t: 0, label: '立った位置' }, { t: 1.5, label: '横に倒す 2秒' },
+               { t: 2.5, label: '一番下で1秒止める' }, { t: 4.0, label: '起こす 2秒' },
+               { t: 5.0, label: '立った位置' }],
+      dumbbells: [{ grip: 'handR', kg: 5 }]
+    },
+    base: {
+      'forearmL.flex': 96, 'forearmL.rot': 40, 'handL.flex': 0
+    },
+    keys: { 0: sbPose(0), 1.5: sbPose(1), 2.5: sbPose(1), 4.0: sbPose(0), 5.0: sbPose(0) }
+  });
+
+  /* ---------------- サイドランジ ----------------
+     足を大きく横に開き、片側の股関節に体重を預けて沈む。内ももと尻を使う */
+  derive('goblet', {
+    id: 'sidelunge',
+    set: {
+      view: { az: 78, el: 8, dist: 3.4, target: [0, 0.85, 0] },
+      phases: [{ t: 0, label: '立った位置' }, { t: 0.5, label: '右へ沈む 3秒' },
+               { t: 3.5, label: '一番下' }, { t: 4.1, label: '立ち上がる 1秒' },
+               { t: 5.0, label: '立った位置' }],
+      feet: {
+        R: { at: [0, 0, 0.26], local: [0, -M.FOOT.ankleH, 0], yaw: 8, pitch: 0, pins: [M.FOOT.heel, M.FOOT.ball] },
+        /* 支える側の足は外へ向ける（足首がひっくり返らない） */
+        L: { at: [0, 0, -0.26], local: [0, -M.FOOT.ankleH, 0], yaw: -30, pitch: 0, pins: [M.FOOT.heel, M.FOOT.ball] }
+      }
+    },
+    keys: {
+      0.0: { 'pelvis.y': 0.950, 'pelvis.z': 0.000, 'pelvis.pitch': 4 },
+      0.5: { 'pelvis.y': 0.925, 'pelvis.z': 0.034, 'pelvis.pitch': 8 },
+      1.3: { 'pelvis.y': 0.860, 'pelvis.z': 0.085, 'pelvis.pitch': 16 },
+      2.2: { 'pelvis.y': 0.840, 'pelvis.z': 0.137, 'pelvis.pitch': 24 },
+      3.5: { 'pelvis.y': 0.820, 'pelvis.z': 0.180, 'pelvis.pitch': 30 },
+      4.1: { 'pelvis.y': 0.820, 'pelvis.z': 0.180, 'pelvis.pitch': 30 },
+      4.6: { 'pelvis.y': 0.840, 'pelvis.z': 0.119, 'pelvis.pitch': 22 },
+      5.0: { 'pelvis.y': 0.900, 'pelvis.z': 0.043, 'pelvis.pitch': 10 },
+      5.3: { 'pelvis.y': 0.950, 'pelvis.z': 0.000, 'pelvis.pitch': 4 }
+    }
+  });
+
+  /* ---------------- シーテッドカーフレイズ ----------------
+     椅子に座り、膝の上にダンベルを置いてかかとを上げ下げする。膝を曲げるのでヒラメ筋に効く */
+  const STOOL = { type: 'box', id: 'stool', min: [-0.34, 0, -0.26], max: [0.16, 0.42, 0.26], label: '椅子' };
+  const seatFoot = (z) => ({
+    at: [0.56, 0, z], local: M.FOOT.ball, pitch: 'footPitch', yaw: 0, pins: [M.FOOT.ball],
+    pole: [0.5, 1, z > 0 ? 0.2 : -0.2]
+  });
+  M.register({
+    id: 'calfseat',
+    view: { az: 22, el: 8, dist: 3.0, target: [0.15, 0.55, 0] },
+    props: [STOOL],
+    phases: [
+      { t: 0, label: 'かかとを下げた位置' }, { t: 0.6, label: 'かかとを上げる 1秒' },
+      { t: 1.6, label: '一番上で2秒止める' }, { t: 3.6, label: '下ろす 3秒' },
+      { t: 6.6, label: 'かかとを下げた位置' }
+    ],
+    feet: { R: seatFoot(0.11), L: seatFoot(-0.11) },
+    /* 腕は自然に垂らし、ダンベルを腿の上に立てて手で押さえる */
+    dumbbells: [{ grip: 'handR', kg: 5, local: [0, -0.05, 0] }, { grip: 'handL', kg: 5, local: [0, -0.05, 0] }],
+    base: {
+      'pelvis.y': 0.52, 'pelvis.x': -0.02, 'pelvis.pitch': 4,
+      'spineL.flex': 0, 'spineT.flex': 2, 'spineC.flex': 2, 'neck.flex': -2,
+      'upperarmR.flex': 35, 'upperarmR.abd': -8, 'upperarmR.rot': -10, 'forearmR.flex': 55, 'forearmR.rot': 170, 'handR.flex': 0,
+      'upperarmL.flex': 35, 'upperarmL.abd': -8, 'upperarmL.rot': -10, 'forearmL.flex': 55, 'forearmL.rot': 170, 'handL.flex': 0,
+      footPitch: 0, 'toesR.flex': 0, 'toesL.flex': 0
+    },
+    keys: [
+      { t: 0.0, hold: true, d: { footPitch: 0, 'toesR.flex': 0, 'toesL.flex': 0 } },
+      { t: 0.6, d: { footPitch: -8, 'toesR.flex': 8, 'toesL.flex': 8 } },
+      { t: 1.6, hold: true, d: { footPitch: -32, 'toesR.flex': 32, 'toesL.flex': 32 } },
+      { t: 3.6, hold: true, d: { footPitch: -32, 'toesR.flex': 32, 'toesL.flex': 32 } },
+      { t: 4.8, d: { footPitch: -6, 'toesR.flex': 6, 'toesL.flex': 6 } },
+      { t: 6.6, hold: true, d: { footPitch: 0, 'toesR.flex': 0, 'toesL.flex': 0 } }
+    ]
+  });
+
 })(typeof window !== 'undefined' ? window : globalThis);

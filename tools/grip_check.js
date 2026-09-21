@@ -66,13 +66,17 @@ const WANT = {
   /* 解説文「手のひらを下に向ける」。下では太もも側、肩の高さでは下向き */
   front: [{ t: 0, hand: 'handR', to: [-1, 0, 0], label: '下: 手のひらは体の方（pronated）' },
           { t: 1.5, hand: 'handR', to: [0, -1, 0], label: '肩の高さ: 手のひらは下' }],
-  /* 解説文「手のひらを向かい合わせにする」。下でも上でも変えない */
-  hammer: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '下: 手のひらは向かい合わせ' },
-           { t: 1.6, hand: 'handR', to: [0, 0, -1], label: '上: 手のひらは向かい合わせ' }],
   /* 体の横に垂らす。ニュートラル */
   shrug: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' }],
   /* 前傾して垂らす。ニュートラル（手のひらは向かい合わせ） */
-  row2: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '下: 手のひらは向かい合わせ' }]
+  row2: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '下: 手のひらは向かい合わせ' }],
+  /* 膝に置いたダンベルを上から押さえる = 手のひらは下 */
+  calfseat: [{ t: 0, hand: 'handR', to: [0, -1, 0], label: '膝の上: 手のひらは下（上から押さえる）' }],
+  /* 体の横に垂らす。ニュートラル */
+  sidebend: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' },
+             { t: 2.5, hand: 'handR', to: [0, 0, -1], label: '倒した位置でも手の向きは変えない' }],
+  /* ゴブレットと同じ持ち方 */
+  sidelunge: [{ t: 0, hand: 'handR', to: [0, 1, 0], label: '胸の前: 手のひらは上（下から支える）' }]
 };
 
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(WANT);

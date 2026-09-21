@@ -1,7 +1,8 @@
 /* 追加した種目が「種目」タブと「今日」タブでちゃんと出るかを見る。
    図が描けているか・解説文が揃っているか・持ち方や日用品の案内が出ているかを確かめる */
 (async () => {
-  const NEW = ["sumo", "splitfloor", "bridge", "pushupknee", "fly", "skull", "front", "hammer", "shrug", "row2"];
+  const NEW = ["sumo", "splitfloor", "bridge", "pushupknee", "fly", "skull", "front", "shrug", "row2",
+               "calfseat", "sidebend", "sidelunge"];
   const out = {missing: [], noFigure: [], noDetail: [], noHold: [], noHouse: [], noMotion: [], noPattern: [],
                notInCatalog: [], badLevel: [], samples: {}};
 

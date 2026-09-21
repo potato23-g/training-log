@@ -21,7 +21,7 @@ setTimeout(() => {
   };
   const menu = () => todayItems().map(it => it.ex + "×" + (it.sets || 3));
   const pats = () => { const p = todayItems().map(it => patternOf(it.ex)); return new Set(p).size === p.length; };
-  const touched = () => Array.from(lastDayTouched());
+  const touched = () => Array.from(touchedYesterday());
   window.confirm = () => true;
 
   /* 1. 今日まだ記録していない */

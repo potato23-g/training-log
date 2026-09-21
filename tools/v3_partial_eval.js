@@ -1,5 +1,6 @@
 /* 途中までしかやらなかった日（1〜2セットだけ等）も「手を付けた」として、翌日は別の種目になるか。
-   毎日、各種目をランダムに 0〜規定セット数だけこなした履歴を21日分つくり、翌日のメニューを確かめる。 */
+   毎日、各種目をランダムに 0〜規定セット数だけこなした履歴を21日分つくり、翌日のメニューを確かめる。
+   （2026-09-21から、続けて出さないのは「種目」ではなく「動き」。同じ動きの中で種目が入れ替わらないようにするため） */
 setTimeout(() => {
   const out = {days: [], repeatedNextDay: [], dupPatterns: [], recoverOnPlan: [], emptyDays: [], firstDayPartial: null};
   const shiftKey = (k, n) => { const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + n);
@@ -40,7 +41,8 @@ setTimeout(() => {
     const pats = plan.map(it => patternOf(it.ex));
     if(new Set(pats).size !== pats.length) out.dupPatterns.push({day, pats});
     plan.forEach(it => {
-      if(prevTouched.includes(it.ex)) out.repeatedNextDay.push({day, ex: it.ex});
+      /* 昨日やった動きは今日は出さない（種目ではなく動きで見る。2026-09-21に本人の方針で変更） */
+      if(prevTouched.includes(patternOf(it.ex))) out.repeatedNextDay.push({day, ex: it.ex, pat: patternOf(it.ex)});
       const adv = todayAdvice(it, suggestNext(it, null, lastPerformance(it.ex, TODAY)));
       if(adv && adv.level === "recover") out.recoverOnPlan.push({day, ex: it.ex});
     });
@@ -50,13 +52,13 @@ setTimeout(() => {
     const skipDay = rand() < 0.15;
     plan.forEach(it => {
       const n = skipDay ? 0 : Math.floor(rand() * ((it.sets || 3) + 1));
-      if(n > 0){ doSets(it, n); touched.push(it.ex); }
+      if(n > 0){ doSets(it, n); touched.push(patternOf(it.ex)); }
     });
     if(!touched.length){ delete s.plan; delete s.planAt; }
     out.days.push((skipDay ? "（休み）" : "") + plan.map(it => {
       const e = entryFor(TODAY, it.ex, false); return it.ex + "×" + (e ? e.sets.length : 0) + "/" + (it.sets || 3); }).join(" "));
-    /* 休みの日は「前回トレーニングした日」を更新しない */
-    if(touched.length) prevTouched = touched;
+    /* 見るのは「昨日」なので、休んだ日は空になる */
+    prevTouched = touched;
     nextDay();
   }
   state.sessions = {}; state.gear = undefined; planMemo = null;
