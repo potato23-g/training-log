@@ -19,15 +19,18 @@
   out.buttons = btns;
 
   /* 「難しく」を押す（無ければ「やさしく」） */
-  const target = btns.find(b => b.label.indexOf("難しく") === 0) || btns[0];
-  if(target){
-    T.qa('[data-act="stepto"]').find(b => b.dataset.ex === target.ex).click();
+  const btn = T.qa('[data-act="stepto"]').find(b => b.textContent.indexOf("難しく") === 0)
+           || T.qa('[data-act="stepto"]')[0];
+  if(btn){
+    const wantLabel = btn.dataset.label, wantEx = btn.dataset.ex;
+    btn.click();
     await T.wait(120);
     const now = todayItems();
     out.afterSwap = {
+      to: wantLabel || EXMAP[wantEx].name,
       plan: now.map(it => itemName(it)),
-      swappedIn: now.some(it => it.ex === target.ex),
-      oldGone: !now.some(it => it.ex === first.ex && it.ex !== target.ex),
+      swappedIn: now.some(it => it.ex === wantEx && (it.label || "") === wantLabel),
+      oldGone: !now.some(it => it.ex === first.ex && (it.label || "") === (first.label || "")),
       samePattern: now.filter(it => patternOf(it.ex) === out.first.pat).length === 1,
       count: now.length
     };
@@ -52,6 +55,7 @@
   out.auto = {
     before, after,
     added: after.filter(x => !before.includes(x)),
+    flash: (T.q(".flash") || {}).textContent || "",
     status: T.q("#status").textContent,
     dupPattern: (() => { const p = todayItems().map(it => patternOf(it.ex)); return new Set(p).size !== p.length; })(),
     saved: (session(TODAY).plan || []).length
@@ -62,6 +66,7 @@
   const items = todayItems();
   const pats = items.map(it => patternOf(it.ex));
   out.repeated = {
+    flash: (T.q(".flash") || {}).textContent || "",
     count: items.length,
     dupPattern: new Set(pats).size !== pats.length,
     status: T.q("#status").textContent,
