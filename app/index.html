@@ -1750,6 +1750,20 @@ function patternsYesterday(){
   touchedYesterday().forEach(id => out.add(patternOf(id)));
   return out;
 }
+/* 同じ動きの中で、1段やさしい（dir=-1）／1段難しい（dir=+1）組み方。無ければ null。
+   負荷を合わせるための持ち替え先なので、同じ段のもの（＝名前が違うだけ）は出さない */
+function stepItem(item, dir){
+  const now = itemLevel(item), pat = patternOf(item.ex);
+  const cands = catalog().filter(c => {
+    if(patternOf(c.ex) !== pat) return false;
+    if(c.ex === item.ex && (c.label || "") === (item.label || "")) return false;
+    if(EXMAP[c.ex].kind === "w" && !gearOptions(c.ex).length) return false;   /* 持っているダンベルで作れない */
+    const lv = itemLevel(c);
+    return dir > 0 ? lv > now : lv < now;
+  });
+  cands.sort((a, b) => dir > 0 ? (itemLevel(a) - itemLevel(b)) : (itemLevel(b) - itemLevel(a)));
+  return cands.length ? cands[0] : null;
+}
 /* 昨日しっかり使った主働筋（なければ null）。メニュー作りと「今日の調整」の回復優先の両方で使う */
 function tiredMuscle(exId){
   const ex = EXMAP[exId];
@@ -1798,6 +1812,9 @@ function itemMinutes(it){
 
 let planMemo = null;                       /* 描画1回のあいだだけ使い回す */
 let planAvoid = null;                      /* 組み直しのとき、さっきまで出ていた（まだ手を付けていない）種目を避ける */
+let planSeed = null;                       /* 「おまかせで追加」のとき、今のメニューを入れた状態から考える */
+let planOne = false;                       /* 同上。足すのは1種目だけ */
+let planRelax = false;                     /* 同上。1回の量の目安（16セット・6種目・50分）を外して探す */
 function buildPlan(){
   if(planMemo) return planMemo;
   const week = loadMap(1, 6);              /* 直近7日 = 1〜6日前 + 今日の分 */
@@ -1842,8 +1859,8 @@ function buildPlan(){
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
     if(Object.keys(add).some(m => (week[m] || 0) + (today[m] || 0) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4))) return false;
-    if(plan.length >= SESSION_MAX.exercises || sets + n > SESSION_MAX.sets) return false;
-    if(minutes + mins(c) > SESSION_MAX.minutes) return false;
+    if(!planRelax && (plan.length >= SESSION_MAX.exercises || sets + n > SESSION_MAX.sets)) return false;
+    if(!planRelax && minutes + mins(c) > SESSION_MAX.minutes) return false;
     return true;
   };
   /* 同じ動きの中では、今の負荷に合う難しさの種目を選ぶ。
@@ -1882,10 +1899,19 @@ function buildPlan(){
     }
   };
   const isBig = c => BIG_MUSCLES.includes(EXMAP[c.ex].p[0]);
-  fill(1, SESSION_MAX.exercises, isBig);   /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
-  addSets();                               /* 2. まだ足りなければ、その種目のセットを増やす */
-  fill(1, SESSION_MAX.exercises);          /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
-  fill(0.5, 3);                            /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+  if(planSeed){
+    /* 「おまかせで追加」: 今のメニューを入れた状態から、合う種目を1つだけ足す */
+    planSeed.forEach(it => { if(!plan.some(p => p.ex === it.ex)) take(Object.assign({}, it)); });
+    const seedLen = plan.length;
+    fill(1, seedLen + 1, isBig);
+    if(plan.length === seedLen) fill(0.5, seedLen + 1);
+    if(plan.length === seedLen) fill(0.01, seedLen + 1);
+  }else{
+    fill(1, SESSION_MAX.exercises, isBig);   /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
+    addSets();                               /* 2. まだ足りなければ、その種目のセットを増やす */
+    fill(1, SESSION_MAX.exercises);          /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
+    fill(0.5, 3);                            /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+  }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
      超えていたら、その部位が主役の種目のセットを1つずつ減らし、2セットを切るなら外す */
@@ -1920,7 +1946,7 @@ function restText(){
   const names = ms => ms.map(m => MUSCLES[m]).join("・");
   return (tired.length ? names(tired) + "は、昨日しっかり使ったので回復の途中です。" : "")
        + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
-       + "今日は休むほうが伸びます。体を動かしたいときは、「種目を追加」から選べます。";
+       + "今日は休むほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から足せます。";
 }
 function todayItems(){
   const s = session(TODAY);
@@ -2068,7 +2094,7 @@ function viewToday(){
 
   const rows = items.map(it=>exRow(it)).join("");
   return hero + rows + `
-    <div class="rowbtns"><button data-act="addex">種目を追加</button><button data-act="replan">メニューを組み直す</button></div>
+    <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button></div>
     <h3 class="sec">今日のメモ</h3>
     <div class="card">
       <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${(s.note||"").replace(/</g,"&lt;")}</textarea>
@@ -2553,6 +2579,7 @@ function exRow(item){
       ${holdOf(id)?`<p class="lastline"><b>使うダンベル</b>　<span id="wh_${id}">${gearLine(id, sug)}</span></p>`:""}
       ${adv?`<p class="lastline"><b>今日の調整</b>　${adv.text}</p>`:""}
       ${adv && adv.alt && !n?`<div class="rowbtns"><button data-act="swapto" data-from="${id}" data-ex="${adv.alt}">${EXMAP[adv.alt].name}に替える</button></div>`:""}
+      ${!n ? stepButtons(item) : ""}
       ${noteFor(item, sug.opt)?`<p class="lastline">${noteFor(item, sug.opt)}</p>`:""}
       ${last?`<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${last.sets.map(x=>setText(x,ex.kind)).join(" / ")}</b></p>`:""}
       <div class="entry">
@@ -2958,6 +2985,8 @@ function wire(){
       else if(a==="testalert"){ testChime(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
       else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
       else if(a==="addex"){ openPicker(); }
+      else if(a==="addauto"){ addAutoToday(); }
+      else if(a==="stepto"){ replaceInPlan(el.dataset.from, el.dataset.ex, el.dataset.label || ""); }
       else if(a==="replan"){ replanToday(); }
       else if(a==="addtoday"){ addToProgramToday(el.dataset.ex); }
       else if(a==="days"){ bodyDays = +el.dataset.d; selMuscle=null; render(); }
@@ -3118,21 +3147,68 @@ function addToProgramToday(id){
   openEx = id; editEx = null;
   switchTab("today");
 }
-/* 今日のメニューの種目を別の種目に替える（「今日の調整」から） */
-function replaceInPlan(fromId, toId){
+/* 今日のメニューの種目を別の種目に替える（「今日の調整」と、やさしく／難しくの持ち替え）。
+   toLabel は「カーフレイズ（片脚）」のような同じ種目の別の組み方を指すときに使う */
+function replaceInPlan(fromId, toId, toLabel){
   const s = session(TODAY);
   fixPlan(s);
+  if(!s.plan) s.plan = [];
+  const to = catalog().find(c => c.ex === toId && (c.label || "") === (toLabel || "")) || catalogItem(toId);
   const e = entryFor(TODAY, fromId, false);
   const i = s.plan.findIndex(x => x.ex === fromId);
   if(i >= 0 && !(e && e.sets.length)){
-    s.plan[i] = catalogItem(toId);
+    s.plan[i] = Object.assign({}, to);
     if(e) s.entries = s.entries.filter(x => x !== e);
-  }else if(!s.plan.some(x => x.ex === toId)){
-    s.plan.push(catalogItem(toId));
+  }else if(!s.plan.some(x => x.ex === toId && (x.label || "") === (toLabel || ""))){
+    s.plan.push(Object.assign({}, to));
   }
+  s.planAt = Date.now();
   persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();
   openEx = toId; editEx = null;
   switchTab("today");
+  setStatus("「" + itemName(to) + "」に替えました");
+}
+
+/* 種目カードに出す「やさしく／難しく」。同じ動きの中で1段ずつ持ち替える */
+function stepButtons(item){
+  const down = stepItem(item, -1), up = stepItem(item, 1);
+  if(!down && !up) return "";
+  const btn = (it, label) => `<button data-act="stepto" data-from="${item.ex}" data-ex="${it.ex}" data-label="${(it.label || "").replace(/"/g, "&quot;")}">${label}　${itemName(it)}</button>`;
+  return `<p class="lastline" style="margin-bottom:4px">きつすぎる・軽すぎるときは、同じ動きのまま段を変えられます。</p>
+    <div class="rowbtns">${down ? btn(down, "やさしく") : ""}${up ? btn(up, "難しく") : ""}</div>`;
+}
+
+/* アプリに選ばせて1種目足す（今のメニューに合うものを、回復と上限の範囲で選ぶ） */
+function addAutoToday(){
+  const s = session(TODAY);
+  fixPlan(s);
+  const cur = todayItems();
+  const attempt = (relax) => {
+    planSeed = cur.map(x => Object.assign({}, x));
+    planOne = true; planRelax = relax; planMemo = null;
+    try{
+      return buildPlan().find(it => !cur.some(c => c.ex === it.ex && (c.label || "") === (it.label || "")));
+    }finally{
+      planSeed = null; planOne = false; planRelax = false; planMemo = null;
+    }
+  };
+  /* まず1回の量の目安に収まる範囲で探し、無ければ目安を外して探す（そのときは一言添える） */
+  let picked = attempt(false), over = false;
+  if(!picked){ picked = attempt(true); over = !!picked; }
+  if(!picked){
+    setStatus("今日足せる種目がありません。回復を待っている部位ばかりか、今週の上限に届いています。それでも足すときは「種目を選んで追加」から選べます");
+    return;
+  }
+  if(!s.plan) s.plan = [];
+  s.plan = s.plan.concat([Object.assign({}, picked)]);
+  s.planAt = Date.now();
+  persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();
+  openEx = picked.ex; editEx = null;
+  render();
+  setStatus("「" + itemName(picked) + "」を足しました（" + EXMAP[picked.ex].p.map(m => MUSCLES[m]).join("・") + "の今週の量が足りていません）"
+    + (over ? "。1回の目安（" + SESSION_MAX.exercises + "種目・" + SESSION_MAX.sets + "セット・" + SESSION_MAX.minutes + "分）は超えます" : ""));
 }
 
 /* ---------- ピッカー ---------- */
@@ -3141,8 +3217,11 @@ const sheetInner = document.getElementById("sheetInner");
 sheet.onclick = (e)=>{ if(e.target===sheet) sheet.classList.remove("on"); };
 
 function openPicker(){
-  sheetInner.innerHTML = `<h4>今日のメニューに追加</h4><div class="picklist">` +
-    EX.map(e=>`<button data-pick="${e.id}">${e.name}<span>${e.p.map(m=>MUSCLES[m]).join("・")}</span></button>`).join("") +
+  const lvText = {1:"やさしい", 2:"標準", 3:"難しい"};
+  sheetInner.innerHTML = `<h4>種目を選んで追加</h4>
+    <p class="lastline" style="margin-top:0">回復や1日の上限は見ません。アプリに選ばせるときは「おまかせで1種目追加」を使ってください。</p>
+    <div class="picklist">` +
+    EX.map(e=>`<button data-pick="${e.id}">${e.name}<span>${e.p.map(m=>MUSCLES[m]).join("・")}　${lvText[e.level || 2]}</span></button>`).join("") +
     `</div>`;
   sheetInner.querySelectorAll("[data-pick]").forEach(b=>{
     b.onclick = ()=>{ sheet.classList.remove("on"); addToProgramToday(b.dataset.pick); };
