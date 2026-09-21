@@ -30,6 +30,14 @@
       keys: clone(b.keys)
     };
     Object.keys(m).forEach((k) => { if (m[k] === undefined) delete m[k]; });
+    if (patch.times) {               /* キーの時刻を動かす（姿勢は変えず、速さだけ変える） */
+      Object.keys(patch.times).forEach((t) => {
+        const key = m.keys.find((k) => Math.abs(k.t - parseFloat(t)) < 1e-6);
+        if (!key) throw new Error(patch.id + ': その時刻のキーが無い t=' + t);
+        key.t = patch.times[t];
+      });
+      m.keys.sort((a, b) => a.t - b.t);
+    }
     if (patch.keys) {
       Object.keys(patch.keys).forEach((t) => {
         const key = m.keys.find((k) => Math.abs(k.t - parseFloat(t)) < 1e-6);
@@ -105,17 +113,17 @@
   derive('floorpress', {
     id: 'fly',
     set: {
-      phases: [{ t: 0, label: '腕を開いた位置' }, { t: 0.2, label: '閉じる 1〜2秒' },
-               { t: 1.0, label: '胸の上で止める' }, { t: 2.6, label: '開く 3秒' }]
+      phases: [{ t: 0, label: '腕を開いた位置' }, { t: 1.0, label: '閉じる 1秒' },
+               { t: 2.0, label: '開く 3秒' }]
     },
     /* 肘の角度は25度で固定したまま、上腕を横に開いて閉じる */
     keys: { 0: { 'upperarmR.flex': -10, 'upperarmR.abd': 80, 'upperarmL.flex': -10, 'upperarmL.abd': 80,
                  'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 0, 'forearmL.rot': 0 },
             1: { 'upperarmR.flex': 78, 'upperarmR.abd': -8, 'upperarmL.flex': 78, 'upperarmL.abd': -8,
                  'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 90, 'forearmL.rot': 90 },
-            2.6: { 'upperarmR.flex': 78, 'upperarmR.abd': -8, 'upperarmL.flex': 78, 'upperarmL.abd': -8,
+            2: { 'upperarmR.flex': 78, 'upperarmR.abd': -8, 'upperarmL.flex': 78, 'upperarmL.abd': -8,
                    'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 90, 'forearmL.rot': 90 },
-            4: { 'upperarmR.flex': -10, 'upperarmR.abd': 80, 'upperarmL.flex': -10, 'upperarmL.abd': 80,
+            5: { 'upperarmR.flex': -10, 'upperarmR.abd': 80, 'upperarmL.flex': -10, 'upperarmL.abd': 80,
                  'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 0, 'forearmL.rot': 0 } }
   });
 
@@ -125,16 +133,16 @@
     id: 'skull',
     set: {
       phases: [{ t: 0, label: '肘を曲げた位置' }, { t: 1.0, label: '伸ばす 1秒' },
-               { t: 1.3, label: '上で伸ばしきる' }, { t: 2.6, label: '戻す 3秒' }]
+               { t: 2.0, label: '戻す 3秒' }]
     },
     base: { 'forearmR.rot': 70, 'forearmL.rot': 70 },
     keys: { 0: { 'upperarmR.flex': 96, 'upperarmR.abd': 10, 'upperarmL.flex': 96, 'upperarmL.abd': 10,
                  'forearmR.flex': 96, 'forearmL.flex': 96 },
             1: { 'upperarmR.flex': 92, 'upperarmR.abd': 8, 'upperarmL.flex': 92, 'upperarmL.abd': 8,
                  'forearmR.flex': 8, 'forearmL.flex': 8 },
-            2.6: { 'upperarmR.flex': 92, 'upperarmR.abd': 8, 'upperarmL.flex': 92, 'upperarmL.abd': 8,
-                   'forearmR.flex': 8, 'forearmL.flex': 8 },
-            4: { 'upperarmR.flex': 96, 'upperarmR.abd': 10, 'upperarmL.flex': 96, 'upperarmL.abd': 10,
+            2: { 'upperarmR.flex': 92, 'upperarmR.abd': 8, 'upperarmL.flex': 92, 'upperarmL.abd': 8,
+                 'forearmR.flex': 8, 'forearmL.flex': 8 },
+            5: { 'upperarmR.flex': 96, 'upperarmR.abd': 10, 'upperarmL.flex': 96, 'upperarmL.abd': 10,
                  'forearmR.flex': 96, 'forearmL.flex': 96 } }
   });
 
@@ -143,8 +151,8 @@
   derive('lateral', {
     id: 'front',
     set: {
-      phases: [{ t: 0, label: '体の前に下ろした位置' }, { t: 1.2, label: '前に上げる 1〜2秒' },
-               { t: 1.5, label: '肩の高さで止める' }, { t: 5.5, label: '下ろす 3〜5秒' }],
+      phases: [{ t: 0, label: '前に上げる 1〜2秒' }, { t: 1.2, label: '肩の高さで止める' },
+               { t: 1.5, label: '下ろす 4秒' }],
       view: { az: 40, el: 9, dist: 3.5, target: [0, 1.05, 0] }
     },
     base: { 'upperarmR.abd': 4, 'upperarmL.abd': 4, 'forearmR.rot': 170, 'forearmL.rot': 170 },
@@ -160,13 +168,14 @@
     id: 'shrug',
     set: {
       phases: [{ t: 0, label: '肩を下ろした位置' }, { t: 1.5, label: 'すくめる 1秒' },
-               { t: 2.5, label: '上で1秒止める' }, { t: 4.0, label: '下ろす 2秒' }, { t: 5.0, label: '肩を下ろした位置' }]
+               { t: 2.5, label: '上で1秒止める' }, { t: 3.5, label: '下ろす 2秒' }]
     },
+    times: { 4.0: 3.5, 5.0: 5.5 },
     keys: { 2.5: { 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
                    'clavR.elev': 14, 'clavL.elev': 14, 'clavR.prot': 2, 'clavL.prot': -2,
                    /* 肩を上げると腕も外へ開くので、その分だけ内へ戻して腕を垂らしたまま保つ */
                    'upperarmR.flex': 3, 'upperarmR.abd': -6, 'upperarmL.flex': 3, 'upperarmL.abd': -6 },
-            4.0: { 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
+            3.5: { 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0,
                    'clavR.elev': 14, 'clavL.elev': 14, 'clavR.prot': 2, 'clavL.prot': -2,
                    /* 肩を上げると腕も外へ開くので、その分だけ内へ戻して腕を垂らしたまま保つ */
                    'upperarmR.flex': 3, 'upperarmR.abd': -6, 'upperarmL.flex': 3, 'upperarmL.abd': -6 } }
@@ -178,9 +187,10 @@
     id: 'row2',
     set: {
       phases: [{ t: 0, label: '腕を垂らした位置' }, { t: 0.9, label: '肘を引き上げる 1秒' },
-               { t: 2.1, label: '上で1秒止める' }, { t: 3.4, label: '下ろす 2〜3秒' }, { t: 4.9, label: '腕を垂らした位置' }]
+               { t: 2.1, label: '上で1秒止める' }, { t: 3.4, label: '下ろす 2秒' }]
     },
     base: { 'spineL.flex': 0, 'spineT.flex': 1, 'spineC.flex': 2 },
+    times: { 4.2: 4.6, 4.9: 5.4 },
     keys: { 0: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 55, 'upperarmL.flex': 55,
                  'forearmR.flex': 8, 'forearmL.flex': 8, 'neck.flex': -23 },
             0.9: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 30, 'upperarmL.flex': 30,
@@ -189,9 +199,9 @@
                    'forearmR.flex': 116, 'forearmL.flex': 116, 'neck.flex': -23 },
             3.4: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 8, 'upperarmL.flex': 8,
                    'forearmR.flex': 116, 'forearmL.flex': 116, 'neck.flex': -23 },
-            4.2: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 30, 'upperarmL.flex': 30,
+            4.6: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 30, 'upperarmL.flex': 30,
                    'forearmR.flex': 70, 'forearmL.flex': 70, 'neck.flex': -23 },
-            4.9: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 55, 'upperarmL.flex': 55,
+            5.4: { 'pelvis.y': 0.903, 'pelvis.pitch': 82, 'upperarmR.flex': 55, 'upperarmL.flex': 55,
                    'forearmR.flex': 8, 'forearmL.flex': 8, 'neck.flex': -23 } }
   });
 
@@ -209,14 +219,14 @@
     set: {
       view: { az: 86, el: 6, dist: 3.3, target: [0, 1.0, 0] },
       phases: [{ t: 0, label: '立った位置' }, { t: 1.5, label: '横に倒す 2秒' },
-               { t: 2.5, label: '一番下で1秒止める' }, { t: 4.0, label: '起こす 2秒' },
-               { t: 5.0, label: '立った位置' }],
+               { t: 3.5, label: '一番下で1秒止める' }, { t: 4.5, label: '起こす 2秒' }],
       dumbbells: [{ grip: 'handR', kg: 5 }]
     },
     base: {
       'forearmL.flex': 96, 'forearmL.rot': 40, 'handL.flex': 0
     },
-    keys: { 0: sbPose(0), 1.5: sbPose(1), 2.5: sbPose(1), 4.0: sbPose(0), 5.0: sbPose(0) }
+    times: { 2.5: 3.5, 4.0: 4.5, 5.0: 6.5 },
+    keys: { 0: sbPose(0), 1.5: sbPose(1), 3.5: sbPose(1), 4.5: sbPose(0), 6.5: sbPose(0) }
   });
 
   /* ---------------- サイドランジ ----------------
@@ -260,8 +270,7 @@
     props: [STOOL],
     phases: [
       { t: 0, label: 'かかとを下げた位置' }, { t: 0.6, label: 'かかとを上げる 1秒' },
-      { t: 1.6, label: '一番上で2秒止める' }, { t: 3.6, label: '下ろす 3秒' },
-      { t: 6.6, label: 'かかとを下げた位置' }
+      { t: 1.6, label: '一番上で2秒止める' }, { t: 3.6, label: '下ろす 3秒' }
     ],
     feet: { R: seatFoot(0.11), L: seatFoot(-0.11) },
     /* 腕は自然に垂らし、ダンベルを腿の上に立てて手で押さえる */

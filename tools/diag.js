@@ -2,7 +2,7 @@
 globalThis.window = undefined;
 await import('../src/motion.js');
 await import('../src/motions.js');
-for (const f of ['b', 'c', 'd', 'e']) { try { await import('../src/motions_' + f + '.js'); } catch (e) {} }
+for (const f of ['b', 'c', 'd', 'e', 'f']) { try { await import('../src/motions_' + f + '.js'); } catch (e) {} }
 const M = globalThis.MOTION, V = M.V;
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(M.motions);
 const N = 48;

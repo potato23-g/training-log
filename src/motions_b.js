@@ -16,8 +16,8 @@
     id: 'ohp',
     view: { az: 56, el: 9, dist: 3.3, target: [0, 1.05, 0] },
     phases: [
-      { t: 0, label: '肩の高さで構える' }, { t: 1.0, label: '押し上げる 1秒' },
-      { t: 1.3, label: '頭の上で伸ばしきる' }, { t: 4.3, label: '下ろす 3秒' }
+      { t: 0, label: '押し上げる 1秒' }, { t: 1.0, label: '頭の上で伸ばしきる' },
+      { t: 1.3, label: '下ろす 3秒' }
     ],
     feet: standFeet,
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
@@ -63,8 +63,8 @@
     id: 'lateral',
     view: { az: 56, el: 9, dist: 3.5, target: [0, 1.05, 0] },
     phases: [
-      { t: 0, label: '体の横に下ろした位置' }, { t: 1.2, label: '横に上げる 1〜2秒' },
-      { t: 1.5, label: '肩の高さで止める' }, { t: 5.5, label: '下ろす 3〜5秒' }
+      { t: 0, label: '横に上げる 1〜2秒' }, { t: 1.2, label: '肩の高さで止める' },
+      { t: 1.5, label: '下ろす 4秒' }
     ],
     feet: standFeet,
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
@@ -90,8 +90,8 @@
     id: 'curl',
     view: { az: 56, el: 9, dist: 3.2, target: [0, 1.0, 0] },
     phases: [
-      { t: 0, label: '肘を伸ばした位置' }, { t: 1.3, label: '巻き上げる 1〜2秒' },
-      { t: 1.6, label: '上で止める' }, { t: 5.1, label: '下ろす 3〜4秒' }
+      { t: 0, label: '巻き上げる 1〜2秒' }, { t: 1.3, label: '上で止める' },
+      { t: 1.6, label: '下ろす 3〜4秒' }
     ],
     feet: standFeet,
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
@@ -118,8 +118,8 @@
     id: 'triext',
     view: { az: 48, el: 10, dist: 3.2, target: [0, 1.2, 0] },
     phases: [
-      { t: 0, label: '頭の後ろで構える' }, { t: 1.0, label: '伸ばす 1秒' },
-      { t: 1.3, label: '頭の上で伸ばしきる' }, { t: 4.3, label: '戻す 3秒' }
+      { t: 0, label: '伸ばす 1秒' }, { t: 1.0, label: '頭の上で伸ばしきる' },
+      { t: 1.3, label: '戻す 3秒' }
     ],
     feet: standFeet,
     dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, -0.05, 0] }],
@@ -145,9 +145,8 @@
     id: 'farmer',
     view: { az: 56, el: 9, dist: 3.3, target: [0, 1.0, 0] },
     phases: [
-      { t: 0, label: '正しい姿勢' }, { t: 1.5, label: 'そのまま保つ' },
-      { t: 2.5, label: '崩れた姿勢（肩がすくむ）', wrong: true }, { t: 4.0, label: '崩れたまま', wrong: true },
-      { t: 5.0, label: '正しい姿勢に戻す' }
+      { t: 0, label: '正しい姿勢' }, { t: 1.5, label: '崩れていく', wrong: true },
+      { t: 2.5, label: '崩れた姿勢（肩がすくむ）', wrong: true }, { t: 4.0, label: '正しい姿勢に戻す' }
     ],
     feet: standFeet,
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],

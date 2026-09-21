@@ -62,7 +62,7 @@
     props: [CHAIR],
     phases: [
       { t: 0, label: '腕を垂らした位置' }, { t: 0.4, label: '肘を引き上げる 1秒' },
-      { t: 1.4, label: '上で1秒止める' }, { t: 2.4, label: '下ろす 3秒' }, { t: 5.4, label: '腕を垂らした位置' }
+      { t: 1.4, label: '上で1秒止める' }, { t: 2.4, label: '下ろす 3秒' }
     ],
     /* 左膝を座面に固定し、そこから骨盤の位置が決まる */
     anchor: { bone: 'shankL', local: [0.075, 0, 0], at: [0.10, 0.45, -0.26] },
@@ -110,7 +110,7 @@
     props: [STEP],
     phases: [
       { t: 0, label: 'かかとを下げた位置' }, { t: 0.6, label: 'かかとを上げる 1秒' }, { t: 1.6, label: '一番上で2秒止める' },
-      { t: 3.6, label: '下ろす 3秒' }, { t: 6.6, label: 'かかとを下げた位置' }
+      { t: 3.6, label: '下ろす 3秒' }
     ],
     feet: { R: calfFoot(0.10), L: calfFoot(-0.10) },
     dumbbells: [{ grip: 'handR', kg: 5 }],

@@ -28,7 +28,7 @@
     view: { az: 12, el: 16, dist: 3.2, target: [0.15, 0.2, 0] },
     phases: [
       { t: 0, label: '肘を床につけた位置' }, { t: 1.0, label: '押し上げる 1秒' },
-      { t: 1.3, label: '下ろす 3秒' }, { t: 4.0, label: '肘を床につけた位置' }
+      { t: 2.0, label: '下ろす 3秒' }
     ],
     feet: { R: hookFoot(0.13), L: hookFoot(-0.13) },
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
@@ -42,9 +42,9 @@
                                  'forearmR.flex': 95, 'forearmL.flex': 95 } },
       { t: 1.0, hold: true, d: { 'upperarmR.flex': 90, 'upperarmR.abd': 27, 'upperarmL.flex': 90, 'upperarmL.abd': 27,
                                  'forearmR.flex': 6, 'forearmL.flex': 6 } },
-      { t: 2.6, d: { 'upperarmR.flex': 30, 'upperarmR.abd': 38, 'upperarmL.flex': 30, 'upperarmL.abd': 38,
+      { t: 2.0, d: { 'upperarmR.flex': 30, 'upperarmR.abd': 38, 'upperarmL.flex': 30, 'upperarmL.abd': 38,
                      'forearmR.flex': 50, 'forearmL.flex': 50 } },
-      { t: 4.0, hold: true, d: { 'upperarmR.flex': -15, 'upperarmR.abd': 45, 'upperarmL.flex': -15, 'upperarmL.abd': 45,
+      { t: 5.0, hold: true, d: { 'upperarmR.flex': -15, 'upperarmR.abd': 45, 'upperarmL.flex': -15, 'upperarmL.abd': 45,
                                  'forearmR.flex': 95, 'forearmL.flex': 95 } }
     ]
   });
@@ -57,8 +57,7 @@
     id: 'pushup',
     view: { az: 8, el: 7, dist: 3.6, target: [-0.4, 0.3, 0] },
     phases: [
-      { t: 0, label: '腕を伸ばした位置' }, { t: 0.3, label: '下ろす 3秒' },
-      { t: 3.0, label: '胸が床の手前' }, { t: 4.0, label: '押し上げる 1秒' }
+      { t: 0, label: '下ろす 3秒' }, { t: 3.0, label: '押し上げる 1秒' }
     ],
     hands: {
       R: { at: [0.15, 0, 0.30], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
@@ -121,7 +120,7 @@
     id: 'crunch',
     view: { az: 12, el: 16, dist: 3.2, target: [0.15, 0.2, 0] },
     phases: [
-      { t: 0, label: '仰向けで構える' }, { t: 1.5, label: '肩甲骨を浮かせる 1.5秒' }, { t: 4.0, label: '戻す 2.5秒' }
+      { t: 0, label: '肩甲骨を浮かせる 1.5秒' }, { t: 1.5, label: '戻す 2.5秒' }
     ],
     feet: { R: hookFoot(0.13), L: hookFoot(-0.13) },
     base: {
@@ -151,7 +150,7 @@
     view: { az: 12, el: 16, dist: 3.3, target: [0.15, 0.35, 0] },
     phases: [
       { t: 0, label: '股関節と膝を90度に' }, { t: 2.0, label: '右腕と左脚を伸ばす' },
-      { t: 4.0, label: '戻す' }, { t: 6.0, label: '左腕と右脚を伸ばす' }, { t: 8.0, label: '戻す' }
+      { t: 4.0, label: '戻す' }, { t: 6.0, label: '左腕と右脚を伸ばす' }
     ],
     base: {
       'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,

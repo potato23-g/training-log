@@ -28,7 +28,7 @@
     view: { az: 62, el: 10, dist: 3.4, target: [-0.05, 0.70, 0] },
     phases: [
       { t: 0, label: '立った位置' }, { t: 0.4, label: '股関節を折る 3秒' }, { t: 3.4, label: '一番下' },
-      { t: 3.9, label: '起き上がる 1〜2秒' }, { t: 4.9, label: '立った位置' }
+      { t: 3.9, label: '起き上がる 1〜2秒' }
     ],
     feet: { R: flatFoot(0, 0.12, 5), L: flatFoot(0, -0.12, -5) },
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
@@ -55,7 +55,7 @@
     view: { az: 55, el: 11, dist: 3.3, target: [-0.05, 0.68, 0] },
     phases: [
       { t: 0, label: '立った位置' }, { t: 0.4, label: '股関節を折る 3秒' }, { t: 3.4, label: '一番下' },
-      { t: 3.9, label: '起き上がる 1〜2秒' }, { t: 4.9, label: '立った位置' }
+      { t: 3.9, label: '起き上がる 1〜2秒' }
     ],
     feet: { R: wideFoot(0, 0, 0) },
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
@@ -92,7 +92,7 @@
     props: [BED_SPLIT],
     phases: [
       { t: 0, label: '立った位置' }, { t: 0.5, label: '沈む 2.5秒' }, { t: 3.0, label: '一番下' },
-      { t: 3.5, label: '立ち上がる 1秒' }, { t: 4.5, label: '立った位置' }
+      { t: 3.5, label: '立ち上がる 1秒' }
     ],
     /* 後ろ足（左）: 甲の先寄り（つま先の付け根）をベッド上面に乗せる。しゃがむほど
        股関節と足首の相対角が変わるので pitch はキーごとに変える（骨盤が沈むほど深く: -40°→-88°） */
@@ -132,7 +132,7 @@
     anchor: { bone: 'spineT', local: [-0.1, 0, 0], at: [-0.15, 0.30, 0] },
     phases: [
       { t: 0, label: '下ろした位置' }, { t: 0.3, label: '持ち上げる 1秒' }, { t: 1.3, label: '上で2秒止める' },
-      { t: 3.3, label: '下ろす 2秒' }, { t: 5.3, label: '下ろした位置' }
+      { t: 3.3, label: '下ろす 2秒' }
     ],
     feet: { R: flatFoot(0.60, 0.11, 4), L: flatFoot(0.60, -0.11, -4) },
     hands: {
