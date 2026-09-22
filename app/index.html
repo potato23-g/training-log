@@ -1556,14 +1556,14 @@ function figSize(f, m){
   }catch(e){}
   f.setSize(w, h);
 }
-function figShot(id){
+function figShot(id, dbn){
   const f = figInit(), m = motionOf(id);
   if(!f || !m) return "";
   figSize(f, m);
-  const key = id + "|" + (figDark() ? "d" : "l") + "|" + Math.round(figAz[id] || 0);
+  const key = id + "|" + (figDark() ? "d" : "l") + "|" + Math.round(figAz[id] || 0) + "|" + (dbn || "");
   if(figShots[key]) return figShots[key];
   try{
-    f.render(m, stillTime(m), figView(m, id));
+    f.render(m, stillTime(m), Object.assign(figView(m, id), {dbCount: dbn || null}));
     const keys = Object.keys(figShots);
     if(keys.length > 10) delete figShots[keys[0]];     /* 画像を抱え込みすぎない */
     return (figShots[key] = f.canvas.toDataURL("image/png"));
@@ -1574,18 +1574,24 @@ function phaseLabel(m, t){
   (m.phases || []).forEach(p => { if(t >= p.t) lb = p.label; });
   return lb;
 }
-function diaHTML(id, compact, item){
+function diaHTML(id, compact, item, opt){
   const mo = (item && item.mo) || id;
   const m = motionOf(mo);
+  /* 図に描くダンベルの本数。使う本数のほうが少なければ、その分だけ描く */
+  const figDb = m && (m.dumbbells || []).length;
+  const useDb = opt ? opt.n : null;
+  const dbn = (useDb && figDb && useDb < figDb) ? useDb : null;
+  const dbNote = (useDb && figDb && useDb > figDb)
+    ? `<p class="dianote">図は1つで持つ形です。今日は「${opt.how}」で行ってください。</p>` : "";
   const hold = ((PHYS[id] || PHYS[baseOf(id)] || {}).hold) || "";
   const note = DIANOTE[id] || DIANOTE[baseOf(id)] || "";
   const tail = (hold ? `<p class="diahold"><b>接地</b>　${hold}</p>` : "")
              + (compact || !note ? "" : `<p class="dianote">${note}</p>`);
   if(!m) return `<div class="dia">${tail}</div>`;
-  const shot = figShot(mo);
+  const shot = figShot(mo, dbn);
   const fignote = item && item.baseFig
     ? `<p class="dianote">図は基本のやり方です。この組み方では${item.note || ""}</p>` : "";
-  return `<div class="dia" data-dia="${mo}">
+  return `<div class="dia" data-dia="${mo}" data-db="${dbn || ""}">
     <div class="figslot">
       ${shot ? `<img class="figstill" src="${shot}" alt="${itemNameOf(id)}の姿勢">`
              : `<p class="diahint">この端末では動きの図を表示できません</p>`}
@@ -1593,7 +1599,7 @@ function diaHTML(id, compact, item){
       <div class="figbar"><span></span></div>
     </div>
     ${shot ? `<div class="rowbtns"><button data-act="play" data-ex="${mo}">動きを再生</button></div>` : ""}
-    ${fignote}${tail}
+    ${fignote}${dbNote}${tail}
   </div>`;
 }
 function itemNameOf(id){ return EXMAP[id] ? EXMAP[id].name : ""; }
@@ -1631,6 +1637,7 @@ function togglePlay(id){
   const bar = slot.querySelector(".figbar span");
   if(bar) bar.parentNode.style.display = "block";
   const T = MOTION.cycleTime(m);
+  const dbn = +(wrap.dataset.db || 0) || null;
   const t0 = performance.now();
   let last = 0;
   const tick = (now)=>{
@@ -1638,7 +1645,7 @@ function togglePlay(id){
     if(now - last < 33) return;
     last = now;
     const t = ((now - t0) / 1000) % T;
-    f.render(m, t, figView(m, id));
+    f.render(m, t, Object.assign(figView(m, id), {dbCount: dbn}));
     if(phase) phase.textContent = phaseLabel(m, t);
     if(bar) bar.style.width = (t / T * 100).toFixed(1) + "%";
   };
@@ -2773,7 +2780,7 @@ function exRow(item){
       <div class="rowbtns">
         <button data-act="goref" data-ex="${id}">解説を見る</button>
       </div>
-      </div><div class="exside">${diaHTML(id, true, item)}</div></div>`;
+      </div><div class="exside">${diaHTML(id, true, item, sug.opt)}</div></div>`;
   }
 
   return `<div class="exrow">
@@ -2800,7 +2807,7 @@ function viewEx(){
   const left = `
     <div class="card">
       <h4>動き<span class="refhead">${motionOf(refEx) ? "再生中は左右にドラッグすると回せます" : ""}</span></h4>
-      ${diaHTML(refEx, false)}
+      ${diaHTML(refEx, false, null, refSug.opt)}
     </div>
     <div class="card" id="refFig">
       <h4>効く部位</h4>

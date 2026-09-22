@@ -91,7 +91,7 @@
   retime('deadbug', 'deadbug_slow', /^右腕と左脚を伸ばす/, 4);
   retime('hipthrust', 'hipthrust_hold', /^上で\d+秒止める/, 3);
   retime('shrug', 'shrug_hold', /^上で\d+秒止める/, 2);
-  retime('row2', 'row2_hold', /^上で\d+秒止める/, 2);
+  retime('row2', 'row2_hold', /^上で[\d.]+秒止める/, 2);
   retime('calfseat', 'calfseat_hold', /^一番上で\d+秒止める/, 2);
   retime('row', 'row_pause', /^上で\d+秒止める/, 2);
 
@@ -113,8 +113,10 @@
     keys: { 2.2: { 'pelvis.y': 0.890, 'pelvis.z': 0.100 }, 3.5: { 'pelvis.y': 0.870, 'pelvis.z': 0.130 },
             4.1: { 'pelvis.y': 0.870, 'pelvis.z': 0.130 }, 4.6: { 'pelvis.y': 0.900, 'pelvis.z': 0.090 } } });
   derive('fly', { id: 'fly_shallow',
-    keys: { 0: { 'upperarmR.abd': 52, 'upperarmL.abd': 52 }, 5: { 'upperarmR.abd': 52, 'upperarmL.abd': 52 } } });
+    keys: { 0: { 'upperarmR.abd': 52, 'upperarmL.abd': 52 }, 4.6: { 'upperarmR.abd': 52, 'upperarmL.abd': 52 } } });
   derive('bridge', { id: 'bridge_low',
+    set: { phases: [{ t: 0, label: '持ち上げる 1.3秒' }, { t: 1.3, label: '上で2秒止める' },
+                    { t: 3.3, label: '下ろす 2秒' }] },
     keys: { 1.3: { 'pelvis.pitch': -104 }, 3.3: { 'pelvis.pitch': -104 } } });
 
   /* ============ 片側だけ動かす組み方 ============ */
@@ -153,14 +155,14 @@
             4.0: { 'upperarmR.flex': 36, 'upperarmR.abd': -10, 'forearmR.flex': 128,
                    'upperarmL.flex': 36, 'upperarmL.abd': -10, 'forearmL.flex': 128 } } });
   derive('crunch', { id: 'crunch_arms',
-    base: { 'upperarmR.flex': 8, 'upperarmR.abd': 12, 'forearmR.flex': 10, 'forearmR.rot': 120,
-            'upperarmL.flex': 8, 'upperarmL.abd': 12, 'forearmL.flex': 10, 'forearmL.rot': 120 },
-    keys: { 0: { 'upperarmR.flex': 8, 'upperarmR.abd': 12, 'forearmR.flex': 10,
-                 'upperarmL.flex': 8, 'upperarmL.abd': 12, 'forearmL.flex': 10 },
-            1.5: { 'upperarmR.flex': 14, 'upperarmR.abd': 12, 'forearmR.flex': 10,
-                   'upperarmL.flex': 14, 'upperarmL.abd': 12, 'forearmL.flex': 10 },
-            4.0: { 'upperarmR.flex': 8, 'upperarmR.abd': 12, 'forearmR.flex': 10,
-                   'upperarmL.flex': 8, 'upperarmL.abd': 12, 'forearmL.flex': 10 } } });
+    base: { 'upperarmR.flex': -40, 'upperarmR.abd': 70, 'forearmR.flex': 30, 'forearmR.rot': 0,
+            'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30, 'forearmL.rot': 0 },
+    keys: { 0: { 'upperarmR.flex': -40, 'upperarmR.abd': 70, 'forearmR.flex': 30,
+                 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
+            1.5: { 'upperarmR.flex': -36, 'upperarmR.abd': 70, 'forearmR.flex': 30,
+                   'upperarmL.flex': -36, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
+            4.0: { 'upperarmR.flex': -40, 'upperarmR.abd': 70, 'forearmR.flex': 30,
+                   'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 } } });
 
   /* ダンベルフロアプレス: 右手だけ押し、左手は床に置く */
   derive('floorpress', { id: 'floorpress_one',
@@ -168,8 +170,8 @@
     base: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30, 'forearmL.rot': 0 },
     keys: { 0: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
             1: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
-            2: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
-            5: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 } } });
+            2.6: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
+            4: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 } } });
 
   /* トライセプスエクステンション: 右手だけ伸ばし、左手で右肘を支える */
   derive('triext', { id: 'triext_one',
@@ -184,13 +186,14 @@
     base: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30, 'forearmL.rot': 0 },
     keys: { 0: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
             1: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
-            2: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
-            5: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 } } });
+            1.6: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 },
+            4.6: { 'upperarmL.flex': -40, 'upperarmL.abd': 70, 'forearmL.flex': 30 } } });
 
   /* デッドバグ: 腕だけ動かす（脚は90度のまま） */
   derive('deadbug', { id: 'deadbug_half',
-    set: { phases: [{ t: 0, label: '股関節と膝を90度に' }, { t: 2.0, label: '右腕を伸ばす' },
-                    { t: 4.0, label: '戻す' }, { t: 6.0, label: '左腕を伸ばす' }] },
+    set: { phases: [{ t: 0, label: '右腕を伸ばす 1.8秒' }, { t: 1.8, label: 'そのまま止める' },
+                    { t: 2.2, label: '戻す 1.8秒' }, { t: 4.0, label: '左腕を伸ばす 1.8秒' },
+                    { t: 5.8, label: 'そのまま止める' }, { t: 6.2, label: '戻す 1.8秒' }] },
     keys: { 1.8: { 'thighL.flex': 88, 'thighL.abd': 0, 'shankL.flex': 88 },
             2.2: { 'thighL.flex': 88, 'thighL.abd': 0, 'shankL.flex': 88 },
             5.8: { 'thighR.flex': 88, 'thighR.abd': 0, 'shankR.flex': 88 },
@@ -201,7 +204,7 @@
   const floorCalf = (z) => ({ at: [0.01, 0, z], local: FOOT.ball, pitch: 'footPitch', yaw: 0, pins: [FOOT.ball] });
   derive('calf', { id: 'calf_floor',
     set: { props: [], feet: { R: floorCalf(0.10), L: floorCalf(-0.10) },
-           phases: [{ t: 0, label: 'かかとを下ろした位置' }, { t: 0.6, label: 'かかとを上げる 1秒' },
+           phases: [{ t: 0, label: 'かかとを上げる 1.6秒' },
                     { t: 1.6, label: '一番上で2秒止める' }, { t: 3.6, label: '下ろす 3秒' }] },
     base: { footPitch: 0, 'toesR.flex': 0, 'toesL.flex': 0 },
     keys: { 0.0: { footPitch: 0, 'toesR.flex': 0, 'toesL.flex': 0, 'pelvis.y': 0.930 },
@@ -215,10 +218,10 @@
   derive('bridge', { id: 'bridge_one',
     set: { feet: { R: { at: [0.52, 0, 0.11], local: [0, -FOOT.ankleH, 0], yaw: 4, pitch: 0,
                         pins: [FOOT.heel, FOOT.ball], pole: [0.2, 1, 0.3] } } },
-    base: { 'thighL.flex': -8, 'thighL.abd': 2, 'shankL.flex': 6, 'footL.flex': 10 },
-    keys: { 0: { 'thighL.flex': -8, 'shankL.flex': 6 }, 1.0: { 'thighL.flex': -14, 'shankL.flex': 6 },
-            1.3: { 'thighL.flex': -18, 'shankL.flex': 6 }, 3.3: { 'thighL.flex': -18, 'shankL.flex': 6 },
-            4.6: { 'thighL.flex': -12, 'shankL.flex': 6 }, 5.3: { 'thighL.flex': -8, 'shankL.flex': 6 } } });
+    base: { 'thighL.flex': 30, 'thighL.abd': 2, 'shankL.flex': 4, 'footL.flex': 10 },
+    keys: { 0: { 'thighL.flex': 30, 'shankL.flex': 4 }, 1.0: { 'thighL.flex': 24, 'shankL.flex': 4 },
+            1.3: { 'thighL.flex': 20, 'shankL.flex': 4 }, 3.3: { 'thighL.flex': 20, 'shankL.flex': 4 },
+            4.6: { 'thighL.flex': 26, 'shankL.flex': 4 }, 5.3: { 'thighL.flex': 30, 'shankL.flex': 4 } } });
 
   /* プランク: 片脚を浮かせて行う */
   derive('plank', { id: 'plank_leg',
@@ -227,11 +230,13 @@
 
   /* サイドプランク: 上の脚を浮かせて行う */
   derive('sideplank', { id: 'sideplank_leg',
-    base: { 'thighL.abd': -22, 'thighL.flex': 2, 'shankL.flex': 4 } });
+    base: { 'thighL.abd': 26, 'thighL.flex': 2, 'shankL.flex': 4 },
+    keys: { 0: { 'thighL.abd': 26 }, 2.0: { 'thighL.abd': 26 }, 3.0: { 'thighL.abd': 26 },
+            4.0: { 'thighL.abd': 26 }, 5.0: { 'thighL.abd': 26 } } });
 
   /* ブルガリアンスクワット: 深く沈む */
   derive('split', { id: 'split_deep',
-    keys: { 3.0: { 'pelvis.y': 0.640 }, 2.0: { 'pelvis.y': 0.700 } } });
+    keys: { 2.0: { 'pelvis.y': 0.655 }, 3.0: { 'pelvis.y': 0.588 } } });
 
   /* サイドレイズ: 肘を深く曲げて腕を短くする */
   derive('lateral', { id: 'lateral_short',

@@ -27,8 +27,7 @@
     id: 'floorpress',
     view: { az: 12, el: 16, dist: 3.2, target: [0.15, 0.2, 0] },
     phases: [
-      { t: 0, label: '肘を床につけた位置' }, { t: 1.0, label: '押し上げる 1秒' },
-      { t: 2.0, label: '下ろす 3秒' }
+      { t: 0, label: '押し上げる 1秒' }, { t: 1.0, label: '下ろす 3秒' }
     ],
     feet: { R: hookFoot(0.13), L: hookFoot(-0.13) },
     dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
@@ -42,9 +41,9 @@
                                  'forearmR.flex': 95, 'forearmL.flex': 95 } },
       { t: 1.0, hold: true, d: { 'upperarmR.flex': 90, 'upperarmR.abd': 27, 'upperarmL.flex': 90, 'upperarmL.abd': 27,
                                  'forearmR.flex': 6, 'forearmL.flex': 6 } },
-      { t: 2.0, d: { 'upperarmR.flex': 30, 'upperarmR.abd': 38, 'upperarmL.flex': 30, 'upperarmL.abd': 38,
+      { t: 2.6, d: { 'upperarmR.flex': 30, 'upperarmR.abd': 38, 'upperarmL.flex': 30, 'upperarmL.abd': 38,
                      'forearmR.flex': 50, 'forearmL.flex': 50 } },
-      { t: 5.0, hold: true, d: { 'upperarmR.flex': -15, 'upperarmR.abd': 45, 'upperarmL.flex': -15, 'upperarmL.abd': 45,
+      { t: 4.0, hold: true, d: { 'upperarmR.flex': -15, 'upperarmR.abd': 45, 'upperarmL.flex': -15, 'upperarmL.abd': 45,
                                  'forearmR.flex': 95, 'forearmL.flex': 95 } }
     ]
   });
@@ -149,8 +148,9 @@
     id: 'deadbug',
     view: { az: 12, el: 16, dist: 3.3, target: [0.15, 0.35, 0] },
     phases: [
-      { t: 0, label: '股関節と膝を90度に' }, { t: 2.0, label: '右腕と左脚を伸ばす' },
-      { t: 4.0, label: '戻す' }, { t: 6.0, label: '左腕と右脚を伸ばす' }
+      { t: 0, label: '右腕と左脚を伸ばす 1.8秒' }, { t: 1.8, label: 'そのまま止める' },
+      { t: 2.2, label: '戻す 1.8秒' }, { t: 4.0, label: '左腕と右脚を伸ばす 1.8秒' },
+      { t: 5.8, label: 'そのまま止める' }, { t: 6.2, label: '戻す 1.8秒' }
     ],
     base: {
       'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,

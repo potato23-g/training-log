@@ -211,7 +211,7 @@
         mesh.position.set(b.pos[0], b.pos[1], b.pos[2]);
         mesh.quaternion.set(b.quat[0], b.quat[1], b.quat[2], b.quat[3]);
       });
-      const dbs = frame.dumbbells || [];
+      const dbs = (frame.dumbbells || []).slice(0, dbLimit === null ? undefined : dbLimit);
       while (dbPool.length < dbs.length) {
         const g = dumbbellGeom(THREE);
         g.traverse((c) => { if (c.isMesh) { c.material = matDb; c.castShadow = true; } });
@@ -225,6 +225,8 @@
         g.quaternion.set(d.quat[0], d.quat[1], d.quat[2], d.quat[3]);
       });
     }
+
+    let dbLimit = null;
 
     /* 動作全体が枠に収まるカメラ距離と中心を求める（種目ごとに1回だけ計算） */
     const fitCache = {};
@@ -310,6 +312,8 @@
 
     function render(motion, t, view) {
       setWrong(phaseWrong(motion, t));
+      /* 使うダンベルの本数に合わせて、描く本数を減らす（多い分は描かない） */
+      dbLimit = (view && view.dbCount) ? view.dbCount : null;
       const frame = M.solveFrame(motion, t);
       setProps(motion.props);
       applyFrame(frame);

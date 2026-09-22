@@ -30,7 +30,7 @@
     view: { az: 36, el: 8 },
     phases: [
       { t: 0, label: '立った位置' }, { t: 0.5, label: '下ろす 3秒' }, { t: 3.5, label: '一番下' },
-      { t: 4.1, label: '立ち上がる 1秒' }, { t: 5.0, label: '立った位置' }
+      { t: 4.1, label: '立ち上がる 1.2秒' }
     ],
     feet: { R: flatFoot(0, 0.17, 16), L: flatFoot(0, -0.17, -16) },
     hands: gobletHands,
@@ -109,7 +109,7 @@
     view: { az: 24, el: 8 },
     props: [STEP],
     phases: [
-      { t: 0, label: 'かかとを下げた位置' }, { t: 0.6, label: 'かかとを上げる 1秒' }, { t: 1.6, label: '一番上で2秒止める' },
+      { t: 0, label: 'かかとを上げる 1.6秒' }, { t: 1.6, label: '一番上で2秒止める' },
       { t: 3.6, label: '下ろす 3秒' }
     ],
     feet: { R: calfFoot(0.10), L: calfFoot(-0.10) },
