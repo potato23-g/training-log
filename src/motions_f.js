@@ -1,6 +1,7 @@
 /* 組み方（楽にする／大変にする）ごとの動き。
    ・テンポや止める時間だけ変わるものは、元の動きの時間を伸ばして作る（retime）
-   ・深さや姿勢が変わるものは、元の動きを写して変わるところだけ書き換える（derive） */
+   ・深さや姿勢が変わるものは、元の動きを写して変わるところだけ書き換える（derive）
+   ・元の動きに無い場所で止めるものは、新しい静止区間を挿し込んで作る（insertHold） */
 (function (root) {
   'use strict';
   const M = root.MOTION;
@@ -72,40 +73,118 @@
     return M.register(m);
   }
 
+  /* 元の動きの時刻 atT に、N 秒の静止区間を新しく挿し込む。
+     atT にキーが無ければ、その瞬間の姿勢を補間で求めて両端の値が同じキー対を作る
+     （エンジンの hold は接線を0にするだけなので、止まって見えるのは値が同じときだけ）。
+     atT=0（動きの始まり）や atT=周期（終わり＝始まりと同じ姿勢）にも挿せる。
+     label はその位置に新しく付ける場面の名前。挿し込んだ位置に既存の場面がかかっているとき:
+       ・その場面がちょうど atT から始まっていた → 名前は新しい場面に譲り、元の場面（秒数つきの
+         ものに限る）は止めたあとに同じ長さのまま再開する
+       ・atT が場面の途中だった（例: 「巻き上げる」の途中で止める） → 止めたあとは、その場面の
+         秒数表記を外した名前（「巻き上げる」など）で再開する（実際の残り時間は元の秒数と違うため）
+     後ろのキー・場面は sec 秒ぶん時刻をずらす。 */
+  function insertHold(baseId, id, atT, sec, label) {
+    const b = M.motions[baseId];
+    if (!b) throw new Error('元の動きが無い: ' + baseId);
+    const T = M.cycleTime(b);
+    const round = (t) => Math.round(t * 1000) / 1000;
+    atT = round(atT);
+
+    const names = Object.keys(b.base || {});
+    (b.keys || []).forEach((k) => Object.keys(k.d || {}).forEach((n) => { if (names.indexOf(n) < 0) names.push(n); }));
+    const d0 = M.driversAt(b, ((atT % T) + T) % T);
+    const sampled = {};
+    names.forEach((n) => { sampled[n] = d0[n]; });
+
+    const keys = clone(b.keys);
+    keys.forEach((k) => { if (k.t > atT + 1e-9) k.t = round(k.t + sec); });
+    const startKey = keys.find((k) => Math.abs(k.t - atT) < 1e-6);
+    if (startKey) startKey.hold = true;
+    else keys.push({ t: atT, hold: true, d: clone(sampled) });
+    keys.push({ t: round(atT + sec), hold: true, d: clone(sampled) });
+    keys.sort((a, c) => a.t - c.t);
+
+    const ps = clone(b.phases) || [];
+    let idx = -1;
+    for (let i = 0; i < ps.length; i++) { if (ps[i].t <= atT + 1e-9) idx = i; }
+    const containing = idx >= 0 ? ps[idx] : null;
+    const startsHere = !!(containing && Math.abs(containing.t - atT) < 1e-6);
+    if (startsHere) ps.splice(idx, 1);
+    ps.forEach((p) => { if (p.t > atT + 1e-9) p.t = round(p.t + sec); });
+    ps.push({ t: atT, label: label });
+    if (containing) {
+      if (startsHere) {
+        if (/\d/.test(containing.label)) ps.push({ t: round(atT + sec), label: containing.label });
+      } else {
+        const stripped = containing.label.replace(/[\d.〜]+秒.*$/, '').trim();
+        if (stripped) ps.push({ t: round(atT + sec), label: stripped });
+      }
+    }
+    ps.sort((a, c) => a.t - c.t);
+
+    const m = {
+      id: id,
+      view: clone(b.view), phases: ps,
+      props: clone(b.props), feet: clone(b.feet), hands: clone(b.hands),
+      anchor: clone(b.anchor), contacts: clone(b.contacts),
+      dumbbells: clone(b.dumbbells), balance: clone(b.balance),
+      base: clone(b.base), keys: keys
+    };
+    Object.keys(m).forEach((x) => { if (m[x] === undefined) delete m[x]; });
+    return M.register(m);
+  }
+
   M.deriveFrom = derive;
   M.retime = retime;
+  M.insertHold = insertHold;
 
-  /* ============ テンポ・止める時間だけ変わる組み方 ============ */
-  retime('lateral', 'lateral_slow', /^下ろす/, 5);
-  retime('front', 'front_slow', /^下ろす/, 5);
-  retime('curl', 'curl_slow', /^下ろす/, 4);
-  retime('triext', 'triext_slow', /^戻す/, 4);
-  retime('skull', 'skull_slow', /^戻す/, 4);
-  retime('fly', 'fly_slow', /^開く/, 4);
-  retime('floorpress', 'floorpress_slow', /^下ろす/, 3);
-  retime('pushupknee', 'pushupknee_slow', /^下ろす/, 3);
-  retime('sumo', 'sumo_slow', /^下ろす/, 3);
-  retime('splitfloor', 'splitfloor_slow', /^沈む/, 3);
-  retime('sidelunge', 'sidelunge_slow', /沈む/, 3);
-  retime('sidebend', 'sidebend_slow', /^横に倒す/, 3);
-  retime('deadbug', 'deadbug_slow', /^右腕と左脚を伸ばす/, 4);
-  retime('hipthrust', 'hipthrust_hold', /^上で\d+秒止める/, 3);
-  retime('shrug', 'shrug_hold', /^上で\d+秒止める/, 2);
-  retime('row2', 'row2_hold', /^上で[\d.]+秒止める/, 2);
-  retime('calfseat', 'calfseat_hold', /^一番上で\d+秒止める/, 2);
-  retime('row', 'row_pause', /^上で\d+秒止める/, 2);
+  /* ============ 止める組み方: 既にある場面を伸ばして名前を付け直す ============ */
+  /* 「一番下」のように既に一番下・一番上で止まっている場面を、そのまま長く伸ばす */
+  (function () {
+    const m = retime('goblet', 'goblet_hold', /^一番下$/, 3);
+    m.phases.find((p) => p.label === '一番下').label = '一番下で3秒止める';
+  })();
+  (function () {
+    const m = retime('sumo', 'sumo_hold', /^一番下$/, 2);
+    m.phases.find((p) => p.label === '一番下').label = '一番下で2秒止める';
+  })();
+  (function () {
+    const m = retime('sidelunge', 'sidelunge_hold', /^一番下$/, 2);
+    m.phases.find((p) => p.label === '一番下').label = '一番下で2秒止める';
+  })();
+  (function () {
+    const m = retime('lateral', 'lateral_hold', /肩の高さで止める/, 2);
+    m.phases.find((p) => p.label === '肩の高さで止める').label = '上で2秒止める';
+  })();
+  (function () {
+    const m = retime('front', 'front_hold', /肩の高さで止める/, 2);
+    m.phases.find((p) => p.label === '肩の高さで止める').label = '上で2秒止める';
+  })();
+  /* ラベルに秒数が既にあるので retime の自動書き換えでそのまま文言が揃う */
+  retime('sidebend', 'sidebend_hold', /^一番下で\d+秒止める/, 3);
+  retime('shrug', 'shrug_hold', /^上で\d+秒止める/, 3);
+  retime('row2', 'row2_hold', /^上で[\d.]+秒止める/, 3);
 
+  /* ============ 止める組み方: 元の動きに新しい静止区間を挿し込む ============ */
+  insertHold('rdl', 'rdl_hold', 3.4, 2, '一番下で2秒止める');
+  insertHold('rdl1', 'rdl1_hold', 3.4, 2, '一番下で2秒止める');
+  insertHold('split', 'split_hold', 3.0, 2, '一番下で2秒止める');
+  insertHold('splitfloor', 'splitfloor_hold', 3.0, 2, '一番下で2秒止める');
+  /* row の t=0 はもともと「腕を垂らした位置」で0.4秒の場面（秒数なし）。
+     この0.4秒は新しい場面にそのまま吸収されるので、合計が2秒になるよう1.6秒だけ挿し込む */
+  insertHold('row', 'row_hold', 0, 1.6, '下で2秒止める');
+  insertHold('floorpress', 'floorpress_hold', 0, 2, '一番下で2秒止める');
+  insertHold('pushupknee', 'pushupknee_hold', 3.0, 2, '一番下で2秒止める');
+  insertHold('fly', 'fly_hold', 0, 2, '床の手前で2秒止める');
+  insertHold('triext', 'triext_hold', 0, 2, '下ろしたところで2秒止める');
+  insertHold('skull', 'skull_hold', 0, 2, '下ろしたところで2秒止める');
+  /* 前腕が床と平行（肘の曲げ約90°）になる付近。巻き上げ始めの約0.75秒後 */
+  insertHold('curl', 'curl_hold', 0.75, 2, '途中で2秒止める');
 
-  /* ============ 深さ・角度が変わる組み方 ============ */
-  derive('goblet', { id: 'goblet_deep',
-    keys: { 3.5: { 'pelvis.y': 0.386, 'pelvis.pitch': 32 }, 4.1: { 'pelvis.y': 0.386, 'pelvis.pitch': 32 } } });
+  /* ============ 深さ・角度が変わる組み方（楽にする方） ============ */
   derive('goblet', { id: 'goblet_box',
     keys: { 2.2: { 'pelvis.y': 0.640 }, 3.5: { 'pelvis.y': 0.560, 'pelvis.pitch': 24 },
             4.1: { 'pelvis.y': 0.560, 'pelvis.pitch': 24 }, 4.6: { 'pelvis.y': 0.700 } } });
-  derive('rdl', { id: 'rdl_deep',
-    keys: { 3.4: { 'pelvis.pitch': 90, 'pelvis.y': 0.893 } } });
-  derive('rdl1', { id: 'rdl1_deep',
-    keys: { 3.4: { 'pelvis.pitch': 90, 'pelvis.y': 0.893 } } });
   derive('sumo', { id: 'sumo_shallow',
     keys: { 2.2: { 'pelvis.y': 0.660 }, 3.5: { 'pelvis.y': 0.560, 'pelvis.pitch': 24 },
             4.1: { 'pelvis.y': 0.560, 'pelvis.pitch': 24 }, 4.6: { 'pelvis.y': 0.720 } } });
@@ -198,6 +277,9 @@
             2.2: { 'thighL.flex': 88, 'thighL.abd': 0, 'shankL.flex': 88 },
             5.8: { 'thighR.flex': 88, 'thighR.abd': 0, 'shankR.flex': 88 },
             6.2: { 'thighR.flex': 88, 'thighR.abd': 0, 'shankR.flex': 88 } } });
+  /* デッドバグ: 両手に1つずつダンベルを持って行う（動きはそのまま） */
+  derive('deadbug', { id: 'deadbug_db',
+    set: { dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }] } });
 
   /* ============ 支点・接地が変わる組み方 ============ */
   /* カーフレイズ: 段差を使わず床の上で行う（かかとは床までしか下がらない） */
@@ -234,13 +316,25 @@
     keys: { 0: { 'thighL.abd': 26 }, 2.0: { 'thighL.abd': 26 }, 3.0: { 'thighL.abd': 26 },
             4.0: { 'thighL.abd': 26 }, 5.0: { 'thighL.abd': 26 } } });
 
-  /* ブルガリアンスクワット: 深く沈む */
-  derive('split', { id: 'split_deep',
-    keys: { 2.0: { 'pelvis.y': 0.655 }, 3.0: { 'pelvis.y': 0.588 } } });
-
   /* サイドレイズ: 肘を深く曲げて腕を短くする */
   derive('lateral', { id: 'lateral_short',
     base: { 'forearmR.flex': 62, 'forearmL.flex': 62 },
     keys: { 0: { 'forearmR.flex': 62, 'forearmL.flex': 62 }, 1.2: { 'forearmR.flex': 62, 'forearmL.flex': 62 },
             1.5: { 'forearmR.flex': 62, 'forearmL.flex': 62 }, 5.5: { 'forearmR.flex': 62, 'forearmL.flex': 62 } } });
+
+  /* シーテッドカーフレイズ: 片脚ずつ行う。ダンベル2つを右膝にまとめ、右足だけ上げ下げする。
+     左足は床にフラットに置いたまま（footPitch を追わない固定ピッチにする） */
+  const seatFoot = (z) => ({ at: [0.56, 0, z], local: FOOT.ball, pitch: 'footPitch', yaw: 0, pins: [FOOT.ball],
+                              pole: [0.5, 1, z > 0 ? 0.2 : -0.2] });
+  const seatFootStill = (z) => ({ at: [0.56, 0, z], local: FOOT.ball, pitch: 0, yaw: 0,
+                                   pins: [FOOT.heel, FOOT.ball] });
+  derive('calfseat', { id: 'calfseat_single',
+    set: {
+      feet: { R: seatFoot(0.11), L: seatFootStill(-0.11) },
+      dumbbells: [{ grip: 'handR', kg: 5, local: [0, -0.05, 0.03] }, { grip: 'handL', kg: 5, local: [0, -0.05, -0.03] }]
+    },
+    base: {
+      'upperarmL.flex': 34, 'upperarmL.abd': -26, 'upperarmL.rot': -4,
+      'forearmL.flex': 62, 'forearmL.rot': 150, 'handL.flex': 0
+    } });
 })(typeof window !== 'undefined' ? window : globalThis);
