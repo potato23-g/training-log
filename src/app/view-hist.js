@@ -73,7 +73,11 @@ function trendCards(dates){
     const best = bestSet(rows.map(r=>r.st), ex.kind);
     const points = dailyMaxPoints(rows, g.ex, g.label);
     const growth = repGrowth(rows, ex.kind);
-    const pr = prMessage(g.ex, g.label, last.st, last.d);
+    /* その日の最後のセットは疲れて数字が落ちがちなので、最新の日にやったセットのうち
+       自己ベストになっているものを（あれば）探す。最後のセットとは限らない */
+    const lastDaySets = rows.filter(r=>r.d===last.d).map(r=>r.st);
+    let pr = "";
+    for(const st of lastDaySets){ pr = prMessage(g.ex, g.label, st, last.d); if(pr) break; }
     return `<div class="card">
       <h4>${esc(itemName({ex:g.ex, label:g.label}))}</h4>
       ${sparkSVG(points)}
@@ -83,35 +87,44 @@ function trendCards(dates){
     </div>`;
   }).join("");
 }
-/* 日ごとの最高回数（直近20点）。pr はその日の記録が、そのとき時点の自己ベストだったか */
+/* 日ごとの最高回数（直近20点、折れ線のY値）。pr はその日、この種目・組み方のどれかのセットが
+   そのとき時点の自己ベストだったか（最高回数のセットとは限らない。重さだけ伸びた日もあるため） */
 function dailyMaxPoints(rows, exId, label){
   const byDate = {};
   rows.forEach(r=>{
-    const cur = byDate[r.d];
-    if(!cur || (r.st.r||0) > cur.v) byDate[r.d] = {v:r.st.r||0, st:r.st};
+    const cur = byDate[r.d] || (byDate[r.d] = {v:0, sets:[]});
+    cur.sets.push(r.st);
+    if((r.st.r||0) > cur.v) cur.v = r.st.r||0;
   });
   const dates = Object.keys(byDate).sort().slice(-20);
   return dates.map(d=>{
     const hit = byDate[d];
-    return {d, v:hit.v, pr: !!prMessage(exId, label, hit.st, d)};
+    const pr = hit.sets.some(st => !!prMessage(exId, label, st, d));
+    return {d, v:hit.v, pr};
   });
 }
-/* 同じ重さでの回数の伸び（最初→最近）。重さの種目でないときは回数・秒そのものの伸び */
+/* 同じ重さでの回数の伸び（最初にその重さを使った日→最近使った日、それぞれ最高回数で比べる）。
+   1セットだけを比べると、疲れて回数が落ちた最後のセットのせいで伸びていても縮んで見えることがある。
+   重さの種目でないときは回数・秒そのものの伸び */
 function repGrowth(rows, kind){
   if(rows.length < 2) return null;
-  const last = rows[rows.length-1].st;
+  const bestOnDay = (list, d) => Math.max(...list.filter(r=>r.d===d).map(r=>r.st.r||0));
   if(kind === "w"){
-    const w = last.w;
+    const w = rows[rows.length-1].st.w;
     const atW = rows.filter(r=>r.st.w===w);
     if(atW.length < 2) return null;
-    const first = atW[0].st, cur = atW[atW.length-1].st;
-    if(cur.r === first.r) return null;
-    return kgText(w) + "での回数　" + first.r + "回 → " + cur.r + "回";
+    const firstDay = atW[0].d, lastDay = atW[atW.length-1].d;
+    if(firstDay === lastDay) return null;          /* 同じ日の中の話は「伸び」ではない */
+    const from = bestOnDay(atW, firstDay), to = bestOnDay(atW, lastDay);
+    if(to === from) return null;
+    return kgText(w) + "での回数　" + from + "回 → " + to + "回";
   }
-  const first = rows[0].st;
-  if(last.r === first.r) return null;
+  const firstDay = rows[0].d, lastDay = rows[rows.length-1].d;
+  if(firstDay === lastDay) return null;
+  const from = bestOnDay(rows, firstDay), to = bestOnDay(rows, lastDay);
+  if(to === from) return null;
   const unit = kind === "t" ? "秒" : "回";
-  return unit + "　" + first.r + unit + " → " + last.r + unit;
+  return unit + "　" + from + unit + " → " + to + unit;
 }
 /* 小さな折れ線（SVG、外部ライブラリなし）。pr の点は大きい丸で強調する */
 function sparkSVG(points){
@@ -154,7 +167,10 @@ function prMessage(exId, label, set, date){
   for(let i = all.length - 1; i >= 0; i--){
     if(all[i].st === set || (set.id && all[i].st.id === set.id)){ selfIdx = i; break; }
   }
-  const prior = (selfIdx >= 0 ? all.slice(0, selfIdx) : all.filter(x=>x.d < date)).map(x=>x.st);
+  /* set がまだ historySetsFor に載っていない（記録前に呼ばれた）ときは、その日のぶんも
+     「前」として数える。同じ日の先のセットを見落とすと、その日のうちの2セット目・3セット目が
+     不当に自己ベスト扱いになる */
+  const prior = (selfIdx >= 0 ? all.slice(0, selfIdx) : all.filter(x=>x.d <= date)).map(x=>x.st);
   if(!prior.length) return "";
   const r = set.r;
   if(ex.kind === "w"){
@@ -292,7 +308,9 @@ function renderDaySheet(date){
       if(ex.kind === "w") st.w = w;
       const epv = eIn ? parseFloat(eIn.value) : NaN;
       if(!isNaN(epv) && epv >= 1 && epv <= 10) st.rpe = Math.round(epv);
-      if(label) st.label = label;
+      /* label は組み方を選ばなかったときも "" を明示して入れる。無いままだと setLabel() が
+         その日の plan から拾ってしまい、たまたま別の組み方に化けることがある */
+      st.label = label || "";
       entryFor(date, exId, true).sets.push(st);
       persistSession(date);
       if(typeof syncNow === "function") syncNow();
@@ -331,8 +349,13 @@ function histDeleteSet(date, exId, setId){
   undoDel = {date, exId, set: removed};
   undoTimer = setTimeout(()=>{
     undoDel = null;
+    /* シート全体を作り直さない。セットを追加のフォームを書きかけている途中かもしれないので、
+       消えるべきは「取り消す」の帯だけ */
     const marker = sheetInner.querySelector("[data-histday]");
-    if(marker && marker.dataset.histday === date) renderDaySheet(date);
+    if(marker && marker.dataset.histday === date){
+      const flash = sheetInner.querySelector(".flash");
+      if(flash) flash.remove();
+    }
   }, 5000);
   render();
   renderDaySheet(date);
@@ -343,10 +366,12 @@ function histUndoDelete(){
   const {date, exId, set} = undoDel;
   undoDel = null;
   const s = session(date);
-  s.del = (s.del||[]).filter(id=>id!==set.id);
+  /* 消した id は del に残したままにする（同期の del は集合として増える一方の印なので、
+     ここで local から外しても、後で他端末やリモートと合流したときに復活し損ねてまた消える。
+     代わりに新しい id を振って、別のセットとして書き戻す */
   let e = s.entries.find(x=>x.ex===exId);
   if(!e){ e = {ex:exId, sets:[]}; s.entries.push(e); }
-  e.sets.push(set);
+  e.sets.push(Object.assign({}, set, {id: newSetId()}));
   persistSession(date);
   if(typeof syncNow === "function") syncNow();
   render();

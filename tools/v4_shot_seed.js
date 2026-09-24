@@ -1,6 +1,6 @@
 /* 見た目確認用のスクリーンショットを撮る前の下ごしらえ。
    URL の ?shot= で何を出すか、_dark で暗い表示にするかを切り替える。
-   shot= body | hist | histsheet | picker （末尾に _dark を付けると暗い表示） */
+   shot= body | hist | histsheet | histadd | histundo | addday | picker （末尾に _dark で暗い表示） */
 setTimeout(async () => {
   const qp = new URLSearchParams(location.search);
   const mode = qp.get("shot") || "hist";
@@ -48,6 +48,19 @@ setTimeout(async () => {
   } else if (mode.indexOf("histsheet") === 0) {
     switchTab("hist");
     openDaySheet(keyDaysAgo(7));
+  } else if (mode.indexOf("histadd") === 0) {
+    switchTab("hist");
+    openDaySheet(keyDaysAgo(7));
+    const btn = document.getElementById("haddopen");
+    if (btn) btn.click();
+  } else if (mode.indexOf("histundo") === 0) {
+    switchTab("hist");
+    openDaySheet(keyDaysAgo(7));
+    const del = sheetInner.querySelector(".del[data-hid]");
+    if (del) del.click();
+  } else if (mode.indexOf("addday") === 0) {
+    switchTab("hist");
+    openAddDaySheet();
   } else if (mode.indexOf("body") === 0) {
     bodyDays = 7; switchTab("body");
   } else {

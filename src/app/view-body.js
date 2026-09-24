@@ -38,7 +38,7 @@ function viewBody(){
         <button data-act="days" data-d="30" ${bodyDays===30?'style="border-color:var(--ink);color:var(--ink)"':''}>30日</button>
       </div>
     </div>
-    ${muscleBarCard(ranked, bodyDays)}`;
+    ${muscleBarCard(load, bodyDays)}`;
   const side = `
     ${detail}
     <div class="card">
@@ -65,13 +65,17 @@ function fmtSets(v){
   return Number.isInteger(r) ? String(r) : r.toFixed(1);
 }
 /* 部位ごとの有効セットを横棒で並べたカード。目標線は7日でWEEK_TARGET、14・30日はその日数に比例。
-   図の部位が小さくてタップしづらい問題の代わりにもなるよう、棒をタップしても同じ内訳が開く */
-function muscleBarCard(ranked, days){
+   図の部位が小さくてタップしづらい問題の代わりにもなるよう、棒をタップしても同じ内訳が開く。
+   並びは今の数値の大小ではなく、体の中で大きい部位（PRIORITY）を先に固定する。
+   数値順だと記録を足すたびに並びが入れ替わり、指の下で棒が動いてしまうため */
+function muscleBarCard(load, days){
   const target = WEEK_TARGET / 7 * days;
+  const order = Object.keys(MUSCLES).map(k=>({k, v: load[k] || 0}))
+    .sort((a, b) => (PRIORITY[b.k] || 0) - (PRIORITY[a.k] || 0));
   /* 目盛りいっぱいに余白を持たせる。ちょうど余白が無いと、誰も目標に届いていないときに
      目標の縦線が右端に張り付いて見えなくなるため */
-  const scaleMax = Math.max(1, target, ...ranked.map(x=>x.v)) * 1.15;
-  const rows = ranked.map(x=>{
+  const scaleMax = Math.max(1, target, ...order.map(x=>x.v)) * 1.15;
+  const rows = order.map(x=>{
     const pct = Math.min(100, x.v / scaleMax * 100);
     const tpct = Math.min(100, target / scaleMax * 100);
     const cls = "mbar" + (x.v >= target ? " reach" : "") + (x.k === selMuscle ? " sel" : "");

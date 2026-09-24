@@ -11,7 +11,9 @@
 .picklist .pktag.plan{color:var(--done);border-color:var(--done)}
 .picklist .pktag.warn{color:var(--muscle);border-color:var(--muscle)}
 .pickvariants{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px 4px}
-.pickvariant{min-height:44px;display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;
+/* .picklist button{...} が基本スタイルにあり、.pickvariant 単体（クラス1つ）より強いので、
+   .picklist を付けて上書きする（.pktag と同じ理由） */
+.picklist .pickvariant{min-height:44px;display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;
   background:var(--panel-2);border:1px solid var(--rule);border-radius:8px;padding:5px 12px;
   font-size:12.5px;font-weight:600;color:var(--ink-2);text-align:left;max-width:100%}
 .pickvariant span{display:block;font-weight:400;font-size:11px;color:var(--ink-3);margin-top:1px}
@@ -36,9 +38,18 @@ table.hist td{padding:9px 6px}
 .trendpath{stroke:var(--muscle);stroke-width:2;fill:none;opacity:.85}
 .trenddot{fill:var(--panel);stroke:var(--muscle);stroke-width:1.6}
 .prdot{fill:var(--muscle);stroke:var(--muscle)}
-.flash button{margin-left:8px;background:none;border:1px solid var(--rule);border-radius:3px;
+.flash button{margin-left:8px;min-height:44px;background:none;border:1px solid var(--rule);border-radius:3px;
   padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--ink)}
 
 /* ---- 履歴: 日付シート（U9+F3） ---- */
 .sheet .inner .card{margin-bottom:10px}
 .sheet .inner .setline .del{min-width:44px;min-height:44px}
+/* 基本スタイルは input[type=text|password] しか対象にしていない（今までの数の入力は
+   すべて .stepper の中で完結していたため）。セットを追加・記録していない日を足すで使う
+   素の number/date 入力はここで初めて出てくるので、見た目をほかの入力欄に合わせる */
+.sheet .inner input[type=number],.sheet .inner input[type=date]{
+  font:inherit;color:var(--ink);background:var(--panel-2);
+  border:1px solid var(--rule);border-radius:3px;padding:8px 10px;width:100%;
+  min-height:44px;box-sizing:border-box;
+}
+.sheet .inner .entry .fld{flex:1 1 84px;min-width:84px}

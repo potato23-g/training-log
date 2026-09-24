@@ -90,6 +90,9 @@ setTimeout(async () => {
     if (glutesBar) glutesBar.click();
     r.body.tapSelects = selMuscle === "glutes";
     r.body.detailShown = qsa(".card h4").some(h => h.textContent === MUSCLES.glutes);
+    /* 大きい部位（脚・尻・胸・背中）が先に並ぶか。数値の大小ではなく固定順であること */
+    r.body.first5Muscles = qsa(".mbar").slice(0, 5).map(b => b.dataset.m);
+    r.body.first5AreBig = r.body.first5Muscles.every(m => BIG_MUSCLES.includes(m));
 
     bodyDays = 14; render();
     const expected14 = fmtSets(WEEK_TARGET / 7 * 14);
@@ -114,6 +117,8 @@ setTimeout(async () => {
     const delBtn = qs(".del[data-hid]", sheetInner);
     r.hist.delBtnFound = !!delBtn;
     const delId = delBtn ? delBtn.dataset.hid : null;
+    const delEx = delBtn ? delBtn.dataset.hex : null;
+    const delSnapshot = delEx ? Object.assign({}, entryFor(d7, delEx, false).sets.find(s => s.id === delId)) : null;
     if (delBtn) delBtn.click();
     r.hist.setsAfterDelete = qsa(".setline", sheetInner).length;
     r.hist.delWentIntoDelArray = !!(state.sessions[d7].del && state.sessions[d7].del.indexOf(delId) >= 0);
@@ -121,7 +126,12 @@ setTimeout(async () => {
     const undoBtn = qs("#hundo", sheetInner);
     if (undoBtn) undoBtn.click();
     r.hist.setsAfterUndo = qsa(".setline", sheetInner).length;
-    r.hist.delRemovedAfterUndo = !(state.sessions[d7].del && state.sessions[d7].del.indexOf(delId) >= 0);
+    /* 同期の del は消えた印を消してはいけない（一方通行の集合）。取り消しは新しい id で
+       書き戻す。古い id が del に残ったままで、同じ内容のセットが別の id で存在するのが正しい */
+    r.hist.delIdStillTombstoned = !!(state.sessions[d7].del && state.sessions[d7].del.indexOf(delId) >= 0);
+    const restoredEntry = delEx ? entryFor(d7, delEx, false) : null;
+    r.hist.restoredUnderNewId = !!(restoredEntry && restoredEntry.sets.some(s =>
+      s.id !== delId && delSnapshot && s.w === delSnapshot.w && s.r === delSnapshot.r));
 
     const openAddBtn = qs("#haddopen", sheetInner);
     r.hist.addOpenBtnFound = !!openAddBtn;
@@ -131,6 +141,9 @@ setTimeout(async () => {
     r.hist.emptyValidationMsg = (qs("#haddmsg", sheetInner) || {}).textContent || "";
     r.hist.emptyValidationBlocked = qsa(".setline", sheetInner).length === r.hist.setsAfterUndo;
 
+    /* その日の plan に row の「組み方あり」の項目を仕込んでおく。追加するセットに label="" を
+       明示しないと、setLabel() がここへ迷い込んで別の組み方の記録として扱われてしまう */
+    session(d7).plan = [{ ex: "row", label: "ワンハンドロウ（下で一度止める）" }];
     let exSel = qs("#haddex", sheetInner);
     if (exSel) { exSel.value = "row|"; exSel.dispatchEvent(new Event("change")); }
     const wIn = qs("#haddw", sheetInner), rIn = qs("#haddr", sheetInner), eIn = qs("#hadde", sheetInner);
@@ -140,7 +153,9 @@ setTimeout(async () => {
     goBtn = qs("#haddgo", sheetInner);
     if (goBtn) goBtn.click();
     const rowEntry = entryFor(d7, "row", false);
-    r.hist.addedSet = !!(rowEntry && rowEntry.sets.some(s => s.w === 14 && s.r === 9 && s.rpe === 8));
+    const addedRowSet = rowEntry ? rowEntry.sets.find(s => s.w === 14 && s.r === 9 && s.rpe === 8) : null;
+    r.hist.addedSet = !!addedRowSet;
+    r.hist.addedSetLabelIsPlain = !!addedRowSet && addedRowSet.label === "";
     r.hist.setsAfterAdd = qsa(".setline", sheetInner).length;               /* 期待 setsAfterUndo+1（取り消し後+新規1） */
 
     const noteEl = qs("#hnote", sheetInner);
@@ -215,6 +230,28 @@ setTimeout(async () => {
     r.pr.timeMoreOk = r.pr.timeMore !== "" && r.pr.timeMore.indexOf("最多") >= 0;
     r.pr.timeLessOk = r.pr.timeLess === "";
 
+    /* 記録する前（まだ historySetsFor に載っていない）に呼ばれても、同じ日の先のセットを
+       「前」として正しく数えるか。日付だけで比べる旧実装だと、同じ日の分がまるごと抜けて
+       過去の記録とだけ比べてしまい、本当は更新していないのに自己ベスト扱いになる */
+    const triextEarly = keyDaysAgo(55), triextLate = keyDaysAgo(50);
+    mkSet(triextEarly, "triext", 10, { w: 10 });                 /* 前の記録: 10kgで10回 */
+    mkSet(triextLate, "triext", 12, { w: 10 });                  /* 今日の1セット目: 10kgで12回（本物の自己ベスト） */
+    mkSet(triextLate, "triext", 9, { w: 10 });                   /* 今日の2セット目: 疲れて9回 */
+    const triextUnpushed = { id: newSetId(), r: 11, w: 10 };     /* 今日の3セット目（まだ push していない） */
+    r.pr.sameDayNotYetPushed = prMessage("triext", "", triextUnpushed, triextLate);
+    r.pr.sameDayNotYetPushedOk = r.pr.sameDayNotYetPushed === "";   /* 12回にはまだ届いていないので自己ベストではない */
+
+    /* 疲れて回数が落ちる3セット目まで含む日を「最近」として比べても、伸びが縮んで見えないか。
+       12kg×12（前の日） → 12kg×14/12/10（最近の日）なら、最近の日の最高14と比べて伸びを示すべき */
+    const skullEarly = keyDaysAgo(70), skullLate = keyDaysAgo(65);
+    mkSet(skullEarly, "skull", 12, { w: 12 });
+    mkSet(skullLate, "skull", 14, { w: 12 });
+    mkSet(skullLate, "skull", 12, { w: 12 });
+    mkSet(skullLate, "skull", 10, { w: 12 });
+    const skullRows = historySetsFor("skull", "");
+    r.pr.fatigueGrowth = repGrowth(skullRows, "w");
+    r.pr.fatigueGrowthOk = !!r.pr.fatigueGrowth && r.pr.fatigueGrowth.indexOf("12回 → 14回") >= 0;
+
     /* ======== U10+F4: 種目ごとの推移（折れ線・自己ベストの印） ======== */
     tab = "hist"; render();
     r.trend = { svgCount: qsa("svg.trendline").length, prDotCount: qsa(".prdot").length };
@@ -245,6 +282,7 @@ setTimeout(async () => {
     check("body.detailShown", r.body.detailShown);
     check("body.target14Found", r.body.target14Found);
     check("body.target30Found", r.body.target30Found);
+    check("body.first5AreBig", r.body.first5AreBig);
     check("hist.rowFound", r.hist.rowFound);
     check("hist.sheetOpen", r.hist.sheetOpen);
     check("hist.markerDate===d7", r.hist.markerDate === d7);
@@ -254,11 +292,13 @@ setTimeout(async () => {
     check("hist.delWentIntoDelArray", r.hist.delWentIntoDelArray);
     check("hist.undoBtnShown", r.hist.undoBtnShown);
     check("hist.setsAfterUndo===4", r.hist.setsAfterUndo === 4);
-    check("hist.delRemovedAfterUndo", r.hist.delRemovedAfterUndo);
+    check("hist.delIdStillTombstoned", r.hist.delIdStillTombstoned);
+    check("hist.restoredUnderNewId", r.hist.restoredUnderNewId);
     check("hist.addOpenBtnFound", r.hist.addOpenBtnFound);
     check("hist.emptyValidationMsg!=''", !!r.hist.emptyValidationMsg);
     check("hist.emptyValidationBlocked", r.hist.emptyValidationBlocked);
     check("hist.addedSet", r.hist.addedSet);
+    check("hist.addedSetLabelIsPlain", r.hist.addedSetLabelIsPlain);
     check("hist.setsAfterAdd", r.hist.setsAfterAdd === r.hist.setsAfterUndo + 1);
     check("hist.noteSaved", r.hist.noteSaved);
     check("hist.closedOk", r.hist.closedOk);
@@ -276,6 +316,8 @@ setTimeout(async () => {
     check("pr.timeFirstOk", r.pr.timeFirstOk);
     check("pr.timeMoreOk", r.pr.timeMoreOk);
     check("pr.timeLessOk", r.pr.timeLessOk);
+    check("pr.sameDayNotYetPushedOk", r.pr.sameDayNotYetPushedOk);
+    check("pr.fatigueGrowthOk", r.pr.fatigueGrowthOk);
     check("trend.svgCount>0", r.trend.svgCount > 0);
     check("trend.curlHasBestSet", r.trend.curlHasBestSet);
     r.failCount = bad.length;
