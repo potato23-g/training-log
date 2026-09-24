@@ -48,6 +48,16 @@ function lastPerformance(exId, beforeDate){
   }
   return null;
 }
+/* そのセットをどの組み方でやったか（組み方の名前。素の種目なら ""）。
+   セットに書いていない古い記録は、その日のメニューにあった組み方から読む */
+function setLabel(date, exId, st){
+  if(st && typeof st.label === "string") return st.label;
+  const s = state.sessions[date];
+  const it = s && Array.isArray(s.plan) ? s.plan.find(x => x && x.ex === exId) : null;
+  return (it && it.label) || "";
+}
+/* 組み方ごとに記録を分けるときの見出し（種目id と組み方の名前） */
+function itemKey(it){ return it.ex + "|" + (it.label || ""); }
 function bestSet(sets, kind){
   if(!sets.length) return null;
   if(kind==="w") return sets.slice().sort((a,b)=> (b.w*b.r)-(a.w*a.r))[0];

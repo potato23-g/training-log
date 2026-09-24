@@ -288,6 +288,7 @@ textarea{min-height:64px;resize:vertical}
   background:var(--panel);padding:1px 8px;border-radius:999px;opacity:.92}
 .diawrong .fg-body,.diawrong .fg-far{fill:var(--muscle)}
 .diawrong .fg-halo{fill:var(--panel);stroke:var(--panel)}
+/* ---- 種目を選ぶシート・からだ・履歴タブの見た目（index.html の <style> の最後に埋め込まれる） ---- */
 </style>
 </head>
 <body>
@@ -3312,8 +3313,13 @@ const ACTIONS = {};
 const WIRES = [];
 /* ============================================================
    外から入ってくるデータの確かめと、画面に出すときのエスケープ
-   （中身はこれから入れる）
    ============================================================ */
+/* 画面（innerHTML）に文字を入れるときは必ず通す。属性の値にも使える */
+function esc(v){
+  return String(v === undefined || v === null ? "" : v)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
 /* ============================================================
    保存層（ローカル版）: この端末の中だけで完結する。外部通信なし。
    記録は localStorage に置き、JSON のバックアップで端末間を移す。
@@ -4272,7 +4278,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-24 20:39";
+const BUILD_VERSION = "2026-09-24 20:47";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -4303,6 +4309,16 @@ function lastPerformance(exId, beforeDate){
   }
   return null;
 }
+/* そのセットをどの組み方でやったか（組み方の名前。素の種目なら ""）。
+   セットに書いていない古い記録は、その日のメニューにあった組み方から読む */
+function setLabel(date, exId, st){
+  if(st && typeof st.label === "string") return st.label;
+  const s = state.sessions[date];
+  const it = s && Array.isArray(s.plan) ? s.plan.find(x => x && x.ex === exId) : null;
+  return (it && it.label) || "";
+}
+/* 組み方ごとに記録を分けるときの見出し（種目id と組み方の名前） */
+function itemKey(it){ return it.ex + "|" + (it.label || ""); }
 function bestSet(sets, kind){
   if(!sets.length) return null;
   if(kind==="w") return sets.slice().sort((a,b)=> (b.w*b.r)-(a.w*a.r))[0];

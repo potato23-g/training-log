@@ -1,6 +1,6 @@
 /* トレーニング記録 — オフラインキャッシュ
-   ビルド時に 92b8acfa90 を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
-const CACHE_NAME = 'trainlog-92b8acfa90';
+   ビルド時に f40cf0425a を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
+const CACHE_NAME = 'trainlog-f40cf0425a';
 const PRECACHE = [
   './',
   './index.html',
