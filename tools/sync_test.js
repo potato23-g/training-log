@@ -12,7 +12,9 @@ import { spawn } from "node:child_process";
 
 const ROOT = path.resolve(import.meta.dir, "..");
 const IDS_SRC = fs.readFileSync(path.join(ROOT, "src", "ids.js"), "utf8");
+const SANITIZE_SRC = fs.readFileSync(path.join(ROOT, "src", "app", "sanitize.js"), "utf8");
 const SYNC_SRC = fs.readFileSync(path.join(ROOT, "src", "sync-github.js"), "utf8");
+const STORE_SRC = fs.readFileSync(path.join(ROOT, "src", "store-local.js"), "utf8");
 
 /* ---------- 結果の記録 ---------- */
 let passed = 0, failed = 0;
@@ -28,7 +30,9 @@ function makeEmitter(){
     addEventListener(type, fn){ (listeners[type] = listeners[type] || []).push(fn); },
     removeEventListener(type, fn){
       if(listeners[type]) listeners[type] = listeners[type].filter(f => f !== fn);
-    }
+    },
+    /* テスト用: そのイベントを受け取った体にする */
+    emit(type, ev){ (listeners[type] || []).slice().forEach(fn => fn(ev)); }
   };
 }
 function makeLocalStorage(){
@@ -75,11 +79,57 @@ function makeDevice(apiBase){
 
   const ctx = vm.createContext(sandbox);
   vm.runInContext(IDS_SRC, ctx, { filename: "ids.js" });
+  vm.runInContext(SANITIZE_SRC, ctx, { filename: "sanitize.js" });
   vm.runInContext(SYNC_SRC, ctx, { filename: "sync-github.js" });
   ctx.SYNC_TUNE.debounce = 50;
 
   return { ctx, viewEl, doc, renderCalls, statusLog, localStorage };
 }
+
+/* ---------- 同じ端末の「タブ」を1つ作る ----------
+   makeDevice と違い、保存層（src/store-local.js）の本物を読み込む。
+   localStorage を渡せば、同じ端末の別のタブ（保存領域を共有する）になる */
+function makeTab(apiBase, sharedLS){
+  const viewEl = Object.assign({ tagName: "DIV", id: "view", contains(){ return false; } }, makeEmitter());
+  const doc = Object.assign({
+    activeElement: null,
+    hidden: false,
+    getElementById(id){ return id === "view" ? viewEl : null; }
+  }, makeEmitter());
+  const win = makeEmitter();
+  const localStorage = sharedLS || makeLocalStorage();
+  localStorage.setItem("trainlog.sync.api", apiBase);
+  const renderCalls = { n: 0 };
+  const sandbox = {
+    console,
+    setTimeout, clearTimeout, setInterval, clearInterval,
+    TextEncoder, TextDecoder,
+    btoa: (s) => btoa(s),
+    atob: (s) => atob(s),
+    crypto,
+    fetch(){ return fetch.apply(null, arguments); },
+    localStorage,
+    document: doc,
+    window: win,
+    confirm(){ return true; },
+    alert(){},
+    render(){ renderCalls.n++; },
+    /* 画面側にあるもの（保存層が使う分だけ） */
+    DEFAULT_PROGRAM: ["goblet"],
+    TODAY: "2026-05-20",
+    ACTIONS: {},
+    readGear(g){ return g && typeof g === "object" ? g : undefined; },
+    fmtDate(k){ return k; }
+  };
+  const ctx = vm.createContext(sandbox);
+  vm.runInContext(IDS_SRC, ctx, { filename: "ids.js" });
+  vm.runInContext(SANITIZE_SRC, ctx, { filename: "sanitize.js" });
+  vm.runInContext(STORE_SRC, ctx, { filename: "store-local.js" });
+  vm.runInContext(SYNC_SRC, ctx, { filename: "sync-github.js" });
+  ctx.SYNC_TUNE.debounce = 50;
+  return { ctx, win, localStorage, renderCalls, st: () => vm.runInContext("state", ctx) };
+}
+const setIds = (s, day) => s.sessions[day].entries[0].sets.map(x => x.id).sort().join(",");
 
 /* ---------- モックサーバーのライフサイクル ---------- */
 const mockProcs = [];
@@ -329,8 +379,10 @@ async function testMinimalTraffic(port){
     const totalBytes = log.reduce((a, e) => a + e.reqBytes + e.resBytes, 0);
     console.log("  requests=" + log.length + " bytes=" + totalBytes + " :: " + log.map(e => e.method + " " + e.path + " (" + e.status + ")").join(", "));
 
-    ok(log.length === 2, "最小トラフィック: リクエストはちょうど2件");
+    /* 送る前に当月のファイルを読み直して合流させる（端末の記録が消えていてもリモートを空にしないため）ので3件 */
+    ok(log.length === 3, "最小トラフィック: リクエストは3件（一覧・当月の読み直し・当月の書き込み）");
     ok(log.some(e => e.method === "GET" && e.path.endsWith("/contents/trainlog")), "最小トラフィック: 一覧のGETを含む");
+    ok(log.some(e => e.method === "GET" && e.path.endsWith("/contents/trainlog/" + curMonth + ".json")), "最小トラフィック: 当月ファイルを読み直す");
     ok(log.some(e => e.method === "PUT" && e.path.endsWith("/contents/trainlog/" + curMonth + ".json")), "最小トラフィック: 当月ファイルへのPUTを含む");
     ok(!log.some(e => e.path.indexOf("settings.json") !== -1), "最小トラフィック: settings.json には触れない");
     ok(!log.some(e => e.path.indexOf("/contents/trainlog/2026-07") !== -1 || e.path.indexOf("/contents/trainlog/2026-08") !== -1), "最小トラフィック: 他の月ファイルには触れない");
@@ -530,6 +582,189 @@ async function run422RecoveryTest(port){
 }
 
 /* ============================================================
+   6. 端末の保存データが壊れた・空になったとき、GitHub側を空で上書きしない
+   ============================================================ */
+async function testBrokenLocalKeepsRemote(port){
+  console.log("\n-- integration: broken local data never wipes the remote --");
+  const token = "tok-broken";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const T = makeTab(mock.base);
+    const day = "2026-05-02", month = "2026-05";
+    T.st().sessions[day] = { date: day, entries: [{ ex: "goblet", sets: [{ id: "c1", at: 1, w: 10, r: 12, rpe: 8 }] }], updatedAt: Date.now() };
+    T.st().gear = { items: [{ kg: 5, n: 2 }], updatedAt: 5 };
+    T.ctx.saveLocal();
+    ok(await T.ctx.syncConnect("acme/repo", token) === true, "壊れた保存: 最初の接続と同期に成功する");
+    let f = await mockFile(mock.base, "trainlog/" + month + ".json");
+    ok(!!f && !!f.sessions[day], "壊れた保存: リモートに記録がある");
+
+    /* 保存データが壊れたままアプリを開き直す（同期の印は別のキーに残っている） */
+    T.localStorage.setItem("trainlog.v1", "{壊れた");
+    const T2 = makeTab(mock.base, T.localStorage);
+    T2.ctx.loadLocal();
+    ok(vm.runInContext("STORE_PROBLEM && STORE_PROBLEM.kind", T2.ctx) === "corrupt", "壊れた保存: 読めなかったことを覚えている");
+    ok(T.localStorage.getItem("trainlog.v1.corrupt") === "{壊れた", "壊れた保存: 元の文字列は消さずに別のキーへ残す");
+    await T2.ctx.syncNow();
+    f = await mockFile(mock.base, "trainlog/" + month + ".json");
+    ok(!!f && !!f.sessions[day] && f.sessions[day].entries[0].sets.length === 1, "壊れた保存: リモートの記録は消えない");
+    ok(!!T2.st().sessions[day], "壊れた保存: 端末の記録がリモートから戻る");
+    const g = await mockFile(mock.base, "trainlog/settings.json");
+    ok(!!g && !!g.gear && g.gear.items.length === 1, "壊れた保存: ダンベルの登録もリモートから消えない");
+
+    /* 端末の記録が丸ごと空になっても同じ */
+    T2.st().sessions = {};
+    await T2.ctx.syncNow();
+    f = await mockFile(mock.base, "trainlog/" + month + ".json");
+    ok(!!f && !!f.sessions[day], "空になった端末: リモートの記録は消えない");
+    ok(!!T2.st().sessions[day], "空になった端末: 端末に記録が戻る");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   7. 同じ端末の2つのタブで記録しても、どちらの記録も消えない
+   ============================================================ */
+async function testTwoTabs(port){
+  console.log("\n-- integration: two tabs on one device --");
+  const token = "tok-tabs";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const ls = makeLocalStorage();
+    const T1 = makeTab(mock.base, ls), T2 = makeTab(mock.base, ls);
+    const day = "2026-05-03", month = "2026-05";
+    T1.st().sessions[day] = { date: day, entries: [{ ex: "goblet", sets: [{ id: "o1", at: 1, w: 10, r: 12, rpe: 8 }] }], updatedAt: 1 };
+    T1.ctx.saveLocal();
+    T2.ctx.loadLocal();                                     /* 2つめのタブも同じ中身から始まる */
+    ok(await T1.ctx.syncConnect("acme/repo", token) === true, "2タブ: 接続に成功する");
+
+    /* タブ1で記録して同期 → タブ2は知らないまま別の記録をして同期 */
+    T1.st().sessions[day].entries[0].sets.push({ id: "t1", at: 2, w: 10, r: 12, rpe: 8 });
+    T1.ctx.persistSession(day);
+    await T1.ctx.syncNow();
+    T2.st().sessions[day].entries[0].sets.push({ id: "t2", at: 3, w: 10, r: 11, rpe: 9 });
+    T2.ctx.persistSession(day);
+    await T2.ctx.syncNow();
+
+    ok(setIds(JSON.parse(ls.getItem("trainlog.v1")), day) === "o1,t1,t2", "2タブ: 端末の保存に両方のタブの記録が残る");
+    const f = await mockFile(mock.base, "trainlog/" + month + ".json");
+    ok(!!f && setIds(f, day) === "o1,t1,t2", "2タブ: GitHub にも両方のタブの記録が残る");
+
+    /* 別のタブの保存を受け取ったタブは、その記録を取り込む */
+    T1.win.emit("storage", { key: "trainlog.v1", newValue: ls.getItem("trainlog.v1") });
+    ok(setIds(T1.st(), day) === "o1,t1,t2", "2タブ: 別のタブが保存したら、その記録も入る");
+    ok(T1.renderCalls.n > 0, "2タブ: 取り込んだら描き直す");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   8. 消したセットは、読み直してから送るようになっても消えたまま伝わる
+   ============================================================ */
+async function testDeletePropagates(port){
+  console.log("\n-- integration: deletions still propagate --");
+  const token = "tok-del";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const A = makeTab(mock.base), B = makeTab(mock.base);
+    const day = "2026-05-05", month = "2026-05";
+    A.st().sessions[day] = { date: day, entries: [{ ex: "row", sets: [
+      { id: "d1", at: 1, w: 5, r: 12, rpe: 8 }, { id: "d2", at: 2, w: 5, r: 12, rpe: 8 }] }], updatedAt: 1 };
+    A.ctx.saveLocal();
+    await A.ctx.syncConnect("acme/repo", token);
+    await B.ctx.syncConnect("acme/repo", token);
+    ok(setIds(B.st(), day) === "d1,d2", "削除: Bが両方のセットを受け取る");
+
+    const sA = A.st().sessions[day];
+    const gone = sA.entries[0].sets.shift();
+    sA.del = (sA.del || []).concat(gone.id);
+    A.ctx.persistSession(day);
+    await A.ctx.syncNow();
+    const f = await mockFile(mock.base, "trainlog/" + month + ".json");
+    ok(!!f && setIds(f, day) === "d2", "削除: リモートでも消えている");
+    await B.ctx.syncNow();
+    ok(setIds(B.st(), day) === "d2", "削除: 相手の端末でも消える");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   9. 接続したあとでリポジトリが公開になったら、起動時に同期を止める
+   ============================================================ */
+async function testPublicAfterConnect(port){
+  console.log("\n-- integration: repo turned public after connecting --");
+  const token = "tok-pub2";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const A = makeTab(mock.base);
+    A.st().sessions["2026-05-06"] = { date: "2026-05-06", entries: [{ ex: "goblet", sets: [{ id: "p1", at: 1, w: 10, r: 12, rpe: 8 }] }], updatedAt: 1 };
+    A.ctx.saveLocal();
+    ok(await A.ctx.syncConnect("acme/repo", token) === true, "公開化: 非公開のうちは接続できる");
+    await fetch(mock.base + "/_mock/public", { method: "POST" });            /* 公開にする */
+    await mockLogReset(mock.base);
+
+    /* アプリを開き直す（同じ端末）。新しい記録もある */
+    const A2 = makeTab(mock.base, A.localStorage);
+    A2.ctx.loadLocal();
+    A2.st().sessions["2026-05-07"] = { date: "2026-05-07", entries: [{ ex: "row", sets: [{ id: "p2", at: 1, w: 5, r: 12, rpe: 8 }] }], updatedAt: 2 };
+    A2.ctx.saveLocal();
+    await A2.ctx.syncInit();
+    await A2.ctx.syncNow();                                                    /* 記録したとき */
+    let log = await mockLog(mock.base);
+    ok(!log.some(e => e.method === "PUT"), "公開化: 起動時に公開と分かったら、記録しても何も送らない");
+    ok(A2.ctx.syncCard().indexOf("公開") !== -1, "公開化: 同期を止めたことを知らせる");
+
+    await fetch(mock.base + "/_mock/public", { method: "POST" });            /* 非公開に戻す */
+    await A2.ctx.syncManualNow();
+    log = await mockLog(mock.base);
+    ok(log.some(e => e.method === "PUT"), "公開化: 非公開に戻して「今すぐ同期」を押すと同期する");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   10. 外から入るデータの確かめ・軽い週の印
+   ============================================================ */
+function runSanitizeTests(){
+  console.log("\n-- unit: sanitizeState / deload --");
+  const D = makeDevice("http://127.0.0.1:9");
+  const s = D.ctx.sanitizeState({
+    sessions: {
+      "2026-06-01": { entries: [
+        { ex: "goblet", sets: [{ id: "x1", at: "5", w: "10", r: "12", rpe: "8", label: "ゴブレットスクワット（一番下で3秒止める）", target: "12" },
+                               { id: "x2", r: "たくさん" }] },
+        { ex: "<img src=x onerror=alert(1)>", sets: [{ id: "x3", r: 5 }] }
+      ], note: "<script>alert(1)</script>", plan: [{ ex: "goblet", sets: 3 }, { ex: "bad id!" }] },
+      "2026-06-02": { entries: [], note: 123 },
+      "not-a-date": { entries: [] }
+    },
+    program: ["goblet", "<b>"]
+  });
+  const d1 = s.sessions["2026-06-01"];
+  ok(d1.entries.length === 1 && d1.entries[0].sets.length === 1, "sanitize: 形の合わない種目id・数にならないセットは捨てる");
+  const st = d1.entries[0].sets[0];
+  ok(st.w === 10 && st.r === 12 && st.rpe === 8 && st.at === 5 && st.target === 12, "sanitize: 数字の文字列は数にする");
+  ok(st.label === "ゴブレットスクワット（一番下で3秒止める）", "sanitize: 組み方の名前は残す");
+  ok(d1.note === "<script>alert(1)</script>", "sanitize: メモは文字列のまま残す（エスケープは描くとき）");
+  ok(d1.plan.length === 1, "sanitize: メニューの形の合わない項目は捨てる");
+  ok(s.sessions["2026-06-02"].note === undefined && !("plan" in s.sessions["2026-06-02"]), "sanitize: 文字列でないメモは捨て、元に無いメニューは作らない");
+  ok(!s.sessions["not-a-date"], "sanitize: 日付でないキーは捨てる");
+  ok(s.program.length === 1 && s.program[0] === "goblet", "sanitize: program も種目idだけ残す");
+  ok(D.ctx.esc("<a href=\"x\">'&") === "&lt;a href=&quot;x&quot;&gt;&#39;&amp;", "esc: & < > \" ' をエスケープする");
+
+  const m = D.ctx.mergeState({ sessions: { "2026-06-03": { date: "2026-06-03", entries: [], deload: true } } },
+                             { sessions: { "2026-06-03": { date: "2026-06-03", entries: [] } } });
+  ok(m.sessions["2026-06-03"].deload === true, "merge: 軽い週の印（deload）は片方にあれば残す");
+}
+
+/* ============================================================
    実行
    ============================================================ */
 async function main(){
@@ -542,6 +777,11 @@ async function main(){
     await testRecordDuringPull(8805);
     await runPublicRepoTest(8810);
     await run422RecoveryTest(8811);
+    runSanitizeTests();
+    await testBrokenLocalKeepsRemote(8820);
+    await testTwoTabs(8821);
+    await testDeletePropagates(8822);
+    await testPublicAfterConnect(8823);
   }catch(e){
     failed++;
     console.log("FAIL - 予期しない例外で停止: " + (e && e.stack || e));

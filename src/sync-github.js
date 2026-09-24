@@ -39,6 +39,7 @@ var syncRunning = false;
 var syncRerunRequested = false;
 var syncDebounceTimer = null;
 var syncRenderPending = false;
+var syncBlocked = "";
 
 /* ============================================================
    設定の保存（localStorage["trainlog.sync.v1"] = {repo, token}）
@@ -241,6 +242,7 @@ function syncMergeSession(a, b){
   if(routine !== undefined) merged.routine = routine;
   var updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
   if(updatedAt) merged.updatedAt = updatedAt;
+  if(a.deload === true || b.deload === true) merged.deload = true;
   return merged;
 }
 
@@ -518,7 +520,10 @@ async function syncPart(cfg, part, meta){
   var remoteContentKey = null; /* remoteChanged のときだけ使う: 取得したリモートの中身の正準key */
   var changedLocally = false;
 
-  if(remoteChanged){
+  /* リモートが前回見たときのままでも、ローカルが変わったときは必ず読み直して合流させる。
+     端末の記録が壊れて空になった・別のタブが古い中身で上書きした、といったときに、
+     ローカルの中身だけを正しいものとして送り、リモートの記録を消してしまわないため */
+  if(remoteChanged || (!!remoteSha && localChanged)){
     var got = await syncGetFile(cfg, SYNC_DIR + "/" + name);
     remoteSha = got.sha || remoteSha; /* GET直後のshaの方が新しい */
     /* 読み込みを待つあいだに記録が増えているかもしれないので、ローカル側はここで取り直す
@@ -526,6 +531,7 @@ async function syncPart(cfg, part, meta){
     localPart = syncLocalPartOf(part);
     localKey = stableKey(localPart);
     var remoteContent = got.parsed || (part.kind === "month" ? { sessions: {} } : { gear: undefined });
+    if(typeof sanitizeState === "function") remoteContent = sanitizeState(remoteContent);
     if(part.kind === "month"){
       merged = { sessions: mergeState({ sessions: localPart.sessions }, { sessions: remoteContent.sessions || {} }).sessions };
       remoteContentKey = stableKey({ sessions: remoteContent.sessions || {} });
@@ -547,7 +553,7 @@ async function syncPart(cfg, part, meta){
 
   var shouldPush;
   if(!remoteSha) shouldPush = true;
-  else if(remoteChanged) shouldPush = mergedKey !== remoteContentKey;
+  else if(remoteChanged || (!!remoteSha && localChanged)) shouldPush = mergedKey !== remoteContentKey;
   else shouldPush = localChanged;
 
   var newSha = remoteSha;
@@ -571,7 +577,8 @@ async function syncMaybeMigrate(cfg, listing, meta){
   if(listing.length > 0 || meta.migrated) return false;
   var old = await syncGetFileLenient(cfg, SYNC_LEGACY_PATH);
   if(!old.parsed) return false;
-  var migrated = mergeState({ sessions: state.sessions, gear: state.gear }, old.parsed);
+  var oldState = typeof sanitizeState === "function" ? sanitizeState(old.parsed) : old.parsed;
+  var migrated = mergeState({ sessions: state.sessions, gear: state.gear }, oldState);
   state.sessions = migrated.sessions;
   state.gear = migrated.gear;
   return true;
@@ -640,6 +647,7 @@ async function syncRunOnce(cfg){
 async function syncNow(){
   var cfg = syncLoadConfig();
   if(!cfg) return;
+  if(syncBlocked) return;
   if(syncRunning){ syncRerunRequested = true; return; }
   /* 今から同期するので、入力待ちの同期は取り消す（その変更も今回まとめて送る） */
   if(syncDebounceTimer){ clearTimeout(syncDebounceTimer); syncDebounceTimer = null; }
@@ -660,7 +668,7 @@ async function syncNow(){
    ============================================================ */
 function syncSchedule(){
   var cfg = syncLoadConfig();
-  if(!cfg) return;
+  if(!cfg || syncBlocked) return;
   if(syncDebounceTimer) clearTimeout(syncDebounceTimer);
   syncDebounceTimer = setTimeout(function(){
     syncDebounceTimer = null;
@@ -679,12 +687,46 @@ function syncFlushPending(){
      起動したとき（ここ）/ セットを記録・修正で消したとき（画面側から syncNow）/
      メモ・ダンベル設定を変えたとき（画面側から syncSchedule）。
    画面を離れるときは、入力待ちの同期が残っていれば取りこぼさないようその場で送る。 */
-function syncInit(){
-  if(syncLoadConfig()) syncNow();
+async function syncInit(){
   try{
     document.addEventListener("visibilitychange", function(){ if(document.hidden) syncFlushPending(); });
   }catch(e){}
   try{ window.addEventListener("pagehide", function(){ syncFlushPending(); }); }catch(e){}
+  var cfg = syncLoadConfig();
+  if(!cfg) return;
+  /* 起動したときに、リポジトリがまだ非公開かを確かめる。公開になっていたら、この起動のあいだは同期しない */
+  try{ await syncCheckRepo(cfg.repo, cfg.token); }
+  catch(e){
+    if(e && e.syncKind === "public"){ syncBlockPublic(); return; }
+    /* 通信などほかの失敗は、このあとの同期がそれぞれ知らせる */
+  }
+  syncNow();
+}
+var SYNC_PUBLIC_STOP = "リポジトリが公開になっているため、同期を止めました。GitHubで非公開（Private）に戻してから「今すぐ同期」を押してください";
+function syncBlockPublic(){
+  syncBlocked = "public";
+  syncUpdateStatusEl(SYNC_PUBLIC_STOP);
+  setStatus(SYNC_PUBLIC_STOP);
+}
+/* 「今すぐ同期」。公開で止めていたら、非公開に戻ったかを先に確かめる */
+async function syncManualNow(){
+  var cfg = syncLoadConfig(); if(!cfg) return;
+  if(syncBlocked){
+    try{ await syncCheckRepo(cfg.repo, cfg.token); }
+    catch(e){
+      if(e && e.syncKind === "public"){ syncBlockPublic(); return; }
+      syncReportError(e); return;
+    }
+    syncBlocked = "";
+  }
+  await syncNow();
+}
+/* 「GitHubから全部取り直す」。見たファイルの印を消して、全部の月を読み直して合流させる
+   （端末の記録が消えたり壊れたりしたときの戻し方。合流なので、この端末にしかない記録も残る） */
+function syncRefetchAll(){
+  var cfg = syncLoadConfig(); if(!cfg) return;
+  var meta = syncLoadMeta(cfg); meta.seen = {}; meta.localKey = {}; syncSaveMeta(meta);
+  return syncManualNow();
 }
 
 /* ============================================================
@@ -705,6 +747,7 @@ async function syncConnect(repoRaw, tokenRaw){
   }
 
   syncSaveConfig({ repo: repo, token: token });
+  syncBlocked = "";
   syncUpdateStatusEl("");
   render();
   await syncNow();
@@ -774,6 +817,7 @@ function syncCard(){
       <p class="lastline" style="margin-top:0">${last ? "最終同期 " + last : "まだ同期していません"}。${SYNC_WHEN}</p>
       <div class="rowbtns">
         <button data-sync="now">今すぐ同期</button>
+        <button data-sync="refetch">GitHubから全部取り直す</button>
         <button data-sync="disconnect">接続を解除</button>
       </div>
       <p class="lastline" id="syncStatus">${syncEsc(syncStatusText)}</p>
@@ -791,7 +835,9 @@ function syncWire(root){
     };
   }
   var nowBtn = root.querySelector('[data-sync="now"]');
-  if(nowBtn) nowBtn.onclick = function(){ syncNow(); };
+  if(nowBtn) nowBtn.onclick = function(){ syncManualNow(); };
+  var refetchBtn = root.querySelector('[data-sync="refetch"]');
+  if(refetchBtn) refetchBtn.onclick = function(){ if(confirm("GitHubから全ての記録を取り直して合流しますか？")) syncRefetchAll(); };
   var discBtn = root.querySelector('[data-sync="disconnect"]');
   if(discBtn) discBtn.onclick = function(){ syncDisconnect(); };
 }

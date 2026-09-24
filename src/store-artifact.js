@@ -18,7 +18,7 @@ function loadLocal(){
   }catch(e){}
 }
 function saveLocal(){
-  try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+  try{ localStorage.setItem(LS, JSON.stringify(state)); return true; }catch(e){ return false; }
 }
 function setStatus(t){ document.getElementById("status").textContent = t; }
 
@@ -53,18 +53,20 @@ async function initStore(){
 
 let writing = Promise.resolve();
 function persistSession(date){
-  saveLocal();
-  if(!DB) return;
+  var ok = saveLocal();
+  if(!DB) return ok;
   const body = state.sessions[date];
   writing = writing.then(()=>{
     if(!body) return DB.doc("sessions/"+date).delete().catch(()=>{});
     return DB.doc("sessions/"+date).set(body).catch(()=>{});
   });
+  return ok;
 }
 function persistProgram(){
-  saveLocal();
-  if(!DB) return;
+  var ok = saveLocal();
+  if(!DB) return ok;
   writing = writing.then(()=> DB.doc("meta/config").set({program: state.program}).catch(()=>{}));
+  return ok;
 }
 
 /* ファイル書き出し（downloads capability があれば使う） */

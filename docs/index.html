@@ -3313,6 +3313,8 @@ const ACTIONS = {};
 const WIRES = [];
 /* ============================================================
    外から入ってくるデータの確かめと、画面に出すときのエスケープ
+   同期（GitHub）・バックアップの取り込み・端末の保存データの読み込みは、どれも sanitizeState() を通す。
+   形の合わない値は数にする・捨てる。画面に文字を入れるときは esc() を通す。
    ============================================================ */
 /* 画面（innerHTML）に文字を入れるときは必ず通す。属性の値にも使える */
 function esc(v){
@@ -3320,33 +3322,155 @@ function esc(v){
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
+/* 記録の形に合うものだけを残した、新しいオブジェクトを返す（例外は投げない）。
+   種目id は英数字と _ だけ。数は Number() で数にし、数にならないものは捨てる */
+function sanitizeState(obj){
+  var out = { sessions:{} }, src = obj && typeof obj === "object" ? obj : {};
+  var exok = function(v){ return typeof v === "string" && /^[A-Za-z0-9_]{1,40}$/.test(v); };
+  var num = function(v){ var n = Number(v); return (v === null || v === "" || typeof v === "boolean") ? null : (isFinite(n) ? n : null); };
+  var text = function(v, max){ return typeof v === "string" && v.length <= max ? v : undefined; };
+  var sessions = src.sessions && typeof src.sessions === "object" && !Array.isArray(src.sessions) ? src.sessions : {};
+
+  Object.keys(sessions).forEach(function(day){
+    var s = sessions[day];
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || !s || typeof s !== "object") return;
+    var x = { date: typeof s.date === "string" ? s.date : day, entries: [] };
+    ["note", "routine"].forEach(function(k){ if(typeof s[k] === "string") x[k] = s[k]; });
+    ["noteAt", "planAt", "updatedAt"].forEach(function(k){ var n = num(s[k]); if(n !== null) x[k] = n; });
+    if(Array.isArray(s.del)) x.del = s.del.filter(function(v){ return typeof v === "string"; });
+    if(s.deload === true) x.deload = true;
+
+    /* 記録: 種目ごとのセット */
+    (Array.isArray(s.entries) ? s.entries : []).forEach(function(e){
+      if(!e || !exok(e.ex) || !Array.isArray(e.sets)) return;
+      var ne = { ex: e.ex, sets: [] };
+      e.sets.forEach(function(z){
+        if(!z || typeof z !== "object") return;
+        var r = num(z.r); if(r === null || r < 0) return;          /* 回数・秒が数でないセットは捨てる */
+        var nz = { r: r }, n = num(z.at);
+        if(typeof z.id === "string") nz.id = z.id.slice(0, 64);
+        nz.at = n === null ? 0 : n;
+        n = num(z.w); if(n !== null && n >= 0) nz.w = n;
+        n = num(z.rpe); if(n !== null && n >= 0 && n <= 10) nz.rpe = n;
+        if(typeof z.label === "string") nz.label = z.label.slice(0, 60);
+        n = num(z.target); if(n !== null && n >= 0) nz.target = n;
+        ne.sets.push(nz);
+      });
+      x.entries.push(ne);
+    });
+
+    /* その日のメニュー。元に無ければ作らない（無いことにも意味がある: まだ決めていない日） */
+    if(Array.isArray(s.plan)){
+      x.plan = [];
+      s.plan.forEach(function(p){
+        if(!p || !exok(p.ex)) return;
+        var np = { ex: p.ex }, n;
+        if((n = text(p.label, 60)) !== undefined) np.label = n;
+        n = num(p.sets); if(n !== null && n >= 1 && n <= 10) np.sets = n;
+        n = num(p.r); if(n !== null && n >= 0) np.r = n;
+        ["side", "baseFig", "extra", "manual", "skip"].forEach(function(k){ if(p[k] === true) np[k] = true; });
+        if((n = text(p.note, 300)) !== undefined) np.note = n;
+        n = num(p.lv); if(n !== null && n >= -3 && n <= 3) np.lv = n;
+        if(exok(p.mo)) np.mo = p.mo;
+        if((n = text(p.tag, 40)) !== undefined) np.tag = n;
+        x.plan.push(np);
+      });
+    }
+    out.sessions[day] = x;
+  });
+
+  if(typeof readGear === "function") out.gear = readGear(src.gear);
+  else if(src.gear && typeof src.gear === "object"){
+    var g = { items: [] }, at = num(src.gear.updatedAt);
+    if(at !== null) g.updatedAt = at;
+    (Array.isArray(src.gear.items) ? src.gear.items : []).forEach(function(i){
+      var kg = num(i && i.kg), n = num(i && i.n);
+      if(kg !== null && n !== null) g.items.push({ kg: kg, n: n });
+    });
+    out.gear = g;
+  }
+  if(Array.isArray(src.program)) out.program = src.program.filter(exok);
+  return out;
+}
 /* ============================================================
    保存層（ローカル版）: この端末の中だけで完結する。外部通信なし。
    記録は localStorage に置き、JSON のバックアップで端末間を移す。
+   ・読めない保存データは上書きせずに別のキーへ残し、空の状態で開く（画面が知らせる）
+   ・1日1回、読めた記録を3世代まで控えに残す（端末の控えから戻せる）
+   ・同じ端末で2つのタブを開いていても、保存するときに別のタブの記録と合流させる
    ============================================================ */
 const LS = "trainlog.v1";
+const LS_CORRUPT = LS + ".corrupt";
+const LS_BACKUP_AT = "trainlog.backup.lastSaved";   /* 最後に「バックアップを保存」した時刻 */
+const BAK_GENERATIONS = 3;
 let state = { sessions:{}, program: DEFAULT_PROGRAM.slice() };
 let lastSaved = "";
+let lastRaw = null;          /* このタブが最後に読んだ・書いた保存の中身。別のタブが書いたかの見分けに使う */
+let STORE_PROBLEM = null;    /* 起動時に保存データを読めなかったとき {kind:"corrupt", savedAs:残したキー} */
 
+/* 読んだデータを確かめてから state に入れる */
+function applyLoaded(o){
+  const c = typeof sanitizeState === "function" ? sanitizeState(o) : o;
+  state.sessions = c.sessions || {};
+  state.program = c.program && c.program.length ? c.program : DEFAULT_PROGRAM.slice();
+  state.gear = readGear(c.gear);          /* 持っているダンベル（旧形式は読み替える） */
+  ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
+}
 function loadLocal(){
-  try{
-    const raw = localStorage.getItem(LS);
-    if(raw){
-      const o = JSON.parse(raw);
-      state.sessions = o.sessions||{};
-      state.program = o.program||DEFAULT_PROGRAM.slice();
-      state.gear = readGear(o.gear);          /* 持っているダンベル（旧形式は読み替える） */
-      ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
-    }
-  }catch(e){}
+  let raw = null;
+  try{ raw = localStorage.getItem(LS); }catch(e){ return; }
+  if(!raw) return;
+  let o = null;
+  try{ o = JSON.parse(raw); }catch(e){ o = null; }
+  if(!o || typeof o !== "object" || !o.sessions || typeof o.sessions !== "object" || Array.isArray(o.sessions)){
+    /* 読めない。元の文字列は消さずに別のキーへ写し、空の状態で開く */
+    STORE_PROBLEM = {kind:"corrupt", savedAs: keepCorrupt(raw)};
+    return;
+  }
+  applyLoaded(o);
+  lastRaw = raw;
+}
+/* 読めなかった保存データの置き場。すでにあるものは上書きしない */
+function keepCorrupt(raw){
+  for(let i = 1; i <= 5; i++){
+    const k = LS_CORRUPT + (i === 1 ? "" : "." + i);
+    try{ if(localStorage.getItem(k) === null){ localStorage.setItem(k, raw); return k; } }catch(e){ return null; }
+  }
+  return null;
+}
+function isQuotaError(e){
+  return !!e && (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED" || e.code === 22 || e.code === 1014);
 }
 function saveLocal(){
   try{
-    localStorage.setItem(LS, JSON.stringify(state));
+    /* 別のタブが書いていたら、上書きせずに合流させてから書く（片方のタブの記録が消えないように） */
+    let cur = null;
+    try{ cur = localStorage.getItem(LS); }catch(e){}
+    if(cur && cur !== lastRaw && typeof mergeState === "function"){
+      try{
+        const other = sanitizeState(JSON.parse(cur));
+        const m = mergeState(state, other);
+        state.sessions = m.sessions;
+        if(m.gear) state.gear = m.gear;
+      }catch(e){}
+    }
+    const next = JSON.stringify(state);
+    try{ localStorage.setItem(LS, next); }
+    catch(e){
+      /* 容量が足りなければ、古い控えを捨ててもう一度（控えより本体の記録を優先する） */
+      if(!isQuotaError(e)) throw e;
+      for(let i = BAK_GENERATIONS; i >= 2; i--){ try{ localStorage.removeItem(LS + ".bak" + i); }catch(x){} }
+      localStorage.setItem(LS, next);
+    }
+    lastRaw = next;
     lastSaved = new Date().toLocaleTimeString("ja-JP", {hour:"2-digit", minute:"2-digit"});
     setStatus("この端末に保存しています（最終保存 " + lastSaved + "）");
+    return true;
   }catch(e){
-    setStatus("保存できませんでした。ブラウザの保存領域がいっぱいか、履歴の保存が止められています");
+    const msg = "保存できませんでした。ブラウザの保存領域がいっぱいか、履歴の保存が止められています";
+    setStatus(msg);
+    if(typeof onStoreFail === "function") onStoreFail(msg);
+    return false;
   }
 }
 function setStatus(t){
@@ -3356,20 +3480,112 @@ function setStatus(t){
 
 async function initStore(){
   loadLocal();
+  migrateOldBak();
+  if(!STORE_PROBLEM) rotateBackups();
   render();
   const n = Object.keys(state.sessions).length;
-  setStatus(n ? "この端末に保存しています（" + n + "日分）" : "この端末に保存しています");
-  /* 自動バックアップ: 直近の状態をもう1つ別キーに置いておく */
-  try{ localStorage.setItem(LS + ".bak", localStorage.getItem(LS) || ""); }catch(e){}
+  setStatus(STORE_PROBLEM ? "この端末の保存データを読めなかったので、空の状態で開きました"
+          : n ? "この端末に保存しています（" + n + "日分）" : "この端末に保存しています");
 }
 
 function persistSession(date){
   if(state.sessions[date]) state.sessions[date].updatedAt = Date.now();
-  saveLocal();
+  return saveLocal();
 }
 function persistProgram(){
-  saveLocal();
+  return saveLocal();
 }
+
+/* 別のタブが保存したら、その中身と合流して描き直す。
+   このタブにしかない記録があれば書き足す（中身が同じになれば書かないので、行ったり来たりしない） */
+try{
+  window.addEventListener("storage", e=>{
+    if(!e || e.key !== LS || !e.newValue || typeof mergeState !== "function") return;
+    let other;
+    try{ other = sanitizeState(JSON.parse(e.newValue)); }catch(x){ return; }
+    const m = mergeState(state, other);
+    const key = o => (typeof stableKey === "function" ? stableKey : JSON.stringify)({sessions: o.sessions, gear: o.gear});
+    const mineOnly = key(m) !== key(other);
+    state.sessions = m.sessions;
+    if(m.gear) state.gear = m.gear;
+    lastRaw = e.newValue;
+    if(mineOnly) saveLocal();
+    if(typeof syncSafeRender === "function") syncSafeRender(); else render();
+  });
+}catch(e){}
+
+/* ---- 端末の控え（世代つき） ----
+   trainlog.v1.bak1（新しい）〜 bak3（古い）。中身は {savedAt, day, data}。
+   本体が読めたときだけ、1日1回回す。読めなかった日は回さない（壊れたものを控えに入れない） */
+function rotateBackups(){
+  /* 保存データを読めて、セットのある日が1日以上あるときだけ（最初の描画が作る空の「今日」は数えない） */
+  if(!lastRaw) return;
+  if(!Object.keys(state.sessions).some(d => (state.sessions[d].entries || []).some(e => e.sets && e.sets.length))) return;
+  let b1 = null;
+  try{ b1 = JSON.parse(localStorage.getItem(LS + ".bak1") || "null"); }catch(e){ b1 = null; }
+  if(b1 && b1.day === TODAY) return;
+  try{
+    for(let i = BAK_GENERATIONS; i >= 2; i--){
+      const older = localStorage.getItem(LS + ".bak" + (i - 1));
+      if(older !== null) localStorage.setItem(LS + ".bak" + i, older);
+    }
+    localStorage.setItem(LS + ".bak1", JSON.stringify({savedAt: new Date().toISOString(), day: TODAY,
+      data: {sessions: state.sessions, program: state.program, gear: state.gear}}));
+  }catch(e){}                              /* 容量が足りなければ控えはあきらめる（本体の保存を優先） */
+}
+/* 以前の版の控え（trainlog.v1.bak。起動のたびに上書きしていた）を、一度だけ新しい控えへ移す */
+function migrateOldBak(){
+  let old = null;
+  try{ old = localStorage.getItem(LS + ".bak"); }catch(e){ return; }
+  if(old === null) return;
+  try{
+    const o = JSON.parse(old);
+    if(o && o.sessions && localStorage.getItem(LS + ".bak1") === null){
+      localStorage.setItem(LS + ".bak1", JSON.stringify({savedAt: null, day: null, data: o}));
+    }
+  }catch(e){ if(old) keepCorrupt(old); }  /* 読めないものは消さずに残す */
+  try{ localStorage.removeItem(LS + ".bak"); }catch(e){}
+}
+/* 画面から使う: 控えの一覧 [{key, savedAt, day, days}]（days = セットが1つ以上ある日の数） */
+function listBackups(){
+  const out = [];
+  for(let i = 1; i <= BAK_GENERATIONS; i++){
+    const key = LS + ".bak" + i;
+    try{
+      const o = JSON.parse(localStorage.getItem(key) || "null");
+      if(!o || !o.data || !o.data.sessions) continue;
+      const days = Object.keys(o.data.sessions).filter(d => (o.data.sessions[d].entries || []).some(e => e.sets && e.sets.length)).length;
+      out.push({key, savedAt: o.savedAt || null, day: o.day || null, days});
+    }catch(e){}
+  }
+  return out;
+}
+function restoreBackup(key){
+  let o = null;
+  try{ o = JSON.parse(localStorage.getItem(key) || "null"); }catch(e){ o = null; }
+  if(!o || !o.data || !o.data.sessions){ alert("この控えは読めませんでした"); return; }
+  const incoming = sanitizeState(o.data);
+  const days = Object.keys(incoming.sessions).length;
+  const merge = typeof mergeState === "function";
+  if(!confirm("端末の控え（" + (o.day ? fmtDate(o.day) : "以前の版") + "）から " + days + "日分を取り込みます。" + (merge
+      ? "今の記録とまとめます（どちらかにしかないセットも残ります）。"
+      : "同じ日付の記録は控えの内容で置き換えます。") + "よろしいですか？")) return;
+  ensureIds(incoming);
+  if(merge){
+    const m = mergeState(state, incoming);
+    state.sessions = m.sessions;
+    if(m.gear) state.gear = m.gear;
+  }else{
+    Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
+    if(incoming.gear) state.gear = incoming.gear;
+  }
+  STORE_PROBLEM = null;
+  saveLocal();
+  if(typeof syncNow === "function") syncNow();                   /* 同期: 記録を戻したとき */
+  render();
+  setStatus(days + "日分を控えから取り込みました");
+}
+ACTIONS.restorebak = el => restoreBackup(el.dataset.key);
 
 /* ファイル書き出し（ブラウザのダウンロード） */
 async function saveFile(filename, text){
@@ -3392,24 +3608,23 @@ function backupJSON(){
 }
 async function backupSave(){
   const ok = await saveFile("trainlog-backup-" + TODAY + ".json", backupJSON());
-  if(!ok){
-    sheetInner.innerHTML = `<h4>バックアップ（コピーして保存）</h4>
-      <textarea style="min-height:280px" readonly>${backupJSON().replace(/</g,"&lt;")}</textarea>
-      <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
-    sheetInner.querySelector("[data-close]").onclick = ()=> sheet.classList.remove("on");
-    sheet.classList.add("on");
-  }
+  if(ok){ try{ localStorage.setItem(LS_BACKUP_AT, String(Date.now())); }catch(e){} return; }
+  sheetInner.innerHTML = `<h4>バックアップ（コピーして保存）</h4>
+    <textarea style="min-height:280px" readonly>${esc(backupJSON())}</textarea>
+    <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
+  sheetInner.querySelector("[data-close]").onclick = ()=> sheet.classList.remove("on");
+  sheet.classList.add("on");
 }
 function applyBackup(text){
   let o = null;
   try{ o = JSON.parse(text); }catch(e){ alert("バックアップを読めませんでした（JSONの形式が違います）"); return; }
   if(!o || typeof o !== "object" || !o.sessions){ alert("このファイルはこのアプリのバックアップではないようです"); return; }
-  const days = Object.keys(o.sessions).length;
+  const incoming = sanitizeState(o);
+  const days = Object.keys(incoming.sessions).length;
   const merge = typeof mergeState === "function";
   if(!confirm("バックアップから " + days + "日分を取り込みます。" + (merge
       ? "同じ日付の記録は、この端末の記録とまとめます（どちらかにしかないセットも残ります）。"
       : "同じ日付の記録は取り込んだ内容で置き換えます。") + "よろしいですか？")) return;
-  const incoming = {sessions: o.sessions, gear: readGear(o.gear)};
   ensureIds(incoming);
   if(merge){
     const m = mergeState(state, incoming);
@@ -3419,7 +3634,8 @@ function applyBackup(text){
     Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
     if(incoming.gear) state.gear = incoming.gear;
   }
-  if(Array.isArray(o.program) && o.program.length) state.program = o.program;
+  if(incoming.program && incoming.program.length) state.program = incoming.program;
+  STORE_PROBLEM = null;
   saveLocal();
   render();
   setStatus(days + "日分を取り込みました");
@@ -3451,7 +3667,7 @@ function backupPaste(){
   sheet.classList.add("on");
 }
 
-/* 履歴タブの書き出しカードに足すボタン */
+/* バックアップのボタン */
 function storeButtons(){
   return `<div class="rowbtns">
       <button data-act="backup">バックアップを保存</button>
@@ -3459,6 +3675,30 @@ function storeButtons(){
       <button data-act="restorepaste">貼り付けて復元</button>
     </div>
     <p class="lastline">共有を設定していない場合、記録はこの端末の中だけにあります。機種変更やブラウザの掃除で消えるので、ときどきバックアップを保存してください。</p>`;
+}
+/* 端末の控えとバックアップのカード */
+function backupCard(){
+  const list = listBackups();
+  const rows = list.map(b => `<div class="setrow"><span>${b.day ? esc(fmtDate(b.day)) : "以前の版の控え"}<small>${b.days}日分の記録</small></span>
+      <button data-act="restorebak" data-key="${esc(b.key)}">この控えから戻す</button></div>`).join("");
+  return `<h3 class="sec">バックアップ</h3>
+  <div class="card">
+    ${storeButtons()}
+    <h4 style="margin-top:14px">端末の控え</h4>
+    <p class="lastline" style="margin-top:0">記録が読めたときに1日1回、この端末の中に控えを取っています（新しいものから${BAK_GENERATIONS}つ）。戻すときは今の記録とまとめるので、今の記録は消えません。</p>
+    ${rows || `<p class="lastline">まだ控えはありません。</p>`}
+  </div>`;
+}
+/* 同期を設定しておらず、しばらくバックアップを保存していないときの一言（それ以外は ""） */
+function backupReminder(){
+  if(typeof syncLoadConfig === "function" && syncLoadConfig()) return "";
+  const days = Object.keys(state.sessions).filter(d => (state.sessions[d].entries || []).some(e => e.sets.length)).length;
+  if(days < 3) return "";
+  let last = 0;
+  try{ last = +(localStorage.getItem(LS_BACKUP_AT) || 0); }catch(e){}
+  if(last && Date.now() - last < 30 * 86400000) return "";
+  return `<div class="flash">記録はこの端末の中だけにあります。${last ? "前回のバックアップから30日たちました。" : ""}
+    <div class="rowbtns" style="margin-top:6px"><button data-act="backup">バックアップを保存</button></div></div>`;
 }
 
 /* ============================================================
@@ -3502,6 +3742,7 @@ var syncRunning = false;
 var syncRerunRequested = false;
 var syncDebounceTimer = null;
 var syncRenderPending = false;
+var syncBlocked = "";
 
 /* ============================================================
    設定の保存（localStorage["trainlog.sync.v1"] = {repo, token}）
@@ -3704,6 +3945,7 @@ function syncMergeSession(a, b){
   if(routine !== undefined) merged.routine = routine;
   var updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
   if(updatedAt) merged.updatedAt = updatedAt;
+  if(a.deload === true || b.deload === true) merged.deload = true;
   return merged;
 }
 
@@ -3981,7 +4223,10 @@ async function syncPart(cfg, part, meta){
   var remoteContentKey = null; /* remoteChanged のときだけ使う: 取得したリモートの中身の正準key */
   var changedLocally = false;
 
-  if(remoteChanged){
+  /* リモートが前回見たときのままでも、ローカルが変わったときは必ず読み直して合流させる。
+     端末の記録が壊れて空になった・別のタブが古い中身で上書きした、といったときに、
+     ローカルの中身だけを正しいものとして送り、リモートの記録を消してしまわないため */
+  if(remoteChanged || (!!remoteSha && localChanged)){
     var got = await syncGetFile(cfg, SYNC_DIR + "/" + name);
     remoteSha = got.sha || remoteSha; /* GET直後のshaの方が新しい */
     /* 読み込みを待つあいだに記録が増えているかもしれないので、ローカル側はここで取り直す
@@ -3989,6 +4234,7 @@ async function syncPart(cfg, part, meta){
     localPart = syncLocalPartOf(part);
     localKey = stableKey(localPart);
     var remoteContent = got.parsed || (part.kind === "month" ? { sessions: {} } : { gear: undefined });
+    if(typeof sanitizeState === "function") remoteContent = sanitizeState(remoteContent);
     if(part.kind === "month"){
       merged = { sessions: mergeState({ sessions: localPart.sessions }, { sessions: remoteContent.sessions || {} }).sessions };
       remoteContentKey = stableKey({ sessions: remoteContent.sessions || {} });
@@ -4010,7 +4256,7 @@ async function syncPart(cfg, part, meta){
 
   var shouldPush;
   if(!remoteSha) shouldPush = true;
-  else if(remoteChanged) shouldPush = mergedKey !== remoteContentKey;
+  else if(remoteChanged || (!!remoteSha && localChanged)) shouldPush = mergedKey !== remoteContentKey;
   else shouldPush = localChanged;
 
   var newSha = remoteSha;
@@ -4034,7 +4280,8 @@ async function syncMaybeMigrate(cfg, listing, meta){
   if(listing.length > 0 || meta.migrated) return false;
   var old = await syncGetFileLenient(cfg, SYNC_LEGACY_PATH);
   if(!old.parsed) return false;
-  var migrated = mergeState({ sessions: state.sessions, gear: state.gear }, old.parsed);
+  var oldState = typeof sanitizeState === "function" ? sanitizeState(old.parsed) : old.parsed;
+  var migrated = mergeState({ sessions: state.sessions, gear: state.gear }, oldState);
   state.sessions = migrated.sessions;
   state.gear = migrated.gear;
   return true;
@@ -4103,6 +4350,7 @@ async function syncRunOnce(cfg){
 async function syncNow(){
   var cfg = syncLoadConfig();
   if(!cfg) return;
+  if(syncBlocked) return;
   if(syncRunning){ syncRerunRequested = true; return; }
   /* 今から同期するので、入力待ちの同期は取り消す（その変更も今回まとめて送る） */
   if(syncDebounceTimer){ clearTimeout(syncDebounceTimer); syncDebounceTimer = null; }
@@ -4123,7 +4371,7 @@ async function syncNow(){
    ============================================================ */
 function syncSchedule(){
   var cfg = syncLoadConfig();
-  if(!cfg) return;
+  if(!cfg || syncBlocked) return;
   if(syncDebounceTimer) clearTimeout(syncDebounceTimer);
   syncDebounceTimer = setTimeout(function(){
     syncDebounceTimer = null;
@@ -4142,12 +4390,46 @@ function syncFlushPending(){
      起動したとき（ここ）/ セットを記録・修正で消したとき（画面側から syncNow）/
      メモ・ダンベル設定を変えたとき（画面側から syncSchedule）。
    画面を離れるときは、入力待ちの同期が残っていれば取りこぼさないようその場で送る。 */
-function syncInit(){
-  if(syncLoadConfig()) syncNow();
+async function syncInit(){
   try{
     document.addEventListener("visibilitychange", function(){ if(document.hidden) syncFlushPending(); });
   }catch(e){}
   try{ window.addEventListener("pagehide", function(){ syncFlushPending(); }); }catch(e){}
+  var cfg = syncLoadConfig();
+  if(!cfg) return;
+  /* 起動したときに、リポジトリがまだ非公開かを確かめる。公開になっていたら、この起動のあいだは同期しない */
+  try{ await syncCheckRepo(cfg.repo, cfg.token); }
+  catch(e){
+    if(e && e.syncKind === "public"){ syncBlockPublic(); return; }
+    /* 通信などほかの失敗は、このあとの同期がそれぞれ知らせる */
+  }
+  syncNow();
+}
+var SYNC_PUBLIC_STOP = "リポジトリが公開になっているため、同期を止めました。GitHubで非公開（Private）に戻してから「今すぐ同期」を押してください";
+function syncBlockPublic(){
+  syncBlocked = "public";
+  syncUpdateStatusEl(SYNC_PUBLIC_STOP);
+  setStatus(SYNC_PUBLIC_STOP);
+}
+/* 「今すぐ同期」。公開で止めていたら、非公開に戻ったかを先に確かめる */
+async function syncManualNow(){
+  var cfg = syncLoadConfig(); if(!cfg) return;
+  if(syncBlocked){
+    try{ await syncCheckRepo(cfg.repo, cfg.token); }
+    catch(e){
+      if(e && e.syncKind === "public"){ syncBlockPublic(); return; }
+      syncReportError(e); return;
+    }
+    syncBlocked = "";
+  }
+  await syncNow();
+}
+/* 「GitHubから全部取り直す」。見たファイルの印を消して、全部の月を読み直して合流させる
+   （端末の記録が消えたり壊れたりしたときの戻し方。合流なので、この端末にしかない記録も残る） */
+function syncRefetchAll(){
+  var cfg = syncLoadConfig(); if(!cfg) return;
+  var meta = syncLoadMeta(cfg); meta.seen = {}; meta.localKey = {}; syncSaveMeta(meta);
+  return syncManualNow();
 }
 
 /* ============================================================
@@ -4168,6 +4450,7 @@ async function syncConnect(repoRaw, tokenRaw){
   }
 
   syncSaveConfig({ repo: repo, token: token });
+  syncBlocked = "";
   syncUpdateStatusEl("");
   render();
   await syncNow();
@@ -4237,6 +4520,7 @@ function syncCard(){
       <p class="lastline" style="margin-top:0">${last ? "最終同期 " + last : "まだ同期していません"}。${SYNC_WHEN}</p>
       <div class="rowbtns">
         <button data-sync="now">今すぐ同期</button>
+        <button data-sync="refetch">GitHubから全部取り直す</button>
         <button data-sync="disconnect">接続を解除</button>
       </div>
       <p class="lastline" id="syncStatus">${syncEsc(syncStatusText)}</p>
@@ -4254,7 +4538,9 @@ function syncWire(root){
     };
   }
   var nowBtn = root.querySelector('[data-sync="now"]');
-  if(nowBtn) nowBtn.onclick = function(){ syncNow(); };
+  if(nowBtn) nowBtn.onclick = function(){ syncManualNow(); };
+  var refetchBtn = root.querySelector('[data-sync="refetch"]');
+  if(refetchBtn) refetchBtn.onclick = function(){ if(confirm("GitHubから全ての記録を取り直して合流しますか？")) syncRefetchAll(); };
   var discBtn = root.querySelector('[data-sync="disconnect"]');
   if(discBtn) discBtn.onclick = function(){ syncDisconnect(); };
 }
@@ -4278,7 +4564,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-24 20:47";
+const BUILD_VERSION = "2026-09-24 20:57";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
