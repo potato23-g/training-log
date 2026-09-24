@@ -23,8 +23,16 @@ def read(rel):
     return io.open(os.path.join(ROOT, rel), encoding='utf-8').read()
 
 
+def file_body(rel):
+    """src/app/*.js の中身を、置き場所の1行と入れ替えられる形で返す（末尾の改行1つは置き場所の行のものを使う）。"""
+    body = read(rel)
+    return body[:-1] if body.endswith('\n') else body
+
+
 def embed_common(src, target):
     """保存層の差し替えと <!--INLINE:...--> の展開、版の日時の埋め込み。全ターゲット共通。"""
+    # 本体のスクリプトは役割ごとに src/app/*.js へ分けてある。書いてある位置へそのまま埋め戻す（版の日時の置換より先に）
+    src = re.sub(r'/\*INLINE-JS-FILE:(.+?)\*/', lambda m: file_body(m.group(1)), src)
     src = src.replace('"__BUILD__"', '"%s"' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
     store = 'src/store-local.js' if target in ('local', 'site') else 'src/store-artifact.js'
     src = src.replace('/*INLINE-JS:STORE*/', read(store))

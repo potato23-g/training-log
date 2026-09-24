@@ -3303,6 +3303,18 @@ sidelunge:{
 const DEFAULT_PROGRAM = ["goblet","rdl","row","ohp","deadbug"];
 
 /* ============================================================
+   ボタンと入力欄の登録口
+   画面の data-act="名前" のボタンは、wire() が知らない名前なら ACTIONS[名前](要素, イベント) を呼ぶ。
+   入力欄など、描画のたびに結び直したいものは WIRES に (view) => {...} を足す。
+   それぞれの機能のファイルから登録すれば、wire() を書き換えなくてよい。
+   ============================================================ */
+const ACTIONS = {};
+const WIRES = [];
+/* ============================================================
+   外から入ってくるデータの確かめと、画面に出すときのエスケープ
+   （中身はこれから入れる）
+   ============================================================ */
+/* ============================================================
    保存層（ローカル版）: この端末の中だけで完結する。外部通信なし。
    記録は localStorage に置き、JSON のバックアップで端末間を移す。
    ============================================================ */
@@ -4260,7 +4272,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-22 16:41";
+const BUILD_VERSION = "2026-09-24 20:39";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6378,8 +6390,10 @@ function wire(){
       else if(a==="backup" && typeof backupSave === "function"){ backupSave(); }
       else if(a==="restore" && typeof backupLoad === "function"){ backupLoad(); }
       else if(a==="restorepaste" && typeof backupPaste === "function"){ backupPaste(); }
+      else if(ACTIONS[a]){ ACTIONS[a](el, ev); }
     };
   });
+  WIRES.forEach(f => f(v));
 
   const sel = v.querySelector("#exSel");
   if(sel) sel.onchange = ()=>{ refEx = sel.value; render(); };

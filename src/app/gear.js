@@ -1,0 +1,279 @@
+/* ============================================================
+   持っているダンベル
+   設定で入れるのは「何kgを何本持っているか」だけ。種目ごとにどれを何本・どう持つかはアプリが決める。
+   持っていない重さは提案しない。足りない分は日用品（タオル・リュック・ペットボトルなど）の工夫で補う。
+   既定は 5kg×2本（引き継ぎ時の前提）
+   ============================================================ */
+const GEAR_DEFAULT_ITEMS = [{kg:5, n:2}];
+/* 保存データの器具設定を読む。旧形式 {unit,count,adjustable,max} は「unit kg を count 本」に読み替える */
+function readGear(g){
+  if(!g || typeof g !== "object") return undefined;
+  if(Array.isArray(g.items)){
+    return {items: g.items.filter(x => x && +x.kg > 0 && +x.n > 0).map(x => ({kg:+x.kg, n:Math.round(+x.n)})),
+            updatedAt: +g.updatedAt || 0};
+  }
+  if(g.unit !== undefined || g.count !== undefined){
+    const n = Math.round(+g.count || 0), kg = +g.unit || 5;
+    return {items: n > 0 ? [{kg, n}] : [], updatedAt: 0};
+  }
+  return undefined;
+}
+/* 入力欄に並べる行（入れたとおり） */
+function gearItems(){
+  const g = state.gear;
+  const items = g && Array.isArray(g.items) ? g.items : GEAR_DEFAULT_ITEMS;
+  return items.map(x => ({kg:+x.kg || 0, n:Math.max(0, Math.round(+x.n || 0))}));
+}
+function setGearItems(items){
+  state.gear = {items, updatedAt: Date.now()};
+  persistProgram();
+  if(typeof syncSchedule === "function") syncSchedule();        /* 同期: ダンベル設定を変えたとき */
+}
+/* 計算用: 同じ重さはまとめ、軽い順 */
+function inventory(){
+  const m = {};
+  gearItems().forEach(x => { if(x.kg > 0 && x.n > 0) m[x.kg] = (m[x.kg] || 0) + x.n; });
+  return Object.keys(m).map(Number).sort((a, b) => a - b).map(kg => ({kg, n:m[kg]}));
+}
+/* 引き継ぎ時の 5kg×2本 のままか（元の解説文・メモがそのまま当てはまる） */
+function isDefaultGear(){ const inv = inventory(); return inv.length === 1 && inv[0].kg === 5 && inv[0].n === 2; }
+function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
+
+/* 種目ごとの持ち方
+   pair   = 同じ重さを2つ使うときの持ち方 / one = 1つだけ使うときの持ち方
+   mixed  = 重さの違う2つを組み合わせてよい（体の上に置く種目だけ）
+   per    = "arm" なら片腕あたりの重さで重い・軽いを決める（腕の種目）。"total" なら合計で決める
+   prefer = 同じ重さになる使い方が複数あるとき、1つで持つほうを選ぶ（"one"） */
+const HOLD = {
+  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
+  rdl:       {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"},
+  split:     {pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
+  hipthrust: {pair:"骨盤の上に並べて置く", one:"骨盤の上に置く",         per:"total", prefer:"one", mixed:true},
+  row:       {one:"片手に持ち、左右を入れ替える",                          per:"total"},
+  ohp:       {pair:"両手に1つずつ持つ",    one:"片手ずつ押し上げ、左右を入れ替える", per:"arm"},
+  lateral:   {pair:"両手に1つずつ持つ",    one:"片手ずつ上げ、左右を入れ替える",     per:"arm"},
+  floorpress:{pair:"両手に1つずつ持つ",    one:"片手ずつ押し、反対の手は床に置く",   per:"arm"},
+  curl:      {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
+  triext:    {one:"両手でまとめて持つ",                                    per:"total"},
+  calf:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、反対の手で壁を支える",   per:"total"},
+  farmer:    {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で左右を持ち替える", per:"total"},
+  sumo:      {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
+  splitfloor:{pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
+  fly:       {pair:"両手に1つずつ持つ",    one:"片手ずつ行い、反対の手は床に置く",   per:"arm"},
+  skull:     {pair:"両手に1つずつ持つ",    one:"片手ずつ行い、反対の手で肘を支える", per:"arm"},
+  front:     {pair:"両手に1つずつ持つ",    one:"片手ずつ上げ、左右を入れ替える",     per:"arm"},
+  shrug:     {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で持ち替える",       per:"total"},
+  row2:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、左右を入れ替える",       per:"total"},
+  calfseat:  {pair:"左右の膝に1つずつ置く", one:"片方の膝に置き、両手で押さえる",     per:"total"},
+  sidebend:  {one:"片手に持ち、左右を入れ替える",                                    per:"total"},
+  sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"縦にして胸の前で抱える", per:"total", prefer:"one"}
+};
+function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
+
+/* 持っているダンベルで作れる使い方を、軽い順に並べる。同じ重さになる使い方は1つに絞る */
+function gearOptions(id){
+  const h = holdOf(id); if(!h) return [];
+  const inv = inventory(), out = [];
+  inv.forEach(({kg, n})=>{
+    if(h.pair && n >= 2) out.push({n:2, pieces:[kg, kg], total:kg * 2, key:h.per === "arm" ? kg : kg * 2, how:h.pair});
+    if(h.one && !(h.per === "arm" && h.pair && n >= 2)) out.push({n:1, pieces:[kg], total:kg, key:kg, how:h.one});
+  });
+  if(h.mixed){
+    for(let i = 0; i < inv.length; i++) for(let j = i + 1; j < inv.length; j++){
+      const a = inv[j].kg, b = inv[i].kg;
+      out.push({n:2, pieces:[a, b], total:a + b, key:a + b, how:h.pair, mixed:true});
+    }
+  }
+  const rank = o => h.prefer === "one" ? (o.n === 1 ? 0 : o.mixed ? 2 : 1) : (o.n === 2 && !o.mixed ? 0 : o.mixed ? 1 : 2);
+  out.sort((x, y) => (x.key - y.key) || (rank(x) - rank(y)));
+  const uniq = [];
+  out.forEach(o => { if(!uniq.length || Math.abs(uniq[uniq.length - 1].key - o.key) > 1e-9) uniq.push(o); });
+  uniq.forEach(o => {
+    o.total = Math.round(o.total * 10) / 10;
+    o.text = o.n === 1 ? kgText(o.pieces[0]) + "を1つ、" + o.how
+           : (o.mixed ? kgText(o.pieces[0]) + "と" + kgText(o.pieces[1]) + "を1つずつ、" : kgText(o.pieces[0]) + "を2つ、")
+             + o.how + "（合計" + kgText(o.total) + "）";
+  });
+  return uniq;
+}
+function optionIndex(opts, o){ return o ? opts.findIndex(x => Math.abs(x.key - o.key) < 1e-9) : -1; }
+function optionByTotal(id, w){
+  if(w === undefined || w === null || isNaN(w)) return null;
+  return gearOptions(id).find(o => Math.abs(o.total - w) < 0.01) || null;
+}
+/* 持っている組み合わせにない重さ w に一番近い使い方（w 以下で一番重いもの。なければ一番軽いもの） */
+function nearestOption(opts, w){
+  let best = null;
+  opts.forEach(o => { if(o.total <= w + 1e-9 && (!best || o.total > best.total)) best = o; });
+  return best || opts.reduce((a, o) => o.total < a.total ? o : a, opts[0]);
+}
+
+/* 記録がない種目の最初の重さの目安（per が arm の種目は片腕あたり）。この重さ以下で一番重い使い方から始める */
+const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity};
+function startKg(id){ const v = START_KG[id] !== undefined ? START_KG[id] : START_KG[baseOf(id)]; return v === undefined ? 8 : v; }
+function defaultOption(id){
+  const opts = gearOptions(id); if(!opts.length) return null;
+  const lim = startKg(id);
+  let pick = opts[0];
+  opts.forEach(o => { if(o.key <= lim + 1e-9) pick = o; });
+  return pick;
+}
+/* 種目の回数の目安（解説の「10〜15回」から読む） */
+function repRange(id, item){
+  const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
+  const m = /(\d+)〜(\d+)回/.exec(d.reps || "");
+  if(m) return {lo:+m[1], hi:+m[2]};
+  const r = (item && item.r) || EXMAP[id].r || 10;
+  return {lo:Math.max(4, r - 2), hi:r + 3};
+}
+/* 前回の記録から今日の使い方を決める。動くのは持っている使い方の中だけ。
+   up   : 余裕があって回数も伸びきった → 一段重い使い方（重さが一気に増えすぎる場合は動かさない）
+   down : 限界で回数が届かなかった → 一段軽い使い方
+   snap : 前回の重さが今の登録では作れない → 近い使い方 */
+function weightPlan(item, last, avg){
+  const id = item.ex, opts = gearOptions(id);
+  if(!opts.length) return {opt:null};
+  const lastW = last.sets[0].w;
+  if(lastW === undefined || lastW === null || isNaN(lastW)) return {opt:defaultOption(id), change:null};
+  let i = opts.findIndex(o => Math.abs(o.total - lastW) < 0.01);
+  if(i < 0) return {opt:nearestOption(opts, lastW), change:"snap", lastW};
+  const {lo, hi} = repRange(id, item);
+  const maxR = last.sets.reduce((a, s) => Math.max(a, s.r || 0), 0);
+  let change = null;
+  const nx = opts[i + 1];
+  if(avg && nx && (nx.key <= opts[i].key * 1.6 || nx.key - opts[i].key <= 3)
+     && ((avg <= 7 && maxR >= hi + 3) || (avg <= 6 && maxR >= hi))){ i++; change = "up"; }
+  else if(avg && i > 0 && avg >= 9.5 && maxR < lo){ i--; change = "down"; }
+  return {opt:opts[i], change, lastW};
+}
+
+/* 日用品で負荷を変えるやり方（ダンベルは買い足さない前提） */
+const HOUSE = {
+  goblet:    {up:"本や水を入れたペットボトルを詰めたリュックを背負い、ダンベルと一緒に使う", down:"水を入れた2Lのペットボトルを胸の前で抱える"},
+  rdl:       {up:"タオルを床に敷いて仰向けになり、かかとを乗せて引き寄せるレッグカールを足す（フローリング向き）", down:"水を入れた2Lのペットボトルを両手に持つ"},
+  split:     {up:"荷物を詰めたリュックを背負い、ダンベルと一緒に使う", down:"何も持たずに行う"},
+  hipthrust: {up:"荷物を詰めたリュックをダンベルと一緒に骨盤に乗せる（畳んだタオルを挟むと痛くない）", down:"何も持たずに行う"},
+  row:       {up:"本や水のペットボトルを詰めたリュックの持ち手を握って引く", down:"水を入れた2Lのペットボトルで行う"},
+  ohp:       {down:"水を入れたペットボトルで行う"},
+  lateral:   {down:"水を入れた500mlか2Lのペットボトルで行う"},
+  floorpress:{up:"腕立て伏せに切り替え、慣れたら荷物を詰めたリュックを背負う", down:"水を入れたペットボトルで行う"},
+  pushup:    {up:"荷物を詰めたリュックを背負う"},
+  curl:      {up:"タオルの真ん中を片足で踏み、両端を握って足の抵抗に逆らいながら巻き上げる", down:"水を入れたペットボトルで行う"},
+  triext:    {up:"椅子の座面の縁に手をついて体を沈めるディップスを足す（椅子は壁につけて動かないようにする）", down:"水を入れたペットボトルで行う"},
+  plank:     {up:"足の下にタオルを敷き、プランクの姿勢のまま体を前後に滑らせる（フローリング向き）"},
+  deadbug:   {up:"水を入れたペットボトルを両手で持って行う"},
+  crunch:    {up:"水を入れたペットボトルを胸に抱える"},
+  sideplank: {up:"上の手に水を入れたペットボトルを持ち、天井へ伸ばす"},
+  calf:      {up:"荷物を詰めたリュックを背負う"},
+  farmer:    {up:"持ち手にタオルを巻いて太くする（握る力の負荷が上がる）", down:"水を入れたペットボトルや荷物を入れた袋を持つ"},
+  sumo:      {up:"荷物を詰めたリュックを背負い、ダンベルと一緒に使う", down:"水を入れた2Lのペットボトルを胸の前で抱える"},
+  splitfloor:{up:"荷物を詰めたリュックを背負う", down:"何も持たずに行う"},
+  bridge:    {up:"荷物を詰めたリュックを骨盤に乗せる（畳んだタオルを挟むと痛くない）"},
+  pushupknee:{up:"膝を離して通常の腕立て伏せへ"},
+  fly:       {down:"水を入れたペットボトルで行う"},
+  skull:     {down:"水を入れたペットボトルで行う"},
+  front:     {down:"水を入れた500mlのペットボトルで行う"},
+  shrug:     {up:"荷物を詰めたリュックの持ち手を両手で持つ", down:"水を入れた2Lのペットボトルを両手に持つ"},
+  row2:      {up:"本や水のペットボトルを詰めたリュックの持ち手を握って引く", down:"水を入れた2Lのペットボトルで行う"},
+  calfseat:  {up:"荷物を詰めたリュックを膝の上に乗せる", down:"水を入れた2Lのペットボトルを膝に乗せる"},
+  sidebend:  {up:"荷物を詰めた袋を持つ", down:"水を入れた2Lのペットボトルを持つ"},
+  sidelunge: {up:"荷物を詰めたリュックを背負う", down:"水を入れた2Lのペットボトルを胸の前で抱える"}
+};
+function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
+
+/* 「使うダンベル」の一文 */
+function gearLine(id, sug){
+  if(!holdOf(id)) return "";
+  const opts = gearOptions(id);
+  if(!opts.length){
+    const hs = houseOf(id);
+    return "ダンベルが登録されていません。" + (hs.down ? "「" + hs.down + "」で代用できます。" : "この種目は飛ばしてください。");
+  }
+  const o = sug ? sug.opt : defaultOption(id);
+  if(!o){
+    if(sug && sug.w !== undefined && sug.w !== null && !isNaN(sug.w)) return kgText(sug.w) + "は、登録しているダンベルでは作れない重さです（日用品を足しているなら、そのままで構いません）。";
+    return defaultOption(id).text;
+  }
+  const hs = houseOf(id);
+  const heavy = optionIndex(opts, o) === 0 && o.key > startKg(id) * 2 && hs.down
+    ? "　持っている中で一番軽くても重めです。きつすぎたら「" + hs.down + "」に替えてください。" : "";
+  return o.text + heavy;
+}
+/* 解説文の「5kg」などの数字は、5kg×2本の前提で書いてある。登録が違えば数字を出さない言い方にする */
+function gearText(s){
+  if(!s) return "";
+  if(isDefaultGear()) return s;
+  return String(s).replace(/\d+(?:\.\d+)?\s*kg/g, "軽いダンベル");
+}
+/* メモのうち持ち方に触れた一文（「両手に1つずつ持つ」「2つ担げば10kgになる」）は、実際の使い方と合うときだけ残す */
+function noteFor(item, opt){
+  const note = item.note;
+  if(!note) return "";
+  if(isDefaultGear() && opt && opt.n === 2 && !opt.mixed) return note;
+  const kept = note.split("。").filter(x => x && !/kg|[2２]つ|両手に[1１]つずつ/.test(x));
+  return kept.length ? kept.join("。") + "。" : "";
+}
+
+function gearCard(){
+  const rows = gearItems(), inv = inventory();
+  const row = (x, i) => `<div class="dbrow">
+      <div class="fld"><label>重さ kg</label>
+        <div class="stepper">
+          <button data-act="dbstep" data-i="${i}" data-t="kg" data-d="-1" aria-label="軽く">−</button>
+          <input type="number" id="db_kg_${i}" value="${x.kg}" step="0.5" min="0.5" inputmode="decimal">
+          <button data-act="dbstep" data-i="${i}" data-t="kg" data-d="1" aria-label="重く">＋</button>
+        </div></div>
+      <div class="fld"><label>本数</label>
+        <div class="stepper">
+          <button data-act="dbstep" data-i="${i}" data-t="n" data-d="-1" aria-label="減らす">−</button>
+          <input type="number" id="db_n_${i}" value="${x.n}" step="1" min="1" inputmode="numeric">
+          <button data-act="dbstep" data-i="${i}" data-t="n" data-d="1" aria-label="増やす">＋</button>
+        </div></div>
+      <button class="dbdel" data-act="dbdel" data-i="${i}" aria-label="この重さを削除">×</button>
+    </div>`;
+  return `<h3 class="sec">持っているダンベル</h3>
+  <div class="card">
+    ${rows.length ? rows.map(row).join("") : `<p style="margin:0;font-size:14px">登録なし</p>`}
+    <div class="rowbtns"><button data-act="dbadd">${rows.length ? "別の重さを追加" : "ダンベルを追加"}</button></div>
+    ${!state.gear ? `<p class="lastline"><b>ダンベルがまだ登録されていません。</b>いまは5kg×2本をお持ちの前提で提案しています。実際の内容に直してください。</p>` : ""}
+    <p class="lastline">${inv.length ? (state.gear ? "登録中: " : "前提: ") + inv.map(x => kgText(x.kg) + "×" + x.n + "本").join("、") : "登録なし。ダンベルを使わない種目と、日用品で代用するやり方を提案します"}</p>
+    <p class="lastline">持っている重さと本数だけ入れてください。種目ごとにどれを何本・どう持つかはアプリが決めます。持っていない重さは提案しません。足りないときは、タオルやリュックなどの日用品を使うやり方を出します。</p>
+  </div>`;
+}
+function dbStep(i, t, d){
+  const it = gearItems(); if(!it[i]) return;
+  if(t === "kg"){
+    const cur = it[i].kg;
+    const st = d > 0 ? (cur >= 20 ? 2.5 : cur >= 3 ? 1 : 0.5) : (cur > 20 ? 2.5 : cur > 3 ? 1 : 0.5);
+    it[i].kg = Math.max(0.5, Math.round((cur + d * st) * 10) / 10);
+  }else{
+    it[i].n = Math.max(1, Math.min(20, it[i].n + d));
+  }
+  setGearItems(it); render();
+}
+
+function settingsCard(){
+  const sound = PREF.get("sound", true), sure = PREF.get("sure", false), vib = PREF.get("vib", false),
+        notif = PREF.get("notify", false), wake = PREF.get("wake", true);
+  const notifState = !notifySupported() ? "この画面では使えません"
+    : (typeof Notification !== "undefined" && Notification.permission === "denied") ? "ブラウザ側で拒否されています"
+    : (notif ? "オン" : "オフ");
+  return `<h3 class="sec">休憩の終わりを知らせる</h3>
+  <div class="card">
+    <div class="setrow"><span>音で知らせる</span>
+      <button data-act="pref" data-k="sound" class="tg ${sound?"on":""}">${sound?"オン":"オフ"}</button></div>
+    <div class="setrow"><span>マナーモード・画面ロック中も鳴らす<small>オンにすると確実に鳴りますが、休憩中はほかのアプリの音楽が止まります</small></span>
+      <button data-act="pref" data-k="sure" class="tg ${sure?"on":""}">${sure?"オン":"オフ"}</button></div>
+    <div class="setrow"><span>振動で知らせる<small>対応端末のみ。PCでは動きません</small></span>
+      <button data-act="pref" data-k="vib" class="tg ${vib?"on":""}">${vib?"オン":"オフ"}</button></div>
+    <div class="setrow"><span>端末に通知を出す<small>${notifState}</small></span>
+      <button data-act="asknotify" class="tg ${notif?"on":""}">${notif?"オン":"許可する"}</button></div>
+    <div class="setrow"><span>休憩中は画面を消さない</span>
+      <button data-act="pref" data-k="wake" class="tg ${wake?"on":""}">${wake?"オン":"オフ"}</button></div>
+    <div class="rowbtns"><button data-act="testalert">今の設定で鳴らしてみる</button></div>
+    <p class="lastline">${sure
+      ? "休憩の長さぶんの音声を流しておき、終わりに合図が入るようにしています。画面を消していても鳴るようにしていますが、端末によっては止められることがあります。"
+      : "音楽と一緒に使えます。鳴るのはアプリを開いて画面がついている間だけで、iPhoneはマナーモード中だと鳴りません。画面から離れている間に休憩が終わったら、戻ったときに知らせます。"}</p>
+  </div>`;
+}
+

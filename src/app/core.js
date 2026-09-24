@@ -1,0 +1,61 @@
+
+/* ============================================================
+   日付など
+   ============================================================ */
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function fmtDate(k){
+  const [y,m,d] = k.split("-").map(Number);
+  const wd = ["日","月","火","水","木","金","土"][new Date(y,m-1,d).getDay()];
+  return m+"月"+d+"日("+wd+")";
+}
+function asDate(k){ const [y,m,d] = k.split("-").map(Number); return new Date(y, m-1, d); }
+function daysAgo(k){
+  return Math.round((asDate(todayKey()) - asDate(k)) / 86400000);
+}
+/* この画面がいつ作られた版か（build.py が日時に置き換える）。
+   端末に保存された古い版を見ていないか確かめるために出す */
+const BUILD_VERSION = "__BUILD__";
+let TODAY = todayKey();
+/* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
+function rollDay(){
+  const k = todayKey();
+  if(k === TODAY) return false;
+  TODAY = k;
+  openEx = null; editEx = null;
+  return true;
+}
+
+function session(date){
+  if(!state.sessions[date]) state.sessions[date] = { date, entries:[], note:"" };
+  return state.sessions[date];
+}
+function sortedDates(){ return Object.keys(state.sessions).sort().reverse(); }
+
+function entryFor(date, exId, create){
+  const s = session(date);
+  let e = s.entries.find(x=>x.ex===exId);
+  if(!e && create){ e = {ex:exId, sets:[]}; s.entries.push(e); }
+  return e;
+}
+function lastPerformance(exId, beforeDate){
+  for(const d of sortedDates()){
+    if(d >= beforeDate) continue;
+    const e = (state.sessions[d].entries||[]).find(x=>x.ex===exId && x.sets.length);
+    if(e) return {date:d, sets:e.sets};
+  }
+  return null;
+}
+function bestSet(sets, kind){
+  if(!sets.length) return null;
+  if(kind==="w") return sets.slice().sort((a,b)=> (b.w*b.r)-(a.w*a.r))[0];
+  return sets.slice().sort((a,b)=> b.r-a.r)[0];
+}
+function setText(st, kind){
+  if(kind==="w") return st.w+" kg × "+st.r;
+  if(kind==="t") return st.r+" 秒";
+  return st.r+" 回";
+}
+
