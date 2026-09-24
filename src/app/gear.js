@@ -118,34 +118,50 @@ function defaultOption(id){
   opts.forEach(o => { if(o.key <= lim + 1e-9) pick = o; });
   return pick;
 }
-/* 種目の回数の目安（解説の「10〜15回」から読む） */
+/* 種目の回数（秒の種目は秒数）の幅。解説の「10〜15回」「20〜45秒」から読む */
 function repRange(id, item){
   const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
-  const m = /(\d+)〜(\d+)回/.exec(d.reps || "");
+  const m = /(\d+)〜(\d+)(回|秒)/.exec(d.reps || "");
   if(m) return {lo:+m[1], hi:+m[2]};
   const r = (item && item.r) || EXMAP[id].r || 10;
   return {lo:Math.max(4, r - 2), hi:r + 3};
 }
-/* 前回の記録から今日の使い方を決める。動くのは持っている使い方の中だけ。
-   up   : 余裕があって回数も伸びきった → 一段重い使い方（重さが一気に増えすぎる場合は動かさない）
-   down : 限界で回数が届かなかった → 一段軽い使い方
-   snap : 前回の重さが今の登録では作れない → 近い使い方 */
-function weightPlan(item, last, avg){
-  const id = item.ex, opts = gearOptions(id);
-  if(!opts.length) return {opt:null};
-  const lastW = last.sets[0].w;
-  if(lastW === undefined || lastW === null || isNaN(lastW)) return {opt:defaultOption(id), change:null};
-  let i = opts.findIndex(o => Math.abs(o.total - lastW) < 0.01);
-  if(i < 0) return {opt:nearestOption(opts, lastW), change:"snap", lastW};
-  const {lo, hi} = repRange(id, item);
-  const maxR = last.sets.reduce((a, s) => Math.max(a, s.r || 0), 0);
-  let change = null;
-  const nx = opts[i + 1];
-  if(avg && nx && (nx.key <= opts[i].key * 1.6 || nx.key - opts[i].key <= 3)
-     && ((avg <= 7 && maxR >= hi + 3) || (avg <= 6 && maxR >= hi))){ i++; change = "up"; }
-  else if(avg && i > 0 && avg >= 9.5 && maxR < lo){ i--; change = "down"; }
-  return {opt:opts[i], change, lastW};
+/* 「片手ずつ」「片手だけ」で行う組み方か（ダンベルは1つで持つ） */
+function isOneHanded(item){
+  return /片手/.test(item.tag || "") || /^片手(ずつ|だけ)/.test(item.note || "");
 }
+/* その組み方で使える持ち方。片手で行う組み方は、1つで持つ使い方だけにする
+   （腕の種目は、2つ持てるときは「両手に1つずつ」しか並ばないため） */
+function itemOptions(item){
+  const id = item.ex, h = holdOf(id);
+  if(!h) return [];
+  if(!isOneHanded(item) || !h.one) return gearOptions(id);
+  return inventory().map(({kg}) => ({n:1, pieces:[kg], total:kg, key:kg, how:h.one, text:kgText(kg) + "を1つ、" + h.one}));
+}
+function defaultOptionFor(item){
+  const opts = itemOptions(item); if(!opts.length) return null;
+  const lim = startKg(item.ex);
+  let pick = opts[0];
+  opts.forEach(o => { if(o.key <= lim + 1e-9) pick = o; });
+  return pick;
+}
+/* 腕の種目（片腕あたりで重さを見る種目）で、2つ持つ使い方か。重さは「片手 5kg」と見せる */
+function perArm(id){ const h = holdOf(id); return !!(h && h.per === "arm"); }
+function armCount(item, total){
+  const o = itemOptions(item).find(x => Math.abs(x.total - total) < 0.01);
+  return o ? o.n : (perArm(item.ex) && !isOneHanded(item) ? 2 : 1);
+}
+/* 画面に出す重さ（腕の種目は片手あたり）。記録は合計のまま */
+function wShown(item, total){
+  if(total === undefined || total === null || isNaN(total)) return total;
+  return perArm(item.ex) ? Math.round(total / armCount(item, total) * 10) / 10 : total;
+}
+function wStored(item, shown){
+  if(!perArm(item.ex)) return shown;
+  const o = itemOptions(item).find(x => Math.abs(x.key - shown) < 0.01);
+  return o ? o.total : Math.round(shown * (isOneHanded(item) ? 1 : 2) * 10) / 10;
+}
+function wUnit(item){ return perArm(item.ex) ? "kg（片手）" : "kg"; }
 
 /* 日用品で負荷を変えるやり方（ダンベルは買い足さない前提） */
 const HOUSE = {

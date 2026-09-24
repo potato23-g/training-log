@@ -2,8 +2,18 @@
 /* ============================================================
    日付など
    ============================================================ */
+/* 1日の区切りの時刻（0〜6時。既定は朝4時）。夜中の0時をまたいでも、この時刻までは前の日のトレーニングとして扱う。
+   設定はこの端末だけ（設定のシートで変えられる）。prefs.js より前に読まれるので localStorage を直接読む */
+const DAY_START_DEFAULT = 4;
+function dayStartHour(){
+  try{
+    const v = JSON.parse(localStorage.getItem("trainlog.dayStart"));
+    if(typeof v === "number" && v >= 0 && v <= 6) return v;
+  }catch(e){}
+  return DAY_START_DEFAULT;
+}
 function todayKey(){
-  const d = new Date();
+  const d = new Date(Date.now() - dayStartHour() * 3600000);
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
 function fmtDate(k){

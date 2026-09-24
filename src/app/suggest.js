@@ -1,4 +1,4 @@
-/* ---- きつさに応じて次のセットの回数を決める ---- */
+/* ---- きつさに応じて次のセットの回数を決める（同じ日のセットの合間） ---- */
 function clampR(kind, r){
   r = Math.round(r);
   return kind==="t" ? Math.max(10, Math.min(180, r)) : Math.max(4, Math.min(40, r));
@@ -15,8 +15,8 @@ function adjust(kind, r, rpe){
    up   : きつさ6以下で、回数が狙いの上限まで伸びている
    down : きつさ10で、回数が狙いの下限に届かなかった */
 function setWeightPlan(item, prev){
-  const id = item.ex, opts = gearOptions(id);
-  const cur = optionByTotal(id, prev.w);
+  const id = item.ex, opts = itemOptions(item);
+  const cur = opts.find(o => Math.abs(o.total - prev.w) < 0.01) || null;
   if(!opts.length || !cur) return {opt: cur, change: null};
   const i = optionIndex(opts, cur);
   const {lo, hi} = repRange(id, item);
@@ -24,63 +24,46 @@ function setWeightPlan(item, prev){
   const nx = opts[i + 1], pv = opts[i - 1];
   /* 一段上げても重さが跳ね上がらないときだけ上げる */
   if(nx && rpe && rpe <= 6 && r >= hi){
-    if(nx.key <= cur.key * 1.6 || nx.key - cur.key <= 3) return {opt: nx, change: "up"};
+    if(nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg) return {opt: nx, change: "up"};
     return {opt: cur, change: null, jump: nx};      /* 一段上げると重さが跳ね上がる */
   }
   if(pv && rpe >= 10 && r < lo) return {opt: pv, change: "down"};
   return {opt: cur, change: null};
 }
-/* 次のセットの提案。重さは持っているダンベルで作れる使い方の中からだけ選ぶ */
-function suggestNext(item, e, last){
+/* 次のセットの提案。
+   その日の1セット目は伸ばし方（progress.js）の目標から。2セット目からは前のセットのきつさで少し動かす。
+   target はこの日の目標（記録にも残し、次の回の判断に使う）。重さは持っているダンベルで作れる使い方の中からだけ */
+function suggestNext(item, e){
   const id = item.ex, ex = EXMAP[id], kind = ex.kind;
   const sets = e ? e.sets : [];
-  const held = kind !== "w" && holdOf(id) ? defaultOption(id) : null;   /* 時間の種目でもダンベルを持つもの */
-  if(sets.length){
-    const prev = sets[sets.length-1];
-    const a = adjust(kind, prev.r, prev.rpe);
-    const src = "前のセットのきつさ " + (prev.rpe||"—");
-    if(kind !== "w") return {r:a.r, opt:held, why:a.why, src};
-    const p = setWeightPlan(item, prev);
-    const rr = repRange(id, item);
-    if(p.change === "up") return {r:clampR(kind, rr.lo), w:p.opt.total, opt:p.opt, change:"up", mid:true, src,
-      why:"余裕があって回数も伸びたので、ダンベルを一段重くしました。回数は" + rr.lo + "回から"};
-    if(p.change === "down") return {r:clampR(kind, prev.r), w:p.opt.total, opt:p.opt, change:"down", mid:true, src,
-      why:"限界で回数が届かなかったので、ダンベルを一段軽くしました"};
-    if(p.jump){
-      /* 持っているダンベルでは次が重すぎる。回数を増やすか、やり方で効かせる */
-      const harder = stepItem(item, 1);
-      const tip = harder && harder.ex === id ? "「" + itemName(harder) + "」のやり方に変えると、重さを上げずに効かせられます"
-                                             : "テンポを落とす・止める時間を作ると、重さを上げずに効かせられます";
-      return {r:a.r, w:prev.w, opt:p.opt, mid:true, src,
-        why:"次に重いのは" + kgText(p.jump.total) + "で上がり幅が大きいので、重さは変えずに回数で伸ばします。" + tip};
-    }
-    return {r:a.r, w:prev.w, opt:p.opt, why:a.why, src};
+  const p = progressFor(item);
+  const weighted = !!p.opt;                         /* 重さを扱う（時間の種目でもダンベルを持つものを含む） */
+  if(!sets.length){
+    return {r:p.target, target:p.target, w: weighted ? p.opt.total : undefined, opt:p.opt,
+            change:p.change, why:p.why, src:p.src, prog:p};
   }
-  if(last && last.sets.length){
-    const first = last.sets[0];
-    const avg = last.sets.reduce((x,st)=>x+(st.rpe||0),0) / last.sets.length;
-    const a = adjust(kind, first.r, avg ? Math.round(avg*2)/2 : 0);
-    const src = "前回のきつさ平均 " + (avg ? Math.round(avg*10)/10 : "—");
-    if(kind !== "w") return {r:a.r, opt:held, why:a.why, src};
-    const p = weightPlan(item, last, avg);
-    if(!p.opt) return {r:a.r, w:first.w, opt:null, why:a.why, src};
-    const rr = repRange(id, item);
-    if(p.change === "up") return {r:clampR(kind, rr.lo), w:p.opt.total, opt:p.opt, change:"up", src,
-      why:"余裕があったので、持っているダンベルの中で一段重い使い方にしました。回数は" + rr.lo + "回から"};
-    if(p.change === "down") return {r:clampR(kind, item.r || rr.hi), w:p.opt.total, opt:p.opt, change:"down", src,
-      why:"限界で回数が届かなかったので、一段軽い使い方にしました"};
-    if(p.change === "snap") return {r:clampR(kind, item.r || ex.r), w:p.opt.total, opt:p.opt, change:"snap", src,
-      why:"前回の " + kgText(p.lastW) + " は登録しているダンベルでは作れないので、近い使い方にしました"};
-    return {r:a.r, w:p.opt.total, opt:p.opt, why:a.why, src};
+  const prev = sets[sets.length-1];
+  const target = typeof prev.target === "number" ? prev.target : p.target;
+  const a = adjust(kind, prev.r, prev.rpe);
+  const src = "前のセットのきつさ " + (prev.rpe||"—");
+  if(!weighted || prev.w === undefined) return {r:a.r, target, w: weighted ? p.opt.total : undefined, opt:p.opt, why:a.why, src, prog:p};
+  const wp = setWeightPlan(item, prev);
+  const rr = repRange(id, item);
+  if(wp.change === "up") return {r:clampR(kind, rr.lo), target:clampR(kind, rr.lo), w:wp.opt.total, opt:wp.opt, change:"up", mid:true, src, prog:p,
+    why:"余裕があって回数も伸びたので、ダンベルを一段重くしました。回数は" + rr.lo + "回から"};
+  if(wp.change === "down") return {r:clampR(kind, prev.r), target:clampR(kind, prev.r), w:wp.opt.total, opt:wp.opt, change:"down", mid:true, src, prog:p,
+    why:"限界で回数が届かなかったので、ダンベルを一段軽くしました"};
+  if(wp.jump){
+    /* 持っているダンベルでは次が重すぎる。回数を増やすか、やり方で効かせる */
+    return {r:a.r, target, w:prev.w, opt:wp.opt, mid:true, src, prog:p,
+      why:"次に重いのは" + kgText(wShown(item, wp.jump.total)) + (perArm(id) ? "（片手）" : "") + "で上がり幅が大きいので、重さは変えずに回数で伸ばします"};
   }
-  const opt = kind==="w" ? defaultOption(id) : held;
-  return {r:clampR(kind, item.r || ex.r), w: kind==="w" ? (opt ? opt.total : 0) : undefined, opt,
-          why:"初回はフォームを優先します。余力を2〜3回残して終えてください", src:"初回"};
+  return {r:a.r, target, w:prev.w, opt:wp.opt || p.opt, why:a.why, src, prog:p};
 }
+/* 「10 kg × 13」のような短い書き方（腕の種目は片手あたり） */
 function sugText(item, sug){
-  const ex = EXMAP[item.ex];
-  if(ex.kind === "w") return sug.w + " kg × " + sug.r + (item.side ? "（左右それぞれ）" : "");
-  if(ex.kind === "t") return sug.r + " 秒" + (item.side ? "（左右それぞれ）" : "");
-  return sug.r + " 回" + (item.side ? "（左右それぞれ）" : "");
+  const ex = EXMAP[item.ex], side = item.side ? "（左右それぞれ）" : "";
+  const w = sug.w !== undefined && ex.kind === "w" ? (perArm(item.ex) ? "片手 " : "") + wShown(item, sug.w) + " kg × " : "";
+  if(ex.kind === "t") return (sug.w !== undefined ? kgText(sug.w) + "を持って " : "") + sug.r + " 秒" + side;
+  return w + sug.r + (ex.kind === "w" ? "" : " 回") + side;
 }
-

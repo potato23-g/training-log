@@ -14,7 +14,7 @@
   --panel-2:#F7F7F2;
   --ink:#1A2430;
   --ink-2:#5A6774;
-  --ink-3:#8C97A1;
+  --ink-3:#626D78;
   --rule:#D6D8D0;
   --muscle:#B23A31;
   --muscle-2:#8A2B24;
@@ -30,7 +30,7 @@
     --panel-2:#20262D;
     --ink:#E9E9E2;
     --ink-2:#9BA6B0;
-    --ink-3:#6E7A85;
+    --ink-3:#8A96A1;
     --rule:#2B333A;
     --muscle:#D3584C;
     --muscle-2:#E8796D;
@@ -46,7 +46,7 @@
   --panel-2:#20262D;
   --ink:#E9E9E2;
   --ink-2:#9BA6B0;
-  --ink-3:#6E7A85;
+  --ink-3:#8A96A1;
   --rule:#2B333A;
   --muscle:#D3584C;
   --muscle-2:#E8796D;
@@ -71,7 +71,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--muscle);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
 
-.wrap{max-width:620px;margin:0 auto;padding:0 16px 96px}
+.wrap{max-width:620px;margin:0 auto;padding:0 max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))}
 
 /* ---- header ---- */
 header{padding:22px 0 12px;display:flex;align-items:baseline;gap:12px}
@@ -115,20 +115,21 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 .setline .i{width:22px;color:var(--ink-3);font-size:12px}
 .setline .val{font-weight:600}
 .setline .rpe{margin-left:auto;font-size:12px;color:var(--ink-2)}
-.setline .del{background:none;border:none;color:var(--ink-3);padding:2px 6px;font-size:16px;line-height:1}
+.setline .del{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:3px;color:var(--ink-2);min-width:44px;height:36px;font-size:12px;line-height:1}
+.setline .rpe+.del{margin-left:8px}
 
 .entry{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
 .fld{display:flex;flex-direction:column;gap:3px}
 .fld label{font-size:11px;color:var(--ink-3)}
 .stepper{display:flex;align-items:center;border:1px solid var(--rule);border-radius:3px;background:var(--panel-2)}
-.stepper button{background:none;border:none;width:32px;height:38px;font-size:17px;color:var(--ink-2)}
+.stepper button{background:none;border:none;width:44px;height:44px;font-size:19px;color:var(--ink-2)}
 .stepper input{
-  width:52px;height:38px;border:none;background:none;text-align:center;
+  width:52px;height:44px;border:none;background:none;text-align:center;
   font-family:"Archivo",system-ui,sans-serif;font-size:17px;font-weight:600;color:var(--ink);
   -moz-appearance:textfield;
 }
 .stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.addbtn{background:var(--ink);color:var(--paper);border:none;border-radius:3px;height:38px;padding:0 18px;font-weight:700;font-size:14px}
+.addbtn{background:var(--ink);color:var(--paper);border:none;border-radius:3px;height:48px;padding:0 22px;font-weight:700;font-size:15px}
 .addbtn.ghost{background:none;color:var(--ink-2);border:1px solid var(--rule);font-weight:600}
 
 .hint{font-size:12.5px;color:var(--ink-2);background:var(--panel-2);border-left:2px solid var(--muscle);padding:8px 10px;margin-top:12px;border-radius:0 3px 3px 0}
@@ -137,14 +138,14 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 .lastline b{color:var(--ink);font-family:"Archivo",system-ui,sans-serif}
 
 /* ---- rest timer ---- */
-.timer{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);display:none;align-items:center;gap:14px;padding:11px 18px;z-index:50}
+.timer{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);display:none;align-items:center;gap:10px;padding:8px max(14px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));z-index:50}
 .timer.on{display:flex}
 .timer .t{font-family:"Archivo",system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:.02em}
 .timer .lb{display:flex;flex-direction:column;line-height:1.25;min-width:0}
 .timer .lb b{font-size:12.5px;font-weight:600;opacity:.75}
 .timer .lb small{font-size:12px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .timer button+button{margin-left:0}
-.timer button{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:3px;padding:5px 12px;font-size:13px;white-space:nowrap;flex:0 0 auto}
+.timer button{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:3px;min-height:44px;min-width:52px;padding:0 10px;font-size:13px;white-space:nowrap;flex:0 0 auto}
 
 /* ---- body figure ---- */
 .figs{display:flex;gap:6px;justify-content:center;align-items:flex-start}
@@ -185,17 +186,17 @@ table.hist td.n{font-family:"Archivo",system-ui,sans-serif;font-weight:600;text-
 
 .empty{color:var(--ink-2);font-size:14px;padding:26px 4px;text-align:center}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.rowbtns button{background:none;border:1px solid var(--rule);border-radius:3px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
+.rowbtns button{background:none;border:1px solid var(--rule);border-radius:3px;min-height:44px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
 
 select,textarea,input[type=text],input[type=password]{
-  font:inherit;color:var(--ink);background:var(--panel-2);
+  font:inherit;font-size:16px;color:var(--ink);background:var(--panel-2);
   border:1px solid var(--rule);border-radius:3px;padding:8px 10px;width:100%;
 }
 textarea{min-height:64px;resize:vertical}
 
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:60;align-items:flex-end;justify-content:center}
 .sheet.on{display:flex}
-.sheet .inner{background:var(--paper);width:100%;max-width:620px;max-height:86vh;overflow-y:auto;border-radius:10px 10px 0 0;padding:18px 16px 30px}
+.sheet .inner{background:var(--paper);width:100%;max-width:620px;max-height:86vh;overflow-y:auto;border-radius:10px 10px 0 0;padding:18px max(16px, env(safe-area-inset-right)) calc(30px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))}
 .sheet .inner h4{margin:0 0 12px;font-size:16px}
 .picklist{display:flex;flex-direction:column;gap:6px}
 .picklist button{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:11px 13px;text-align:left;font-size:14px;font-weight:600}
@@ -281,6 +282,31 @@ textarea{min-height:64px;resize:vertical}
   background:var(--panel);padding:1px 8px;border-radius:999px;opacity:.92}
 .diawrong .fg-body,.diawrong .fg-far{fill:var(--muscle)}
 .diawrong .fg-halo{fill:var(--panel);stroke:var(--panel)}
+/* ---- 種目カード（入力と記録を上に）・きつさのボタン・今日の一言 ---- */
+.entry .fld.rpefld{flex-basis:100%}
+.rpechips{display:flex;gap:6px;flex-wrap:wrap}
+.rpechips button{min-width:48px;height:44px;border:1px solid var(--rule);background:var(--panel-2);border-radius:3px;
+  font-family:"Archivo",system-ui,sans-serif;font-weight:700;font-size:15px;color:var(--ink-2)}
+.rpechips button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rpechips .lo{font-family:inherit;font-size:12.5px}
+.entry .recrow{display:flex;gap:10px;align-items:center;flex-basis:100%}
+.entry .recrow .addbtn{flex:1}
+.warmup{font-size:12.5px;color:var(--ink-2);margin:10px 0 0;padding:7px 10px;background:var(--panel-2);border-radius:3px}
+.cardtools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.cardtools button{background:none;border:1px solid var(--rule);border-radius:3px;min-height:40px;padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.hero.compact{padding:10px 14px}
+.hero.compact .kicker{display:inline;margin-right:8px}
+.hero.compact h2{display:inline;font-size:15px;margin:0}
+.banner{background:var(--panel);border:1px solid var(--muscle);border-radius:4px;padding:12px 14px;margin-bottom:14px;font-size:13.5px}
+.banner b{color:var(--muscle)}
+.flash .rowbtns{margin-top:6px}
+.skipped{font-size:13px;color:var(--ink-2);margin:10px 0 0}
+.skipped button{background:none;border:1px solid var(--rule);border-radius:3px;min-height:36px;padding:4px 10px;margin-left:6px;font-size:12.5px;color:var(--ink-2)}
+.ladder{padding:9px 0;border-bottom:1px dashed var(--rule)}
+.ladder:last-child{border-bottom:none}
+.ladder .lk{font-size:11.5px;color:var(--ink-2);margin:0}
+.ladder .ln{margin:2px 0 0;font-size:14px}
+.setbtn{font-size:14px;padding:3px 9px}
 /*INLINE-CSS-FILE:src/app/views.css*/
 </style>
 </head>
@@ -291,6 +317,7 @@ textarea{min-height:64px;resize:vertical}
     <span class="date num" id="todayLabel"></span>
     <button class="themebtn" id="updBtn" title="新しい版が出ていれば取り込みます">更新</button>
     <button class="themebtn" id="themeBtn">表示</button>
+    <button class="themebtn setbtn" id="setBtn" title="ダンベル・知らせ方・同期・バックアップ" aria-label="設定">⚙</button>
   </header>
 
   <div class="shell">
@@ -309,8 +336,9 @@ textarea{min-height:64px;resize:vertical}
 <div class="timer" id="timer">
   <span class="t num" id="timerT">1:30</span>
   <span class="lb"><b>次のセットまで</b><small id="timerLb"></small></span>
+  <button id="timerMinus">−30秒</button>
   <button id="timerPlus">+30秒</button>
-  <button id="timerStop">終了</button>
+  <button id="timerStop">終える</button>
 </div>
 
 <div class="sheet" id="sheet"><div class="inner" id="sheetInner"></div></div>
@@ -342,6 +370,7 @@ textarea{min-height:64px;resize:vertical}
 /*INLINE-JS-FILE:src/app/suggest.js*/
 /*INLINE-JS-FILE:src/app/today.js*/
 /*INLINE-JS-FILE:src/app/gear.js*/
+/*INLINE-JS-FILE:src/app/progress.js*/
 /*INLINE-JS-FILE:src/app/advice.js*/
 /*INLINE-JS-FILE:src/app/card.js*/
 /*INLINE-JS-FILE:src/app/view-ex.js*/

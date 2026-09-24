@@ -21,7 +21,7 @@
   --panel-2:#F7F7F2;
   --ink:#1A2430;
   --ink-2:#5A6774;
-  --ink-3:#8C97A1;
+  --ink-3:#626D78;
   --rule:#D6D8D0;
   --muscle:#B23A31;
   --muscle-2:#8A2B24;
@@ -37,7 +37,7 @@
     --panel-2:#20262D;
     --ink:#E9E9E2;
     --ink-2:#9BA6B0;
-    --ink-3:#6E7A85;
+    --ink-3:#8A96A1;
     --rule:#2B333A;
     --muscle:#D3584C;
     --muscle-2:#E8796D;
@@ -53,7 +53,7 @@
   --panel-2:#20262D;
   --ink:#E9E9E2;
   --ink-2:#9BA6B0;
-  --ink-3:#6E7A85;
+  --ink-3:#8A96A1;
   --rule:#2B333A;
   --muscle:#D3584C;
   --muscle-2:#E8796D;
@@ -78,7 +78,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 :focus-visible{outline:2px solid var(--muscle);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
 
-.wrap{max-width:620px;margin:0 auto;padding:0 16px 96px}
+.wrap{max-width:620px;margin:0 auto;padding:0 max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))}
 
 /* ---- header ---- */
 header{padding:22px 0 12px;display:flex;align-items:baseline;gap:12px}
@@ -122,20 +122,21 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 .setline .i{width:22px;color:var(--ink-3);font-size:12px}
 .setline .val{font-weight:600}
 .setline .rpe{margin-left:auto;font-size:12px;color:var(--ink-2)}
-.setline .del{background:none;border:none;color:var(--ink-3);padding:2px 6px;font-size:16px;line-height:1}
+.setline .del{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:3px;color:var(--ink-2);min-width:44px;height:36px;font-size:12px;line-height:1}
+.setline .rpe+.del{margin-left:8px}
 
 .entry{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
 .fld{display:flex;flex-direction:column;gap:3px}
 .fld label{font-size:11px;color:var(--ink-3)}
 .stepper{display:flex;align-items:center;border:1px solid var(--rule);border-radius:3px;background:var(--panel-2)}
-.stepper button{background:none;border:none;width:32px;height:38px;font-size:17px;color:var(--ink-2)}
+.stepper button{background:none;border:none;width:44px;height:44px;font-size:19px;color:var(--ink-2)}
 .stepper input{
-  width:52px;height:38px;border:none;background:none;text-align:center;
+  width:52px;height:44px;border:none;background:none;text-align:center;
   font-family:"Archivo",system-ui,sans-serif;font-size:17px;font-weight:600;color:var(--ink);
   -moz-appearance:textfield;
 }
 .stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.addbtn{background:var(--ink);color:var(--paper);border:none;border-radius:3px;height:38px;padding:0 18px;font-weight:700;font-size:14px}
+.addbtn{background:var(--ink);color:var(--paper);border:none;border-radius:3px;height:48px;padding:0 22px;font-weight:700;font-size:15px}
 .addbtn.ghost{background:none;color:var(--ink-2);border:1px solid var(--rule);font-weight:600}
 
 .hint{font-size:12.5px;color:var(--ink-2);background:var(--panel-2);border-left:2px solid var(--muscle);padding:8px 10px;margin-top:12px;border-radius:0 3px 3px 0}
@@ -144,14 +145,14 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 .lastline b{color:var(--ink);font-family:"Archivo",system-ui,sans-serif}
 
 /* ---- rest timer ---- */
-.timer{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);display:none;align-items:center;gap:14px;padding:11px 18px;z-index:50}
+.timer{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);display:none;align-items:center;gap:10px;padding:8px max(14px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));z-index:50}
 .timer.on{display:flex}
 .timer .t{font-family:"Archivo",system-ui,sans-serif;font-size:26px;font-weight:700;letter-spacing:.02em}
 .timer .lb{display:flex;flex-direction:column;line-height:1.25;min-width:0}
 .timer .lb b{font-size:12.5px;font-weight:600;opacity:.75}
 .timer .lb small{font-size:12px;opacity:.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .timer button+button{margin-left:0}
-.timer button{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:3px;padding:5px 12px;font-size:13px;white-space:nowrap;flex:0 0 auto}
+.timer button{margin-left:auto;background:none;border:1px solid rgba(255,255,255,.35);color:inherit;border-radius:3px;min-height:44px;min-width:52px;padding:0 10px;font-size:13px;white-space:nowrap;flex:0 0 auto}
 
 /* ---- body figure ---- */
 .figs{display:flex;gap:6px;justify-content:center;align-items:flex-start}
@@ -192,17 +193,17 @@ table.hist td.n{font-family:"Archivo",system-ui,sans-serif;font-weight:600;text-
 
 .empty{color:var(--ink-2);font-size:14px;padding:26px 4px;text-align:center}
 .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.rowbtns button{background:none;border:1px solid var(--rule);border-radius:3px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
+.rowbtns button{background:none;border:1px solid var(--rule);border-radius:3px;min-height:44px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
 
 select,textarea,input[type=text],input[type=password]{
-  font:inherit;color:var(--ink);background:var(--panel-2);
+  font:inherit;font-size:16px;color:var(--ink);background:var(--panel-2);
   border:1px solid var(--rule);border-radius:3px;padding:8px 10px;width:100%;
 }
 textarea{min-height:64px;resize:vertical}
 
 .sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:60;align-items:flex-end;justify-content:center}
 .sheet.on{display:flex}
-.sheet .inner{background:var(--paper);width:100%;max-width:620px;max-height:86vh;overflow-y:auto;border-radius:10px 10px 0 0;padding:18px 16px 30px}
+.sheet .inner{background:var(--paper);width:100%;max-width:620px;max-height:86vh;overflow-y:auto;border-radius:10px 10px 0 0;padding:18px max(16px, env(safe-area-inset-right)) calc(30px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left))}
 .sheet .inner h4{margin:0 0 12px;font-size:16px}
 .picklist{display:flex;flex-direction:column;gap:6px}
 .picklist button{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:11px 13px;text-align:left;font-size:14px;font-weight:600}
@@ -288,6 +289,31 @@ textarea{min-height:64px;resize:vertical}
   background:var(--panel);padding:1px 8px;border-radius:999px;opacity:.92}
 .diawrong .fg-body,.diawrong .fg-far{fill:var(--muscle)}
 .diawrong .fg-halo{fill:var(--panel);stroke:var(--panel)}
+/* ---- 種目カード（入力と記録を上に）・きつさのボタン・今日の一言 ---- */
+.entry .fld.rpefld{flex-basis:100%}
+.rpechips{display:flex;gap:6px;flex-wrap:wrap}
+.rpechips button{min-width:48px;height:44px;border:1px solid var(--rule);background:var(--panel-2);border-radius:3px;
+  font-family:"Archivo",system-ui,sans-serif;font-weight:700;font-size:15px;color:var(--ink-2)}
+.rpechips button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.rpechips .lo{font-family:inherit;font-size:12.5px}
+.entry .recrow{display:flex;gap:10px;align-items:center;flex-basis:100%}
+.entry .recrow .addbtn{flex:1}
+.warmup{font-size:12.5px;color:var(--ink-2);margin:10px 0 0;padding:7px 10px;background:var(--panel-2);border-radius:3px}
+.cardtools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.cardtools button{background:none;border:1px solid var(--rule);border-radius:3px;min-height:40px;padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.hero.compact{padding:10px 14px}
+.hero.compact .kicker{display:inline;margin-right:8px}
+.hero.compact h2{display:inline;font-size:15px;margin:0}
+.banner{background:var(--panel);border:1px solid var(--muscle);border-radius:4px;padding:12px 14px;margin-bottom:14px;font-size:13.5px}
+.banner b{color:var(--muscle)}
+.flash .rowbtns{margin-top:6px}
+.skipped{font-size:13px;color:var(--ink-2);margin:10px 0 0}
+.skipped button{background:none;border:1px solid var(--rule);border-radius:3px;min-height:36px;padding:4px 10px;margin-left:6px;font-size:12.5px;color:var(--ink-2)}
+.ladder{padding:9px 0;border-bottom:1px dashed var(--rule)}
+.ladder:last-child{border-bottom:none}
+.ladder .lk{font-size:11.5px;color:var(--ink-2);margin:0}
+.ladder .ln{margin:2px 0 0;font-size:14px}
+.setbtn{font-size:14px;padding:3px 9px}
 /* ---- 種目を選ぶシート・からだ・履歴タブの見た目（index.html の <style> の最後に埋め込まれる） ---- */
 </style>
 </head>
@@ -298,6 +324,7 @@ textarea{min-height:64px;resize:vertical}
     <span class="date num" id="todayLabel"></span>
     <button class="themebtn" id="updBtn" title="新しい版が出ていれば取り込みます">更新</button>
     <button class="themebtn" id="themeBtn">表示</button>
+    <button class="themebtn setbtn" id="setBtn" title="ダンベル・知らせ方・同期・バックアップ" aria-label="設定">⚙</button>
   </header>
 
   <div class="shell">
@@ -316,8 +343,9 @@ textarea{min-height:64px;resize:vertical}
 <div class="timer" id="timer">
   <span class="t num" id="timerT">1:30</span>
   <span class="lb"><b>次のセットまで</b><small id="timerLb"></small></span>
+  <button id="timerMinus">−30秒</button>
   <button id="timerPlus">+30秒</button>
-  <button id="timerStop">終了</button>
+  <button id="timerStop">終える</button>
 </div>
 
 <div class="sheet" id="sheet"><div class="inner" id="sheetInner"></div></div>
@@ -4549,8 +4577,18 @@ function syncWire(root){
 /* ============================================================
    日付など
    ============================================================ */
+/* 1日の区切りの時刻（0〜6時。既定は朝4時）。夜中の0時をまたいでも、この時刻までは前の日のトレーニングとして扱う。
+   設定はこの端末だけ（設定のシートで変えられる）。prefs.js より前に読まれるので localStorage を直接読む */
+const DAY_START_DEFAULT = 4;
+function dayStartHour(){
+  try{
+    const v = JSON.parse(localStorage.getItem("trainlog.dayStart"));
+    if(typeof v === "number" && v >= 0 && v <= 6) return v;
+  }catch(e){}
+  return DAY_START_DEFAULT;
+}
 function todayKey(){
-  const d = new Date();
+  const d = new Date(Date.now() - dayStartHour() * 3600000);
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
 function fmtDate(k){
@@ -4564,7 +4602,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-24 20:57";
+const BUILD_VERSION = "2026-09-24 22:14";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -4917,6 +4955,12 @@ document.getElementById("timerPlus").onclick = ()=>{
   restEnd += 30000;
   armChime(); drawRest();
 };
+/* 30秒縮める（残りが30秒を切っているときは、すぐ終わりにする） */
+document.getElementById("timerMinus").onclick = ()=>{
+  if(!restIv) return;
+  restEnd = Math.max(Date.now(), restEnd - 30000);
+  armChime(); drawRest(); tickRest();
+};
 
 /* ============================================================
    画面
@@ -5101,7 +5145,7 @@ function diaHTML(id, compact, item, opt){
   const useDb = opt ? opt.n : null;
   const dbn = (useDb && figDb && useDb < figDb) ? useDb : null;
   const dbNote = (useDb && figDb && useDb > figDb)
-    ? `<p class="dianote">図は1つで持つ形です。今日は「${opt.how}」で行ってください。</p>` : "";
+    ? `<p class="dianote">図は1つで持つ形です。今日は「${esc(opt.how)}」で行ってください。</p>` : "";
   const hold = ((PHYS[id] || PHYS[baseOf(id)] || {}).hold) || "";
   const note = DIANOTE[id] || DIANOTE[baseOf(id)] || "";
   const tail = (hold ? `<p class="diahold"><b>接地</b>　${hold}</p>` : "")
@@ -5109,7 +5153,7 @@ function diaHTML(id, compact, item, opt){
   if(!m) return `<div class="dia">${tail}</div>`;
   const shot = figShot(mo, dbn);
   const fignote = item && item.baseFig
-    ? `<p class="dianote">図は基本のやり方です。この組み方では${item.note || ""}</p>` : "";
+    ? `<p class="dianote">図は基本のやり方です。この組み方では${esc(item.note || "")}</p>` : "";
   return `<div class="dia" data-dia="${mo}" data-db="${dbn || ""}">
     <div class="figslot">
       ${shot ? `<img class="figstill" src="${shot}" alt="${itemNameOf(id)}の姿勢">`
@@ -5179,14 +5223,22 @@ function render(){
   stopAnim();
   rollDay();
   planMemo = null;
+  if(typeof resetProg === "function") resetProg();
   document.getElementById("todayLabel").textContent = fmtDate(TODAY);
   const v = document.getElementById("view");
   v.className = "view-" + tab;
-  if(tab==="today") v.innerHTML = viewToday();
-  else if(tab==="ex") v.innerHTML = viewEx();
-  else if(tab==="body") v.innerHTML = viewBody();
-  else if(tab==="hist") v.innerHTML = viewHist();
-  else v.innerHTML = viewPlan();
+  /* 描くのに失敗しても（おかしな記録が入っていたなど）白い画面にしない。ほかのタブと設定は使えるようにする */
+  try{
+    if(tab==="today") v.innerHTML = viewToday();
+    else if(tab==="ex") v.innerHTML = viewEx();
+    else if(tab==="body") v.innerHTML = viewBody();
+    else if(tab==="hist") v.innerHTML = viewHist();
+    else v.innerHTML = viewPlan();
+  }catch(e){
+    v.innerHTML = `<div class="banner"><b>この画面を表示できませんでした。</b>記録の中に読めないものがあるかもしれません。ほかのタブは使えます。右上の ⚙ からバックアップの保存と復元ができます。
+      <p class="lastline">${esc(e && e.message || e)}</p></div>`;
+    try{ console.error(e); }catch(x){}
+  }
   wire();
 }
 
@@ -5211,8 +5263,9 @@ function restFor(item){
                目標に届いた部位も、16セットまでは少しだけ優先度を残す（毎日やる人の分）
    これまでの決まりもそのまま守る:
    ・同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日1つ
-   ・前回トレーニングした日に手を付けた種目は、次のトレーニング日に出さない
+   ・昨日（暦の昨日）やった動きは、今日は出さない
    ・ダンベルが要る種目は、持っているダンベルで作れるものだけ
+   ・動きごとに、今日やる組み方は伸ばし方（progress.js）で決まる。気分では入れ替えない
    A〜Dの各メニュー（ROUTINES）は、種目ごとのセット数・回数・メモの出どころとしてだけ使う。
    記録を始めた日は、そのときのメニューを保存して、その日のうちは変えない。 */
 const PATTERN = {
@@ -5244,25 +5297,6 @@ function levelOf(id){ return (EXMAP[id] || {}).level || (EXMAP[baseOf(id)] || {}
 function itemLevel(it){
   const ex = EXMAP[it.ex] || {};
   return Math.max(0, Math.min(5, levelOf(it.ex) + (it.side && !ex.side ? 1 : 0) + (it.lv || 0)));
-}
-/* その動きで今ちょうどよい難しさ。前回その動きでやった種目の難しさを起点に、
-   きつさの記録が「軽すぎる」なら1段上、「限界続き」なら1段下げる。記録がなければ標準（2）。
-   同じ状況なら毎回同じ答えになる（種目は負荷を合わせるために選ぶもので、気分で入れ替えない） */
-function wantedLevel(pattern){
-  let last = null;
-  catalog().forEach(c => {
-    if(patternOf(c.ex) !== pattern) return;
-    const l = lastPerformance(c.ex, TODAY);
-    if(l && (!last || l.date > last.date)) last = {date: l.date, ex: c.ex};
-  });
-  if(!last) return 2;
-  /* その日に実際にやった組み方（片脚など）で難しさを見る */
-  const s = state.sessions[last.date];
-  const used = ((s && s.plan) || []).find(x => x.ex === last.ex) || catalogItem(last.ex);
-  const lv = itemLevel(used), r = recentRpe(last.ex, 2);
-  if(r !== null && r <= 6.5) return Math.min(5, lv + 1);   /* 軽すぎた → 一段難しい組み方へ */
-  if(r !== null && r >= 9.3) return Math.max(0, lv - 1);   /* 限界続き → 一段やさしい組み方へ */
-  return lv;                                               /* ちょうどよい → 同じ種目を続ける */
 }
 /* 昨日1セットでも手を付けた種目 */
 function touchedYesterday(){
@@ -5437,8 +5471,9 @@ function catalog(){
   catalogMemo = out;
   return out;
 }
+/* その種目の素の組み方（組み方の名前が無い行）。無ければ最初の行 */
 function catalogItem(exId){
-  const c = catalog().find(x => x.ex === exId), ex = EXMAP[exId];
+  const c = catalog().find(x => x.ex === exId && !x.label) || catalog().find(x => x.ex === exId), ex = EXMAP[exId];
   return c ? Object.assign({}, c) : {ex:exId, sets:ex.sets || 3, r:ex.r};
 }
 /* 部位ごとの有効セット（fromDaysAgo〜toDaysAgo 日前。今日は含めない） */
@@ -5458,19 +5493,22 @@ function exLoad(exId, n){
    セット間は休憩タイマーの秒数、種目の切り替えに1分 */
 function itemMinutes(it){
   const ex = EXMAP[it.ex], sets = it.sets || 3, side = !!it.side;
-  const reps = suggestNext(it, null, lastPerformance(it.ex, TODAY)).r;
+  const reps = progressFor(it).target;
   const work = ex.kind === "t" ? reps * (side ? 2 : 1) + 15 : reps * 4 * (side ? 2 : 1) + (side ? 15 : 0) + 15;
   return (sets * work + (sets - 1) * restFor(it) + 60) / 60;
 }
 
 let planMemo = null;                       /* 描画1回のあいだだけ使い回す */
-let planAvoid = null;                      /* 組み直しのとき、さっきまで出ていた（まだ手を付けていない）種目を避ける */
 let todayMsg = "";                         /* 今日タブの操作の結果を、押したボタンのすぐ下に1回だけ出す */
 let planSeed = null;                       /* 「おまかせで追加」のとき、今のメニューを入れた状態から考える */
-let planOne = false;                       /* 同上。足すのは1種目だけ */
 let planRelax = false;                     /* 同上。1回の量の目安（16セット・6種目・50分）を外して探す */
+let planSkip = null;                       /* 今日「外した」動き（組み直しても入れない） */
+let planKeep = null;                       /* 組み直しで残す種目（記録済み・自分で足した種目）。これを入れた状態から組む */
+let planShort = false;                     /* 「20分で組む」とき */
+const SHORT_MAX = {sets:8, exercises:3, minutes:20};
 function buildPlan(){
   if(planMemo) return planMemo;
+  const LIM = planShort ? SHORT_MAX : SESSION_MAX;
   const week = loadMap(1, 6);              /* 直近7日 = 1〜6日前 + 今日の分 */
   const yesterday = loadMap(1, 1);
   const touched = patternsYesterday();
@@ -5486,6 +5524,7 @@ function buildPlan(){
   /* 今日すでに記録したぶんは先に数えておく（メニューを組み直したときに、同じ動きや同じ部位が重ならないように） */
   const doneToday = (session(TODAY).entries || []).filter(e => e.sets.length && EXMAP[e.ex]);
   const donePattern = new Set(doneToday.map(e => patternOf(e.ex)));
+  const doneEx = new Set(doneToday.map(e => e.ex));
   doneToday.forEach(e => {
     const add = exLoad(e.ex, e.sets.length);
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
@@ -5505,24 +5544,35 @@ function buildPlan(){
     const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n);
     if(plan.some(p => patternOf(p.ex) === patternOf(c.ex))) return false;          /* 同じ動きは1日1つ */
     if(donePattern.has(patternOf(c.ex))) return false;                              /* 今日もうやった動き */
-    if(planAvoid && planAvoid.has(c.ex)) return false;                              /* 組み直しで避ける種目 */
+    if(planSkip && planSkip.has(patternOf(c.ex))) return false;                     /* 今日は外した動き */
     if(touched.has(patternOf(c.ex))) return false;                                  /* 昨日と同じ動きは続けない */
-    if(ex.kind === "w" && !gearOptions(c.ex).length) return false;                  /* 持っているダンベルで作れない */
+    if(holdOf(c.ex) && ex.kind === "w" && !gearOptions(c.ex).length) return false;  /* 持っているダンベルで作れない */
     if(ex.p.some(m => (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役 */
     if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m))) return false;   /* 1日の上限（補助で使う部位も含む） */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
     if(Object.keys(add).some(m => (week[m] || 0) + (today[m] || 0) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4))) return false;
-    if(!planRelax && (plan.length >= SESSION_MAX.exercises || sets + n > SESSION_MAX.sets)) return false;
-    if(!planRelax && minutes + mins(c) > SESSION_MAX.minutes) return false;
+    if(!planRelax && (plan.length >= LIM.exercises || sets + n > LIM.sets)) return false;
+    if(!planRelax && minutes + mins(c) > LIM.minutes) return false;
     return true;
   };
-  /* 同じ動きの中では、今の負荷に合う難しさの種目を選ぶ。
-     変化をつけるための加点はしない（同じ状況なら毎回同じ種目が出る） */
-  const wantMemo = {};
-  const want = pat => (wantMemo[pat] === undefined ? (wantMemo[pat] = wantedLevel(pat)) : wantMemo[pat]);
-  /* 段が同じなら、素の種目を先に選ぶ（楽／大変のやり方は、その段が要るときだけ出す） */
-  const score = c => gain(c) / (1 + 1.2 * Math.abs(itemLevel(c) - want(patternOf(c.ex)))) * (c.lv ? 0.8 : 1);
+  /* 動きごとに、今日やる組み方を決めておく（伸ばし方の結果: 前回の組み方か、その次の段）。
+     その組み方が今日できるなら、その動きではそれだけを候補にする（気分で入れ替えない）。
+     記録の無い動きは、素の組み方（楽／大変の付かない種目）から選ぶ */
+  const nextMemo = {};
+  const nextOf = pat => (pat in nextMemo ? nextMemo[pat] : (nextMemo[pat] = patternNext(pat)));
+  const candidate = c => {
+    const K = nextOf(patternOf(c.ex));
+    if(!K) return !c.lv;
+    if(itemKey(c) === itemKey(K)) return true;
+    return !allowed(K);                    /* 決めた組み方が今日できないときだけ、ほかを候補にする */
+  };
+  const score = c => {
+    const K = nextOf(patternOf(c.ex));
+    if(K && itemKey(c) === itemKey(K)) return gain(c);
+    const want = K ? itemLevel(K) : 2;
+    return gain(c) / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
+  };
   const take = c => {
     const it = Object.assign({}, c), add = exLoad(it.ex, it.sets || 3);
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
@@ -5531,7 +5581,7 @@ function buildPlan(){
   };
   const fill = (minGain, upTo, only) => {
     while(plan.length < upTo){
-      const best = catalog().filter(c => (!only || only(c)) && allowed(c)).map(c => ({c, g: gain(c), s: score(c)}))
+      const best = catalog().filter(c => (!only || only(c)) && allowed(c) && candidate(c)).map(c => ({c, g: gain(c), s: score(c)}))
         .filter(x => x.g >= minGain).sort((a, b) => b.s - a.s)[0];
       if(!best) return;
       take(best.c);
@@ -5543,9 +5593,9 @@ function buildPlan(){
     for(;;){
       const it = plan.filter(x => {
         const ex = EXMAP[x.ex], n = x.sets || 3, add = exLoad(x.ex, 1);
-        if(!BIG_MUSCLES.includes(ex.p[0]) || n >= 4 || need(x) < 1) return false;
-        if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m)) || sets + 1 > SESSION_MAX.sets) return false;
-        return minutes + mins(Object.assign({}, x, {sets: n + 1})) - mins(x) <= SESSION_MAX.minutes;
+        if(x.seed || !BIG_MUSCLES.includes(ex.p[0]) || n >= 4 || need(x) < 1) return false;
+        if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m)) || sets + 1 > LIM.sets) return false;
+        return minutes + mins(Object.assign({}, x, {sets: n + 1})) - mins(x) <= LIM.minutes;
       }).sort((p, q) => need(q) - need(p))[0];
       if(!it) return;
       const n = it.sets || 3, add = exLoad(it.ex, 1);
@@ -5555,17 +5605,30 @@ function buildPlan(){
   };
   const isBig = c => BIG_MUSCLES.includes(EXMAP[c.ex].p[0]);
   if(planSeed){
-    /* 「おまかせで追加」: 今のメニューを入れた状態から、合う種目を1つだけ足す */
-    planSeed.forEach(it => { if(!plan.some(p => p.ex === it.ex)) take(Object.assign({}, it)); });
+    /* 「おまかせで追加」: 今のメニューを入れた状態から、合う種目を1つだけ足す。
+       記録済みの種目は上で実際のセット数を数えたので、ここでは足さない（二重に数えない） */
+    planSeed.forEach(it => {
+      if(it.skip || plan.some(p => p.ex === it.ex)) return;
+      if(doneEx.has(it.ex)){ plan.push(Object.assign({}, it, {seed: true})); return; }
+      take(Object.assign({}, it, {seed: true}));
+    });
     const seedLen = plan.length;
     fill(1, seedLen + 1, isBig);
     if(plan.length === seedLen) fill(0.5, seedLen + 1);
     if(plan.length === seedLen) fill(0.01, seedLen + 1);
+    plan.forEach(p => delete p.seed);
   }else{
-    fill(1, SESSION_MAX.exercises, isBig);   /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
-    addSets();                               /* 2. まだ足りなければ、その種目のセットを増やす */
-    fill(1, SESSION_MAX.exercises);          /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
-    fill(0.5, 3);                            /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    /* 組み直し: 残す種目を先に入れる（記録済みの種目は実際のセット数を上で数えたので、負荷は足さない） */
+    (planKeep || []).forEach(it => {
+      if(plan.some(p => p.ex === it.ex)) return;
+      if(doneEx.has(it.ex)) plan.push(Object.assign({}, it, {seed: true}));
+      else take(Object.assign({}, it, {seed: true}));
+    });
+    fill(1, LIM.exercises, isBig);           /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
+    if(!planShort) addSets();                /* 2. まだ足りなければ、その種目のセットを増やす */
+    fill(1, LIM.exercises);                  /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
+    fill(0.5, Math.min(3, LIM.exercises));   /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    plan.forEach(p => delete p.seed);
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
@@ -5574,7 +5637,8 @@ function buildPlan(){
     const over = Object.keys(today).find(m => (week[m] || 0) + today[m] > WEEK_MAX
                                           && plan.some(p => EXMAP[p.ex].p[0] === m));
     if(!over) break;
-    const hit = plan.map((p, i) => ({p, i})).filter(x => EXMAP[x.p.ex].p[0] === over)
+    const hit = plan.map((p, i) => ({p, i})).filter(x => EXMAP[x.p.ex].p[0] === over && !doneEx.has(x.p.ex)
+                                                    && !(planKeep || []).some(k => k.ex === x.p.ex))
                     .sort((a, b) => (b.p.sets || 3) - (a.p.sets || 3))[0];
     if(!hit) break;
     const n = hit.p.sets || 3;
@@ -5589,7 +5653,10 @@ function buildPlan(){
     }
   }
 
-  plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
+  /* 軽い週は、セット数を半分にする（2セットまで） */
+  if(deloadOn(TODAY)) plan.forEach(p => { if(!doneEx.has(p.ex)) p.sets = Math.max(2, Math.ceil((p.sets || 3) / 2)); });
+
+  if(!planSeed) plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
   planMemo = plan;
   return planMemo;
 }
@@ -5603,18 +5670,21 @@ function restText(){
        + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
        + "今日は休むほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から足せます。";
 }
+/* 今日のメニュー（「外した」種目も skip:true のまま含む。数えるときは除く） */
 function todayItems(){
   const s = session(TODAY);
   const items = (s.plan && s.plan.length ? s.plan : buildPlan()).map(x=>Object.assign({}, x));
   (s.entries||[]).forEach(e=>{
     if(!items.some(i=>i.ex===e.ex) && EXMAP[e.ex]){
-      /* 自分で追加した種目も、メニューに入るときと同じ組み方（セット数・回数・左右・メモ）で出す */
+      /* メニューに無い記録（以前の版で足した種目など）も、同じ組み方で出す */
       items.push(Object.assign(catalogItem(e.ex), {extra:true}));
     }
   });
   return items;
 }
-function itemOf(id){ return todayItems().find(i=>i.ex===id) || {ex:id, sets:3, r:EXMAP[id]?EXMAP[id].r:10}; }
+/* 今日やる種目（外したものを除く） */
+function activeItems(){ return todayItems().filter(it => !it.skip); }
+function itemOf(id){ return todayItems().find(i=>i.ex===id) || catalogItem(id); }
 /* 記録を始めた時点のメニューを、その日の分として保存する */
 function fixPlan(s){
   if(s.plan && s.plan.length) return;
@@ -5623,37 +5693,43 @@ function fixPlan(s){
   s.plan = plan.map(x => Object.assign({}, x));
   s.planAt = Date.now();
 }
-/* 今日のメニューを、今の記録と決まりで組み直す。今日すでに記録した種目はそのまま残す */
-function replanToday(){
+/* 今日のメニューを、今の記録と決まりで組み直す。
+   残すもの: 今日すでに記録した種目・自分で足した種目・今日は外した種目（外したまま）。
+   同じ記録なら同じメニューになる（さっき出ていた種目を避けて入れ替える、ということはしない）。
+   short: 20分で終わる短いメニューにする */
+function replanToday(opt){
   const s = session(TODAY);
   const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
-  /* 今日1セットでも記録した種目は、終わったものも途中のものも、セット数・回数・並びをそのまま残す */
   const before = todayItems();
-  const keep = done.map(id => {
-    const it = Object.assign({}, before.find(x => x.ex === id) || catalogItem(id));
-    delete it.extra;
-    return it;
+  const keep = before.filter(it => done.includes(it.ex) || it.manual || it.skip).map(it => {
+    const x = Object.assign({}, it); delete x.extra; return x;
   });
-  const untouched = before.filter(it => !done.includes(it.ex)).map(it => it.ex);
-  s.entries = (s.entries || []).filter(e => e.sets.length);   /* まだ1セットも入れていない枠は捨てる（前のメニューの残り） */
+  const keptEx = new Set(keep.map(it => it.ex));
+  s.entries = (s.entries || []).filter(e => e.sets.length || keptEx.has(e.ex));
+  const oldKey = before.filter(it => !it.skip).map(itemKey).join(",");
   delete s.plan; delete s.planAt;
-  planMemo = null;
-  planAvoid = untouched.length ? new Set(untouched) : null;    /* さっきまで出ていた種目は避けて選び直す */
-  let fresh = buildPlan().map(x => Object.assign({}, x));
-  if(!fresh.length && planAvoid){                              /* 代わりが無ければ、元の候補も許してもう一度 */
-    planAvoid = null; planMemo = null;
+  planMemo = null; resetProg();
+  planSkip = new Set(keep.filter(it => it.skip).map(it => patternOf(it.ex)));
+  planShort = !!(opt && opt.short);
+  planKeep = keep.filter(it => !it.skip);                 /* 残す種目を入れた状態から組む */
+  let fresh;
+  try{
     fresh = buildPlan().map(x => Object.assign({}, x));
+  }finally{
+    planSkip = null; planShort = false; planKeep = null; planMemo = null;
   }
-  planAvoid = null; planMemo = null;
-  if(keep.length || fresh.length){
-    s.plan = keep.concat(fresh);
-    s.planAt = Date.now();
-  }
+  /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく） */
+  const added = fresh.filter(x => !keep.some(k => k.ex === x.ex));
+  const plan = keep.filter(k => !k.skip).concat(added).concat(keep.filter(k => k.skip));
+  if(plan.length){ s.plan = plan; s.planAt = Date.now(); }
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
   openEx = null; editEx = null;
-  todayMsg = fresh.length ? "今日のメニューを組み直しました（" + fresh.length + "種目を入れ替え）"
-                          : "入れ替えられる種目がありません。部位の回復と1日の上限のためです。";
+  const newKey = plan.filter(it => !it.skip).map(itemKey).join(",");
+  todayMsg = !plan.filter(it => !it.skip).length ? "今日入れられる種目がありません。部位の回復と1日・1週間の上限のためです。"
+           : opt && opt.short ? "20分で終わるメニューにしました（" + plan.filter(it => !it.skip).length + "種目）"
+           : newKey === oldKey ? "今の記録で組み直しました。変わりはありません"
+           : "今の記録で組み直しました";
   render();
   setStatus(todayMsg);
 }
@@ -5662,8 +5738,7 @@ function isDoneToday(id){
   const e = entryFor(TODAY, id, false);
   return !!(it && e && e.sets.length >= (it.sets || 3));
 }
-
-/* ---- きつさに応じて次のセットの回数を決める ---- */
+/* ---- きつさに応じて次のセットの回数を決める（同じ日のセットの合間） ---- */
 function clampR(kind, r){
   r = Math.round(r);
   return kind==="t" ? Math.max(10, Math.min(180, r)) : Math.max(4, Math.min(40, r));
@@ -5680,8 +5755,8 @@ function adjust(kind, r, rpe){
    up   : きつさ6以下で、回数が狙いの上限まで伸びている
    down : きつさ10で、回数が狙いの下限に届かなかった */
 function setWeightPlan(item, prev){
-  const id = item.ex, opts = gearOptions(id);
-  const cur = optionByTotal(id, prev.w);
+  const id = item.ex, opts = itemOptions(item);
+  const cur = opts.find(o => Math.abs(o.total - prev.w) < 0.01) || null;
   if(!opts.length || !cur) return {opt: cur, change: null};
   const i = optionIndex(opts, cur);
   const {lo, hi} = repRange(id, item);
@@ -5689,68 +5764,88 @@ function setWeightPlan(item, prev){
   const nx = opts[i + 1], pv = opts[i - 1];
   /* 一段上げても重さが跳ね上がらないときだけ上げる */
   if(nx && rpe && rpe <= 6 && r >= hi){
-    if(nx.key <= cur.key * 1.6 || nx.key - cur.key <= 3) return {opt: nx, change: "up"};
+    if(nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg) return {opt: nx, change: "up"};
     return {opt: cur, change: null, jump: nx};      /* 一段上げると重さが跳ね上がる */
   }
   if(pv && rpe >= 10 && r < lo) return {opt: pv, change: "down"};
   return {opt: cur, change: null};
 }
-/* 次のセットの提案。重さは持っているダンベルで作れる使い方の中からだけ選ぶ */
-function suggestNext(item, e, last){
+/* 次のセットの提案。
+   その日の1セット目は伸ばし方（progress.js）の目標から。2セット目からは前のセットのきつさで少し動かす。
+   target はこの日の目標（記録にも残し、次の回の判断に使う）。重さは持っているダンベルで作れる使い方の中からだけ */
+function suggestNext(item, e){
   const id = item.ex, ex = EXMAP[id], kind = ex.kind;
   const sets = e ? e.sets : [];
-  const held = kind !== "w" && holdOf(id) ? defaultOption(id) : null;   /* 時間の種目でもダンベルを持つもの */
-  if(sets.length){
-    const prev = sets[sets.length-1];
-    const a = adjust(kind, prev.r, prev.rpe);
-    const src = "前のセットのきつさ " + (prev.rpe||"—");
-    if(kind !== "w") return {r:a.r, opt:held, why:a.why, src};
-    const p = setWeightPlan(item, prev);
-    const rr = repRange(id, item);
-    if(p.change === "up") return {r:clampR(kind, rr.lo), w:p.opt.total, opt:p.opt, change:"up", mid:true, src,
-      why:"余裕があって回数も伸びたので、ダンベルを一段重くしました。回数は" + rr.lo + "回から"};
-    if(p.change === "down") return {r:clampR(kind, prev.r), w:p.opt.total, opt:p.opt, change:"down", mid:true, src,
-      why:"限界で回数が届かなかったので、ダンベルを一段軽くしました"};
-    if(p.jump){
-      /* 持っているダンベルでは次が重すぎる。回数を増やすか、やり方で効かせる */
-      const harder = stepItem(item, 1);
-      const tip = harder && harder.ex === id ? "「" + itemName(harder) + "」のやり方に変えると、重さを上げずに効かせられます"
-                                             : "テンポを落とす・止める時間を作ると、重さを上げずに効かせられます";
-      return {r:a.r, w:prev.w, opt:p.opt, mid:true, src,
-        why:"次に重いのは" + kgText(p.jump.total) + "で上がり幅が大きいので、重さは変えずに回数で伸ばします。" + tip};
-    }
-    return {r:a.r, w:prev.w, opt:p.opt, why:a.why, src};
+  const p = progressFor(item);
+  const weighted = !!p.opt;                         /* 重さを扱う（時間の種目でもダンベルを持つものを含む） */
+  if(!sets.length){
+    return {r:p.target, target:p.target, w: weighted ? p.opt.total : undefined, opt:p.opt,
+            change:p.change, why:p.why, src:p.src, prog:p};
   }
-  if(last && last.sets.length){
-    const first = last.sets[0];
-    const avg = last.sets.reduce((x,st)=>x+(st.rpe||0),0) / last.sets.length;
-    const a = adjust(kind, first.r, avg ? Math.round(avg*2)/2 : 0);
-    const src = "前回のきつさ平均 " + (avg ? Math.round(avg*10)/10 : "—");
-    if(kind !== "w") return {r:a.r, opt:held, why:a.why, src};
-    const p = weightPlan(item, last, avg);
-    if(!p.opt) return {r:a.r, w:first.w, opt:null, why:a.why, src};
-    const rr = repRange(id, item);
-    if(p.change === "up") return {r:clampR(kind, rr.lo), w:p.opt.total, opt:p.opt, change:"up", src,
-      why:"余裕があったので、持っているダンベルの中で一段重い使い方にしました。回数は" + rr.lo + "回から"};
-    if(p.change === "down") return {r:clampR(kind, item.r || rr.hi), w:p.opt.total, opt:p.opt, change:"down", src,
-      why:"限界で回数が届かなかったので、一段軽い使い方にしました"};
-    if(p.change === "snap") return {r:clampR(kind, item.r || ex.r), w:p.opt.total, opt:p.opt, change:"snap", src,
-      why:"前回の " + kgText(p.lastW) + " は登録しているダンベルでは作れないので、近い使い方にしました"};
-    return {r:a.r, w:p.opt.total, opt:p.opt, why:a.why, src};
+  const prev = sets[sets.length-1];
+  const target = typeof prev.target === "number" ? prev.target : p.target;
+  const a = adjust(kind, prev.r, prev.rpe);
+  const src = "前のセットのきつさ " + (prev.rpe||"—");
+  if(!weighted || prev.w === undefined) return {r:a.r, target, w: weighted ? p.opt.total : undefined, opt:p.opt, why:a.why, src, prog:p};
+  const wp = setWeightPlan(item, prev);
+  const rr = repRange(id, item);
+  if(wp.change === "up") return {r:clampR(kind, rr.lo), target:clampR(kind, rr.lo), w:wp.opt.total, opt:wp.opt, change:"up", mid:true, src, prog:p,
+    why:"余裕があって回数も伸びたので、ダンベルを一段重くしました。回数は" + rr.lo + "回から"};
+  if(wp.change === "down") return {r:clampR(kind, prev.r), target:clampR(kind, prev.r), w:wp.opt.total, opt:wp.opt, change:"down", mid:true, src, prog:p,
+    why:"限界で回数が届かなかったので、ダンベルを一段軽くしました"};
+  if(wp.jump){
+    /* 持っているダンベルでは次が重すぎる。回数を増やすか、やり方で効かせる */
+    return {r:a.r, target, w:prev.w, opt:wp.opt, mid:true, src, prog:p,
+      why:"次に重いのは" + kgText(wShown(item, wp.jump.total)) + (perArm(id) ? "（片手）" : "") + "で上がり幅が大きいので、重さは変えずに回数で伸ばします"};
   }
-  const opt = kind==="w" ? defaultOption(id) : held;
-  return {r:clampR(kind, item.r || ex.r), w: kind==="w" ? (opt ? opt.total : 0) : undefined, opt,
-          why:"初回はフォームを優先します。余力を2〜3回残して終えてください", src:"初回"};
+  return {r:a.r, target, w:prev.w, opt:wp.opt || p.opt, why:a.why, src, prog:p};
 }
+/* 「10 kg × 13」のような短い書き方（腕の種目は片手あたり） */
 function sugText(item, sug){
-  const ex = EXMAP[item.ex];
-  if(ex.kind === "w") return sug.w + " kg × " + sug.r + (item.side ? "（左右それぞれ）" : "");
-  if(ex.kind === "t") return sug.r + " 秒" + (item.side ? "（左右それぞれ）" : "");
-  return sug.r + " 回" + (item.side ? "（左右それぞれ）" : "");
+  const ex = EXMAP[item.ex], side = item.side ? "（左右それぞれ）" : "";
+  const w = sug.w !== undefined && ex.kind === "w" ? (perArm(item.ex) ? "片手 " : "") + wShown(item, sug.w) + " kg × " : "";
+  if(ex.kind === "t") return (sug.w !== undefined ? kgText(sug.w) + "を持って " : "") + sug.r + " 秒" + side;
+  return w + sug.r + (ex.kind === "w" ? "" : " 回") + side;
 }
+/* 端末に保存できなかったとき（store-local.js の saveLocal から呼ばれる） */
+let storeFailMsg = "";
+function onStoreFail(msg){ storeFailMsg = msg || "保存できませんでした"; }
+/* セットを消した直後の「取り消す」（5秒） */
+let undoDel = null;
+
+/* 保存データまわりの知らせ（読めなかった・保存できなかった） */
+function storeBanners(){
+  let out = "";
+  if(typeof STORE_PROBLEM !== "undefined" && STORE_PROBLEM){
+    const canSync = typeof syncLoadConfig === "function" && !!syncLoadConfig();
+    const baks = typeof listBackups === "function" ? listBackups() : [];
+    out += `<div class="banner"><b>この端末の保存データを読めなかったので、空の状態で開きました。</b>
+      元のデータは消さずに残しています${STORE_PROBLEM.savedAs ? "（" + esc(STORE_PROBLEM.savedAs) + "）" : ""}。
+      ${canSync ? "GitHub に同期していた記録は、下のボタンで取り直せます。" : ""}${baks.length ? "端末の控えからも戻せます。" : ""}
+      <div class="rowbtns">
+        ${canSync ? `<button data-act="refetchall">GitHubから全部取り直す</button>` : ""}
+        ${baks.map(b => `<button data-act="restorebak" data-key="${esc(b.key)}">控え（${b.day ? esc(fmtDate(b.day)) : "以前の版"}・${b.days}日分）から戻す</button>`).join("")}
+        <button data-act="dismissproblem">閉じる</button>
+      </div></div>`;
+  }
+  if(storeFailMsg){
+    out += `<div class="banner"><b>記録をこの端末に保存できませんでした。</b>${esc(storeFailMsg)}。このまま閉じると、保存できなかった記録は消えます。バックアップを保存してから、ブラウザの保存領域を空けてください。
+      <div class="rowbtns"><button data-act="backup">バックアップを保存</button><button data-act="dismissfail">閉じる</button></div></div>`;
+  }
+  return out;
+}
+ACTIONS.refetchall = () => {
+  if(typeof syncRefetchAll !== "function") return;
+  if(!confirm("GitHub から全部の月を読み直して、この端末の記録とまとめます。よろしいですか？")) return;
+  if(typeof STORE_PROBLEM !== "undefined") STORE_PROBLEM = null;
+  syncRefetchAll();
+  render();
+};
+ACTIONS.dismissproblem = () => { STORE_PROBLEM = null; render(); };
+ACTIONS.dismissfail = () => { storeFailMsg = ""; render(); };
 
 function viewToday(){
-  const items = todayItems();
+  const all = todayItems(), items = all.filter(it => !it.skip), skipped = all.filter(it => it.skip);
   const s = session(TODAY);
   const msg = todayMsg; todayMsg = "";          /* 一度出したら消す */
 
@@ -5759,43 +5854,54 @@ function viewToday(){
     const e = entryFor(TODAY, it.ex, false);
     if(!e || e.sets.length < (it.sets||3)){ next = it; break; }
   }
+  const dl = deloadAdvice();
 
   let hero;
   if(!items.length){
     hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>今日は休み</h2>
-      <p class="sub">${restText()}</p></div>`;
+      <p class="sub">${esc(restText())}</p></div>`;
   }else if(!next){
     const total = s.entries.reduce((a,e)=>a+e.sets.length,0);
     hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>完了</h2>
       <div class="bigset"><span class="v num" style="color:var(--done)">${total}</span><span class="u">セット</span></div>
       <p class="sub">お疲れさまでした。直したい記録は、各種目の「修正」から消せます。</p></div>`;
+  }else if(openEx){
+    /* 種目カードを開いている間は、カードと同じ内容になるので1行に縮める */
+    hero = `<div class="hero compact"><p class="kicker">次の種目</p><h2>${esc(itemName(next))}</h2></div>`;
   }else{
     const ex = EXMAP[next.ex];
     const e = entryFor(TODAY, next.ex, false);
-    const sug = suggestNext(next, e, lastPerformance(next.ex, TODAY));
+    const sug = suggestNext(next, e);
     const inner = ex.kind==="w"
-      ? `<div class="bigset"><span class="v num">${sug.w}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">kg・回</span></div>`
+      ? `<div class="bigset"><span class="v num">${wShown(next, sug.w)}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">${perArm(next.ex) ? "kg（片手）・回" : "kg・回"}</span></div>`
       : `<div class="bigset"><span class="v num">${sug.r}</span><span class="u">${ex.kind==="t"?"秒":"回"}${next.side?"・左右":""}</span></div>`;
     hero = `<div class="hero"><p class="kicker">次の種目</p>
-      <h2>${itemName(next)}</h2>${inner}
-      ${sug.opt ? `<p class="sub">${sug.opt.text}</p>` : ""}
-      <p class="sub">${sug.src}${sug.why?"　→　"+sug.why:""}</p>
+      <h2>${esc(itemName(next))}</h2>${inner}
+      ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
+      <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
+      ${dl && dl.active ? `<p class="sub">軽い週（${esc(fmtDate(dl.until))}まで）: セット数を半分にしています。</p>` : ""}
       ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">回復の途中の部位と、今週の量が足りている部位が多いため、今日は種目を少なめにしています。</p>` : ""}</div>`;
   }
 
+  const undo = undoDel && Date.now() < undoDel.until
+    ? `<div class="flash">「${esc(undoDel.name)}」のセットを消しました。<div class="rowbtns"><button data-act="undodel">取り消す</button></div></div>` : "";
+  const deloadAsk = dl && dl.suggest
+    ? `<div class="flash">疲れのしるしが出ています。今週は軽い週（セット数を半分）にすると、また伸びやすくなります。
+        <div class="rowbtns"><button data-act="deloadon">今週を軽い週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
   const rows = items.map(it=>exRow(it)).join("");
-  return hero + rows + `
-    <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button></div>
-    ${msg ? `<p class="lastline flash">${msg}</p>` : ""}
+  const skippedLine = skipped.length
+    ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
+  return storeBanners() + deloadAsk + hero + undo + rows + skippedLine + `
+    <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button></div>
+    ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
     <div class="card">
-      <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${(s.note||"").replace(/</g,"&lt;")}</textarea>
+      <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${esc(s.note||"")}</textarea>
     </div>
-    ${gearCard()}
-    ${settingsCard()}
-    <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${BUILD_VERSION}（更新があるときは、アプリを開き直すと切り替わります）</p>`;
+    ${typeof backupReminder === "function" ? backupReminder() : ""}
+    <p class="lastline" style="text-align:center;margin-top:18px">ダンベルの登録・休憩の知らせ方・同期・バックアップは、右上の ⚙ から。</p>
+    <p class="lastline" style="text-align:center;margin-top:6px">バージョン ${esc(BUILD_VERSION)}（更新があるときは、アプリを開き直すと切り替わります）</p>`;
 }
-
 /* ============================================================
    持っているダンベル
    設定で入れるのは「何kgを何本持っているか」だけ。種目ごとにどれを何本・どう持つかはアプリが決める。
@@ -5916,34 +6022,50 @@ function defaultOption(id){
   opts.forEach(o => { if(o.key <= lim + 1e-9) pick = o; });
   return pick;
 }
-/* 種目の回数の目安（解説の「10〜15回」から読む） */
+/* 種目の回数（秒の種目は秒数）の幅。解説の「10〜15回」「20〜45秒」から読む */
 function repRange(id, item){
   const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
-  const m = /(\d+)〜(\d+)回/.exec(d.reps || "");
+  const m = /(\d+)〜(\d+)(回|秒)/.exec(d.reps || "");
   if(m) return {lo:+m[1], hi:+m[2]};
   const r = (item && item.r) || EXMAP[id].r || 10;
   return {lo:Math.max(4, r - 2), hi:r + 3};
 }
-/* 前回の記録から今日の使い方を決める。動くのは持っている使い方の中だけ。
-   up   : 余裕があって回数も伸びきった → 一段重い使い方（重さが一気に増えすぎる場合は動かさない）
-   down : 限界で回数が届かなかった → 一段軽い使い方
-   snap : 前回の重さが今の登録では作れない → 近い使い方 */
-function weightPlan(item, last, avg){
-  const id = item.ex, opts = gearOptions(id);
-  if(!opts.length) return {opt:null};
-  const lastW = last.sets[0].w;
-  if(lastW === undefined || lastW === null || isNaN(lastW)) return {opt:defaultOption(id), change:null};
-  let i = opts.findIndex(o => Math.abs(o.total - lastW) < 0.01);
-  if(i < 0) return {opt:nearestOption(opts, lastW), change:"snap", lastW};
-  const {lo, hi} = repRange(id, item);
-  const maxR = last.sets.reduce((a, s) => Math.max(a, s.r || 0), 0);
-  let change = null;
-  const nx = opts[i + 1];
-  if(avg && nx && (nx.key <= opts[i].key * 1.6 || nx.key - opts[i].key <= 3)
-     && ((avg <= 7 && maxR >= hi + 3) || (avg <= 6 && maxR >= hi))){ i++; change = "up"; }
-  else if(avg && i > 0 && avg >= 9.5 && maxR < lo){ i--; change = "down"; }
-  return {opt:opts[i], change, lastW};
+/* 「片手ずつ」「片手だけ」で行う組み方か（ダンベルは1つで持つ） */
+function isOneHanded(item){
+  return /片手/.test(item.tag || "") || /^片手(ずつ|だけ)/.test(item.note || "");
 }
+/* その組み方で使える持ち方。片手で行う組み方は、1つで持つ使い方だけにする
+   （腕の種目は、2つ持てるときは「両手に1つずつ」しか並ばないため） */
+function itemOptions(item){
+  const id = item.ex, h = holdOf(id);
+  if(!h) return [];
+  if(!isOneHanded(item) || !h.one) return gearOptions(id);
+  return inventory().map(({kg}) => ({n:1, pieces:[kg], total:kg, key:kg, how:h.one, text:kgText(kg) + "を1つ、" + h.one}));
+}
+function defaultOptionFor(item){
+  const opts = itemOptions(item); if(!opts.length) return null;
+  const lim = startKg(item.ex);
+  let pick = opts[0];
+  opts.forEach(o => { if(o.key <= lim + 1e-9) pick = o; });
+  return pick;
+}
+/* 腕の種目（片腕あたりで重さを見る種目）で、2つ持つ使い方か。重さは「片手 5kg」と見せる */
+function perArm(id){ const h = holdOf(id); return !!(h && h.per === "arm"); }
+function armCount(item, total){
+  const o = itemOptions(item).find(x => Math.abs(x.total - total) < 0.01);
+  return o ? o.n : (perArm(item.ex) && !isOneHanded(item) ? 2 : 1);
+}
+/* 画面に出す重さ（腕の種目は片手あたり）。記録は合計のまま */
+function wShown(item, total){
+  if(total === undefined || total === null || isNaN(total)) return total;
+  return perArm(item.ex) ? Math.round(total / armCount(item, total) * 10) / 10 : total;
+}
+function wStored(item, shown){
+  if(!perArm(item.ex)) return shown;
+  const o = itemOptions(item).find(x => Math.abs(x.key - shown) < 0.01);
+  return o ? o.total : Math.round(shown * (isOneHanded(item) ? 1 : 2) * 10) / 10;
+}
+function wUnit(item){ return perArm(item.ex) ? "kg（片手）" : "kg"; }
 
 /* 日用品で負荷を変えるやり方（ダンベルは買い足さない前提） */
 const HOUSE = {
@@ -6076,8 +6198,274 @@ function settingsCard(){
 }
 
 /* ============================================================
-   今日の調整（種目ごとに、きつさ・部位の回復・器具・マンネリから判断する）
-   メニュー自体は勝手に書き換えず、提案だけ出す。
+   伸ばし方（ダブルプログレッション）と軽い週
+   ・前回の同じ組み方で、全部のセットが目標に届き、きつさの平均が9以下 → 目標を1回（秒の種目は5秒）増やす
+   ・目標が回数の幅（解説の「10〜15回」）の上限を超えるなら一段上へ:
+       持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方へ（回数は幅の下限から）
+   ・2回続けて目標に届かないか、きつさ10で届かなかったら目標を1回減らす。幅の下限を割るなら一段下へ
+   ・きつさを入れなかった回は判断に使わない（目標は据え置き）
+   ・軽い週（ディロード）の記録は判断に使わない。軽い週のあいだは目標を据え置き、セット数を半分にする
+   記録（その日の組み方と目標）から毎回計算し直すので、別に覚えておく状態は無い（2台で同期しても食い違わない）。
+   セットの合間の調整（adjust / setWeightPlan）は suggest.js
+   ============================================================ */
+const PROG = {
+  okRpe: 9,              /* 前回のきつさ平均がこれ以下なら伸ばす */
+  hardRpe: 10,           /* このきつさで目標に届かなければ、1回で下げる */
+  failTimes: 2,          /* 目標に届かないのがこの回数続いたら下げる */
+  jumpRatio: 1.6,        /* 重い持ち方へ上げてよい上がり幅（今の1.6倍以下か、+3kg以下） */
+  jumpKg: 3,
+  deloadDays: 7,         /* 軽い週の長さ */
+  deloadGap: 28          /* 前の軽い週からこれだけ空くまでは、次の軽い週を勧めない */
+};
+let progMemo = {items:{}, hist:{}, deload:null};    /* 描画1回のあいだだけ使い回す（resetProg() で空にする） */
+function resetProg(){ progMemo = {items:{}, hist:{}, deload:null}; }
+function progStep(kind){ return kind === "t" ? 5 : 1; }
+function unitOf(kind){ return kind === "t" ? "秒" : "回"; }
+function daysBetween(a, b){ return Math.round((asDate(b) - asDate(a)) / 86400000); }
+function addDays(k, n){
+  const d = asDate(k); d.setDate(d.getDate() + n);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+/* 初めての組み方の目標: 幅のまん中（秒は5秒刻み） */
+function midTarget(item){
+  const {lo, hi} = repRange(item.ex, item), mid = (lo + hi) / 2;
+  return EXMAP[item.ex].kind === "t" ? Math.round(mid / 5) * 5 : Math.floor(mid);
+}
+/* 候補一覧の中の、その種目・組み方の行（無ければ null） */
+function catalogRow(ex, label){
+  return catalog().find(c => c.ex === ex && (c.label || "") === (label || "")) || null;
+}
+
+/* ---- 軽い週 ----
+   始めた日のセッションに deload:true を付ける。その日から7日間が軽い週 */
+function deloadDays(){
+  if(progMemo.deload) return progMemo.deload;
+  const on = new Set();
+  Object.keys(state.sessions).forEach(d => {
+    if(!state.sessions[d].deload) return;
+    for(let i = 0; i < PROG.deloadDays; i++) on.add(addDays(d, i));
+  });
+  return (progMemo.deload = on);
+}
+function deloadOn(date){ return deloadDays().has(date); }
+/* 今の軽い週の始まりと終わり（軽い週でなければ null） */
+function deloadNow(){
+  if(!deloadOn(TODAY)) return null;
+  for(let i = 0; i < PROG.deloadDays; i++){
+    const d = addDays(TODAY, -i);
+    if(state.sessions[d] && state.sessions[d].deload) return {start: d, until: addDays(d, PROG.deloadDays - 1)};
+  }
+  return null;
+}
+
+/* ---- その動きをやった回（今日より前・軽い週を除く）。新しい順 ----
+   {date, ex, label, item, sets, planned}。label は実際にやった組み方の名前（今は無い組み方は素の種目として扱う） */
+function patternHistory(pattern){
+  if(progMemo.hist[pattern]) return progMemo.hist[pattern];
+  const out = [];
+  for(const d of sortedDates()){
+    if(d >= TODAY || deloadOn(d)) continue;
+    const s = state.sessions[d];
+    (s.entries || []).forEach(e => {
+      if(!e.sets || !e.sets.length || !EXMAP[e.ex] || patternOf(e.ex) !== pattern) return;
+      let label = setLabel(d, e.ex, e.sets[e.sets.length - 1]);
+      let item = catalogRow(e.ex, label);
+      if(!item){ label = ""; item = catalogRow(e.ex, "") || catalogItem(e.ex); }
+      const inPlan = (s.plan || []).find(x => x && x.ex === e.ex);
+      out.push({date: d, ex: e.ex, label, item, sets: e.sets, planned: (inPlan && inPlan.sets) || item.sets || 3});
+    });
+  }
+  return (progMemo.hist[pattern] = out);
+}
+/* 1回ぶんの出来: 目標・全部届いたか・きつさの平均・その回の重さ */
+function evalSession(h){
+  const kind = EXMAP[h.ex].kind, sets = h.sets, last = sets[sets.length - 1];
+  const w = last.w;                                            /* 最後のセットの重さを、その回の重さとする */
+  const work = w !== undefined ? sets.filter(s => Math.abs((s.w || 0) - w) < 0.01) : sets;
+  const target = typeof last.target === "number" ? last.target : sets[0].r;   /* 目標を書いていない古い記録は1セット目の回数 */
+  const allHit = sets.length >= h.planned && work.every(s => (s.r || 0) >= (typeof s.target === "number" ? s.target : target));
+  const rpes = work.map(s => s.rpe || 0).filter(x => x > 0);
+  const rpe = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
+  return {target, allHit, rpe, w, kind};
+}
+
+/* ---- 今日のその組み方の目標 ----
+   {target, opt, w, change, why, src, next, lo, hi, last}
+   change: first（はじめて）/ stepped-up・stepped-down・switched（段を移って1回目）/ up（1回増やす）/
+           heavier（重くする）/ harder（次は一段難しい組み方へ）/ top（今の道具で一番上）/
+           hold（据え置き）/ down（1回減らす）/ lighter（軽くする）/ easier（次は一段やさしい組み方へ）/ deload（軽い週） */
+function progressFor(item){
+  const key = itemKey(item);
+  if(progMemo.items[key]) return progMemo.items[key];
+  const id = item.ex, ex = EXMAP[id], kind = ex.kind, u = unitOf(kind);
+  const rr = repRange(id, item), step = progStep(kind);
+  const opts = itemOptions(item);
+  const optByW = w => (w === undefined || w === null) ? null : (opts.find(o => Math.abs(o.total - w) < 0.01) || null);
+  const res = {lo: rr.lo, hi: rr.hi, step, change: "", why: "", src: "", target: 0, opt: null, w: undefined, next: null, last: null};
+  const hist = patternHistory(patternOf(id));
+  const mine = hist.filter(h => h.ex === id && h.label === (item.label || ""));
+
+  if(!mine.length){
+    /* この組み方は初めて（段を上げた・下げた直後もここ） */
+    const prev = hist[0];
+    res.target = midTarget(item);
+    if(prev){
+      const up = itemLevel(item) > itemLevel(prev.item), dn = itemLevel(item) < itemLevel(prev.item);
+      if(up) res.target = rr.lo;
+      res.change = up ? "stepped-up" : dn ? "stepped-down" : "switched";
+      res.src = "前回は「" + itemName(prev.item) + "」";
+      res.why = up ? "一段難しい組み方の1回目です。" + u + "数は幅の下限（" + rr.lo + "）から"
+              : dn ? "一段やさしい組み方です。" + res.target + u + "から"
+              : "この組み方の1回目です";
+      if(prev.ex === id) res.opt = optByW(evalSession(prev).w);   /* 同じ種目の別の組み方なら、前回と同じ重さ */
+    }else{
+      res.change = "first"; res.src = "初回";
+      res.why = "初回はフォームを優先します。余力を2〜3回残して終えてください";
+    }
+    if(!res.opt) res.opt = defaultOptionFor(item);
+  }else{
+    const h = mine[0], ev = evalSession(h);
+    res.last = {date: h.date, target: ev.target, sets: h.sets, rpe: ev.rpe};
+    res.src = "前回の目標 " + ev.target + u + "・きつさ平均 " + (ev.rpe === null ? "—" : Math.round(ev.rpe * 10) / 10);
+    let cur = opts.length ? optByW(ev.w) : null;
+    if(opts.length && !cur){
+      /* 前回の重さが今の登録では作れない（ダンベルの登録を変えた） */
+      cur = ev.w !== undefined ? nearestOption(opts, +ev.w || 0) : defaultOptionFor(item);
+      if(ev.w !== undefined) res.snap = ev.w;
+    }
+    res.opt = cur;
+    res.target = ev.target;
+    if(deloadOn(TODAY)){
+      res.change = "deload";
+      res.why = "軽い週です。目標は前回と同じにして、セット数を半分にしています";
+    }else if(ev.rpe === null){
+      res.change = "hold";
+      res.why = "前回はきつさが入っていないので、同じ目標で続けます";
+    }else if(ev.allHit && ev.rpe <= PROG.okRpe){
+      const nt = ev.target + step;
+      if(nt <= rr.hi){
+        res.target = nt; res.change = "up";
+        res.why = "前回は全部のセットで目標に届いたので、" + step + u + "増やします（" + rr.hi + u + "に届いたら次の段へ）";
+      }else{
+        /* 幅の上限に届いた → 一段上へ */
+        const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
+        if(nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg)){
+          res.opt = nx; res.target = rr.lo; res.change = "heavier";
+          res.why = u + "数の上限（" + rr.hi + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から";
+        }else{
+          const nxt = stepItem(item, 1);
+          if(nxt){
+            res.next = nxt; res.change = "harder"; res.target = rr.hi;
+            res.why = u + "数の上限（" + rr.hi + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";
+          }else{
+            res.target = rr.hi; res.change = "top";
+            const hs = houseOf(id);
+            res.why = "今の道具では、この動きの一番上の段です。" + u + "数は上限のまま続けます"
+                    + (hs.up ? "。もっと重くするなら「" + gearText(hs.up) + "」" : "");
+          }
+        }
+      }
+    }else{
+      /* 届かなかった回が続いているか */
+      let misses = 0;
+      for(const x of mine){ if(evalSession(x).allHit) break; misses++; }
+      const down = misses >= PROG.failTimes || (!ev.allHit && ev.rpe >= PROG.hardRpe);
+      if(down){
+        const nt = ev.target - step;
+        if(nt >= rr.lo){
+          res.target = nt; res.change = "down";
+          res.why = (misses >= PROG.failTimes ? misses + "回続けて" : "限界で") + "目標に届かなかったので、" + step + u + "減らします";
+        }else{
+          const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
+          const prv = pv ? null : stepItem(item, -1);
+          if(pv){
+            res.opt = pv; res.target = midTarget(item); res.change = "lighter";
+            res.why = u + "数の下限でも届かなかったので、ダンベルを一段軽くします";
+          }else if(prv){
+            res.next = prv; res.change = "easier"; res.target = rr.lo;
+            res.why = u + "数の下限でも届かなかったので、次は一段やさしい「" + itemName(prv) + "」にします";
+          }else{
+            res.target = rr.lo; res.change = "hold";
+            res.why = u + "数の下限で続けます。きつすぎたらセット数を減らしてください";
+          }
+        }
+      }else{
+        res.change = "hold";
+        res.why = ev.allHit ? "前回はきつさが" + Math.round(ev.rpe * 10) / 10 + "と高めだったので、同じ目標でもう一度"
+                            : "前回は目標に届かなかったセットがあるので、同じ目標でもう一度";
+      }
+    }
+  }
+  res.target = Math.max(1, Math.round(res.target));
+  if(res.opt) res.w = res.opt.total;
+  return (progMemo.items[key] = res);
+}
+/* その動きで今日やる組み方。前回の組み方か、前回の出来で段を移るならその先。記録が無ければ null */
+function patternNext(pattern){
+  const hist = patternHistory(pattern);
+  if(!hist.length) return null;
+  const last = hist[0].item, p = progressFor(last);
+  return (p.change === "harder" || p.change === "easier") && p.next ? p.next : last;
+}
+
+/* ---- 軽い週を勧めるか ----
+   直近3週間で、2つ以上の動きに疲れのしるし（2回続けて目標に届かない／同じ目標なのにきつさが1以上上がった）があれば勧める。
+   軽い週の最中と、前の軽い週から4週間たたないうちは勧めない */
+function deloadAdvice(){
+  const now = deloadNow();
+  if(now) return {active: true, start: now.start, until: now.until};
+  const recent = Object.keys(state.sessions).some(d => state.sessions[d].deload && d <= TODAY && daysBetween(d, TODAY) < PROG.deloadGap);
+  if(recent) return null;
+  const tired = [];
+  PATTERN_ORDER.forEach(pat => {
+    const hist = patternHistory(pat).filter(h => daysBetween(h.date, TODAY) <= 21);
+    if(!hist.length) return;
+    const same = hist.filter(h => itemKey(h.item) === itemKey(hist[0].item));
+    if(same.length < 2) return;
+    const e0 = evalSession(same[0]), e1 = evalSession(same[1]);
+    if(!e0.allHit && !e1.allHit){ tired.push(pat); return; }
+    if(same.length >= 3){
+      const e2 = evalSession(same[2]);
+      if(e0.rpe !== null && e2.rpe !== null && e0.rpe - e2.rpe >= 1 && e0.target <= e2.target) tired.push(pat);
+    }
+  });
+  return tired.length >= 2 ? {suggest: true, patterns: tired} : null;
+}
+function setDeload(on){
+  if(on){
+    const s = session(TODAY);
+    s.deload = true;
+  }else{
+    const now = deloadNow();
+    if(now && state.sessions[now.start]){
+      delete state.sessions[now.start].deload;
+      persistSession(now.start);
+    }
+  }
+  resetProg();
+  persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();                    /* 同期: 記録（その日の設定）を変えたとき */
+}
+ACTIONS.deloadon = () => { setDeload(true); replanToday(); };
+ACTIONS.deloadoff = () => { setDeload(false); replanToday(); };
+
+/* ---- ウォームアップ（その日の最初の種目の1セット目の前だけ） ---- */
+function warmupText(item, sug){
+  const kind = EXMAP[item.ex].kind;
+  if(kind === "t" || !sug) return "";
+  const reps = Math.max(5, Math.round((sug.r || 10) / 2));
+  if(kind === "w"){
+    const opts = itemOptions(item), i = sug.opt ? optionIndex(opts, sug.opt) : -1;
+    return i > 0 ? "「" + opts[i - 1].text + "」で" + reps + "回を1セット（記録しない）"
+                 : "何も持たずに" + reps + "回を1セット（記録しない）";
+  }
+  const easier = stepItem(item, -1);
+  return (easier ? "「" + itemName(easier) + "」で" : "") + reps + "回を1セット（記録しない）";
+}
+/* ============================================================
+   今日の調整（種目ごとに、器具・部位の回復・伸ばし方の結果から一言添える）
+   メニュー自体は勝手に書き換えず、知らせるだけ。
+   同じ種目が続いても入れ替えは勧めない（種目は負荷を合わせるために選ぶもので、気分では変えない）
    ============================================================ */
 
 /* 指定した部位を、fromDaysAgo〜toDaysAgo 日前に何セット使ったか（今日は含めない） */
@@ -6094,22 +6482,11 @@ function muscleLoadBetween(muscle, fromDaysAgo, toDaysAgo){
   });
   return n;
 }
-/* 直近2回の平均きつさ（記録が2回に満たなければ null） */
-function recentRpe(exId, count){
-  const hist = exerciseHistory(exId).slice(-(count || 2));
-  if(hist.length < (count || 2)) return null;
-  const vals = hist.map(h=>{
-    const rs = h.sets.map(s=>s.rpe||0).filter(x=>x>0);
-    return rs.length ? rs.reduce((a,b)=>a+b,0)/rs.length : 0;
-  }).filter(x=>x>0);
-  if(!vals.length) return null;
-  return vals.reduce((a,b)=>a+b,0)/vals.length;
-}
-/* 同じ主働筋で、今の器具でできる別の種目（今日のメニューにすでにある動きは除く） */
+/* ダンベルが無いときの代わり: 同じ主働筋で、今の器具でできる別の種目（今日のメニューにすでにある動きは除く） */
 function altFor(exId, wantBodyweight){
   const ex = EXMAP[exId]; if(!ex) return null;
   const mine = ex.p[0];
-  const todayPats = new Set(todayItems().filter(t=>t.ex !== exId).map(t=>patternOf(t.ex)));
+  const todayPats = new Set(activeItems().filter(t=>t.ex !== exId).map(t=>patternOf(t.ex)));
   const touched = patternsYesterday();
   const cands = EX.filter(c=>{
     if(c.id === exId || baseOf(c.id) === baseOf(exId)) return false;
@@ -6121,31 +6498,20 @@ function altFor(exId, wantBodyweight){
     return true;
   });
   if(!cands.length) return null;
-  /* 今ちょうどよい難しさに近いものを選ぶ */
-  const want = wantedLevel(patternOf(exId));
+  /* 今の種目に近い難しさのものを選ぶ */
+  const want = levelOf(exId);
   cands.sort((a,b)=> Math.abs(levelOf(a.id) - want) - Math.abs(levelOf(b.id) - want));
   return cands[0];
 }
-/* 同じ種目が何回続けて出てきているか（直近のセッション連続数） */
-function streakOf(exId){
-  let n = 0;
-  for(const d of sortedDates()){
-    const s = state.sessions[d];
-    if(!(s.entries||[]).some(e=>e.sets.length)) continue;
-    if((s.entries||[]).some(e=>e.ex===exId && e.sets.length)) n++;
-    else break;
-  }
-  return n;
-}
 
-/* 1種目ぶんの判断。優先度の高いものを1つだけ返す */
+/* 1種目ぶんの一言。優先度の高いものを1つだけ返す */
 function todayAdvice(item, sug){
   const id = item.ex, ex = EXMAP[id];
   if(!ex) return null;
-  const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
   const hs = houseOf(id);
-  if(!sug) sug = suggestNext(item, entryFor(TODAY, id, false), lastPerformance(id, TODAY));
-  const opts = holdOf(id) ? gearOptions(id) : [];
+  if(!sug) sug = suggestNext(item, entryFor(TODAY, id, false));
+  const opts = holdOf(id) ? itemOptions(item) : [];
+  const optText = o => o ? "「" + o.text + "」" : "";
 
   /* 1. ダンベルが要る種目なのに登録がない */
   if(ex.kind === "w" && !opts.length){
@@ -6163,60 +6529,42 @@ function todayAdvice(item, sug){
       text: MUSCLES[tired] + "を昨日 " + (Math.round(muscleLoadBetween(tired, 1, 1)*10)/10) + " セット使っています。今日はセット数を1つ減らすか、きつさ7くらいで止めると回復が進みます。"};
   }
 
-  /* 3. 前回の記録から、今日の持ち方を変えた */
-  if(sug.change === "up") return {level:"harder", short:"一段重く",
-    text: (sug.mid ? "さっきのセットは余裕があって回数も伸びたので、次は一段重い「"
-                   : "前回は余裕があったので、今日は持っているダンベルの中で一段重い「")
-        + sug.opt.text + "」にしています。重すぎたら重量の − で元に戻せます。"};
-  if(sug.change === "down") return {level:"easier", warn:true, short:"一段軽く",
-    text: (sug.mid ? "さっきのセットは限界で回数が届かなかったので、次は一段軽い「"
-                   : "前回は限界で回数が届かなかったので、今日は一段軽い「")
-        + sug.opt.text + "」にしています。"};
-  if(sug.change === "snap") return {level:"gear", short:"持ち方変更",
-    text: "前回の重さは、今登録しているダンベルでは作れません。今日は「" + sug.opt.text + "」にしています。"};
+  /* 3. セットの合間に持ち方を変えた */
+  if(sug.mid && sug.change === "up") return {level:"harder", short:"一段重く",
+    text: "さっきのセットは余裕があって回数も伸びたので、次は一段重い" + optText(sug.opt) + "にしています。重すぎたら重量の − で戻せます。"};
+  if(sug.mid && sug.change === "down") return {level:"easier", warn:true, short:"一段軽く",
+    text: "さっきのセットは限界で回数が届かなかったので、次は一段軽い" + optText(sug.opt) + "にしています。"};
 
-  const rpe2 = recentRpe(id, 2);
-  const cur = sug.opt || (opts.length && sug.w !== undefined && sug.w !== null && !isNaN(sug.w) ? nearestOption(opts, sug.w) : null);
-  const i = optionIndex(opts, cur);
-
-  /* 4. 限界が続いている → やさしくする */
-  if(rpe2 !== null && rpe2 >= 9.5){
-    const tip = i > 0 ? "持っている中で一段軽い「" + opts[i-1].text + "」に替えてください。"
-      : (d.easy ? "今日は「" + gearText(d.easy) + "」でもいいです。" : "回数を落として余力を残してください。")
-        + (ex.kind === "w" && hs.down ? "ダンベル自体が重すぎるなら「" + hs.down + "」でも構いません。" : "");
-    return {level:"easier", warn:true, short:"やさしく",
-      text: "直近2回のきつさが平均 " + rpe2.toFixed(1) + "。限界続きはフォームが崩れます。" + tip};
-  }
-
-  /* 5. 余裕が続いている → 強くする。持っているダンベルの範囲で、足りなければやり方と日用品で */
-  if(rpe2 !== null && rpe2 <= 6){
-    let tip;
-    if(i >= 0 && i < opts.length - 1){
-      tip = "持っている中で一段重い「" + opts[i+1].text + "」に持ち替えてください。";
-    }else{
-      let way = d.hard ? gearText(d.hard) : (ex.up && ex.up[0] ? gearText(ex.up[0]) : "");
-      if(!inventory().length && /ダンベル/.test(way)) way = "";
-      tip = (ex.kind === "w" ? "持っているダンベルではこれ以上重くできません。" : "")
-          + (way ? "「" + way + "」を試してください。" : "")
-          + (hs.up ? (way ? "日用品を使うなら「" + hs.up + "」も手です。" : "「" + hs.up + "」を試してください。") : "")
-          + (!way && !hs.up ? "回数を増やしてください。" : "");
-    }
-    return {level:"harder", short:"強めに",
-      text: "直近2回のきつさが平均 " + rpe2.toFixed(1) + "。8〜9に届いていません。" + tip};
-  }
-
-  /* 6. 同じ種目が続いている → たまには変える */
-  const st = streakOf(id);
-  if(st >= 4){
-    const alt = altFor(id, false);
-    if(alt) return {level:"swap", short:"変えてもいい",
-      text: st + "回続けて同じ種目です。" + MUSCLES[ex.p[0]] + "を同じように使う「" + alt.name + "」に替えると、刺激が変わります。",
-      alt: alt.id};
+  /* 4. 前回からの伸ばし方の結果（その日の1セット目の前だけ） */
+  const n = (entryFor(TODAY, id, false) || {sets:[]}).sets.length;
+  const p = sug.prog || progressFor(item);
+  if(!n){
+    if(p.snap !== undefined) return {level:"gear", short:"持ち方変更",
+      text: "前回の " + kgText(p.snap) + " は、今登録しているダンベルでは作れません。今日は" + optText(p.opt) + "にしています。"};
+    if(p.change === "heavier") return {level:"harder", short:"一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
+    if(p.change === "lighter") return {level:"easier", warn:true, short:"一段軽く", text: p.why + "。"};
+    if(p.change === "stepped-up") return {level:"harder", short:"段を上げた", text: p.why + "。"};
+    if(p.change === "stepped-down") return {level:"easier", short:"段を下げた", text: p.why + "。"};
+    if(p.change === "harder") return {level:"harder", short:"次は上の段", text: p.why + "。"};
+    if(p.change === "easier") return {level:"easier", warn:true, short:"次は下の段", text: p.why + "。"};
+    if(p.change === "top") return {level:"top", short:"一番上の段", text: p.why + "。"};
+    if(p.change === "deload") return {level:"deload", short:"軽い週", text: p.why + "。"};
   }
   return null;
 }
-
 let editEx = null;                         /* 規定セットを終えた種目のうち「修正」を開いているもの */
+let rpeSel = {};                           /* 種目ごとに選んだきつさ（記録するまでの一時的なもの。記録したら空に戻す） */
+/* 記録した日数（説明文を最初のうちだけ出すため） */
+function recordedDays(){
+  return Object.keys(state.sessions).filter(d => (state.sessions[d].entries || []).some(e => e.sets.length)).length;
+}
+/* 1セットの書き方。腕の種目は片手あたりの重さで出す */
+function setTextFor(item, st){
+  const ex = EXMAP[item.ex];
+  if(ex.kind === "w") return (perArm(item.ex) ? "片手 " : "") + wShown(item, st.w) + " kg × " + st.r;
+  if(ex.kind === "t") return (st.w !== undefined ? kgText(st.w) + "・" : "") + st.r + " 秒";
+  return st.r + " 回";
+}
 function exRow(item){
   const id = item.ex, ex = EXMAP[id]; if(!ex) return "";
   const e = entryFor(TODAY, id, false);
@@ -6224,12 +6572,13 @@ function exRow(item){
   const n = sets.length;
   const target = item.sets || ex.sets || 3;
   const sideTag = item.side ? '<span class="side">左右</span>' : "";
+  const name = esc(itemName(item));
   const setLines = sets.map((st,i)=>`
       <div class="setline">
         <span class="i num">${i+1}</span>
-        <span class="val num">${setText(st, ex.kind)}</span>
-        ${st.rpe?`<span class="rpe">きつさ ${st.rpe}</span>`:""}
-        <button class="del" data-act="delset" data-ex="${id}" data-i="${i}" aria-label="このセットを消す">×</button>
+        <span class="val num">${esc(setTextFor(item, st))}</span>
+        ${st.rpe?`<span class="rpe">きつさ ${esc(st.rpe)}</span>`:""}
+        <button class="del" data-act="delset" data-ex="${id}" data-i="${i}" aria-label="このセットを消す">消す</button>
       </div>`).join("");
 
   /* 規定のセット数を終えた種目は、もう記録できない。
@@ -6238,64 +6587,69 @@ function exRow(item){
     const editing = editEx === id;
     return `<div class="exrow done${editing ? " editing" : ""}">
       <div class="exhead">
-        <span><span class="nm">${itemName(item)}${sideTag}</span><span class="meta">${sets.map(x=>setText(x, ex.kind)).join(" / ")}</span></span>
+        <span><span class="nm">${name}${sideTag}</span><span class="meta">${esc(sets.map(x=>setTextFor(item, x)).join(" / "))}</span></span>
         <span class="cnt num">${n} / ${target}</span>
         <button class="fix" data-act="edit" data-ex="${id}">${editing ? "閉じる" : "修正"}</button>
       </div>
       ${editing ? `<div class="exbody exedit">
         ${setLines}
-        <p class="lastline">間違えたセットを × で消すと、この種目をもう一度記録できるようになります。</p>
+        <p class="lastline">間違えたセットを消すと、この種目をもう一度記録できるようになります。</p>
       </div>` : ""}
     </div>`;
   }
 
   const open = openEx === id;
-  const last = lastPerformance(id, TODAY);
   const parts = ex.p.map(m=>MUSCLES[m]).join("・");
-  const sug = suggestNext(item, e, last);
+  const sug = suggestNext(item, e);
   const adv = todayAdvice(item, sug);
 
   let body = "";
   if(open){
-    const wfld = ex.kind==="w" ? `
-      <div class="fld"><label>重量 kg</label>
+    const p = sug.prog;
+    const weighted = !!sug.opt;
+    const wfld = weighted ? `
+      <div class="fld"><label>重量 ${wUnit(item)}</label>
         <div class="stepper">
-          <button data-act="step" data-t="w" data-ex="${id}" data-d="-1">−</button>
-          <input type="number" id="w_${id}" value="${sug.w}" step="0.5" inputmode="decimal">
-          <button data-act="step" data-t="w" data-ex="${id}" data-d="1">＋</button>
+          <button data-act="step" data-t="w" data-ex="${id}" data-d="-1" aria-label="軽く">−</button>
+          <input type="number" id="w_${id}" value="${wShown(item, sug.w)}" step="0.5" inputmode="decimal">
+          <button data-act="step" data-t="w" data-ex="${id}" data-d="1" aria-label="重く">＋</button>
         </div></div>` : "";
-
+    const rpeNow = rpeSel[id] || 0;
+    const chip = (v, label) => `<button data-act="rpe" data-ex="${id}" data-v="${v}" class="${rpeNow === v ? "on" : ""}${v === 6 ? " lo" : ""}" aria-pressed="${rpeNow === v}">${label}</button>`;
+    /* その日まだ1セットも記録していないうちに開いた種目には、ウォームアップの一言を添える */
+    const firstOfDay = !n && !(session(TODAY).entries || []).some(x => x.sets.length);
+    const warm = firstOfDay ? warmupText(item, sug) : "";
+    const last = p && p.last;
+    const hold = holdOf(id) ? gearLine(id, sug) : "";
     body = `<div class="exbody"><div class="exmain">
-      ${setLines}
       <div class="target">
-        <span class="tl">次のセット</span>
-        <span class="tv num">${sugText(item, sug)}</span>
-        <span class="tw">${sug.src}${sug.why?"　→　"+sug.why:""}</span>
+        <span class="tl">${n ? "次のセット" : "今日の目標"}</span>
+        <span class="tv num">${esc(sugText(item, sug))}</span>
+        <span class="tw">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</span>
       </div>
-      ${holdOf(id)?`<p class="lastline"><b>使うダンベル</b>　<span id="wh_${id}">${gearLine(id, sug)}</span></p>`:""}
-      ${adv?`<p class="lastline"><b>今日の調整</b>　${adv.text}</p>`:""}
-      ${adv && adv.alt && !n?`<div class="rowbtns"><button data-act="swapto" data-from="${id}" data-ex="${adv.alt}">${EXMAP[adv.alt].name}に替える</button></div>`:""}
-      ${!n ? stepButtons(item) : ""}
-      ${noteFor(item, sug.opt)?`<p class="lastline">${noteFor(item, sug.opt)}</p>`:""}
-      ${last?`<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${last.sets.map(x=>setText(x,ex.kind)).join(" / ")}</b></p>`:""}
+      ${warm ? `<p class="warmup">ウォームアップ: ${esc(warm)}</p>` : ""}
       <div class="entry">
         ${wfld}
         <div class="fld"><label>${ex.kind==="t"?"秒":"回数"}</label>
           <div class="stepper">
-            <button data-act="step" data-t="r" data-ex="${id}" data-d="-1">−</button>
+            <button data-act="step" data-t="r" data-ex="${id}" data-d="-1" aria-label="減らす">−</button>
             <input type="number" id="r_${id}" value="${sug.r}" inputmode="numeric">
-            <button data-act="step" data-t="r" data-ex="${id}" data-d="1">＋</button>
+            <button data-act="step" data-t="r" data-ex="${id}" data-d="1" aria-label="増やす">＋</button>
           </div></div>
-        <div class="fld"><label>きつさ 1-10</label>
-          <div class="stepper">
-            <button data-act="step" data-t="e" data-ex="${id}" data-d="-1">−</button>
-            <input type="number" id="e_${id}" value="8" min="1" max="10" inputmode="numeric">
-            <button data-act="step" data-t="e" data-ex="${id}" data-d="1">＋</button>
-          </div></div>
-        <button class="addbtn" data-act="addset" data-ex="${id}">記録</button>
+        <div class="fld rpefld"><label>きつさ（入れると、次の回の目標が決まります）</label>
+          <div class="rpechips">${chip(6, "6以下")}${chip(7, "7")}${chip(8, "8")}${chip(9, "9")}${chip(10, "10")}</div>
+          <input type="hidden" id="e_${id}" value="${rpeNow || ""}"></div>
+        <div class="recrow"><button class="addbtn" data-act="addset" data-ex="${id}">記録</button></div>
       </div>
-      <p class="lastline">きつさは 8〜9 が狙いです。10は限界、7以下は軽すぎます。入れた数字で次のセットの回数が変わります。</p>
-      <p class="lastline">「記録」を押すと休憩のカウントダウンが始まります。次のセットに入っていい時間になると、音でお知らせします。</p>
+      ${setLines}
+      ${adv ? `<p class="lastline"><b>今日の調整</b>　${esc(adv.text)}</p>` : ""}
+      ${adv && adv.alt && !n ? `<div class="rowbtns"><button data-act="swapto" data-from="${id}" data-ex="${adv.alt}">${esc(EXMAP[adv.alt].name)}に替える</button></div>` : ""}
+      ${hold ? `<p class="lastline"><b>使うダンベル</b>　<span id="wh_${id}">${esc(hold)}</span></p>` : ""}
+      ${noteFor(item, sug.opt) ? `<p class="lastline">${esc(noteFor(item, sug.opt))}</p>` : ""}
+      ${last ? `<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${esc(last.sets.map(x=>setTextFor(item, x)).join(" / "))}</b></p>` : ""}
+      ${!n ? stepButtons(item) : ""}
+      ${!n ? `<div class="cardtools"><button data-act="later" data-ex="${id}">後に回す</button><button data-act="skip" data-ex="${id}">今日は外す</button></div>` : ""}
+      ${recordedDays() < 3 ? `<p class="lastline">きつさは 8〜9 が狙いです。10は限界、7以下は軽すぎます。「記録」を押すと休憩のカウントダウンが始まり、次のセットに入っていい時間になると音で知らせます。</p>` : ""}
       <div class="rowbtns">
         <button data-act="goref" data-ex="${id}">解説を見る</button>
       </div>
@@ -6304,13 +6658,12 @@ function exRow(item){
 
   return `<div class="exrow">
     <button class="exhead" data-act="toggle" data-ex="${id}">
-      <span><span class="nm">${itemName(item)}${sideTag}${adv?`<span class="adv ${adv.warn?"warn":""}">${adv.short}</span>`:""}</span><span class="meta">${parts}</span></span>
+      <span><span class="nm">${name}${sideTag}${adv?`<span class="adv ${adv.warn?"warn":""}">${esc(adv.short)}</span>`:""}</span><span class="meta">${esc(parts)}</span></span>
       <span class="cnt num">${n} / ${target}</span>
     </button>
     ${body}
   </div>`;
 }
-
 /* ---------- 種目 ---------- */
 function viewEx(){
   const ex = EXMAP[refEx], bid = baseOf(refEx), d = DETAIL[refEx] || DETAIL[bid] || {}, hs = houseOf(refEx);
@@ -6446,6 +6799,9 @@ function zeroAdvice(m){
 
 /* ============================================================
    提案（ルールベース。外部通信なし。state.sessions の実績だけで判断する）
+   ・動きごとの今の段と、次の段まであと何回か（伸ばし方 progress.js と同じ決まり）
+   ・疲れのしるしが出たら「軽い週」
+   ・大きな部位が長く抜けていないか
    ============================================================ */
 
 /* ある種目の、記録のあるセッションだけを古い→新しい順に並べる */
@@ -6457,75 +6813,31 @@ function exerciseHistory(exId){
   });
   return out;
 }
-function sessionSummary(exId, sets){
-  const kind = EXMAP[exId].kind;
-  const avgRpe = sets.reduce((a,s)=>a+(s.rpe||0),0) / sets.length;
-  const maxR = sets.reduce((a,s)=>Math.max(a,s.r||0),0);
-  const vol = kind==="w" ? sets.reduce((a,s)=>a+(s.w||0)*(s.r||0),0) : sets.reduce((a,s)=>a+(s.r||0),0);
-  return {avgRpe, maxR, vol, kind};
-}
+/* 動きの呼び名 */
+const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"股関節を折る", hpush:"胸で押す", fly:"胸を開く",
+  pull:"引く", vpush:"上へ押す", bridge:"尻を持ち上げる", carry:"持って歩く", shrug:"肩をすくめる", raise:"腕を上げる",
+  curl:"肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹"};
 
-/* 種目ごとの「そろそろ変え時／まだ様子見／余裕あり」判定。
-   持っているダンベルで一段重くできるならその持ち替えを先に出し、できなければ
-   EX[id].up（可動域・テンポ・片側化など）と日用品のやり方を次の一手として出す。 */
-function heavierOption(exId){
-  if(EXMAP[exId].kind !== "w") return null;
-  const hist = exerciseHistory(exId), opts = gearOptions(exId);
-  if(!hist.length || !opts.length) return null;
-  const w = hist[hist.length-1].sets[0].w;
-  const cur = optionByTotal(exId, w) || nearestOption(opts, +w || 0);
-  const i = optionIndex(opts, cur);
-  return i >= 0 && i < opts.length - 1 ? opts[i+1] : null;
-}
-function nextStepText(exId){
-  const ex = EXMAP[exId], next = heavierOption(exId), hs = houseOf(exId);
-  if(next) return "持っているダンベルで一段重い「" + next.text + "」に持ち替える";
-  const up = exUp(exId), first = gearText(up && up[0] ? up[0] : "");
-  return first + (hs.up ? (first ? "。" : "") + "日用品を使うなら「" + hs.up + "」" : "");
-}
-
-function levelSuggestions(){
+/* 動きごとの今の段（記録のある動きだけ） */
+function ladderRows(){
   const out = [];
-  Object.keys(EXMAP).forEach(exId=>{
-    const ex = EXMAP[exId];
-    if(!ex.up || !ex.up.length) return;
-    const hist = exerciseHistory(exId);
-    if(hist.length < 3) return;
-    const ceil = clampR(ex.kind, 9999);
-    const sums = hist.map(h=>sessionSummary(exId, h.sets));
-    const recent3 = sums.slice(-3);
-
-    const atCeiling = recent3.every(s=>s.maxR >= ceil*0.9 && s.avgRpe >= 8.5);
-    if(atCeiling){
-      out.push({exId, kind:"levelup",
-        title: itemName({ex:exId}) + "：そろそろ切り替え時",
-        body: "次の一手 → " + nextStepText(exId),
-        why: "直近3回とも" + (ex.kind==="t" ? "秒数" : "回数") + "が上限付近で、きつさの平均が " + recent3[recent3.length-1].avgRpe.toFixed(1) + "。" + (ex.kind !== "w" ? "今のやり方のままでは伸びしろが少ない状態です。"
-             : heavierOption(exId) ? "持っているダンベルで、まだ一段重くできます。"
-             : "持っているダンベルの一番重い使い方でも上限に来ています。")});
-      return;
+  PATTERN_ORDER.forEach(pat => {
+    const K = patternNext(pat);
+    if(!K) return;
+    const p = progressFor(K), u = unitOf(EXMAP[K.ex].kind);
+    let next;
+    if(p.change === "top"){
+      next = "今の道具では一番上の段です" + (houseOf(K.ex).up ? "。もっと重くするなら「" + gearText(houseOf(K.ex).up) + "」" : "");
+    }else{
+      const opts = itemOptions(K), i = p.opt ? optionIndex(opts, p.opt) : -1, nx = i >= 0 ? opts[i + 1] : null;
+      const heavier = nx && (nx.key <= p.opt.key * PROG.jumpRatio || nx.key - p.opt.key <= PROG.jumpKg);
+      const up = heavier ? null : stepItem(K, 1);
+      const left = Math.max(0, Math.round((p.hi - p.target) / p.step)) + 1;   /* 今日を含めて、上限の回に届くまでの回数 */
+      next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを一段重く（" + nx.text + "）"
+           : up ? "あと" + left + "回のトレーニングで「" + itemName(up) + "」へ"
+           : "今の道具では一番上の段です";
     }
-
-    if(hist.length >= 4){
-      const sums4 = sums.slice(-4);
-      const first = sums4[0].vol, last = sums4[sums4.length-1].vol;
-      const avgRpe4 = sums4.reduce((a,s)=>a+s.avgRpe,0) / sums4.length;
-      if(first > 0 && last <= first*1.05 && avgRpe4 >= 8){
-        out.push({exId, kind:"plateau",
-          title: itemName({ex:exId}) + "：伸び悩みぎみ",
-          body: "次の一手 → " + nextStepText(exId),
-          why: "直近4回できつさは高いまま（平均 " + avgRpe4.toFixed(1) + "）ですが、量はほぼ横ばいです。"});
-        return;
-      }
-    }
-
-    const easy3 = recent3.every(s=>s.avgRpe <= 6 && s.maxR < ceil*0.7);
-    if(easy3){
-      out.push({exId, kind:"easy",
-        title: itemName({ex:exId}) + "：余裕が続いています",
-        body: "回数を増やすか、早めに次の一手 → " + nextStepText(exId),
-        why: "直近3回のきつさ平均が " + (recent3.reduce((a,s)=>a+s.avgRpe,0)/3).toFixed(1) + "。8〜9を狙う設計に対して軽すぎる状態です。"});
-    }
+    out.push({pat, item: K, p, u, next});
   });
   return out;
 }
@@ -6548,46 +6860,56 @@ function balanceSuggestions(){
   return out;
 }
 
-function planSummary(){
-  const totalSessions = sortedDates().filter(d=>(state.sessions[d].entries||[]).some(e=>e.sets.length)).length;
-  return { totalSessions, level: levelSuggestions(), balance: balanceSuggestions() };
+/* 軽い週のカード（勧めるとき・軽い週のあいだ） */
+function deloadCard(){
+  const d = deloadAdvice();
+  if(!d) return "";
+  if(d.active) return `<div class="card">
+      <h4>軽い週（${esc(fmtDate(d.until))}まで）</h4>
+      <p style="margin:0 0 6px;font-size:14px">セット数を半分にして、目標の回数は据え置いています。疲れを抜いてから、また伸ばしていきます。</p>
+      <div class="rowbtns"><button data-act="deloadoff">軽い週をやめる</button></div>
+    </div>`;
+  return `<div class="card">
+      <h4>今週は軽い週にしませんか</h4>
+      <p style="margin:0 0 6px;font-size:14px">${d.patterns.map(p => esc(PATTERN_NAME[p] || p)).join("・")}で、目標に届かない回が続いているか、同じ目標なのにきつさが上がってきています。7日間だけセット数を半分にすると、疲れが抜けてまた伸びやすくなります。</p>
+      <div class="rowbtns"><button data-act="deloadon">今週を軽い週にする</button></div>
+    </div>`;
 }
 
 /* ---------- 提案 ---------- */
 function viewPlan(){
-  const p = planSummary();
-  if(p.totalSessions < 3){
-    return `<div class="empty">記録がまだ少ないため、提案はもう少し先になります。<br>あと${3 - p.totalSessions}回ほど記録すると、傾向が見えてきます。</div>`;
+  const total = sortedDates().filter(d=>(state.sessions[d].entries||[]).some(e=>e.sets.length)).length;
+  if(total < 1){
+    return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段と、次の段までの回数がここに出ます。</div>`;
   }
-
-  const levelCards = p.level.length
-    ? p.level.map(s=>`<div class="card">
-        <h4>${s.title}</h4>
-        <p style="margin:0 0 6px;font-size:14px">${s.body}</p>
-        <p class="lastline" style="margin-top:0">${s.why}</p>
-        <div class="rowbtns"><button data-act="goref" data-ex="${s.exId}">種目を見る</button></div>
-      </div>`).join("")
-    : `<div class="card"><p style="margin:0;font-size:14px">切り替えが必要な種目はありません。いまのメニューのまま続けてください。</p></div>`;
-
-  const balanceCards = p.balance.length
-    ? p.balance.map(s=>`<div class="card">
-        <h4>${s.title}</h4>
-        ${s.body ? `<p style="margin:0 0 6px;font-size:14px">${s.body}</p>` : ""}
-        <p class="lastline" style="margin-top:0">${s.why}</p>
+  const rows = ladderRows();
+  const ladder = rows.length ? `<div class="card">${rows.map(r => `
+      <div class="ladder">
+        <p class="lk">${esc(PATTERN_NAME[r.pat] || r.pat)}</p>
+        <p class="ln"><b>${esc(itemName(r.item))}</b>　次の目標 ${r.p.target}${r.u}（幅 ${r.p.lo}〜${r.p.hi}${r.u}）</p>
+        <p class="lastline" style="margin-top:0">${esc(r.next)}</p>
+      </div>`).join("")}
+    </div>` : "";
+  const balance = balanceSuggestions();
+  const balanceCards = balance.length
+    ? balance.map(s=>`<div class="card">
+        <h4>${esc(s.title)}</h4>
+        ${s.body ? `<p style="margin:0 0 6px;font-size:14px">${esc(s.body)}</p>` : ""}
+        <p class="lastline" style="margin-top:0">${esc(s.why)}</p>
       </div>`).join("")
     : `<div class="card"><p style="margin:0;font-size:14px">直近30日、主要な部位はひと通り使えています。</p></div>`;
 
   return `
-    <h3 class="sec">種目の切り替え時</h3>
-    ${levelCards}
+    ${deloadCard()}
+    <h3 class="sec">動きごとの今の段</h3>
+    ${ladder}
     <h3 class="sec">部位のバランス</h3>
     ${balanceCards}
     <div class="card">
       <h4>この提案の仕組み</h4>
-      <p style="margin:0;font-size:14px">判定はこの端末の中で、記録と「持っているダンベル」の登録を見て、あらかじめ決めたルールで行っています。ClaudeなどのAIには送っていません。重さの提案は登録したダンベルで作れる使い方だけで、持っていない重さは勧めません。「次の一手」は各種目の解説ページと同じ内容です。</p>
+      <p style="margin:0;font-size:14px">前回の同じ組み方で、全部のセットが目標に届き、きつさの平均が9以下なら、次は1回（秒の種目は5秒）増やします。回数の幅の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方に進みます。2回続けて届かないときは1回減らします。判定はこの端末の中で行い、ClaudeなどのAIには送っていません。持っていない重さは勧めません。</p>
     </div>`;
 }
-
 /* ---------- 履歴 ---------- */
 function viewHist(){
   const dates = sortedDates().filter(d=> (state.sessions[d].entries||[]).some(e=>e.sets.length));
@@ -6660,65 +6982,12 @@ function viewHist(){
    ============================================================ */
 function wire(){
   const v = document.getElementById("view");
-
-  v.querySelectorAll("[data-act]").forEach(el=>{
-    el.onclick = (ev)=>{
-      const a = el.dataset.act;
-      if(a==="toggle"){ openEx = (openEx===el.dataset.ex)?null:el.dataset.ex; render(); }
-      else if(a==="addset"){ addSet(el.dataset.ex); }
-      else if(a==="delset"){ delSet(el.dataset.ex, +el.dataset.i); }
-      else if(a==="step"){ step(el.dataset.t, el.dataset.ex, +el.dataset.d); }
-      else if(a==="pref"){ const k = el.dataset.k; PREF.set(k, !PREF.get(k, PREF_DEFAULT[k])); render(); }
-      else if(a==="edit"){ editEx = (editEx===el.dataset.ex) ? null : el.dataset.ex; render(); }
-      else if(a==="dbstep"){ dbStep(+el.dataset.i, el.dataset.t, +el.dataset.d); }
-      else if(a==="dbdel"){ const it = gearItems(); it.splice(+el.dataset.i, 1); setGearItems(it); render(); }
-      else if(a==="dbadd"){
-        const it = gearItems(), mx = it.reduce((m, x)=>Math.max(m, x.kg), 0);
-        it.push({kg: mx ? (mx < 10 ? mx + 2 : mx + 5) : 5, n: 2}); setGearItems(it); render();
-      }
-      else if(a==="swapto"){ replaceInPlan(el.dataset.from, el.dataset.ex); }
-      else if(a==="asknotify"){ if(PREF.get("notify",false)){ PREF.set("notify",false); render(); } else askNotify(); }
-      else if(a==="testalert"){ testChime(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
-      else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
-      else if(a==="addex"){ openPicker(); }
-      else if(a==="addauto"){ addAutoToday(); }
-      else if(a==="stepto"){ replaceInPlan(el.dataset.from, el.dataset.ex, el.dataset.label || ""); }
-      else if(a==="replan"){ replanToday(); }
-      else if(a==="addtoday"){ addToProgramToday(el.dataset.ex); }
-      else if(a==="days"){ bodyDays = +el.dataset.d; selMuscle=null; render(); }
-      else if(a==="play"){ togglePlay(el.dataset.ex); }
-      else if(a==="csv"){ exportCSV(); }
-      else if(a==="txt"){ showText(); }
-      else if(a==="backup" && typeof backupSave === "function"){ backupSave(); }
-      else if(a==="restore" && typeof backupLoad === "function"){ backupLoad(); }
-      else if(a==="restorepaste" && typeof backupPaste === "function"){ backupPaste(); }
-      else if(ACTIONS[a]){ ACTIONS[a](el, ev); }
-    };
-  });
+  wireActs(v);
+  wireInputs(v);
   WIRES.forEach(f => f(v));
 
   const sel = v.querySelector("#exSel");
   if(sel) sel.onchange = ()=>{ refEx = sel.value; render(); };
-
-  /* 持っているダンベルの入力欄 */
-  v.querySelectorAll('input[id^="db_"]').forEach(inp=>{
-    inp.onchange = ()=>{
-      const [, t, i] = inp.id.split("_");
-      const it = gearItems(), val = parseFloat(inp.value || "0");
-      if(!it[+i] || isNaN(val) || val <= 0){ render(); return; }
-      if(t === "kg") it[+i].kg = Math.round(val * 10) / 10;
-      else it[+i].n = Math.max(1, Math.round(val));
-      setGearItems(it); render();
-    };
-  });
-  /* 重量を手で打ち替えたら「使うダンベル」の一文も合わせる */
-  v.querySelectorAll('input[id^="w_"]').forEach(inp=>{
-    inp.oninput = ()=>{
-      const id = inp.id.slice(2), h = document.getElementById("wh_" + id);
-      const w = parseFloat(inp.value);
-      if(h) h.textContent = gearLine(id, {opt: optionByTotal(id, w), w});
-    };
-  });
 
   const note = v.querySelector("#note");
   if(note){
@@ -6747,12 +7016,81 @@ function wire(){
     });
   }
   if(typeof syncWire === "function") syncWire(v);
+  if(settingsOpen) refreshSettings();
+}
+/* data-act のボタン。画面（#view）と設定のシートの両方で使う */
+function wireActs(root){
+  root.querySelectorAll("[data-act]").forEach(el=>{ el.onclick = (ev)=> onAct(el, ev); });
+}
+function onAct(el, ev){
+  const a = el.dataset.act;
+  if(a==="toggle"){
+    openEx = (openEx===el.dataset.ex)?null:el.dataset.ex;
+    render();
+    /* 開いた種目の見出しを画面の上に合わせ、入力と「記録」が見えるようにする */
+    if(openEx){
+      const h = document.querySelector('[data-act="toggle"][data-ex="' + openEx + '"]');
+      if(h && h.scrollIntoView) h.scrollIntoView({block: "start"});
+    }
+  }
+  else if(a==="addset"){ addSet(el.dataset.ex); }
+  else if(a==="delset"){ delSet(el.dataset.ex, +el.dataset.i); }
+  else if(a==="step"){ step(el.dataset.t, el.dataset.ex, +el.dataset.d); }
+  else if(a==="pref"){ const k = el.dataset.k; PREF.set(k, !PREF.get(k, PREF_DEFAULT[k])); render(); }
+  else if(a==="edit"){ editEx = (editEx===el.dataset.ex) ? null : el.dataset.ex; render(); }
+  else if(a==="dbstep"){ dbStep(+el.dataset.i, el.dataset.t, +el.dataset.d); }
+  else if(a==="dbdel"){ const it = gearItems(); it.splice(+el.dataset.i, 1); setGearItems(it); render(); }
+  else if(a==="dbadd"){
+    const it = gearItems(), mx = it.reduce((m, x)=>Math.max(m, x.kg), 0);
+    it.push({kg: mx ? (mx < 10 ? mx + 2 : mx + 5) : 5, n: 2}); setGearItems(it); render();
+  }
+  else if(a==="swapto"){ replaceInPlan(el.dataset.from, el.dataset.ex); }
+  else if(a==="asknotify"){ if(PREF.get("notify",false)){ PREF.set("notify",false); render(); } else askNotify(); }
+  else if(a==="testalert"){ testChime(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
+  else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
+  else if(a==="addex"){ openPicker(); }
+  else if(a==="addauto"){ addAutoToday(); }
+  else if(a==="stepto"){ replaceInPlan(el.dataset.from, el.dataset.ex, el.dataset.label || ""); }
+  else if(a==="replan"){ replanToday(); }
+  else if(a==="replanshort"){ replanToday({short: true}); }
+  else if(a==="addtoday"){ addToProgramToday(el.dataset.ex, el.dataset.label || ""); }
+  else if(a==="days"){ bodyDays = +el.dataset.d; selMuscle=null; render(); }
+  else if(a==="play"){ togglePlay(el.dataset.ex); }
+  else if(a==="csv"){ exportCSV(); }
+  else if(a==="txt"){ showText(); }
+  else if(a==="backup" && typeof backupSave === "function"){ backupSave(); }
+  else if(a==="restore" && typeof backupLoad === "function"){ backupLoad(); }
+  else if(a==="restorepaste" && typeof backupPaste === "function"){ backupPaste(); }
+  else if(ACTIONS[a]){ ACTIONS[a](el, ev); }
+}
+/* 入力欄（ダンベルの登録・重量） */
+function wireInputs(root){
+  root.querySelectorAll('input[id^="db_"]').forEach(inp=>{
+    inp.onchange = ()=>{
+      const [, t, i] = inp.id.split("_");
+      const it = gearItems(), val = parseFloat(inp.value || "0");
+      if(!it[+i] || isNaN(val) || val <= 0){ render(); return; }
+      if(t === "kg") it[+i].kg = Math.round(val * 10) / 10;
+      else it[+i].n = Math.max(1, Math.round(val));
+      setGearItems(it); render();
+    };
+  });
+  /* 重量を手で打ち替えたら「使うダンベル」の一文も合わせる */
+  root.querySelectorAll('input[id^="w_"]').forEach(inp=>{
+    inp.oninput = ()=>{
+      const id = inp.id.slice(2), h = document.getElementById("wh_" + id);
+      const item = itemOf(id), total = wStored(item, parseFloat(inp.value));
+      const opt = itemOptions(item).find(o => Math.abs(o.total - total) < 0.01) || null;
+      if(h) h.textContent = gearLine(id, {opt, w: total});
+    };
+  });
 }
 function switchTab(t){
   tab = t;
   document.querySelectorAll("nav.tabs button").forEach(x=>x.setAttribute("aria-selected", String(x.dataset.tab===t)));
   render(); window.scrollTo(0,0);
 }
+ACTIONS.gotab = el => switchTab(el.dataset.tab);
 
 function step(t, id, d){
   const map = {w:"w_", r:"r_", e:"e_"};
@@ -6760,12 +7098,13 @@ function step(t, id, d){
   if(!inp) return;
   let val = parseFloat(inp.value||"0");
   if(t==="w"){
-    /* 重量は、持っているダンベルで作れる使い方だけを順にたどる */
-    const opts = gearOptions(id);
+    /* 重量は、持っているダンベルで作れる使い方だけを順にたどる（腕の種目は片手あたりで見せる） */
+    const item = itemOf(id), opts = itemOptions(item);
     if(opts.length){
-      let i = opts.findIndex(o => Math.abs(o.total - val) < 0.01);
-      i = i < 0 ? opts.indexOf(nearestOption(opts, isNaN(val) ? 0 : val)) : Math.max(0, Math.min(opts.length - 1, i + d));
-      inp.value = String(opts[i].total);
+      const total = wStored(item, val);
+      let i = opts.findIndex(o => Math.abs(o.total - total) < 0.01);
+      i = i < 0 ? opts.indexOf(nearestOption(opts, isNaN(total) ? 0 : total)) : Math.max(0, Math.min(opts.length - 1, i + d));
+      inp.value = String(wShown(item, opts[i].total));
       const h = document.getElementById("wh_" + id);
       if(h) h.textContent = gearLine(id, {opt: opts[i]});
       return;
@@ -6776,41 +7115,71 @@ function step(t, id, d){
   else val = Math.max(1, val + d);
   inp.value = (t==="w") ? String(val) : String(Math.round(val));
 }
+/* きつさのボタン。選び直すと取り消し。入力欄は描き直さない（打ち替えた回数・重さを消さないため） */
+ACTIONS.rpe = el=>{
+  const id = el.dataset.ex, v = +el.dataset.v;
+  rpeSel[id] = rpeSel[id] === v ? 0 : v;
+  const hid = document.getElementById("e_" + id);
+  if(hid) hid.value = rpeSel[id] || "";
+  (el.parentNode ? el.parentNode.querySelectorAll("button") : []).forEach(b => {
+    const on = +b.dataset.v === rpeSel[id];
+    b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on));
+  });
+};
 
+const lastAddAt = {};                      /* 「記録」の二重押しを防ぐ */
 function addSet(id){
   const ex = EXMAP[id];
   const rIn = document.getElementById("r_"+id), eIn = document.getElementById("e_"+id);
-  if(!rIn || !eIn) return;
-  const r = Math.round(parseFloat(rIn.value||"0"));
-  const rpe = Math.round(parseFloat(eIn.value||"0"));
-  if(!r || r<1) return;
-  /* 前日の画面のまま押された場合は、前日に記録せず今日のメニューに切り替える */
-  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  if(!rIn) return;
+  if(Date.now() - (lastAddAt[id] || 0) < 800) return;
   const item = itemOf(id);
-  if(isDoneToday(id)){ render(); return; }          /* 規定のセット数を終えた種目は、修正で消すまで記録できない */
-  unlockAudio();
-  const st = {id:newSetId(), at:Date.now(), r, rpe};
-  if(ex.kind==="w"){
-    const w = parseFloat(document.getElementById("w_"+id).value||"0");
-    st.w = isNaN(w)?0:w;
+  const rRaw = parseFloat(rIn.value || ""), rpeRaw = eIn && eIn.value !== "" ? parseFloat(eIn.value) : 0;
+  const wIn = document.getElementById("w_"+id);
+  const wRaw = wIn ? parseFloat(wIn.value || "") : NaN;
+  /* 入れた値を確かめる。おかしければ記録せずにボタンの下で知らせる */
+  const maxR = ex.kind === "t" ? 600 : 200;
+  let bad = "";
+  if(isNaN(rRaw) || rRaw < 1 || rRaw > maxR || Math.round(rRaw) !== rRaw) bad = (ex.kind === "t" ? "秒数" : "回数") + "は1〜" + maxR + "の整数で入れてください";
+  else if(isNaN(rpeRaw) || rpeRaw < 0 || rpeRaw > 10) bad = "きつさは1〜10で選んでください";
+  else if(wIn && (isNaN(wRaw) || wRaw < 0 || wRaw > 300)) bad = "重量は0〜300kgの数で入れてください";
+  if(bad){ todayMsg = bad; render(); return; }
+  /* 前日の画面のまま押された場合は、前日に記録せず今日のメニューに切り替える（入れた数字は知らせに残す） */
+  if(rollDay()){
+    todayMsg = "日付が変わったので、今日のメニューに切り替えました。入力した「" + itemName(item) + " "
+      + (wIn ? wRaw + "kg × " : "") + rRaw + (ex.kind === "t" ? "秒" : "回") + (rpeRaw ? "・きつさ" + rpeRaw : "") + "」は記録していません。続けるときは今日のメニューで記録してください";
+    render(); setStatus(todayMsg); return;
   }
+  if(isDoneToday(id)){ render(); return; }          /* 規定のセット数を終えた種目は、修正で消すまで記録できない */
+  lastAddAt[id] = Date.now();
+  unlockAudio();
+  const e0 = entryFor(TODAY, id, false);
+  const sugNow = suggestNext(item, e0);
+  const st = {id:newSetId(), at:Date.now(), r:rRaw};
+  if(rpeRaw) st.rpe = Math.round(rpeRaw);
+  if(wIn) st.w = wStored(item, wRaw);
+  st.label = item.label || "";                      /* どの組み方でやったか（次の回の目標を組み方ごとに出すため） */
+  st.target = sugNow.target;                        /* この日の目標（届いたかどうかを次の回に使う） */
   const s = session(TODAY);
   fixPlan(s);
   const e = entryFor(TODAY, id, true);
   e.sets.push(st);
-  persistSession(TODAY);
+  rpeSel[id] = 0;
+  const ok = persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: 記録したとき */
+  if(ok && typeof prMessage === "function"){
+    const pr = prMessage(id, item.label || "", st, TODAY);
+    if(pr) todayMsg = pr;
+  }
 
   const doneNow = e.sets.length >= (item.sets||3);
   if(doneNow){ openEx = null; editEx = null; }
   let label;
   if(doneNow){
-    const items = todayItems();
-    const nx = items.find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < (it.sets||3); });
+    const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < (it.sets||3); });
     label = nx ? "次: " + itemName(nx) : "今日のメニュー完了";
   }else{
-    const sug = suggestNext(item, e, lastPerformance(id, TODAY));
-    label = itemName(item) + "  " + sugText(item, sug);
+    label = itemName(item) + "  " + sugText(item, suggestNext(item, e));
   }
   render();
   startRest(restFor(item), label);
@@ -6829,19 +7198,51 @@ function delSet(id, i){
   }
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: 修正で消したとき */
+  /* 5秒間「取り消す」を出す */
+  undoDel = {date: TODAY, ex: id, set: gone, index: i, name: itemName(itemOf(id)), until: Date.now() + 5000};
+  setTimeout(()=>{ if(undoDel && Date.now() >= undoDel.until){ undoDel = null; if(tab === "today") render(); } }, 5100);
   /* 修正で規定に届かなくなったら、そのまま記録できる状態で開く */
   if(wasDone && !isDoneToday(id)){ editEx = null; openEx = id; }
   render();
 }
-function addToProgramToday(id){
+/* 消したセットを戻す。消した印はもう同期で送っているので、新しい id を付けて戻す */
+ACTIONS.undodel = ()=>{
+  const u = undoDel; undoDel = null;
+  if(!u || u.date !== TODAY){ render(); return; }
+  const e = entryFor(TODAY, u.ex, true);
+  const st = Object.assign({}, u.set, {id: newSetId()});
+  e.sets.splice(Math.min(u.index, e.sets.length), 0, st);
+  persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();                   /* 同期: 修正したとき */
+  render();
+};
+/* 種目を選んで今日のメニューに足す（組み方も選べる）。足した種目は今日のメニューに入り、
+   組み直しても残る（manual）。すでにあって外していたら戻す */
+function addToProgramToday(id, label){
   if(isDoneToday(id)){
     openEx = null; editEx = null;
     switchTab("today");
     setStatus("「" + itemNameOf(id) + "」は今日の分を記録済みです。直すときは「修正」を押してください");
     return;
   }
-  entryFor(TODAY, id, true);
+  const s = session(TODAY);
+  const row = (label && catalogRow(id, label)) || catalogItem(id);
+  fixPlan(s);
+  if(!s.plan) s.plan = [];
+  const cur = s.plan.find(x => x.ex === id);
+  const e = entryFor(TODAY, id, false);
+  if(cur){
+    delete cur.skip;
+    if((cur.label || "") !== (row.label || "") && !(e && e.sets.length)){
+      const i = s.plan.indexOf(cur);
+      s.plan[i] = Object.assign({}, row, {manual: true});
+    }
+  }else{
+    s.plan.push(Object.assign({}, row, {manual: true}));
+  }
+  s.planAt = Date.now();
   persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();
   openEx = id; editEx = null;
   switchTab("today");
 }
@@ -6855,10 +7256,11 @@ function replaceInPlan(fromId, toId, toLabel){
   const e = entryFor(TODAY, fromId, false);
   const i = s.plan.findIndex(x => x.ex === fromId);
   if(i >= 0 && !(e && e.sets.length)){
-    s.plan[i] = Object.assign({}, to);
+    s.plan[i] = Object.assign({}, to, s.plan[i].manual ? {manual: true} : {});
     if(e) s.entries = s.entries.filter(x => x !== e);
   }else if(!s.plan.some(x => x.ex === toId && (x.label || "") === (toLabel || ""))){
     s.plan.push(Object.assign({}, to));
+    if(e && !e.sets.length) s.entries = s.entries.filter(x => x !== e);
   }
   s.planAt = Date.now();
   persistSession(TODAY);
@@ -6868,12 +7270,43 @@ function replaceInPlan(fromId, toId, toLabel){
   switchTab("today");
   setStatus(todayMsg);
 }
+/* 今日のメニューの並びを変える・外す・戻す */
+function editPlanItem(id, fn){
+  const s = session(TODAY);
+  fixPlan(s);
+  if(!s.plan) return;
+  const i = s.plan.findIndex(x => x.ex === id);
+  if(i < 0) return;
+  fn(s.plan, i);
+  s.planAt = Date.now();
+  persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();
+}
+ACTIONS.later = el=>{
+  const id = el.dataset.ex;
+  editPlanItem(id, (plan, i)=>{ const it = plan.splice(i, 1)[0]; plan.push(it); });
+  if(openEx === id) openEx = null;
+  todayMsg = "「" + itemName(itemOf(id)) + "」を後に回しました";
+  render();
+};
+ACTIONS.skip = el=>{
+  const id = el.dataset.ex;
+  editPlanItem(id, (plan, i)=>{ plan[i].skip = true; });
+  if(openEx === id) openEx = null;
+  todayMsg = "「" + itemName(itemOf(id)) + "」を今日は外しました。組み直しても入りません。下の「戻す」で戻せます";
+  render();
+};
+ACTIONS.unskip = el=>{
+  const id = el.dataset.ex;
+  editPlanItem(id, (plan, i)=>{ delete plan[i].skip; });
+  render();
+};
 
 /* 種目カードに出す「やさしく／難しく」。同じ動きの中で1段ずつ持ち替える */
 function stepButtons(item){
   const down = stepItem(item, -1), up = stepItem(item, 1);
   if(!down && !up) return "";
-  const btn = (it, label) => `<button data-act="stepto" data-from="${item.ex}" data-ex="${it.ex}" data-label="${(it.label || "").replace(/"/g, "&quot;")}">${label}　${itemName(it)}</button>`;
+  const btn = (it, label) => `<button data-act="stepto" data-from="${item.ex}" data-ex="${it.ex}" data-label="${esc(it.label || "")}">${label}　${esc(itemName(it))}</button>`;
   return `<p class="lastline" style="margin-bottom:4px">きつすぎる・軽すぎるときは、同じ動きのまま段を変えられます。</p>
     <div class="rowbtns">${down ? btn(down, "やさしく") : ""}${up ? btn(up, "難しく") : ""}</div>`;
 }
@@ -6882,14 +7315,15 @@ function stepButtons(item){
 function addAutoToday(){
   const s = session(TODAY);
   fixPlan(s);
-  const cur = todayItems();
+  const all = todayItems(), cur = all.filter(it => !it.skip);
   const attempt = (relax) => {
     planSeed = cur.map(x => Object.assign({}, x));
-    planOne = true; planRelax = relax; planMemo = null;
+    planSkip = new Set(all.filter(it => it.skip).map(it => patternOf(it.ex)));
+    planRelax = relax; planMemo = null;
     try{
       return buildPlan().find(it => !cur.some(c => c.ex === it.ex && (c.label || "") === (it.label || "")));
     }finally{
-      planSeed = null; planOne = false; planRelax = false; planMemo = null;
+      planSeed = null; planSkip = null; planRelax = false; planMemo = null;
     }
   };
   /* まず1回の量の目安に収まる範囲で探し、無ければ目安を外して探す（そのときは一言添える） */
@@ -6915,7 +7349,6 @@ function addAutoToday(){
   if(el && el.scrollIntoView) el.scrollIntoView({block: "center"});
   setStatus(todayMsg);
 }
-
 /* ---------- ピッカー ---------- */
 const sheet = document.getElementById("sheet");
 const sheetInner = document.getElementById("sheetInner");
@@ -6985,8 +7418,8 @@ function showText(){
 
 /* ---------- テーマ ---------- */
 /* ---- アプリの更新 ----
-   PWAは端末に保存した版で動くので、押したときにこの画面を取り直して版の日時を比べる。
-   新しければ端末に保存してある画面を入れ替えて開き直す */
+   PWAは端末に保存した版で動くので、押したときに版の日時をネットから確かめる（端末の保存を通さない）。
+   新しければ Service Worker に新しい版を取り込ませ、切り替わったら開き直す */
 const updBtn = document.getElementById("updBtn");
 if(updBtn) updBtn.onclick = async ()=>{
   const back = (label, msg, wait)=>{
@@ -7001,29 +7434,44 @@ if(updBtn) updBtn.onclick = async ()=>{
   }
   try{
     const here = location.pathname + (location.search || "");
-    const res = await fetch(here, {cache: "reload"});
+    /* ?__check= を付けると Service Worker は保存を返さず、そのままネットへ行く（service-worker.js） */
+    const res = await fetch(here + (here.indexOf("?") < 0 ? "?" : "&") + "__check=" + Date.now(), {cache: "no-store"});
     if(!res || !res.ok) throw new Error("fetch");
     const txt = await res.text();
     const m = txt.match(/BUILD_VERSION = "([^"]*)"/);
     if(m && m[1] === BUILD_VERSION){ back("最新です", "すでに最新の版です（" + BUILD_VERSION + "）"); return; }
-    /* 端末に保存してある画面を、取り直したものに入れ替える */
-    if(typeof caches !== "undefined"){
+    updBtn.textContent = "更新中";
+    setStatus("新しい版（" + (m ? m[1] : "") + "）を取り込んでいます");
+    /* 新しい Service Worker が保存をそろえて動き出すまで待つ（動き出すと build.py の登録処理が開き直す） */
+    let switched = false;
+    if("serviceWorker" in navigator){
+      const reg = await navigator.serviceWorker.getRegistration();
+      if(reg){
+        await reg.update();
+        const w = reg.installing || reg.waiting;
+        if(w) switched = await new Promise(done=>{
+          const timer = setTimeout(()=> done(false), 20000);
+          const check = ()=>{
+            if(w.state === "activated"){ clearTimeout(timer); done(true); }
+            else if(w.state === "redundant"){ clearTimeout(timer); done(false); }
+          };
+          w.addEventListener("statechange", check); check();
+        });
+      }
+    }
+    /* 新しい Service Worker が見つからない・取り込めなかったときは、取り直した画面を今の保存に入れて開き直す */
+    if(!switched && typeof caches !== "undefined"){
       const html = ()=> new Response(txt, {headers: {"Content-Type": "text/html; charset=utf-8"}});
       for(const n of await caches.keys()){
+        if(n.indexOf("trainlog-") !== 0) continue;
         const c = await caches.open(n);
         for(const key of [here, "./", "./index.html"]){
           try{ await c.put(key, html()); }catch(e){}
         }
       }
     }
-    window.__swReloaded = true;                 /* 切り替えの二重リロードを防ぐ（更新より先に立てる） */
-    if("serviceWorker" in navigator){
-      const reg = await navigator.serviceWorker.getRegistration();
-      if(reg) await reg.update();
-    }
-    updBtn.textContent = "更新中";
     setStatus("新しい版（" + (m ? m[1] : "") + "）に切り替えます");
-    setTimeout(()=> location.reload(), 300);
+    if(!window.__swReloaded){ window.__swReloaded = true; setTimeout(()=> location.reload(), 200); }
   }catch(e){
     back("更新", "更新を確認できませんでした。通信を確かめてもう一度押してください");
   }
@@ -7044,6 +7492,62 @@ const themeBtn = document.getElementById("themeBtn");
   };
 })();
 
+/* ---- 設定のシート（右上の ⚙） ----
+   ダンベルの登録・1日の区切り・休憩の知らせ方・同期・バックアップを1か所にまとめる */
+let settingsOpen = false;
+function dayStartCard(){
+  const h = dayStartHour();
+  const opts = [0, 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"${v === h ? " selected" : ""}>${v === 0 ? "夜中の0時" : "朝" + v + "時"}</option>`).join("");
+  return `<h3 class="sec">1日の区切り</h3>
+  <div class="card">
+    <div class="fld"><label>この時刻までは、前の日のトレーニングとして記録する</label>
+      <select id="dayStartSel">${opts}</select></div>
+    <p class="lastline">夜遅くに始めて0時を過ぎても、区切りの時刻までは同じ日の記録になります。</p>
+  </div>`;
+}
+function settingsHTML(){
+  return `<h4 data-settings="1">設定</h4>
+    ${gearCard()}
+    ${dayStartCard()}
+    ${settingsCard()}
+    ${typeof syncCard === "function" ? syncCard() : ""}
+    ${typeof backupCard === "function" ? backupCard() : ""}
+    <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
+}
+function wireSettings(){
+  wireActs(sheetInner);
+  wireInputs(sheetInner);
+  if(typeof syncWire === "function") syncWire(sheetInner);
+  const sel = sheetInner.querySelector("#dayStartSel");
+  if(sel) sel.onchange = ()=>{
+    PREF.set("dayStart", +sel.value);
+    if(rollDay()) setStatus("1日の区切りを変えたので、今日のメニューを切り替えました");
+    render();
+  };
+  const close = sheetInner.querySelector("[data-close]");
+  if(close) close.onclick = closeSettings;
+}
+function openSettings(){
+  settingsOpen = true;
+  sheetInner.innerHTML = settingsHTML();
+  wireSettings();
+  sheet.classList.add("on");
+}
+/* 設定を変えると画面を描き直すので、そのときシートの中身も今の設定で描き直す（スクロール位置は保つ） */
+function refreshSettings(){
+  /* シートが閉じた・ほかの中身（貼り付けて復元など）に替わったときは描き直さない */
+  if(!sheet.classList.contains("on") || !sheetInner.querySelector("[data-settings]")){ settingsOpen = false; return; }
+  const y = sheetInner.scrollTop;
+  sheetInner.innerHTML = settingsHTML();
+  wireSettings();
+  sheetInner.scrollTop = y;
+}
+function closeSettings(){
+  settingsOpen = false;
+  sheet.classList.remove("on");
+}
+const setBtn = document.getElementById("setBtn");
+if(setBtn) setBtn.onclick = openSettings;
 /* ---------- 日付の切り替わり ----------
    画面に戻ったとき・1分ごとに確かめる（入力中は邪魔しないよう次の機会にする） */
 function checkNewDay(){

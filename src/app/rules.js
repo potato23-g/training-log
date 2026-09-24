@@ -19,8 +19,9 @@ function restFor(item){
                目標に届いた部位も、16セットまでは少しだけ優先度を残す（毎日やる人の分）
    これまでの決まりもそのまま守る:
    ・同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日1つ
-   ・前回トレーニングした日に手を付けた種目は、次のトレーニング日に出さない
+   ・昨日（暦の昨日）やった動きは、今日は出さない
    ・ダンベルが要る種目は、持っているダンベルで作れるものだけ
+   ・動きごとに、今日やる組み方は伸ばし方（progress.js）で決まる。気分では入れ替えない
    A〜Dの各メニュー（ROUTINES）は、種目ごとのセット数・回数・メモの出どころとしてだけ使う。
    記録を始めた日は、そのときのメニューを保存して、その日のうちは変えない。 */
 const PATTERN = {
@@ -52,25 +53,6 @@ function levelOf(id){ return (EXMAP[id] || {}).level || (EXMAP[baseOf(id)] || {}
 function itemLevel(it){
   const ex = EXMAP[it.ex] || {};
   return Math.max(0, Math.min(5, levelOf(it.ex) + (it.side && !ex.side ? 1 : 0) + (it.lv || 0)));
-}
-/* その動きで今ちょうどよい難しさ。前回その動きでやった種目の難しさを起点に、
-   きつさの記録が「軽すぎる」なら1段上、「限界続き」なら1段下げる。記録がなければ標準（2）。
-   同じ状況なら毎回同じ答えになる（種目は負荷を合わせるために選ぶもので、気分で入れ替えない） */
-function wantedLevel(pattern){
-  let last = null;
-  catalog().forEach(c => {
-    if(patternOf(c.ex) !== pattern) return;
-    const l = lastPerformance(c.ex, TODAY);
-    if(l && (!last || l.date > last.date)) last = {date: l.date, ex: c.ex};
-  });
-  if(!last) return 2;
-  /* その日に実際にやった組み方（片脚など）で難しさを見る */
-  const s = state.sessions[last.date];
-  const used = ((s && s.plan) || []).find(x => x.ex === last.ex) || catalogItem(last.ex);
-  const lv = itemLevel(used), r = recentRpe(last.ex, 2);
-  if(r !== null && r <= 6.5) return Math.min(5, lv + 1);   /* 軽すぎた → 一段難しい組み方へ */
-  if(r !== null && r >= 9.3) return Math.max(0, lv - 1);   /* 限界続き → 一段やさしい組み方へ */
-  return lv;                                               /* ちょうどよい → 同じ種目を続ける */
 }
 /* 昨日1セットでも手を付けた種目 */
 function touchedYesterday(){

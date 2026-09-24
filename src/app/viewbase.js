@@ -181,7 +181,7 @@ function diaHTML(id, compact, item, opt){
   const useDb = opt ? opt.n : null;
   const dbn = (useDb && figDb && useDb < figDb) ? useDb : null;
   const dbNote = (useDb && figDb && useDb > figDb)
-    ? `<p class="dianote">図は1つで持つ形です。今日は「${opt.how}」で行ってください。</p>` : "";
+    ? `<p class="dianote">図は1つで持つ形です。今日は「${esc(opt.how)}」で行ってください。</p>` : "";
   const hold = ((PHYS[id] || PHYS[baseOf(id)] || {}).hold) || "";
   const note = DIANOTE[id] || DIANOTE[baseOf(id)] || "";
   const tail = (hold ? `<p class="diahold"><b>接地</b>　${hold}</p>` : "")
@@ -189,7 +189,7 @@ function diaHTML(id, compact, item, opt){
   if(!m) return `<div class="dia">${tail}</div>`;
   const shot = figShot(mo, dbn);
   const fignote = item && item.baseFig
-    ? `<p class="dianote">図は基本のやり方です。この組み方では${item.note || ""}</p>` : "";
+    ? `<p class="dianote">図は基本のやり方です。この組み方では${esc(item.note || "")}</p>` : "";
   return `<div class="dia" data-dia="${mo}" data-db="${dbn || ""}">
     <div class="figslot">
       ${shot ? `<img class="figstill" src="${shot}" alt="${itemNameOf(id)}の姿勢">`
@@ -259,14 +259,22 @@ function render(){
   stopAnim();
   rollDay();
   planMemo = null;
+  if(typeof resetProg === "function") resetProg();
   document.getElementById("todayLabel").textContent = fmtDate(TODAY);
   const v = document.getElementById("view");
   v.className = "view-" + tab;
-  if(tab==="today") v.innerHTML = viewToday();
-  else if(tab==="ex") v.innerHTML = viewEx();
-  else if(tab==="body") v.innerHTML = viewBody();
-  else if(tab==="hist") v.innerHTML = viewHist();
-  else v.innerHTML = viewPlan();
+  /* 描くのに失敗しても（おかしな記録が入っていたなど）白い画面にしない。ほかのタブと設定は使えるようにする */
+  try{
+    if(tab==="today") v.innerHTML = viewToday();
+    else if(tab==="ex") v.innerHTML = viewEx();
+    else if(tab==="body") v.innerHTML = viewBody();
+    else if(tab==="hist") v.innerHTML = viewHist();
+    else v.innerHTML = viewPlan();
+  }catch(e){
+    v.innerHTML = `<div class="banner"><b>この画面を表示できませんでした。</b>記録の中に読めないものがあるかもしれません。ほかのタブは使えます。右上の ⚙ からバックアップの保存と復元ができます。
+      <p class="lastline">${esc(e && e.message || e)}</p></div>`;
+    try{ console.error(e); }catch(x){}
+  }
   wire();
 }
 
