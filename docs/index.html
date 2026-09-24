@@ -4664,7 +4664,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-25 08:08";
+const BUILD_VERSION = "2026-09-25 08:10";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -7288,7 +7288,7 @@ function renderDaySheet(date){
       <div class="setline">
         <span class="val num">${esc(setTextFor({ex:g.ex, label:g.label}, st))}</span>
         ${st.rpe?`<span class="rpe">きつさ ${st.rpe}</span>`:""}
-        <button class="del" data-hex="${esc(g.ex)}" data-hid="${esc(st.id||"")}" aria-label="このセットを消す">×</button>
+        <button class="del" data-hex="${esc(g.ex)}" data-hid="${esc(st.id||"")}" aria-label="このセットを消す">消す</button>
       </div>`).join("");
     return `<div class="card"><h4>${esc(itemName({ex:g.ex, label:g.label}))}</h4>${lines}</div>`;
   }).join("") : `<p class="lastline" style="margin-top:0">この日の記録はまだありません。</p>`;

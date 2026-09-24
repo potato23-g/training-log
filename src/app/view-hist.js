@@ -270,7 +270,7 @@ function renderDaySheet(date){
       <div class="setline">
         <span class="val num">${esc(setTextFor({ex:g.ex, label:g.label}, st))}</span>
         ${st.rpe?`<span class="rpe">きつさ ${st.rpe}</span>`:""}
-        <button class="del" data-hex="${esc(g.ex)}" data-hid="${esc(st.id||"")}" aria-label="このセットを消す">×</button>
+        <button class="del" data-hex="${esc(g.ex)}" data-hid="${esc(st.id||"")}" aria-label="このセットを消す">消す</button>
       </div>`).join("");
     return `<div class="card"><h4>${esc(itemName({ex:g.ex, label:g.label}))}</h4>${lines}</div>`;
   }).join("") : `<p class="lastline" style="margin-top:0">この日の記録はまだありません。</p>`;
