@@ -169,7 +169,7 @@ function addSet(id){
   if(rollDay()){
     todayMsg = "日付が変わったので、今日のメニューに切り替えました。入力した「" + itemName(item) + " "
       + (wIn ? wRaw + "kg × " : "") + rRaw + (ex.kind === "t" ? "秒" : "回") + (rpeRaw ? "・きつさ" + rpeRaw : "") + "」は記録していません。続けるときは今日のメニューで記録してください";
-    render(); setStatus(todayMsg); return;
+    render(); setStatus(shownMsg); return;
   }
   if(isDoneToday(id)){ render(); return; }          /* 規定のセット数を終えた種目は、修正で消すまで記録できない */
   lastAddAt[id] = Date.now();
@@ -289,7 +289,7 @@ function replaceInPlan(fromId, toId, toLabel){
   openEx = toId; editEx = null;
   todayMsg = "「" + itemName(to) + "」に替えました";
   switchTab("today");
-  setStatus(todayMsg);
+  setStatus(shownMsg);
 }
 /* 今日のメニューの並びを変える・外す・戻す */
 function editPlanItem(id, fn){
@@ -353,7 +353,7 @@ function addAutoToday(){
   if(!picked){
     todayMsg = "今日足せる種目がありません。回復を待っている部位ばかりか、今週の量が上限に届いています。それでも足すときは「種目を選んで追加」から選んでください。";
     render();
-    setStatus(todayMsg);
+    setStatus(shownMsg);
     return;
   }
   if(!s.plan) s.plan = [];
@@ -368,5 +368,5 @@ function addAutoToday(){
   /* 足した種目は一覧の最後に付くので、その位置まで動かして見えるようにする */
   const el = document.querySelector('[data-act="toggle"][data-ex="' + picked.ex + '"]');
   if(el && el.scrollIntoView) el.scrollIntoView({block: "center"});
-  setStatus(todayMsg);
+  setStatus(shownMsg);
 }

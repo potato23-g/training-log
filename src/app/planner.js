@@ -72,7 +72,6 @@ function buildPlan(){
   /* 今日すでに記録したぶんは先に数えておく（メニューを組み直したときに、同じ動きや同じ部位が重ならないように） */
   const doneToday = (session(TODAY).entries || []).filter(e => e.sets.length && EXMAP[e.ex]);
   const donePattern = new Set(doneToday.map(e => patternOf(e.ex)));
-  const doneEx = new Set(doneToday.map(e => e.ex));
   doneToday.forEach(e => {
     const add = exLoad(e.ex, e.sets.length);
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
@@ -152,31 +151,32 @@ function buildPlan(){
     }
   };
   const isBig = c => BIG_MUSCLES.includes(EXMAP[c.ex].p[0]);
+  /* 残す種目（おまかせ追加・組み直し）を入れる。記録済みのセットは上で数えたので、残りのセットの分だけ足す */
+  const keepIn = it => {
+    if(plan.some(p => p.ex === it.ex)) return;
+    const done = doneToday.find(e => e.ex === it.ex);
+    const rest = done ? Math.max(0, (it.sets || 3) - done.sets.length) : (it.sets || 3);
+    const add = exLoad(it.ex, rest);
+    Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
+    sets += rest;
+    if(rest) minutes += done ? mins(Object.assign({}, it, {sets: rest})) - 1 : mins(it);   /* 途中の種目は切り替えの1分を数えない */
+    plan.push(Object.assign({}, it, {seed: true}));
+  };
   if(planSeed){
     /* 「おまかせで追加」: 今のメニューを入れた状態から、合う種目を1つだけ足す。
        記録済みの種目は上で実際のセット数を数えたので、ここでは足さない（二重に数えない） */
-    planSeed.forEach(it => {
-      if(it.skip || plan.some(p => p.ex === it.ex)) return;
-      if(doneEx.has(it.ex)){ plan.push(Object.assign({}, it, {seed: true})); return; }
-      take(Object.assign({}, it, {seed: true}));
-    });
+    planSeed.forEach(it => { if(!it.skip) keepIn(it); });
     const seedLen = plan.length;
     fill(1, seedLen + 1, isBig);
     if(plan.length === seedLen) fill(0.5, seedLen + 1);
     if(plan.length === seedLen) fill(0.01, seedLen + 1);
-    plan.forEach(p => delete p.seed);
   }else{
-    /* 組み直し: 残す種目を先に入れる（記録済みの種目は実際のセット数を上で数えたので、負荷は足さない） */
-    (planKeep || []).forEach(it => {
-      if(plan.some(p => p.ex === it.ex)) return;
-      if(doneEx.has(it.ex)) plan.push(Object.assign({}, it, {seed: true}));
-      else take(Object.assign({}, it, {seed: true}));
-    });
+    /* 組み直し: 残す種目を先に入れる */
+    (planKeep || []).forEach(keepIn);
     fill(1, LIM.exercises, isBig);           /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
     if(!planShort) addSets();                /* 2. まだ足りなければ、その種目のセットを増やす */
     fill(1, LIM.exercises);                  /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
     fill(0.5, Math.min(3, LIM.exercises));   /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
-    plan.forEach(p => delete p.seed);
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
@@ -185,8 +185,7 @@ function buildPlan(){
     const over = Object.keys(today).find(m => (week[m] || 0) + today[m] > WEEK_MAX
                                           && plan.some(p => EXMAP[p.ex].p[0] === m));
     if(!over) break;
-    const hit = plan.map((p, i) => ({p, i})).filter(x => EXMAP[x.p.ex].p[0] === over && !doneEx.has(x.p.ex)
-                                                    && !(planKeep || []).some(k => k.ex === x.p.ex))
+    const hit = plan.map((p, i) => ({p, i})).filter(x => EXMAP[x.p.ex].p[0] === over && !x.p.seed)
                     .sort((a, b) => (b.p.sets || 3) - (a.p.sets || 3))[0];
     if(!hit) break;
     const n = hit.p.sets || 3;
@@ -201,8 +200,9 @@ function buildPlan(){
     }
   }
 
-  /* 軽い週は、セット数を半分にする（2セットまで） */
-  if(deloadOn(TODAY)) plan.forEach(p => { if(!doneEx.has(p.ex)) p.sets = Math.max(2, Math.ceil((p.sets || 3) / 2)); });
+  /* 軽い週は、セット数を半分にする（2セットまで）。残す種目（記録済み・自分で足した・今のメニュー）はそのまま */
+  if(deloadOn(TODAY)) plan.forEach(p => { if(!p.seed) p.sets = Math.max(2, Math.ceil((p.sets || 3) / 2)); });
+  plan.forEach(p => delete p.seed);
 
   if(!planSeed) plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
   planMemo = plan;
@@ -279,7 +279,7 @@ function replanToday(opt){
            : newKey === oldKey ? "今の記録で組み直しました。変わりはありません"
            : "今の記録で組み直しました";
   render();
-  setStatus(todayMsg);
+  setStatus(shownMsg);
 }
 function isDoneToday(id){
   const it = todayItems().find(i=>i.ex===id);

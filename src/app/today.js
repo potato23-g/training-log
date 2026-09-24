@@ -3,6 +3,8 @@ let storeFailMsg = "";
 function onStoreFail(msg){ storeFailMsg = msg || "保存できませんでした"; }
 /* セットを消した直後の「取り消す」（5秒） */
 let undoDel = null;
+/* 最後にボタンの下へ出した一言（画面下の状態表示にも出すため。描き直すと todayMsg は空になる） */
+let shownMsg = "";
 
 /* 保存データまわりの知らせ（読めなかった・保存できなかった） */
 function storeBanners(){
@@ -39,6 +41,7 @@ function viewToday(){
   const all = todayItems(), items = all.filter(it => !it.skip), skipped = all.filter(it => it.skip);
   const s = session(TODAY);
   const msg = todayMsg; todayMsg = "";          /* 一度出したら消す */
+  if(msg) shownMsg = msg;
 
   let next = null;
   for(const it of items){
