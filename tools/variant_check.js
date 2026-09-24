@@ -28,25 +28,9 @@ const moves = (m, drv) => { const r = range(m, drv); return Math.round((r.hi - r
 
 const CHECKS = [
   /* --- 深さ・角度 --- */
-  ['goblet_deep', 'goblet', '深くしゃがむ', (v, b) => {
-    const a = lowest(v, 'pelvis'), c = lowest(b, 'pelvis');
-    return [a < c - 0.015, `腰の一番低い位置 ${(a * 100).toFixed(0)}cm（元は ${(c * 100).toFixed(0)}cm）`];
-  }],
   ['goblet_box', 'goblet', '椅子に触れて止める（浅い）', (v, b) => {
     const a = lowest(v, 'pelvis'), c = lowest(b, 'pelvis');
     return [a > c + 0.06, `腰の一番低い位置 ${(a * 100).toFixed(0)}cm（元は ${(c * 100).toFixed(0)}cm）`];
-  }],
-  ['split_deep', 'split', '深く沈む', (v, b) => {
-    const a = lowest(v, 'pelvis'), c = lowest(b, 'pelvis');
-    return [a < c - 0.015, `腰の一番低い位置 ${(a * 100).toFixed(0)}cm（元は ${(c * 100).toFixed(0)}cm）`];
-  }],
-  ['rdl_deep', 'rdl', '深く下ろす', (v, b) => {
-    const a = lowest(v, 'handR'), c = lowest(b, 'handR');
-    return [a < c - 0.01, `手の一番低い位置 ${(a * 100).toFixed(0)}cm（元は ${(c * 100).toFixed(0)}cm）`];
-  }],
-  ['rdl1_deep', 'rdl1', '深く下ろす', (v, b) => {
-    const a = lowest(v, 'handR'), c = lowest(b, 'handR');
-    return [a < c - 0.01, `手の一番低い位置 ${(a * 100).toFixed(0)}cm（元は ${(c * 100).toFixed(0)}cm）`];
   }],
   ['sumo_shallow', 'sumo', '浅めに止める', (v, b) => {
     const a = lowest(v, 'pelvis'), c = lowest(b, 'pelvis');
@@ -74,25 +58,26 @@ const CHECKS = [
     return [noStep && heel > 0.02, `段差なし=${noStep} / かかと側の一番低い位置 ${(heel * 100).toFixed(0)}cm`];
   }],
 
-  /* --- テンポ・止める時間 --- */
-  ['lateral_slow', 'lateral', '5秒かけて下ろす', (v) => [seg(v, /^下ろす/) >= 4.6, `下ろす場面 ${seg(v, /^下ろす/)}秒`]],
-  ['front_slow', 'front', '5秒かけて下ろす', (v) => [seg(v, /^下ろす/) >= 4.6, `下ろす場面 ${seg(v, /^下ろす/)}秒`]],
-  ['curl_slow', 'curl', '4秒かけて下ろす', (v) => [seg(v, /^下ろす/) >= 3.7, `下ろす場面 ${seg(v, /^下ろす/)}秒`]],
-  ['triext_slow', 'triext', '4秒かけて下ろす', (v) => [seg(v, /^戻す/) >= 3.7, `戻す場面 ${seg(v, /^戻す/)}秒`]],
-  ['skull_slow', 'skull', '4秒かけて下ろす', (v) => [seg(v, /^戻す/) >= 3.7, `戻す場面 ${seg(v, /^戻す/)}秒`]],
-  ['fly_slow', 'fly', '4秒かけて開く', (v) => [seg(v, /^開く/) >= 3.7, `開く場面 ${seg(v, /^開く/)}秒`]],
-  ['floorpress_slow', 'floorpress', '3秒かけて下ろす', (v) => [seg(v, /^下ろす/) >= 2.7, `下ろす場面 ${seg(v, /^下ろす/)}秒`]],
-  ['pushupknee_slow', 'pushupknee', '3秒かけて下ろす', (v) => [seg(v, /^下ろす/) >= 2.7, `下ろす場面 ${seg(v, /^下ろす/)}秒`]],
-  ['sumo_slow', 'sumo', '3秒かけて下ろす', (v) => [seg(v, /^下ろす/) >= 2.7, `下ろす場面 ${seg(v, /^下ろす/)}秒`]],
-  ['splitfloor_slow', 'splitfloor', '3秒かけて下ろす', (v) => [seg(v, /^沈む/) >= 2.7, `沈む場面 ${seg(v, /^沈む/)}秒`]],
-  ['sidelunge_slow', 'sidelunge', '3秒かけて下ろす', (v) => [seg(v, /沈む/) >= 2.7, `沈む場面 ${seg(v, /沈む/)}秒`]],
-  ['sidebend_slow', 'sidebend', '3秒かけて下ろす', (v) => [seg(v, /^横に倒す/) >= 2.7, `倒す場面 ${seg(v, /^横に倒す/)}秒`]],
-  ['deadbug_slow', 'deadbug', 'ゆっくり動かす', (v, b) => [T(v) > T(b) + 1, `周期 ${T(v)}秒（元は ${T(b)}秒）`]],
-  ['hipthrust_hold', 'hipthrust', '上で3秒止める', (v) => [seg(v, /^上で/) >= 2.7, `止める場面 ${seg(v, /^上で/)}秒`]],
-  ['shrug_hold', 'shrug', '上で2秒止める', (v) => [seg(v, /^上で/) >= 1.7, `止める場面 ${seg(v, /^上で/)}秒`]],
-  ['row2_hold', 'row2', '上で2秒止める', (v) => [seg(v, /^上で/) >= 1.7, `止める場面 ${seg(v, /^上で/)}秒`]],
-  ['calfseat_hold', 'calfseat', '上で2秒止める', (v) => [seg(v, /^一番上で/) >= 1.7, `止める場面 ${seg(v, /^一番上で/)}秒`]],
-  ['row_pause', 'row', '下で一度止める', (v) => [seg(v, /^上で/) >= 1.7, `止める場面 ${seg(v, /^上で/)}秒`]],
+  /* --- テンポ・止める時間（標準の位置で2〜3秒止まる） --- */
+  ['goblet_hold', 'goblet', '一番下で3秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 2.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['sumo_hold', 'sumo', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['sidelunge_hold', 'sidelunge', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['rdl_hold', 'rdl', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['rdl1_hold', 'rdl1', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['split_hold', 'split', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['splitfloor_hold', 'splitfloor', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['row_hold', 'row', '下で2秒止める', (v) => [seg(v, /^下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^下で\d+秒止める/)}秒`]],
+  ['row2_hold', 'row2', '上で3秒止める', (v) => [seg(v, /^上で\d+秒止める/) >= 2.7, `止める場面 ${seg(v, /^上で\d+秒止める/)}秒`]],
+  ['lateral_hold', 'lateral', '上で2秒止める', (v) => [seg(v, /^上で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^上で\d+秒止める/)}秒`]],
+  ['front_hold', 'front', '上で2秒止める', (v) => [seg(v, /^上で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^上で\d+秒止める/)}秒`]],
+  ['shrug_hold', 'shrug', '上で3秒止める', (v) => [seg(v, /^上で\d+秒止める/) >= 2.7, `止める場面 ${seg(v, /^上で\d+秒止める/)}秒`]],
+  ['floorpress_hold', 'floorpress', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['fly_hold', 'fly', '床の手前で2秒止める', (v) => [seg(v, /^床の手前で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^床の手前で\d+秒止める/)}秒`]],
+  ['pushupknee_hold', 'pushupknee', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['curl_hold', 'curl', '途中で2秒止める', (v) => [seg(v, /^途中で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^途中で\d+秒止める/)}秒`]],
+  ['triext_hold', 'triext', '下ろしたところで2秒止める', (v) => [seg(v, /^下ろしたところで\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^下ろしたところで\d+秒止める/)}秒`]],
+  ['skull_hold', 'skull', '下ろしたところで2秒止める', (v) => [seg(v, /^下ろしたところで\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^下ろしたところで\d+秒止める/)}秒`]],
+  ['sidebend_hold', 'sidebend', '一番下で3秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 2.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
 
   /* --- 片側だけ / 重り --- */
   ['ohp_one', 'ohp', '片手ずつ押す', (v) => [dbCount(v) === 1 && moves(v, 'upperarmL.flex') < 5,
@@ -128,6 +113,21 @@ const CHECKS = [
   ['deadbug_half', 'deadbug', '腕か脚だけ動かす', (v, b) => {
     const a = moves(v, 'thighL.flex'), c = moves(b, 'thighL.flex');
     return [a < 5 && c > 20, `左脚の動き ${a}°（元は ${c}°）`];
+  }],
+  ['deadbug_db', 'deadbug', 'ダンベルを持って行う', (v, b) => [dbCount(v) === 2 && dbCount(b) === 0,
+    `ダンベル ${dbCount(v)}個（元は ${dbCount(b)}個）`]],
+  ['calfseat_single', 'calfseat', '片脚ずつ行う', (v) => {
+    const Tv = T(v);
+    let rHi = -9, rLo = 9, lHi = -9, lLo = 9;
+    for (let i = 0; i <= 40; i++) {
+      const fr = M.solveFrame(v, Tv * i / 40);
+      const rh = M.at(fr, 'footR', M.FOOT.heel)[1], lh = M.at(fr, 'footL', M.FOOT.heel)[1];
+      rHi = Math.max(rHi, rh); rLo = Math.min(rLo, rh);
+      lHi = Math.max(lHi, lh); lLo = Math.min(lLo, lh);
+    }
+    const rMove = rHi - rLo, lMove = lHi - lLo;
+    return [rMove > 0.03 && lMove < 0.01,
+      `右かかとの動き ${(rMove * 100).toFixed(1)}cm / 左かかとの動き ${(lMove * 100).toFixed(1)}cm`];
   }]
 ];
 
