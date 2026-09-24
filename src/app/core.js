@@ -68,9 +68,11 @@ function setLabel(date, exId, st){
 }
 /* 組み方ごとに記録を分けるときの見出し（種目id と組み方の名前） */
 function itemKey(it){ return it.ex + "|" + (it.label || ""); }
+/* 一番よいセット。重さの種目は一番重いセット、同じ重さなら回数の多いほう
+   （重さ×回数で比べると、軽くて回数の多いセットが重いセットより上に来てしまう） */
 function bestSet(sets, kind){
   if(!sets.length) return null;
-  if(kind==="w") return sets.slice().sort((a,b)=> (b.w*b.r)-(a.w*a.r))[0];
+  if(kind==="w") return sets.slice().sort((a,b)=> ((b.w||0)-(a.w||0)) || ((b.r||0)-(a.r||0)))[0];
   return sets.slice().sort((a,b)=> b.r-a.r)[0];
 }
 function setText(st, kind){
