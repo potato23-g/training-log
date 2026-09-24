@@ -323,6 +323,60 @@ textarea{min-height:64px;resize:vertical}
 .ladder .ln{margin:2px 0 0;font-size:14px}
 .setbtn{font-size:14px;padding:3px 9px}
 /* ---- 種目を選ぶシート・からだ・履歴タブの見た目（index.html の <style> の最後に埋め込まれる） ---- */
+
+/* ---- 種目を選ぶシート（U4） ---- */
+.pickhead{font-size:12.5px;font-weight:700;color:var(--ink-2);margin:18px 0 6px}
+.pickhead:first-of-type{margin-top:6px}
+.pickgroup{margin-bottom:2px}
+.pickmain{display:block;width:100%}
+/* .picklist button span{display:block} が基本スタイルにあるので、印だけは .picklist を付けて上書きする */
+.picklist .pktag{display:inline-block;font-size:10px;border:1px solid var(--rule);border-radius:3px;
+  padding:0 4px;margin-left:6px;vertical-align:1px;color:var(--ink-2);font-weight:600}
+.picklist .pktag.plan{color:var(--done);border-color:var(--done)}
+.picklist .pktag.warn{color:var(--muscle);border-color:var(--muscle)}
+.pickvariants{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px 4px}
+/* .picklist button{...} が基本スタイルにあり、.pickvariant 単体（クラス1つ）より強いので、
+   .picklist を付けて上書きする（.pktag と同じ理由） */
+.picklist .pickvariant{min-height:44px;display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;
+  background:var(--panel-2);border:1px solid var(--rule);border-radius:8px;padding:5px 12px;
+  font-size:12.5px;font-weight:600;color:var(--ink-2);text-align:left;max-width:100%}
+.pickvariant span{display:block;font-weight:400;font-size:11px;color:var(--ink-3);margin-top:1px}
+
+/* ---- からだ: 部位ごとの横棒（U8） ---- */
+.mbars{display:flex;flex-direction:column;gap:1px;margin-top:6px}
+.mbar{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 2px;
+  background:none;border:none;text-align:left}
+.mbar .mbn{flex:0 0 84px;font-size:12.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mbar.sel .mbn{color:var(--ink);font-weight:700}
+.mbar .mbtrack{position:relative;flex:1;height:10px;background:var(--neutral-fill);border-radius:2px}
+.mbar .mbfill{position:absolute;left:0;top:0;bottom:0;background:var(--muscle);opacity:.75;border-radius:2px}
+.mbar.reach .mbfill{opacity:1}
+.mbar .mbtgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-3)}
+.mbar .mbv{flex:0 0 30px;text-align:right;font-size:13px;font-weight:700;color:var(--ink)}
+
+/* ---- 履歴: セッション行・種目ごとの推移（U9/U10） ---- */
+table.hist tbody tr{cursor:pointer}
+table.hist tbody tr:active td{background:var(--panel-2)}
+table.hist td{padding:9px 6px}
+.trendline{width:100%;height:54px;display:block;margin:8px 0 2px}
+.trendpath{stroke:var(--muscle);stroke-width:2;fill:none;opacity:.85}
+.trenddot{fill:var(--panel);stroke:var(--muscle);stroke-width:1.6}
+.prdot{fill:var(--muscle);stroke:var(--muscle)}
+.flash button{margin-left:8px;min-height:44px;background:none;border:1px solid var(--rule);border-radius:3px;
+  padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--ink)}
+
+/* ---- 履歴: 日付シート（U9+F3） ---- */
+.sheet .inner .card{margin-bottom:10px}
+.sheet .inner .setline .del{min-width:44px;min-height:44px}
+/* 基本スタイルは input[type=text|password] しか対象にしていない（今までの数の入力は
+   すべて .stepper の中で完結していたため）。セットを追加・記録していない日を足すで使う
+   素の number/date 入力はここで初めて出てくるので、見た目をほかの入力欄に合わせる */
+.sheet .inner input[type=number],.sheet .inner input[type=date]{
+  font:inherit;color:var(--ink);background:var(--panel-2);
+  border:1px solid var(--rule);border-radius:3px;padding:8px 10px;width:100%;
+  min-height:44px;box-sizing:border-box;
+}
+.sheet .inner .entry .fld{flex:1 1 84px;min-width:84px}
 </style>
 </head>
 <body>
@@ -4610,7 +4664,7 @@ function daysAgo(k){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-25 03:05";
+const BUILD_VERSION = "2026-09-25 08:06";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6077,6 +6131,8 @@ function wStored(item, shown){
   return o ? o.total : Math.round(shown * (isOneHanded(item) ? 1 : 2) * 10) / 10;
 }
 function wUnit(item){ return perArm(item.ex) ? "kg（片手）" : "kg"; }
+/* 「5kg」「片手 5kg」の書き方（記録は合計の重さ） */
+function kgFor(item, total){ return (perArm(item.ex) ? "片手 " : "") + kgText(wShown(item, total)); }
 
 /* 日用品で負荷を変えるやり方（ダンベルは買い足さない前提） */
 const HOUSE = {
@@ -6787,7 +6843,8 @@ function viewBody(){
         <button data-act="days" data-d="14" ${bodyDays===14?'style="border-color:var(--ink);color:var(--ink)"':''}>14日</button>
         <button data-act="days" data-d="30" ${bodyDays===30?'style="border-color:var(--ink);color:var(--ink)"':''}>30日</button>
       </div>
-    </div>`;
+    </div>
+    ${muscleBarCard(load, bodyDays)}`;
   const side = `
     ${detail}
     <div class="card">
@@ -6808,6 +6865,39 @@ function zeroAdvice(m){
   if(!cands.length) return "";
   return `<p class="lastline">この部位を主に使う種目: ${cands.map(c=>c.name).join("、")}</p>`;
 }
+/* 数の表示: 整数はそのまま、半端は小数1桁 */
+function fmtSets(v){
+  const r = Math.round(v*10)/10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+/* 部位ごとの有効セットを横棒で並べたカード。目標線は7日でWEEK_TARGET、14・30日はその日数に比例。
+   図の部位が小さくてタップしづらい問題の代わりにもなるよう、棒をタップしても同じ内訳が開く。
+   並びは今の数値の大小ではなく、体の中で大きい部位（PRIORITY）を先に固定する。
+   数値順だと記録を足すたびに並びが入れ替わり、指の下で棒が動いてしまうため */
+function muscleBarCard(load, days){
+  const target = WEEK_TARGET / 7 * days;
+  const order = Object.keys(MUSCLES).map(k=>({k, v: load[k] || 0}))
+    .sort((a, b) => (PRIORITY[b.k] || 0) - (PRIORITY[a.k] || 0));
+  /* 目盛りいっぱいに余白を持たせる。ちょうど余白が無いと、誰も目標に届いていないときに
+     目標の縦線が右端に張り付いて見えなくなるため */
+  const scaleMax = Math.max(1, target, ...order.map(x=>x.v)) * 1.15;
+  const rows = order.map(x=>{
+    const pct = Math.min(100, x.v / scaleMax * 100);
+    const tpct = Math.min(100, target / scaleMax * 100);
+    const cls = "mbar" + (x.v >= target ? " reach" : "") + (x.k === selMuscle ? " sel" : "");
+    return `<button class="${cls}" data-act="selmuscle" data-m="${x.k}">
+      <span class="mbn">${MUSCLES[x.k]}</span>
+      <span class="mbtrack"><i class="mbfill" style="width:${pct}%"></i><i class="mbtgt" style="left:${tpct}%"></i></span>
+      <span class="mbv num">${fmtSets(x.v)}</span>
+    </button>`;
+  }).join("");
+  return `<div class="card">
+    <h4>部位ごとの有効セット</h4>
+    <p class="lastline" style="margin-top:0">縦線は目標（${days}日で${fmtSets(target)}セット）。大きい部位から並べています。棒をタップすると内訳が出ます。</p>
+    <div class="mbars">${rows}</div>
+  </div>`;
+}
+ACTIONS.selmuscle = el => { selMuscle = el.dataset.m; render(); };
 
 /* ============================================================
    提案（ルールベース。外部通信なし。state.sessions の実績だけで判断する）
@@ -6927,44 +7017,20 @@ function viewPlan(){
 /* ---------- 履歴 ---------- */
 function viewHist(){
   const dates = sortedDates().filter(d=> (state.sessions[d].entries||[]).some(e=>e.sets.length));
-  /* 記録がない端末でも、共有の接続とバックアップからの復元はできるようにする（別の端末の記録を持ってくるため） */
-  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、下の共有か復元から取り込めます。</div>
-    ${typeof syncCard === "function" ? syncCard() : ""}
-    ${typeof storeButtons === "function" ? `<h3 class="sec">バックアップ</h3><div class="card">${storeButtons()}</div>` : ""}`;
+  const addDayRow = `<div class="rowbtns"><button data-act="addpastday">記録していない日を足す</button></div>`;
+  /* 記録がない端末でも、共有の接続とバックアップからの復元はできる（右上の ⚙ の設定のシート） */
+  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、右上の ⚙ の「スマホとPCで記録を共有」か「バックアップから復元」から取り込めます。</div>
+    ${addDayRow}`;
 
   const streakDays = dates.length;
   const totalSets = dates.reduce((a,d)=>a+(state.sessions[d].entries||[]).reduce((x,e)=>x+e.sets.length,0),0);
   const last7 = dates.filter(d=>daysAgo(d)<7).length;
 
-  const perEx = {};
-  dates.slice().reverse().forEach(d=>{
-    (state.sessions[d].entries||[]).forEach(e=>{
-      if(!e.sets.length) return;
-      const ex = EXMAP[e.ex]; if(!ex) return;
-      const vol = ex.kind==="w" ? e.sets.reduce((a,s)=>a+s.w*s.r,0) : e.sets.reduce((a,s)=>a+s.r,0);
-      (perEx[e.ex] = perEx[e.ex] || []).push({d, vol, best: bestSet(e.sets, ex.kind)});
-    });
-  });
-
-  const prog = Object.keys(perEx).map(id=>{
-    const ex = EXMAP[id], rows = perEx[id];
-    const max = Math.max(...rows.map(r=>r.vol), 1);
-    const bars = rows.slice(-12).map(r=>`<i style="height:${Math.max(4, Math.round(r.vol/max*44))}px" title="${fmtDate(r.d)}"></i>`).join("");
-    const first = rows[0], lastR = rows[rows.length-1];
-    const delta = first.vol>0 ? Math.round((lastR.vol/first.vol-1)*100) : 0;
-    const unit = ex.kind==="w" ? "kg·回" : (ex.kind==="t"?"秒":"回");
-    return `<div class="card">
-      <h4>${ex.name}</h4>
-      <div class="spark">${bars}</div>
-      <p class="lastline" style="margin-top:2px">総量 <b>${Math.round(lastR.vol)}</b> ${unit}　最高セット <b>${setText(lastR.best, ex.kind)}</b>${rows.length>1?`　開始時比 <b>${delta>=0?"+":""}${delta}%</b>`:""}</p>
-    </div>`;
-  }).join("");
-
   const table = dates.slice(0,30).map(d=>{
     const s = state.sessions[d];
     const sets = (s.entries||[]).reduce((a,e)=>a+e.sets.length,0);
     const names = (s.entries||[]).filter(e=>e.sets.length).map(e=>EXMAP[e.ex]?EXMAP[e.ex].name:e.ex).join("、");
-    return `<tr><td>${fmtDate(d)}<div style="font-size:11.5px;color:var(--ink-3)">${names}</div>${s.note?`<div style="font-size:11.5px;color:var(--ink-2)">${s.note.replace(/</g,"&lt;")}</div>`:""}</td><td class="n">${sets}</td></tr>`;
+    return `<tr data-act="histday" data-d="${d}"><td>${esc(fmtDate(d))}<div style="font-size:11.5px;color:var(--ink-3)">${esc(names)}</div>${s.note?`<div style="font-size:11.5px;color:var(--ink-2)">${esc(s.note)}</div>`:""}</td><td class="n">${sets}</td></tr>`;
   }).join("");
 
   return `
@@ -6974,23 +7040,370 @@ function viewHist(){
       <p class="lastline">直近7日で ${last7} 回。</p>
     </div>
     <h3 class="sec">種目ごとの推移</h3>
-    ${prog}
+    ${trendCards(dates)}
     <h3 class="sec">セッション</h3>
+    <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
     <div class="card overflowx">
       <table class="hist"><thead><tr><th>日付</th><th style="text-align:right">セット</th></tr></thead><tbody>${table}</tbody></table>
     </div>
-    ${typeof syncCard === "function" ? syncCard() : ""}
+    ${addDayRow}
     <h3 class="sec">書き出し</h3>
     <div class="card">
-      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。</p>
+      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。スマホとPCでの共有（同期）とバックアップは、右上の ⚙ から。</p>
       <div class="rowbtns">
         <button data-act="csv">CSVで保存</button>
         <button data-act="txt">テキストで表示</button>
       </div>
-      ${typeof storeButtons === "function" ? storeButtons() : ""}
     </div>`;
 }
+ACTIONS.histday = el => openDaySheet(el.dataset.d);
+ACTIONS.addpastday = () => openAddDaySheet();
 
+/* ============================================================
+   種目ごとの推移（U10+F4）: (ex, label) ごとに、最高セット・同じ重さでの回数の伸び・
+   回ごとの最高回数の折れ線（SVG）と、自己ベストの印を出す
+   ============================================================ */
+function trendCards(dates){
+  const map = {};
+  dates.slice().reverse().forEach(d=>{
+    const s = state.sessions[d];
+    (s.entries||[]).forEach(e=>{
+      const ex = EXMAP[e.ex]; if(!ex) return;
+      e.sets.forEach(st=>{
+        const label = setLabel(d, e.ex, st);
+        const key = e.ex + "|" + label;
+        (map[key] = map[key] || {ex:e.ex, label, rows:[]}).rows.push({d, st});
+      });
+    });
+  });
+  const groups = Object.keys(map).map(k=>map[k]).sort((a,b)=>{
+    const la = a.rows[a.rows.length-1].d, lb = b.rows[b.rows.length-1].d;
+    return la < lb ? 1 : (la > lb ? -1 : 0);
+  });
+  return groups.map(g=>{
+    const ex = EXMAP[g.ex], rows = g.rows, last = rows[rows.length-1];
+    const best = bestSet(rows.map(r=>r.st), ex.kind);
+    const points = dailyMaxPoints(rows, g.ex, g.label);
+    const growth = repGrowth(rows, ex.kind, {ex:g.ex, label:g.label});
+    /* その日の最後のセットは疲れて数字が落ちがちなので、最新の日にやったセットのうち
+       自己ベストになっているものを（あれば）探す。最後のセットとは限らない */
+    const lastDaySets = rows.filter(r=>r.d===last.d).map(r=>r.st);
+    let pr = "";
+    for(const st of lastDaySets){ pr = prMessage(g.ex, g.label, st, last.d); if(pr) break; }
+    return `<div class="card">
+      <h4>${esc(itemName({ex:g.ex, label:g.label}))}</h4>
+      ${sparkSVG(points)}
+      <p class="lastline" style="margin-top:4px">最高セット <b>${esc(setTextFor({ex:g.ex, label:g.label}, best))}</b></p>
+      ${growth ? `<p class="lastline" style="margin-top:2px">${esc(growth)}</p>` : ""}
+      ${pr ? `<p class="lastline" style="margin-top:2px;color:var(--muscle)"><b>${esc(pr)}</b>　${esc(fmtDate(last.d))}</p>` : ""}
+    </div>`;
+  }).join("");
+}
+/* 日ごとの最高回数（直近20点、折れ線のY値）。pr はその日、この種目・組み方のどれかのセットが
+   そのとき時点の自己ベストだったか（最高回数のセットとは限らない。重さだけ伸びた日もあるため） */
+function dailyMaxPoints(rows, exId, label){
+  const byDate = {};
+  rows.forEach(r=>{
+    const cur = byDate[r.d] || (byDate[r.d] = {v:0, sets:[]});
+    cur.sets.push(r.st);
+    if((r.st.r||0) > cur.v) cur.v = r.st.r||0;
+  });
+  const dates = Object.keys(byDate).sort().slice(-20);
+  return dates.map(d=>{
+    const hit = byDate[d];
+    const pr = hit.sets.some(st => !!prMessage(exId, label, st, d));
+    return {d, v:hit.v, pr};
+  });
+}
+/* 同じ重さでの回数の伸び（最初にその重さを使った日→最近使った日、それぞれ最高回数で比べる）。
+   1セットだけを比べると、疲れて回数が落ちた最後のセットのせいで伸びていても縮んで見えることがある。
+   重さの種目でないときは回数・秒そのものの伸び */
+function repGrowth(rows, kind, item){
+  if(rows.length < 2) return null;
+  const bestOnDay = (list, d) => Math.max(...list.filter(r=>r.d===d).map(r=>r.st.r||0));
+  if(kind === "w"){
+    const w = rows[rows.length-1].st.w;
+    const atW = rows.filter(r=>r.st.w===w);
+    if(atW.length < 2) return null;
+    const firstDay = atW[0].d, lastDay = atW[atW.length-1].d;
+    if(firstDay === lastDay) return null;          /* 同じ日の中の話は「伸び」ではない */
+    const from = bestOnDay(atW, firstDay), to = bestOnDay(atW, lastDay);
+    if(to === from) return null;
+    return kgFor(item, w) + "での回数　" + from + "回 → " + to + "回";
+  }
+  const firstDay = rows[0].d, lastDay = rows[rows.length-1].d;
+  if(firstDay === lastDay) return null;
+  const from = bestOnDay(rows, firstDay), to = bestOnDay(rows, lastDay);
+  if(to === from) return null;
+  const unit = kind === "t" ? "秒" : "回";
+  return unit + "　" + from + unit + " → " + to + unit;
+}
+/* 小さな折れ線（SVG、外部ライブラリなし）。pr の点は大きい丸で強調する */
+function sparkSVG(points){
+  if(!points.length) return `<p class="lastline" style="margin:4px 0">まだ記録がありません。</p>`;
+  const W = 300, H = 54, padX = 8, padY = 9;
+  const vals = points.map(p=>p.v);
+  const vmin = Math.min(...vals), vmax = Math.max(...vals);
+  const span = Math.max(1, vmax - vmin);
+  const n = points.length;
+  const x = i => n===1 ? W/2 : padX + (W - padX*2) * i / (n-1);
+  const y = v => H - padY - (H - padY*2) * (v - vmin) / span;
+  const line = points.map((p,i)=>x(i).toFixed(1)+","+y(p.v).toFixed(1)).join(" ");
+  const dots = points.map((p,i)=>{
+    const cx = x(i).toFixed(1), cy = y(p.v).toFixed(1);
+    return `<circle cx="${cx}" cy="${cy}" r="${p.pr?3.6:2.2}" class="${p.pr?"prdot":"trenddot"}"><title>${esc(fmtDate(p.d))}　${p.v}</title></circle>`;
+  }).join("");
+  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="回数の推移">
+    <polyline points="${line}" class="trendpath"/>${dots}
+  </svg>`;
+}
+/* 自己ベストの判定。同じ ex・組み方の中で、date・set より前の記録とだけ比べる。
+   重さの種目: 「同じ重さ以上で最多回数」か「最重量」。回数・秒の種目: 最多。
+   更新したときだけ「自己ベスト: …」を返す（比べる前の記録が無いときは、まだ「更新」ではないので出さない） */
+function historySetsFor(exId, label){
+  const out = [];
+  sortedDates().slice().reverse().forEach(d=>{
+    const s = state.sessions[d];
+    (s.entries||[]).forEach(e=>{
+      if(e.ex !== exId) return;
+      e.sets.forEach(st=>{ if(setLabel(d, exId, st) === (label||"")) out.push({d, st}); });
+    });
+  });
+  return out;
+}
+function prMessage(exId, label, set, date){
+  const ex = EXMAP[exId];
+  if(!ex || !set || set.r === undefined || set.r === null) return "";
+  const all = historySetsFor(exId, label || "");
+  let selfIdx = -1;
+  for(let i = all.length - 1; i >= 0; i--){
+    if(all[i].st === set || (set.id && all[i].st.id === set.id)){ selfIdx = i; break; }
+  }
+  /* set がまだ historySetsFor に載っていない（記録前に呼ばれた）ときは、その日のぶんも
+     「前」として数える。同じ日の先のセットを見落とすと、その日のうちの2セット目・3セット目が
+     不当に自己ベスト扱いになる */
+  const prior = (selfIdx >= 0 ? all.slice(0, selfIdx) : all.filter(x=>x.d <= date)).map(x=>x.st);
+  if(!prior.length) return "";
+  const r = set.r;
+  if(ex.kind === "w"){
+    const w = set.w || 0;
+    const maxWPrior = Math.max(0, ...prior.map(x=>x.w||0));
+    const priorAtOrAbove = prior.filter(x=>(x.w||0) >= w);
+    const maxRAtWeight = priorAtOrAbove.length ? Math.max(...priorAtOrAbove.map(x=>x.r||0)) : -1;
+    const isHeaviest = w > maxWPrior;
+    const isMostReps = priorAtOrAbove.length > 0 && r > maxRAtWeight;
+    const it = {ex:exId, label:label || ""};
+    if(isHeaviest && isMostReps) return "自己ベスト: 最重量・最多回数（" + kgFor(it, w) + "×" + r + "回）";
+    if(isHeaviest) return "自己ベスト: 最重量（" + kgFor(it, w) + "×" + r + "回）";
+    if(isMostReps) return "自己ベスト: " + kgFor(it, w) + "以上で最多回数（" + r + "回）";
+    return "";
+  }
+  const maxR = Math.max(...prior.map(x=>x.r||0));
+  if(r > maxR) return "自己ベスト: 最多" + (ex.kind === "t" ? "（" + r + "秒）" : "（" + r + "回）");
+  return "";
+}
+
+/* ============================================================
+   履歴の日付シート（U9+F3）: その日の中身を見る・直す
+   ============================================================ */
+let histAdding = false;         /* セットを追加のフォームを開いているか */
+let histAddKey = null;          /* フォームで選んでいる ex|label */
+let histUndo = null;             /* {date, exId, set} 消した直後の取り消し用 */
+let histUndoTimer = null;
+
+function noonAt(date){ return asDate(date).getTime() + 12*3600*1000; }
+function splitKey(k){ const i = (k||"").indexOf("|"); return i < 0 ? [k||"", ""] : [k.slice(0,i), k.slice(i+1)]; }
+/* 種目選び（catalog() を動きごとにグループ化した <optgroup>） */
+function exOptionsHTML(selectedKey){
+  const groups = {};
+  catalog().forEach(row=>{
+    const p = patternOf(row.ex);
+    (groups[p] = groups[p] || []).push(row);
+  });
+  return PATTERN_ORDER.filter(p=>groups[p] && groups[p].length).map(p=>{
+    const opts = groups[p].map(row=>{
+      const key = row.ex + "|" + (row.label || "");
+      return `<option value="${esc(key)}"${key===selectedKey?" selected":""}>${esc(itemName(row))}</option>`;
+    }).join("");
+    return `<optgroup label="${esc(PATTERN_HEAD[p] || p)}">${opts}</optgroup>`;
+  }).join("");
+}
+/* その日の記録を (ex, label) ごとにまとめる */
+function dayGroups(date){
+  const s = state.sessions[date], groups = [];
+  (s && s.entries || []).forEach(e=>{
+    if(!EXMAP[e.ex]) return;
+    e.sets.forEach(st=>{
+      const label = setLabel(date, e.ex, st), key = e.ex + "|" + label;
+      let g = groups.find(x=>x.key===key);
+      if(!g){ g = {ex:e.ex, label, key, sets:[]}; groups.push(g); }
+      g.sets.push(st);
+    });
+  });
+  return groups;
+}
+function openDaySheet(date){
+  histAdding = false; histAddKey = null;
+  renderDaySheet(date);
+  sheet.classList.add("on");
+}
+function addSetFormHTML(date, groups){
+  const defKey = groups[0] ? groups[0].key : (catalog()[0] ? catalog()[0].ex + "|" + (catalog()[0].label||"") : "");
+  const key = histAddKey || defKey;
+  const [exId] = splitKey(key);
+  const ex = EXMAP[exId] || EXMAP[catalog()[0].ex];
+  return `<div class="card">
+    <h4>セットを追加</h4>
+    <div class="fld"><label>種目</label><select id="haddex">${exOptionsHTML(key)}</select></div>
+    <div class="entry" style="margin-top:10px">
+      ${ex.kind==="w" ? `<div class="fld"><label>重さ kg</label><input type="number" id="haddw" step="0.5" min="0" inputmode="decimal"></div>` : ""}
+      <div class="fld"><label>${ex.kind==="t"?"秒":"回数"}</label><input type="number" id="haddr" min="1" inputmode="numeric"></div>
+      <div class="fld"><label>きつさ 1-10（任意）</label><input type="number" id="hadde" min="1" max="10" inputmode="numeric"></div>
+    </div>
+    <p class="lastline" id="haddmsg" style="min-height:16px"></p>
+    <div class="rowbtns"><button id="haddgo">この内容で追加</button><button id="haddcancel">やめる</button></div>
+  </div>`;
+}
+function renderDaySheet(date){
+  const s = state.sessions[date];
+  const groups = dayGroups(date);
+  const noteVal = (s && s.note) || "";
+  const showUndo = !!(histUndo && histUndo.date === date);
+
+  const rowsHTML = groups.length ? groups.map(g=>{
+    const ex = EXMAP[g.ex];
+    const lines = g.sets.map(st=>`
+      <div class="setline">
+        <span class="val num">${esc(setTextFor({ex:g.ex, label:g.label}, st))}</span>
+        ${st.rpe?`<span class="rpe">きつさ ${st.rpe}</span>`:""}
+        <button class="del" data-hex="${esc(g.ex)}" data-hid="${esc(st.id||"")}" aria-label="このセットを消す">×</button>
+      </div>`).join("");
+    return `<div class="card"><h4>${esc(itemName({ex:g.ex, label:g.label}))}</h4>${lines}</div>`;
+  }).join("") : `<p class="lastline" style="margin-top:0">この日の記録はまだありません。</p>`;
+
+  sheetInner.innerHTML = `<div data-histday="${esc(date)}" hidden></div>
+    <h4>${esc(fmtDate(date))}の記録</h4>
+    ${showUndo ? `<div class="flash">セットを消しました。<button id="hundo">取り消す</button></div>` : ""}
+    ${rowsHTML}
+    ${histAdding ? addSetFormHTML(date, groups) : `<div class="rowbtns"><button id="haddopen">セットを追加</button></div>`}
+    <div class="card">
+      <h4>メモ</h4>
+      <textarea id="hnote" placeholder="睡眠、体調、気づいたこと。">${esc(noteVal)}</textarea>
+    </div>
+    <div class="rowbtns"><button id="hclose">閉じる</button></div>`;
+
+  sheetInner.querySelectorAll(".del[data-hid]").forEach(b=>{
+    b.onclick = ()=> histDeleteSet(date, b.dataset.hex, b.dataset.hid);
+  });
+  if(showUndo){
+    const u = sheetInner.querySelector("#hundo");
+    if(u) u.onclick = histUndoDelete;
+  }
+  const openBtn = sheetInner.querySelector("#haddopen");
+  if(openBtn) openBtn.onclick = ()=>{ histAdding = true; histAddKey = null; renderDaySheet(date); };
+  const exSel = sheetInner.querySelector("#haddex");
+  if(exSel){
+    exSel.onchange = ()=>{ histAddKey = exSel.value; renderDaySheet(date); };
+    sheetInner.querySelector("#haddcancel").onclick = ()=>{ histAdding = false; renderDaySheet(date); };
+    sheetInner.querySelector("#haddgo").onclick = ()=>{
+      const [exId, label] = splitKey(exSel.value);
+      const ex = EXMAP[exId];
+      const msgEl = sheetInner.querySelector("#haddmsg");
+      const rIn = sheetInner.querySelector("#haddr"), wIn = sheetInner.querySelector("#haddw"), eIn = sheetInner.querySelector("#hadde");
+      const r = Math.round(parseFloat((rIn && rIn.value) || ""));
+      if(!r || r < 1){ msgEl.textContent = (ex.kind==="t"?"秒数":"回数") + "を入れてください"; return; }
+      let w;
+      if(ex.kind === "w"){
+        w = parseFloat((wIn && wIn.value) || "");
+        if(isNaN(w) || w < 0){ msgEl.textContent = "重さを入れてください"; return; }
+      }
+      const st = {id:newSetId(), at:noonAt(date), r};
+      if(ex.kind === "w") st.w = w;
+      const epv = eIn ? parseFloat(eIn.value) : NaN;
+      if(!isNaN(epv) && epv >= 1 && epv <= 10) st.rpe = Math.round(epv);
+      /* label は組み方を選ばなかったときも "" を明示して入れる。無いままだと setLabel() が
+         その日の plan から拾ってしまい、たまたま別の組み方に化けることがある */
+      st.label = label || "";
+      entryFor(date, exId, true).sets.push(st);
+      persistSession(date);
+      if(typeof syncNow === "function") syncNow();
+      histAdding = false; histAddKey = null;
+      render();
+      renderDaySheet(date);
+    };
+  }
+  const noteEl = sheetInner.querySelector("#hnote");
+  if(noteEl){
+    let t = null;
+    noteEl.oninput = ()=>{
+      clearTimeout(t);
+      t = setTimeout(()=>{
+        const sx = session(date);
+        sx.note = noteEl.value; sx.noteAt = Date.now();
+        persistSession(date);
+        if(typeof syncNow === "function") syncNow();
+        render();
+      }, 600);
+    };
+  }
+  sheetInner.querySelector("#hclose").onclick = ()=> sheet.classList.remove("on");
+}
+/* 確認なしで消し、5秒だけ取り消せるようにする */
+function histDeleteSet(date, exId, setId){
+  const s = state.sessions[date]; if(!s) return;
+  const e = (s.entries||[]).find(x=>x.ex===exId); if(!e) return;
+  const idx = e.sets.findIndex(x=>x.id===setId); if(idx < 0) return;
+  const removed = e.sets.splice(idx,1)[0];
+  if(removed.id) s.del = (s.del||[]).concat([removed.id]);
+  if(!e.sets.length) s.entries = s.entries.filter(x=>x!==e);
+  persistSession(date);
+  if(typeof syncNow === "function") syncNow();
+  clearTimeout(histUndoTimer);
+  histUndo = {date, exId, set: removed};
+  histUndoTimer = setTimeout(()=>{
+    histUndo = null;
+    /* シート全体を作り直さない。セットを追加のフォームを書きかけている途中かもしれないので、
+       消えるべきは「取り消す」の帯だけ */
+    const marker = sheetInner.querySelector("[data-histday]");
+    if(marker && marker.dataset.histday === date){
+      const flash = sheetInner.querySelector(".flash");
+      if(flash) flash.remove();
+    }
+  }, 5000);
+  render();
+  renderDaySheet(date);
+}
+function histUndoDelete(){
+  if(!histUndo) return;
+  clearTimeout(histUndoTimer);
+  const {date, exId, set} = histUndo;
+  histUndo = null;
+  const s = session(date);
+  /* 消した id は del に残したままにする（同期の del は集合として増える一方の印なので、
+     ここで local から外しても、後で他端末やリモートと合流したときに復活し損ねてまた消える。
+     代わりに新しい id を振って、別のセットとして書き戻す */
+  let e = s.entries.find(x=>x.ex===exId);
+  if(!e){ e = {ex:exId, sets:[]}; s.entries.push(e); }
+  e.sets.push(Object.assign({}, set, {id: newSetId()}));
+  persistSession(date);
+  if(typeof syncNow === "function") syncNow();
+  render();
+  renderDaySheet(date);
+}
+/* 記録していない日を足す（今日以前の日付だけ選べる） */
+function openAddDaySheet(){
+  sheetInner.innerHTML = `<h4>記録していない日を足す</h4>
+    <p class="lastline" style="margin-top:0">日付を選ぶと、その日の記録シートが開きます。</p>
+    <div class="fld"><label>日付</label><input type="date" id="adddate" max="${TODAY}" value="${TODAY}"></div>
+    <div class="rowbtns"><button id="haddayGo">この日を開く</button><button id="haddayClose">閉じる</button></div>`;
+  sheetInner.querySelector("#haddayGo").onclick = ()=>{
+    const v = sheetInner.querySelector("#adddate").value;
+    if(!v || v > TODAY) return;
+    openDaySheet(v);
+  };
+  sheetInner.querySelector("#haddayClose").onclick = ()=> sheet.classList.remove("on");
+  sheet.classList.add("on");
+}
 /* ============================================================
    イベント
    ============================================================ */
@@ -7367,20 +7780,63 @@ function addAutoToday(){
 const sheet = document.getElementById("sheet");
 const sheetInner = document.getElementById("sheetInner");
 sheet.onclick = (e)=>{ if(e.target===sheet) sheet.classList.remove("on"); };
+/* Escキーでも閉じる（種目を選ぶシートに限らず、この#sheetを使うどの画面でも閉じてよい） */
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Escape" && sheet.classList.contains("on")) sheet.classList.remove("on");
+});
+
+/* 動きの見出し（種目を選ぶシートと、履歴の「セットを追加」の種目選びで共通に使う） */
+const PATTERN_HEAD = {
+  squat:"しゃがむ（スクワット系）", lunge:"踏み込む（ランジ系）", hinge:"股関節を折る（ヒンジ系）",
+  hpush:"床を押す（腕立て系）", fly:"胸を開閉する（フライ）", pull:"引く（ロウ系）",
+  vpush:"上に押す（プレス系）", bridge:"お尻を上げる（ヒップリフト系）", carry:"持って歩く",
+  shrug:"肩をすくめる", raise:"腕を上げる（レイズ）", curl:"肘を曲げる（カール）",
+  ext:"肘を伸ばす（エクステンション）", calf:"かかとを上げる（カーフ）", abs:"腹を固める・丸める",
+  side:"横に曲げる・支える"
+};
+
+/* 種目に付ける小さな印（今日のメニュー・昨日の動き・回復中） */
+function pickerTags(id){
+  let out = "";
+  if(todayItems().some(it=>it.ex===id)) out += `<span class="pktag plan">今日のメニューにある</span>`;
+  if(patternsYesterday().has(patternOf(id))) out += `<span class="pktag">昨日やった動き</span>`;
+  if(tiredMuscle(id)) out += `<span class="pktag warn">回復中</span>`;
+  return out;
+}
+/* 種目の下に並べる組み方（catalog() の中で同じ ex・label ありの行） */
+function pickerVariants(id){
+  const rows = catalog().filter(c=>c.ex===id && c.label);
+  if(!rows.length) return "";
+  return `<div class="pickvariants">` + rows.map(v=>{
+    const m = /[（(]([^）)]+)[）)]\s*$/.exec(v.label);
+    const short = m ? m[1] : v.label;
+    return `<button class="pickvariant" data-pick="${esc(id)}" data-label="${esc(v.label)}">${esc(short)}${v.note?`<span>${esc(v.note)}</span>`:""}</button>`;
+  }).join("") + `</div>`;
+}
 
 function openPicker(){
   const lvText = {1:"やさしい", 2:"標準", 3:"難しい"};
+  const groups = {};
+  EX.forEach(e=>{ const p = patternOf(e.id); (groups[p] = groups[p] || []).push(e); });
+  const body = PATTERN_ORDER.filter(p=>groups[p] && groups[p].length).map(p=>{
+    const items = groups[p].map(e=>`
+      <div class="pickgroup">
+        <button class="pickmain" data-pick="${esc(e.id)}">${esc(e.name)}${pickerTags(e.id)}<span>${e.p.map(m=>MUSCLES[m]).join("・")}　${lvText[e.level || 2]}</span></button>
+        ${pickerVariants(e.id)}
+      </div>`).join("");
+    return `<h4 class="pickhead">${esc(PATTERN_HEAD[p] || p)}</h4><div class="picklist">${items}</div>`;
+  }).join("");
+
   sheetInner.innerHTML = `<h4>種目を選んで追加</h4>
     <p class="lastline" style="margin-top:0">回復や1日の上限は見ません。アプリに選ばせるときは「おまかせで1種目追加」を使ってください。</p>
-    <div class="picklist">` +
-    EX.map(e=>`<button data-pick="${e.id}">${e.name}<span>${e.p.map(m=>MUSCLES[m]).join("・")}　${lvText[e.level || 2]}</span></button>`).join("") +
-    `</div>`;
+    ${body}
+    <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
   sheetInner.querySelectorAll("[data-pick]").forEach(b=>{
-    b.onclick = ()=>{ sheet.classList.remove("on"); addToProgramToday(b.dataset.pick); };
+    b.onclick = ()=>{ sheet.classList.remove("on"); addToProgramToday(b.dataset.pick, b.dataset.label || ""); };
   });
+  sheetInner.querySelector("[data-close]").onclick = ()=> sheet.classList.remove("on");
   sheet.classList.add("on");
 }
-
 /* ---------- 書き出し ---------- */
 function buildCSV(){
   const rows = [["日付","種目","セット","重量kg","回数/秒","きつさ","メモ"]];

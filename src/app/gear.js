@@ -162,6 +162,8 @@ function wStored(item, shown){
   return o ? o.total : Math.round(shown * (isOneHanded(item) ? 1 : 2) * 10) / 10;
 }
 function wUnit(item){ return perArm(item.ex) ? "kg（片手）" : "kg"; }
+/* 「5kg」「片手 5kg」の書き方（記録は合計の重さ） */
+function kgFor(item, total){ return (perArm(item.ex) ? "片手 " : "") + kgText(wShown(item, total)); }
 
 /* 日用品で負荷を変えるやり方（ダンベルは買い足さない前提） */
 const HOUSE = {

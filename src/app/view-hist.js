@@ -2,11 +2,9 @@
 function viewHist(){
   const dates = sortedDates().filter(d=> (state.sessions[d].entries||[]).some(e=>e.sets.length));
   const addDayRow = `<div class="rowbtns"><button data-act="addpastday">記録していない日を足す</button></div>`;
-  /* 記録がない端末でも、共有の接続とバックアップからの復元はできるようにする（別の端末の記録を持ってくるため） */
-  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、下の共有か復元から取り込めます。</div>
-    ${addDayRow}
-    ${typeof syncCard === "function" ? syncCard() : ""}
-    ${typeof storeButtons === "function" ? `<h3 class="sec">バックアップ</h3><div class="card">${storeButtons()}</div>` : ""}`;
+  /* 記録がない端末でも、共有の接続とバックアップからの復元はできる（右上の ⚙ の設定のシート） */
+  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、右上の ⚙ の「スマホとPCで記録を共有」か「バックアップから復元」から取り込めます。</div>
+    ${addDayRow}`;
 
   const streakDays = dates.length;
   const totalSets = dates.reduce((a,d)=>a+(state.sessions[d].entries||[]).reduce((x,e)=>x+e.sets.length,0),0);
@@ -33,15 +31,13 @@ function viewHist(){
       <table class="hist"><thead><tr><th>日付</th><th style="text-align:right">セット</th></tr></thead><tbody>${table}</tbody></table>
     </div>
     ${addDayRow}
-    ${typeof syncCard === "function" ? syncCard() : ""}
     <h3 class="sec">書き出し</h3>
     <div class="card">
-      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。</p>
+      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。スマホとPCでの共有（同期）とバックアップは、右上の ⚙ から。</p>
       <div class="rowbtns">
         <button data-act="csv">CSVで保存</button>
         <button data-act="txt">テキストで表示</button>
       </div>
-      ${typeof storeButtons === "function" ? storeButtons() : ""}
     </div>`;
 }
 ACTIONS.histday = el => openDaySheet(el.dataset.d);
@@ -72,7 +68,7 @@ function trendCards(dates){
     const ex = EXMAP[g.ex], rows = g.rows, last = rows[rows.length-1];
     const best = bestSet(rows.map(r=>r.st), ex.kind);
     const points = dailyMaxPoints(rows, g.ex, g.label);
-    const growth = repGrowth(rows, ex.kind);
+    const growth = repGrowth(rows, ex.kind, {ex:g.ex, label:g.label});
     /* その日の最後のセットは疲れて数字が落ちがちなので、最新の日にやったセットのうち
        自己ベストになっているものを（あれば）探す。最後のセットとは限らない */
     const lastDaySets = rows.filter(r=>r.d===last.d).map(r=>r.st);
@@ -81,7 +77,7 @@ function trendCards(dates){
     return `<div class="card">
       <h4>${esc(itemName({ex:g.ex, label:g.label}))}</h4>
       ${sparkSVG(points)}
-      <p class="lastline" style="margin-top:4px">最高セット <b>${esc(setText(best, ex.kind))}</b></p>
+      <p class="lastline" style="margin-top:4px">最高セット <b>${esc(setTextFor({ex:g.ex, label:g.label}, best))}</b></p>
       ${growth ? `<p class="lastline" style="margin-top:2px">${esc(growth)}</p>` : ""}
       ${pr ? `<p class="lastline" style="margin-top:2px;color:var(--muscle)"><b>${esc(pr)}</b>　${esc(fmtDate(last.d))}</p>` : ""}
     </div>`;
@@ -106,7 +102,7 @@ function dailyMaxPoints(rows, exId, label){
 /* 同じ重さでの回数の伸び（最初にその重さを使った日→最近使った日、それぞれ最高回数で比べる）。
    1セットだけを比べると、疲れて回数が落ちた最後のセットのせいで伸びていても縮んで見えることがある。
    重さの種目でないときは回数・秒そのものの伸び */
-function repGrowth(rows, kind){
+function repGrowth(rows, kind, item){
   if(rows.length < 2) return null;
   const bestOnDay = (list, d) => Math.max(...list.filter(r=>r.d===d).map(r=>r.st.r||0));
   if(kind === "w"){
@@ -117,7 +113,7 @@ function repGrowth(rows, kind){
     if(firstDay === lastDay) return null;          /* 同じ日の中の話は「伸び」ではない */
     const from = bestOnDay(atW, firstDay), to = bestOnDay(atW, lastDay);
     if(to === from) return null;
-    return kgText(w) + "での回数　" + from + "回 → " + to + "回";
+    return kgFor(item, w) + "での回数　" + from + "回 → " + to + "回";
   }
   const firstDay = rows[0].d, lastDay = rows[rows.length-1].d;
   if(firstDay === lastDay) return null;
@@ -180,9 +176,10 @@ function prMessage(exId, label, set, date){
     const maxRAtWeight = priorAtOrAbove.length ? Math.max(...priorAtOrAbove.map(x=>x.r||0)) : -1;
     const isHeaviest = w > maxWPrior;
     const isMostReps = priorAtOrAbove.length > 0 && r > maxRAtWeight;
-    if(isHeaviest && isMostReps) return "自己ベスト: 最重量・最多回数（" + kgText(w) + "×" + r + "回）";
-    if(isHeaviest) return "自己ベスト: 最重量（" + kgText(w) + "×" + r + "回）";
-    if(isMostReps) return "自己ベスト: " + kgText(w) + "以上で最多回数（" + r + "回）";
+    const it = {ex:exId, label:label || ""};
+    if(isHeaviest && isMostReps) return "自己ベスト: 最重量・最多回数（" + kgFor(it, w) + "×" + r + "回）";
+    if(isHeaviest) return "自己ベスト: 最重量（" + kgFor(it, w) + "×" + r + "回）";
+    if(isMostReps) return "自己ベスト: " + kgFor(it, w) + "以上で最多回数（" + r + "回）";
     return "";
   }
   const maxR = Math.max(...prior.map(x=>x.r||0));
@@ -195,8 +192,8 @@ function prMessage(exId, label, set, date){
    ============================================================ */
 let histAdding = false;         /* セットを追加のフォームを開いているか */
 let histAddKey = null;          /* フォームで選んでいる ex|label */
-let undoDel = null;             /* {date, exId, set} 消した直後の取り消し用 */
-let undoTimer = null;
+let histUndo = null;             /* {date, exId, set} 消した直後の取り消し用 */
+let histUndoTimer = null;
 
 function noonAt(date){ return asDate(date).getTime() + 12*3600*1000; }
 function splitKey(k){ const i = (k||"").indexOf("|"); return i < 0 ? [k||"", ""] : [k.slice(0,i), k.slice(i+1)]; }
@@ -255,13 +252,13 @@ function renderDaySheet(date){
   const s = state.sessions[date];
   const groups = dayGroups(date);
   const noteVal = (s && s.note) || "";
-  const showUndo = !!(undoDel && undoDel.date === date);
+  const showUndo = !!(histUndo && histUndo.date === date);
 
   const rowsHTML = groups.length ? groups.map(g=>{
     const ex = EXMAP[g.ex];
     const lines = g.sets.map(st=>`
       <div class="setline">
-        <span class="val num">${esc(setText(st, ex.kind))}</span>
+        <span class="val num">${esc(setTextFor({ex:g.ex, label:g.label}, st))}</span>
         ${st.rpe?`<span class="rpe">きつさ ${st.rpe}</span>`:""}
         <button class="del" data-hex="${esc(g.ex)}" data-hid="${esc(st.id||"")}" aria-label="このセットを消す">×</button>
       </div>`).join("");
@@ -345,10 +342,10 @@ function histDeleteSet(date, exId, setId){
   if(!e.sets.length) s.entries = s.entries.filter(x=>x!==e);
   persistSession(date);
   if(typeof syncNow === "function") syncNow();
-  clearTimeout(undoTimer);
-  undoDel = {date, exId, set: removed};
-  undoTimer = setTimeout(()=>{
-    undoDel = null;
+  clearTimeout(histUndoTimer);
+  histUndo = {date, exId, set: removed};
+  histUndoTimer = setTimeout(()=>{
+    histUndo = null;
     /* シート全体を作り直さない。セットを追加のフォームを書きかけている途中かもしれないので、
        消えるべきは「取り消す」の帯だけ */
     const marker = sheetInner.querySelector("[data-histday]");
@@ -361,10 +358,10 @@ function histDeleteSet(date, exId, setId){
   renderDaySheet(date);
 }
 function histUndoDelete(){
-  if(!undoDel) return;
-  clearTimeout(undoTimer);
-  const {date, exId, set} = undoDel;
-  undoDel = null;
+  if(!histUndo) return;
+  clearTimeout(histUndoTimer);
+  const {date, exId, set} = histUndo;
+  histUndo = null;
   const s = session(date);
   /* 消した id は del に残したままにする（同期の del は集合として増える一方の印なので、
      ここで local から外しても、後で他端末やリモートと合流したときに復活し損ねてまた消える。

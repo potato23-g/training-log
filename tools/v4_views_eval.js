@@ -65,7 +65,8 @@ setTimeout(async () => {
       sheetClosed: !sheet.classList.contains("on"),
       tabIsToday: tab === "today",
       openExIsGoblet: openEx === "goblet",
-      entryExists: !!entryFor(TODAY, "goblet", false)
+      /* 記録の箱はセットを記録したときに作られる。選んだ時点では今日のメニューに組み方ごと入るだけ */
+      planHasVariant: (session(TODAY).plan || []).some(x => x.ex === "goblet" && (x.label || "") === r.picker.variantLabel && x.manual)
     };
 
     openPicker();
@@ -249,7 +250,7 @@ setTimeout(async () => {
     mkSet(skullLate, "skull", 12, { w: 12 });
     mkSet(skullLate, "skull", 10, { w: 12 });
     const skullRows = historySetsFor("skull", "");
-    r.pr.fatigueGrowth = repGrowth(skullRows, "w");
+    r.pr.fatigueGrowth = repGrowth(skullRows, "w", { ex: "skull", label: "" });
     r.pr.fatigueGrowthOk = !!r.pr.fatigueGrowth && r.pr.fatigueGrowth.indexOf("12回 → 14回") >= 0;
 
     /* ======== U10+F4: 種目ごとの推移（折れ線・自己ベストの印） ======== */
@@ -273,7 +274,7 @@ setTimeout(async () => {
     check("picker.afterVariantClick.sheetClosed", r.picker.afterVariantClick.sheetClosed);
     check("picker.afterVariantClick.tabIsToday", r.picker.afterVariantClick.tabIsToday);
     check("picker.afterVariantClick.openExIsGoblet", r.picker.afterVariantClick.openExIsGoblet);
-    check("picker.afterVariantClick.entryExists", r.picker.afterVariantClick.entryExists);
+    check("picker.afterVariantClick.planHasVariant", r.picker.afterVariantClick.planHasVariant);
     check("picker.closeBtnWorks", r.picker.closeBtnWorks);
     check("picker.escWorks", r.picker.escWorks);
     check("body.count===expectedCount", r.body.count === r.body.expectedCount);
