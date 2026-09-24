@@ -38,8 +38,11 @@
   }
   if(look === "settings"){
     T.reset([{kg:5, n:2}]);
-    const hs = T.qa("h3.sec").filter(h => /休憩おわり/.test(h.textContent));
-    if(hs[0]) window.scrollTo(0, hs[0].getBoundingClientRect().top + window.scrollY - 12);
+    /* 設定は右上⚙のシート（openSettings）に移った。以前はページ内の見出しへスクロールしていたが、
+       その見出し文言「休憩おわり」はもう無い（今は「休憩の終わりを知らせる」でシートの中） */
+    openSettings();
+    const hs = T.qa("h3.sec").filter(h => /休憩の終わりを知らせる/.test(h.textContent));
+    if(hs[0]) hs[0].scrollIntoView({block: "start"});
   }
   if(look === "plan"){
     T.reset([{kg:5, n:2}, {kg:8, n:2}]);
