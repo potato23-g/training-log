@@ -83,8 +83,9 @@ function todayAdvice(item, sug){
     if(p.change === "stepped-down") return {level:"easier", short:"段を下げた", text: p.why + "。"};
     if(p.change === "harder") return {level:"harder", short:"次は上の段", text: p.why + "。"};
     if(p.change === "easier") return {level:"easier", warn:true, short:"次は下の段", text: p.why + "。"};
-    if(p.change === "top") return {level:"top", short:"一番上の段", text: p.why + "。"};
-    if(p.change === "deload") return {level:"deload", short:"軽い週", text: p.why + "。"};
+    /* 一番上の段・軽い週は毎回のことなので、見出しの札にはしない（カードの中の一言だけ） */
+    if(p.change === "top") return {level:"top", short:"", text: p.why + "。"};
+    if(p.change === "deload") return {level:"deload", short:"", text: p.why + "。"};
   }
   return null;
 }

@@ -26,9 +26,11 @@ function ladderRows(){
     const K = patternNext(pat);
     if(!K) return;
     const p = progressFor(K), u = unitOf(EXMAP[K.ex].kind);
+    const hs = houseOf(K.ex);
+    const tip = hs.up ? "。次の一手は「" + gearText(hs.up) + "」" : "";
     let next;
     if(p.change === "top"){
-      next = "今の道具では一番上の段です" + (houseOf(K.ex).up ? "。もっと重くするなら「" + gearText(houseOf(K.ex).up) + "」" : "");
+      next = "今の道具では、この動きの一番上の段で、回数も上限です" + tip;
     }else{
       const opts = itemOptions(K), i = p.opt ? optionIndex(opts, p.opt) : -1, nx = i >= 0 ? opts[i + 1] : null;
       const heavier = nx && (nx.key <= p.opt.key * PROG.jumpRatio || nx.key - p.opt.key <= PROG.jumpKg);
@@ -36,7 +38,7 @@ function ladderRows(){
       const left = Math.max(0, Math.round((p.hi - p.target) / p.step)) + 1;   /* 今日を含めて、上限の回に届くまでの回数 */
       next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを一段重く（" + nx.text + "）"
            : up ? "あと" + left + "回のトレーニングで「" + itemName(up) + "」へ"
-           : "今の道具では一番上の段です";
+           : "あと" + left + "回のトレーニングで" + u + "数の上限（" + p.hi + "）。今の道具では、この先の段はありません";
     }
     out.push({pat, item: K, p, u, next});
   });

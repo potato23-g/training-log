@@ -162,7 +162,7 @@ function progressFor(item){
             res.target = rr.hi; res.change = "top";
             const hs = houseOf(id);
             res.why = "今の道具では、この動きの一番上の段です。" + u + "数は上限のまま続けます"
-                    + (hs.up ? "。もっと重くするなら「" + gearText(hs.up) + "」" : "");
+                    + (hs.up ? "。次の一手は「" + gearText(hs.up) + "」" : "");
           }
         }
       }

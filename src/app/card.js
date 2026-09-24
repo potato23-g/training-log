@@ -104,7 +104,7 @@ function exRow(item){
 
   return `<div class="exrow">
     <button class="exhead" data-act="toggle" data-ex="${id}">
-      <span><span class="nm">${name}${sideTag}${adv?`<span class="adv ${adv.warn?"warn":""}">${esc(adv.short)}</span>`:""}</span><span class="meta">${esc(parts)}</span></span>
+      <span><span class="nm">${name}${sideTag}${adv && adv.short?`<span class="adv ${adv.warn?"warn":""}">${esc(adv.short)}</span>`:""}</span><span class="meta">${esc(parts)}</span></span>
       <span class="cnt num">${n} / ${target}</span>
     </button>
     ${body}
