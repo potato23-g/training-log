@@ -376,28 +376,28 @@ function exUp(id){ const e=EXMAP[id]; return e.up || EXMAP[baseOf(id)].up; }
 const ROUTINES = [
  {id:"A", name:"脚（前側）", items:[
    {ex:"split", sets:3, r:10, side:true, note:"ベッドに後ろ足を乗せる。両手に1つずつ持つ"},
-   {ex:"goblet", sets:3, r:18, note:"下ろす3秒。2つ担げば10kgになる"},
+   {ex:"goblet", sets:3, r:15, note:"下ろす3秒。2つ担げば10kgになる"},
    {ex:"hipthrust", sets:3, r:18, note:"台が低いぶん可動域は狭い。上で2秒締める"},
    {ex:"calf", sets:3, r:18, side:true, label:"カーフレイズ（片脚）"},
    {ex:"deadbug", sets:3, r:10, side:true}
  ]},
  {id:"B", name:"押す", items:[
-   {ex:"pushup", sets:3, r:10, note:"足をベッドに乗せて角度をきつくする"},
-   {ex:"floorpress", sets:3, r:18, note:"下ろす3秒"},
-   {ex:"ohp", sets:3, r:13},
+   {ex:"pushup", sets:3, r:10},
+   {ex:"floorpress", sets:3, r:12, note:"下ろす3秒"},
+   {ex:"ohp", sets:3, r:12},
    {ex:"lateral", sets:3, r:18, note:"下ろす4秒"},
    {ex:"triext", sets:3, r:13},
    {ex:"plank", sets:2, r:45}
  ]},
  {id:"C", name:"脚（後ろ側）", items:[
    {ex:"rdl1", sets:3, r:11, side:true},
-   {ex:"rdl", sets:3, r:18, note:"下ろす3秒"},
+   {ex:"rdl", sets:3, r:12, note:"下ろす3秒"},
    {ex:"hipthrust", sets:3, r:13, side:true, label:"ヒップスラスト（片脚）"},
    {ex:"calf", sets:3, r:22},
    {ex:"sideplank", sets:2, r:25, side:true}
  ]},
  {id:"D", name:"引く・腕", items:[
-   {ex:"row", sets:4, r:13, side:true, note:"下ろす3秒"},
+   {ex:"row", sets:4, r:12, side:true, note:"下ろす3秒"},
    {ex:"farmer", sets:3, r:50, note:"片手だけで持つと負荷が大きく上がる"},
    {ex:"curl", sets:3, r:13, note:"下ろす4秒"},
    {ex:"crunch", sets:3, r:18},
