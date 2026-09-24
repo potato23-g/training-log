@@ -68,7 +68,9 @@ function fmtSets(v){
    図の部位が小さくてタップしづらい問題の代わりにもなるよう、棒をタップしても同じ内訳が開く */
 function muscleBarCard(ranked, days){
   const target = WEEK_TARGET / 7 * days;
-  const scaleMax = Math.max(1, target, ...ranked.map(x=>x.v));
+  /* 目盛りいっぱいに余白を持たせる。ちょうど余白が無いと、誰も目標に届いていないときに
+     目標の縦線が右端に張り付いて見えなくなるため */
+  const scaleMax = Math.max(1, target, ...ranked.map(x=>x.v)) * 1.15;
   const rows = ranked.map(x=>{
     const pct = Math.min(100, x.v / scaleMax * 100);
     const tpct = Math.min(100, target / scaleMax * 100);

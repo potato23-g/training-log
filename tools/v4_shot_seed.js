@@ -43,15 +43,15 @@ setTimeout(async () => {
   if (mode.indexOf("dark") >= 0) document.documentElement.setAttribute("data-theme", "dark");
 
   if (mode.indexOf("picker") === 0) {
-    tab = "hist"; render();
+    switchTab("hist");
     openPicker();
   } else if (mode.indexOf("histsheet") === 0) {
-    tab = "hist"; render();
+    switchTab("hist");
     openDaySheet(keyDaysAgo(7));
   } else if (mode.indexOf("body") === 0) {
-    tab = "body"; bodyDays = 7; render();
+    bodyDays = 7; switchTab("body");
   } else {
-    tab = "hist"; render();
+    switchTab("hist");
   }
   await new Promise(res => setTimeout(res, 60));
   window.__ready = true;

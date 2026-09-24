@@ -5,10 +5,11 @@
 .pickhead:first-of-type{margin-top:6px}
 .pickgroup{margin-bottom:2px}
 .pickmain{display:block;width:100%}
-.pktag{display:inline-block;font-size:10px;border:1px solid var(--rule);border-radius:3px;
+/* .picklist button span{display:block} が基本スタイルにあるので、印だけは .picklist を付けて上書きする */
+.picklist .pktag{display:inline-block;font-size:10px;border:1px solid var(--rule);border-radius:3px;
   padding:0 4px;margin-left:6px;vertical-align:1px;color:var(--ink-2);font-weight:600}
-.pktag.plan{color:var(--done);border-color:var(--done)}
-.pktag.warn{color:var(--muscle);border-color:var(--muscle)}
+.picklist .pktag.plan{color:var(--done);border-color:var(--done)}
+.picklist .pktag.warn{color:var(--muscle);border-color:var(--muscle)}
 .pickvariants{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px 4px}
 .pickvariant{min-height:44px;display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;
   background:var(--panel-2);border:1px solid var(--rule);border-radius:8px;padding:5px 12px;
@@ -40,4 +41,4 @@ table.hist td{padding:9px 6px}
 
 /* ---- 履歴: 日付シート（U9+F3） ---- */
 .sheet .inner .card{margin-bottom:10px}
-.sheet .inner .setline .del{min-width:38px;min-height:38px}
+.sheet .inner .setline .del{min-width:44px;min-height:44px}
