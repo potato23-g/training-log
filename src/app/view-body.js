@@ -37,7 +37,8 @@ function viewBody(){
         <button data-act="days" data-d="14" ${bodyDays===14?'style="border-color:var(--ink);color:var(--ink)"':''}>14日</button>
         <button data-act="days" data-d="30" ${bodyDays===30?'style="border-color:var(--ink);color:var(--ink)"':''}>30日</button>
       </div>
-    </div>`;
+    </div>
+    ${muscleBarCard(ranked, bodyDays)}`;
   const side = `
     ${detail}
     <div class="card">
@@ -58,4 +59,31 @@ function zeroAdvice(m){
   if(!cands.length) return "";
   return `<p class="lastline">この部位を主に使う種目: ${cands.map(c=>c.name).join("、")}</p>`;
 }
+/* 数の表示: 整数はそのまま、半端は小数1桁 */
+function fmtSets(v){
+  const r = Math.round(v*10)/10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+/* 部位ごとの有効セットを横棒で並べたカード。目標線は7日でWEEK_TARGET、14・30日はその日数に比例。
+   図の部位が小さくてタップしづらい問題の代わりにもなるよう、棒をタップしても同じ内訳が開く */
+function muscleBarCard(ranked, days){
+  const target = WEEK_TARGET / 7 * days;
+  const scaleMax = Math.max(1, target, ...ranked.map(x=>x.v));
+  const rows = ranked.map(x=>{
+    const pct = Math.min(100, x.v / scaleMax * 100);
+    const tpct = Math.min(100, target / scaleMax * 100);
+    const cls = "mbar" + (x.v >= target ? " reach" : "") + (x.k === selMuscle ? " sel" : "");
+    return `<button class="${cls}" data-act="selmuscle" data-m="${x.k}">
+      <span class="mbn">${MUSCLES[x.k]}</span>
+      <span class="mbtrack"><i class="mbfill" style="width:${pct}%"></i><i class="mbtgt" style="left:${tpct}%"></i></span>
+      <span class="mbv num">${fmtSets(x.v)}</span>
+    </button>`;
+  }).join("");
+  return `<div class="card">
+    <h4>部位ごとの有効セット</h4>
+    <p class="lastline" style="margin-top:0">縦線は目標（${days}日で${fmtSets(target)}セット）。大きい部位から並べています。棒をタップすると内訳が出ます。</p>
+    <div class="mbars">${rows}</div>
+  </div>`;
+}
+ACTIONS.selmuscle = el => { selMuscle = el.dataset.m; render(); };
 
