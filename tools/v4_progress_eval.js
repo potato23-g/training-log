@@ -197,6 +197,76 @@
      "A4: 保存済みの古い組み方の行が今の素の組み方で出ていない: " + JSON.stringify(stale));
   ok(/data-dia="goblet"/.test(diaHTML("goblet", false, stale, null)), "A4: 保存済みの古い組み方の行で図が出ない");
 
+  /* ---- 12. 可変式ダンベル: 伸ばし方・文言・goblet が同じ合計なら両肩を選ぶ（C12）(G1) ---- */
+  todayKey = realTodayKey; goTo(realTodayKey());
+  fresh();
+  state.gear = {items: [{adj:true, min:2, max:24, step:2, n:2}], updatedAt: 1};   /* 可変式2〜24kg・2kg刻み×2本のみ */
+  planMemo = null; resetProg();
+  const gobletRow = catalogItem("goblet");
+  const adjOldDay = shift(TODAY, -3);
+  entryFor(adjOldDay, "goblet", true).sets.push(
+    ...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 15, rpe: 8, target: 15, w: 10, label: ""})));
+  resetProg();
+  const pAdj = progressFor(gobletRow);
+  ok(pAdj.change === "heavier", "G1: 可変式のみで前回きつさ8・全部届いたのに一段重くしない: " + pAdj.change + " / " + pAdj.why);
+  ok(!!pAdj.opt && Math.abs(pAdj.opt.total - 12) < 0.01, "G1: 一段重くした先が合計12kgでない: " + (pAdj.opt && pAdj.opt.total));
+  ok(pAdj.target === pAdj.lo, "G1: 一段重くした直後の回数が幅の下限でない: " + pAdj.target + " / lo=" + pAdj.lo);
+  ok(!!pAdj.opt && pAdj.opt.n === 2 && !pAdj.opt.mixed, "G1/C12: goblet が同じ合計でも両肩(2つ)を選ばない: " + JSON.stringify(pAdj.opt));
+  ok(!!pAdj.opt && /可変式ダンベル/.test(pAdj.opt.text) && /6kgにして/.test(pAdj.opt.text),
+     "G1: 使い方の文に「可変式ダンベル」と合わせる重さ(6kg)が出ない: " + (pAdj.opt && pAdj.opt.text));
+
+  /* readGear を通しても可変式の行が失われないこと（保存→読み込み。同期・バックアップも同じ経路） */
+  const rgRound = readGear({items: [{kg:5, n:2}, {adj:true, min:2, max:24, step:2, n:2}, {adj:true, n:1, list:[2.5, 3.5, 4.5]}], updatedAt:5});
+  ok(!!rgRound && rgRound.items.length === 3, "readGear: 可変式を含む行数が保存→読み込みで変わった: " + JSON.stringify(rgRound));
+  const rg1 = rgRound && rgRound.items[1];
+  ok(!!rg1 && rg1.adj && rg1.min === 2 && rg1.max === 24 && rg1.step === 2 && rg1.n === 2,
+     "readGear: 可変式(範囲)の行が保存→読み込みで変わった: " + JSON.stringify(rg1));
+  const rg2 = rgRound && rgRound.items[2];
+  ok(!!rg2 && rg2.adj && Array.isArray(rg2.list) && rg2.list.length === 3,
+     "readGear: 可変式(list)の行が保存→読み込みで変わった: " + JSON.stringify(rg2));
+
+  /* ---- 13. C1: 手で打った重さが使い方に無いとき、＋は次に重い方、−は次に軽い方へ ---- */
+  fresh();
+  state.gear = {items: [{kg:5, n:1}, {kg:9, n:1}], updatedAt: 1};   /* 5kg・9kgだけ持っている（7kgは作れない） */
+  planMemo = null; resetProg();
+  addToProgramToday("goblet");
+  const wIn = document.getElementById("w_goblet");
+  ok(!!wIn, "C1: 重量欄が見つからない");
+  if(wIn){
+    wIn.value = "7";
+    step("w", "goblet", 1);
+    ok(wIn.value === "9", "C1: 7kgから＋で次に重い9kgにならない: " + wIn.value);
+    wIn.value = "7";
+    step("w", "goblet", -1);
+    ok(wIn.value === "5", "C1: 7kgから−で次に軽い5kgにならない: " + wIn.value);
+  }
+
+  /* ---- 14. C5: 秒の種目の±は5秒刻み（回数は1刻みのまま） ---- */
+  fresh(); goTo(base);
+  addToProgramToday("plank");
+  const rIn = document.getElementById("r_plank");
+  ok(!!rIn, "C5: 秒数欄が見つからない");
+  if(rIn){
+    const beforeSec = parseFloat(rIn.value);
+    step("r", "plank", 1);
+    ok(Math.abs(parseFloat(rIn.value) - (beforeSec + 5)) < 1e-9, "C5: 秒の種目の＋が5秒刻みでない: " + beforeSec + " → " + rIn.value);
+  }
+  addToProgramToday("curl");
+  const rIn2 = document.getElementById("r_curl");
+  if(rIn2){
+    const beforeRep = parseFloat(rIn2.value);
+    step("r", "curl", 1);
+    ok(Math.abs(parseFloat(rIn2.value) - (beforeRep + 1)) < 1e-9, "C5: 回数の種目の＋が1刻みでなくなった: " + beforeRep + " → " + rIn2.value);
+  }
+
+  /* ---- 15. C19: ダンベルが1本も無ければ、ダンベルを使う種目・組み方は今日のメニューに出ない ---- */
+  fresh();
+  state.gear = {items: [], updatedAt: 1};
+  planMemo = null; resetProg();
+  const noDbPlan = buildPlan();
+  ok(!noDbPlan.some(it => it.ex === "farmer"), "C19: ダンベル無しでファーマーズウォークが今日のメニューに出る: " + noDbPlan.map(itemName).join("、"));
+  ok(!noDbPlan.some(it => it.needsDb), "C19: ダンベル無しでダンベルを使う組み方が今日のメニューに出る: " + noDbPlan.filter(it => it.needsDb).map(itemName).join("、"));
+
   todayKey = realTodayKey; goTo(realTodayKey());
   fresh(); render();
   window.__result = out; window.__ready = true;

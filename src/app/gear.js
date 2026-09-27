@@ -7,24 +7,30 @@
    ============================================================ */
 const GEAR_DEFAULT_ITEMS = [{kg:5, n:2}];
 const ADJ_MAX_STEPS = 80;                    /* 可変式1本の「設定できる重さ」の上限 */
-/* 可変式1行ぶんの検証。おかしければ null（行ごと捨てる） */
+/* 可変式1行ぶんの検証。おかしければ null（行ごと捨てる）。
+   min〜max〜step が有効ならそれを使い、list（2個以上、0<x≤100、80個まで）があれば併せて持つ。
+   min〜max が無効でも list が有効なら list だけで行を成立させる（list の範囲を仮の min〜max にする） */
 function readGearItem(x){
   if(!x || typeof x !== "object") return null;
   if(x.adj){
     const n = Math.round(+x.n);
     if(!(n >= 1 && n <= 20)) return null;
-    const min = Math.round(+x.min * 100) / 100, max = Math.round(+x.max * 100) / 100, step = Math.round(+x.step * 100) / 100;
-    if(!(min > 0 && min <= 100) || !(max >= min && max <= 100) || !(step >= 0.25)) return null;
-    const baseCount = Math.round((max - min) / step) + 1;
-    if(!(baseCount >= 1) || baseCount > ADJ_MAX_STEPS) return null;
-    const out = {adj:true, n, min, max, step};
+    let list;
     if(Array.isArray(x.list)){
       const cleaned = x.list.map(Number).filter(v => isFinite(v) && v > 0 && v <= 100)
         .sort((a, b) => a - b).filter((v, i, a) => i === 0 || v - a[i - 1] > 1e-9)
         .map(v => Math.round(v * 100) / 100);
-      if(cleaned.length >= 2 && cleaned.length <= ADJ_MAX_STEPS) out.list = cleaned;
+      if(cleaned.length >= 2 && cleaned.length <= ADJ_MAX_STEPS) list = cleaned;
     }
-    return out;
+    const min = Math.round(+x.min * 100) / 100, max = Math.round(+x.max * 100) / 100, step = Math.round(+x.step * 100) / 100;
+    const baseCount = Math.round((max - min) / step) + 1;
+    const rangeOk = min > 0 && min <= 100 && max >= min && max <= 100 && step >= 0.25 && baseCount >= 1 && baseCount <= ADJ_MAX_STEPS;
+    if(rangeOk){
+      const out = {adj:true, n, min, max, step};
+      if(list) out.list = list;
+      return out;
+    }
+    return list ? {adj:true, n, min:list[0], max:list[list.length - 1], step:0.25, list} : null;
   }
   return (+x.kg > 0 && +x.n > 0) ? {kg:+x.kg, n:Math.round(+x.n)} : null;
 }
@@ -347,13 +353,13 @@ function gearCard(){
         <button data-act="adjstep" data-i="${i}" data-f="${field}" data-d="1" aria-label="増やす">＋</button>
       </div></div>`;
   const adjRow = (x, i) => `<div class="dbrow adjrow">
+      <div class="adjdelwrap"><button class="dbdel" data-act="adjdel" data-i="${i}" aria-label="この可変式ダンベルを削除">×</button></div>
       <div class="adjflds">
         ${adjField(i, "min", "一番軽い kg", x.min, 0.25, 0.25)}
         ${adjField(i, "max", "一番重い kg", x.max, 0.25, 0.25)}
         ${adjField(i, "step", "刻み kg", x.step, 0.25, 0.25)}
         ${adjField(i, "n", "本数", x.n, 1, 1)}
       </div>
-      <button class="dbdel" data-act="adjdel" data-i="${i}" aria-label="この可変式ダンベルを削除">×</button>
       <p class="lastline">設定できる重さ: ${esc(adjListSummary(adjWeights(x)))}</p>
       <div class="fld"><label>刻みが一定でないときは、設定できる重さを「,」で区切って入力</label>
         <input type="text" id="adjlist_${i}" value="${esc((x.list || []).join(", "))}" placeholder="例: 2.5, 3.5, 4.5, 6.5" inputmode="decimal"></div>

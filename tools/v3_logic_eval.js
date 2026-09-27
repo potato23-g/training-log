@@ -55,15 +55,22 @@
     state.sessions = next;
   }
 
-  /* ---------- 2. 持っているダンベルごとに、作れない重さを出していないか ---------- */
-  const invs = [[{kg:5,n:2}], [{kg:5,n:1}], [{kg:5,n:2},{kg:10,n:1}], [{kg:10,n:1}], [], [{kg:2,n:2},{kg:5,n:2},{kg:8,n:1}], [{kg:3,n:4},{kg:12,n:2}]];
+  /* ---------- 2. 持っているダンベルごとに、作れない重さを出していないか（可変式を含む） ---------- */
+  const invs = [[{kg:5,n:2}], [{kg:5,n:1}], [{kg:5,n:2},{kg:10,n:1}], [{kg:10,n:1}], [], [{kg:2,n:2},{kg:5,n:2},{kg:8,n:1}], [{kg:3,n:4},{kg:12,n:2}],
+    [{adj:true,min:2,max:24,step:2,n:2}],
+    [{kg:5,n:2},{adj:true,n:2,list:[2.5,3.5,4.5,5.5,6.5,8,9.5,11,12.5,14,16,18,20,22,24]}],
+    [{adj:true,min:2.5,max:25,step:2.5,n:1}]];
   const weighted = EX.filter(e => holdOf(e.id));
   for(const inv of invs){
     state.sessions = {};
     setInv(inv);
-    const owned = new Set(inv.map(x => x.kg));
+    /* 「持っている重さ」は、固定の重さに加えて、可変式で設定できる重さも数える */
+    const owned = new Set();
+    inv.forEach(x => { if(x.adj) adjWeights(x).forEach(k => owned.add(k)); else owned.add(x.kg); });
+    const invCount = {};
+    inventory().forEach(({kg, n}) => { invCount[kg] = n; });
     const pieceOk = o => { const c = {}; o.pieces.forEach(k => c[k] = (c[k]||0) + 1);
-      return Object.keys(c).every(k => inv.some(x => x.kg === +k && x.n >= c[k])); };
+      return Object.keys(c).every(k => (invCount[+k] || 0) >= c[k]); };
     for(const ex of weighted){
       const id = ex.id, opts = gearOptions(id), totals = new Set(opts.map(o => o.total));
       opts.forEach(o => {
