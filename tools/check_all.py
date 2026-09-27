@@ -13,6 +13,7 @@
 ポート（9531〜9539を使い回す）を使い、終わったら消す。
 """
 import atexit
+import filecmp
 import json
 import os
 import re
@@ -25,6 +26,7 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOOLS = os.path.join(ROOT, "tools")
 DIST = os.path.join(ROOT, "dist", "local", "training-log.html")
+DOCS = os.path.join(ROOT, "docs")
 DIST_URL = "file:///" + DIST.replace("\\", "/").replace(" ", "%20")
 PY = sys.executable
 
@@ -110,6 +112,31 @@ def next_port():
 results = []
 
 
+def _snapshot_docs():
+    """docs/ をそのまま一時ディレクトリへ控える。docs/ は GitHub Pages の公開用でコミットする
+    ものなので、検査が書き換えたら、検査の前の中身（未コミットのビルドも含む）へ戻す必要がある"""
+    snap = os.path.join(tempfile.mkdtemp(prefix=RUN_TAG + "_docs_"), "docs")
+    shutil.copytree(DOCS, snap)
+    return snap
+
+
+def _restore_docs(snap):
+    """控えた docs/ の状態へ戻す。変わったファイルだけ書き戻し、増えたファイルは消す"""
+    for base, _dirs, files in os.walk(DOCS):
+        rel = os.path.relpath(base, DOCS)
+        for f in files:
+            if not os.path.exists(os.path.join(snap, rel, f)):
+                os.remove(os.path.join(base, f))
+    for base, _dirs, files in os.walk(snap):
+        rel = os.path.relpath(base, snap)
+        os.makedirs(os.path.join(DOCS, rel), exist_ok=True)
+        for f in files:
+            src, dst = os.path.join(base, f), os.path.join(DOCS, rel, f)
+            if not os.path.exists(dst) or not filecmp.cmp(src, dst, shallow=False):
+                shutil.copy2(src, dst)
+    shutil.rmtree(os.path.dirname(snap), ignore_errors=True)
+
+
 def report(name, ok, detail):
     results.append((name, ok))
     print(("PASS - " if ok else "FAIL - ") + name + "  " + detail)
@@ -156,7 +183,8 @@ def judge_diag(out, rc):
 
 def judge_db_clash(out, rc):
     """「ぶつかりなし/ダンベルなし」以外は、既知の小さな接触（脚をこする設計どおり）以外なら不合格。"""
-    KNOWN = {"rdl", "row2", "sidebend", "sidebend_slow", "row2_hold", "rdl_deep"}
+    # 「止める」版（*_hold）は元の動きと同じ姿勢なので、同じ接触が出る
+    KNOWN = {"rdl", "row2", "sidebend", "rdl_hold", "row2_hold", "sidebend_hold"}
     bad = []
     for line in out.splitlines():
         m = re.match(r"== (\S+) : (.+)", line.strip())
@@ -182,9 +210,10 @@ def judge_trailing_count(label):
 
 
 def judge_joint_audit(out, rc):
-    """指摘が出てよいのは既知の11種目のみ。それ以外で指摘が出たら不合格。"""
-    KNOWN = {"row", "triext", "pushup", "split", "splitfloor", "pushupknee",
-             "pushupknee_slow", "splitfloor_slow", "row_pause", "triext_one", "split_deep"}
+    """指摘が出てよいのは既知の12種目のみ。それ以外で指摘が出たら不合格。
+    「止める」版（*_hold）は元の動きと同じ姿勢なので、元の動きと同じ関節・同じ角度で指摘が出る。"""
+    KNOWN = {"row", "triext", "pushup", "split", "splitfloor", "pushupknee", "triext_one",
+             "row_hold", "triext_hold", "split_hold", "splitfloor_hold", "pushupknee_hold"}
     flagged = set()
     cur = None
     for line in out.splitlines():
@@ -350,11 +379,17 @@ def judge_smoke(dump):
     return (True, "実行完了（表示のみ、要目視）")
 
 
-def judge_generic_if_present(dump):
-    """中身を触っていないファイル向け: fail 配列があればそれで判定、無ければ実行完了のみ確認。"""
-    if dump is not None and isinstance(dump, dict) and "fail" in dump:
-        return judge_fail_array(dump)
-    return judge_smoke(dump)
+def judge_views(dump):
+    """v4_views_eval.js: {failCount, failed, fatal} の形。途中で止まらず failCount が0で合格。"""
+    if dump is None:
+        return (False, "__result が取れない")
+    if dump.get("fatal"):
+        return (False, "途中で止まった: " + str(dump.get("fatal"))[:200])
+    n = dump.get("failCount")
+    if not isinstance(n, int):
+        return (False, "failCount が読めない")
+    failed = dump.get("failed") or []
+    return (n == 0, "失敗 %d 件" % n + (": " + ", ".join(failed[:3]) if failed else ""))
 
 
 # --------------------------------------------------------------- 実行本体
@@ -363,7 +398,7 @@ def main():
     print("== ビルド ==")
     try:
         subprocess.run([PY, os.path.join(TOOLS, "build.py"), "local"], cwd=TOOLS, check=True,
-                        capture_output=True, text=True, timeout=60)
+                        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
     except subprocess.CalledProcessError as e:
         print("build.py local に失敗:", e.stderr or e.stdout)
         sys.exit(2)
@@ -407,20 +442,13 @@ def main():
     run_browser("v3_update_eval.js", "v3_update_eval.js", judge_smoke, needs_common=True)
     run_browser_2phase("v3_persist_eval.js", "v3_persist_eval.js")
 
-    # 別作業が中身を担当。あれば回す
-    run_browser("v4_views_eval.js", "v4_views_eval.js", judge_generic_if_present, required=False)
-    for cond_name in ("content_check.js",):
-        cond_path = os.path.join(TOOLS, cond_name)
-        if not os.path.exists(cond_path):
-            print("SKIP - " + cond_name + "  まだ無い（別作業で作成中）")
-            continue
-        head = open(cond_path, encoding="utf-8", errors="replace").read(500)
-        if "globalThis.window = undefined" in head:
-            run_bun(cond_name, cond_name, judge_trailing_count("件"))
-        else:
-            run_browser(cond_name, cond_name, judge_generic_if_present)
+    run_browser("v4_views_eval.js", "v4_views_eval.js", judge_views, timeout=90)
+    # data.js / variants.js の中身どうしの食い違い（bun で動く。最後の「合わない項目: N 件」で判定）
+    run_bun("content_check.js", "content_check.js", judge_trailing_count("合わない項目"))
 
     print("\n== 通しの検査（別プロセス） ==")
+    # v4_update_e2e.py は内部で `build.py site` を呼び、docs/ を書き換える。前後で控えて書き戻す
+    docs_snap = _snapshot_docs()
     try:
         p = run_watched([PY, os.path.join(TOOLS, "v4_update_e2e.py")], 240, cwd=TOOLS)
         m = re.search(r"(\d+) passed, (\d+) failed", p.stdout)
@@ -438,12 +466,10 @@ def main():
         # 漏れて Edge やサーバーが残っていることがあるので、念のためここで空ける
         _free_port(8871)
         _free_port(9479)
-        # v4_update_e2e.py は内部で `build.py site` を呼び、docs/ を書き換える。
-        # docs/ はビルドの出力なのでコミット対象にしない。ここで毎回、追跡済みの内容に戻す
         try:
-            subprocess.run(["git", "checkout", "--", "docs/"], cwd=ROOT, capture_output=True, timeout=15)
-        except Exception:
-            pass
+            _restore_docs(docs_snap)
+        except Exception as e:
+            print("docs/ を検査の前の状態に戻せませんでした（控え: %s）: %s" % (docs_snap, e))
 
     print("\n== 合計 ==")
     n_pass = sum(1 for _, ok in results if ok)

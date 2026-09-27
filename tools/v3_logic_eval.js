@@ -5,14 +5,16 @@
                unowned: [], optionErrors: [], sweep: []};
   const shiftKey = (k, n) => { const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + n);
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
-  const setInv = items => { state.gear = {items, updatedAt: 1}; planMemo = null; };
+  /* 記録やダンベルを入れ替えたら、メニューと進め方の控え（planMemo・progMemo）を必ず空にする。
+     アプリは描き直すたびに空にするが、この検査は描き直さずに続けて呼ぶため */
+  const setInv = items => { state.gear = {items, updatedAt: 1}; planMemo = null; resetProg(); };
   const kgNums = t => (String(t).match(/\d+(?:\.\d+)?kg/g) || []).map(x => parseFloat(x));
 
   /* ---------- 1. 毎日トレーニングした場合のメニュー（14日分） ---------- */
   state.sessions = {};
   setInv([{kg:5, n:2}]);
   for(let day = 0; day < 14; day++){
-    planMemo = null;
+    planMemo = null; resetProg();
     const s = session(TODAY);
     const plan = buildPlan();
     /* 同じ動きが重なっていないか */
@@ -83,7 +85,7 @@
           state.sessions[last.date] = {date: last.date, entries: [{ex: id, sets: last.sets.map((x, i) => Object.assign({id: "t" + i, at: i}, x))}], note: ""};
           state.sessions[shiftKey(TODAY, -7)] = {date: shiftKey(TODAY, -7), entries: [{ex: id, sets: last.sets.map((x, i) => Object.assign({id: "u" + i, at: i}, x))}], note: ""};
         }
-        planMemo = null;
+        planMemo = null; resetProg();
         const sug = suggestNext(item, null, last ? lastPerformance(id, TODAY) : null);
         if(ex.kind === "w" && opts.length && !totals.has(sug.w)) out.unowned.push({inv, id, name, where:"sug.w", w: sug.w});
         /* 「次の一手」の文言は todayAdvice().text（progressFor の why 経由）に含まれるので、
@@ -114,7 +116,7 @@
   }
   tab = "today"; render();
 
-  state.sessions = {}; state.gear = undefined; planMemo = null;
+  state.sessions = {}; state.gear = undefined; planMemo = null; resetProg();
   window.__result = out;
   window.__ready = true;
 })();

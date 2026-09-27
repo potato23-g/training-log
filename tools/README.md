@@ -5,16 +5,9 @@
 
 起動した Edge・サーバーは、失敗やタイムアウトが起きても check_all.py が確実に後片付けする
 （プロファイル名に実行ごとの印を付けてツリーごと終了・v4_update_e2e.py が固定で使う
-8871/9479番ポートも念のため空ける）。`v4_update_e2e.py` は内部で `docs/` を書き換えるビルドを
-走らせるので、毎回の実行後に `git checkout -- docs/` で戻す。
-
-## アプリ側で疑わしい点（今回は直していない）
-
-`v3_logic_eval.js` が、ダンベルを1本しか持っていない場合と `3kg×4 + 12kg×2` という
-5kgを含まない構成の場合に、作れない重さ（例: 5kgが無いのに「5kgを2つ、合計10kg」）を
-案内し続ける（710件）。既定の5kg×2や5kg×2+10kg×1の構成では0件なので、器具の組み合わせが
-特殊なときの `gearOptions`/`suggestNext` 側の抜けだと思われる。`src/` は触っていないので
-検査は不合格のままにしてある。
+8871/9479番ポートも念のため空ける）。`v4_update_e2e.py` は内部で `build.py site` を走らせて
+`docs/` を書き換えるので、その前後で `docs/` を控えて書き戻す（`docs/` は GitHub Pages の公開用で
+コミットするものなので、`git checkout` で戻すと未コミットのビルドまで消えてしまう）。
 
 ## 自動で回す検査（bun / 動き・同期）
 
@@ -23,16 +16,15 @@
 | ファイル | 確かめること | 合格の条件 |
 |---|---|---|
 | `diag.js` | 全モーションの可動域・床/道具への貫通・接地ずれ・なめらかさ | 可動域超過なし・道具貫通0・床抜け0（`sideplank`/`sideplank_leg`（下側の上腕）の14mmのみ既知として許容） |
-| `db_clash.js` | ダンベルと体の接触 | 「ぶつかりなし/ダンベルなし」以外が出ないこと（`rdl`/`row2`/`sidebend`/`sidebend_slow`/`row2_hold`/`rdl_deep` の小さな接触＝ダンベルが脚をこする設計どおりの分のみ既知として許容） |
+| `db_clash.js` | ダンベルと体の接触 | 「ぶつかりなし/ダンベルなし」以外が出ないこと（`rdl`/`row2`/`sidebend` と、その「止める」版 `rdl_hold`/`row2_hold`/`sidebend_hold` の小さな接触＝ダンベルが脚をこする設計どおりの分のみ既知として許容） |
 | `grip_check.js` | 手のひらの向きが解説文と合っているか | 「手の向きが合わない箇所」0件 |
-| `joint_audit.js` | 荷重時の関節角が現実的な範囲か | 指摘が出るのは `row`/`triext`/`pushup`/`split`/`splitfloor`/`pushupknee`/`pushupknee_slow`/`splitfloor_slow`/`row_pause`/`triext_one`/`split_deep` の11種目のみ（既知）。それ以外で指摘が出たら不合格 |
+| `joint_audit.js` | 荷重時の関節角が現実的な範囲か | 指摘が出るのは `row`/`triext`/`pushup`/`split`/`splitfloor`/`pushupknee`/`triext_one` と、「止める」版 `row_hold`/`triext_hold`/`split_hold`/`splitfloor_hold`/`pushupknee_hold` の12種目のみ（既知。「止める」版は元の動きと同じ関節・同じ角度）。それ以外で指摘が出たら不合格 |
 | `form_check.js` | フォームの要点（ACE/NASM準拠）が数値どおりか | 「合わない項目」0件 |
 | `phase_check.js` | 動作の場面ラベルと実際の姿勢が合っているか | 「合っていない場面」0件 |
 | `anim_check.js` | ラベルと動きの食い違い | 「ラベルと動きが食い違う場面」0件 |
-| `variant_check.js`※ | 組み方の名前（深くしゃがむ等）どおりの動きになっているか | 「名前どおりになっていない組み方」0件 |
-| `sync_test.js`※ | sync-github.js の単体・結合テスト | `failed` 0（`process.exit` の終了コードで判定） |
-
-※ 印は中身を触っていない（別作業の担当）。`variant_check.js` は今回時点で存在するため実行対象。
+| `variant_check.js` | 組み方の名前（一番下で2秒止める等）どおりの動きになっているか | 「名前どおりになっていない組み方」0件 |
+| `content_check.js` | data.js / variants.js の中身どうしの食い違い（大変な組み方が標準と同じ・回数が解説の幅の外・動きの登録漏れなど） | 「合わない項目」0件 |
+| `sync_test.js` | sync-github.js の単体・結合テスト | `failed` 0（`process.exit` の終了コードで判定） |
 
 ## 自動で回す検査（ブラウザ内）
 
@@ -40,10 +32,10 @@
 
 | ファイル | 確かめること | 合格の条件 |
 |---|---|---|
-| `v4_progress_eval.js`※ | 伸ばし方（ダブルプログレッション）・組み直し・外す/戻す・軽い週・記録ボタン・日付の区切り | `__result.fail` が空 |
+| `v4_progress_eval.js` | 伸ばし方（ダブルプログレッション）・組み直し・外す/戻す・軽い週・記録ボタン・日付の区切り | `__result.fail` が空 |
 | `v3_extra_item_eval.js` | 「種目を追加」がメニューと同じ組み方になるか | `__result.mismatch` が空 |
 | `v3_fig_eval.js`＊ | 図のダンベル本数が実際に使う本数と合っているか | `__result.mismatch` が空 |
-| `v3_logic_eval.js` | 今日のメニュー決定・部位の負荷上限・持っているダンベルで作れない重さの案内がないか | `dupPatterns`/`recoverOnPlan`/`recoverViolations`/`dayCapViolations`/`sessionCapViolations`/`weekCapViolations`/`unowned`/`optionErrors`/`sweep` が全て空。**現状 `unowned` で710件不合格（下記アプリ側の疑いを参照）** |
+| `v3_logic_eval.js` | 今日のメニュー決定・部位の負荷上限・持っているダンベルで作れない重さの案内がないか | `dupPatterns`/`recoverOnPlan`/`recoverViolations`/`dayCapViolations`/`sessionCapViolations`/`weekCapViolations`/`unowned`/`optionErrors`/`sweep` が全て空。記録やダンベルを入れ替えるたびに `planMemo` と `progMemo`（`resetProg()`）を空にする（空にしないと前の場面の結果が返り、作れない重さの誤検出が出る） |
 | `v3_newex_eval.js`＊ | 追加した種目に図・解説・持ち方・日用品案内・カタログ登録が揃っているか | `missing`/`noFigure`/`noDetail`/`noHold`/`noHouse`/`noMotion`/`noPattern`/`notInCatalog`/`badLevel`/`exWithoutLevel` が全て空 |
 | `v3_partial_eval.js` | 途中までの日も「手を付けた」扱いになり、翌日は別の動きになるか | `repeatedNextDay`/`dupPatterns`/`recoverOnPlan`/`emptyDays` が全て空 |
 | `v3_stable_eval.js` | 種目の選び方が気分で入れ替わらないか（軽すぎ→難しく、限界続き→やさしく、据え置き） | `settled8`/`settled6`/`settled96`/`harderWhenEasy`/`easierWhenHard`/`sameTwice` が全て true |
@@ -54,10 +46,9 @@
 | `v3_dayroll_eval.js` | 日付をまたいだら今日のメニューが切り替わるか（既定の操作確認モード） | 実行が完了すること（値は目視で確認） |
 | `v3_update_eval.js` | 更新ボタン：同じ版・取得失敗時・ラベルの戻り | 実行が完了すること（値は目視で確認） |
 | `v3_persist_eval.js` | ダンベル設定と今日のメニューが再読み込み後も残るか | write→read の2段階とも実行が完了すること |
-| `v4_views_eval.js`※（あれば） | 種目選択シート・からだ・履歴タブ | 存在すれば `__result.fail`（あれば）が空、無ければ実行完了のみ確認 |
-| `content_check.js`※（あれば） | 文言関連 | 存在すれば形式を自動判定して実行（bun/ブラウザ） |
+| `v4_views_eval.js` | 種目を選ぶシート・からだ・履歴タブ（日付シート・過去の日を足す・自己ベスト・推移） | 途中で止まらず `__result.failCount` が0 |
 
-＊ は `v3_ui_common.js` を先に連結して実行する。※ は中身を触っていない（別作業の担当）。
+＊ は `v3_ui_common.js` を先に連結して実行する。
 
 `v3_ui_common.js` の `T.recordAll()` は、記録すると始まる休憩タイマーと二重押し防止(`lastAddAt`)の
 どちらも「記録」を無効化するため、ループ内で毎回 `stopRest()` と `lastAddAt[id]=0` をしないと
@@ -75,13 +66,9 @@
 - `v3_look_eval.js` — `window.__look` で場面（gear/up/ex/settings/plan/desktop）を選んでスクリーンショット用の状態を作る。settings 場面は今回、右上⚙のシート（`openSettings()`）を開くよう直した（旧: ページ内見出しへのスクロールで、その見出し文言が無くなっていたため何も映らなかった）
 - `v3_schedule_look_eval.js` — `window.__phase`（normal/short/rest）で今日タブの見え方を作る
 
-### 別作業が中身を担当（存在すれば check_all で回す）
-
-- `variant_check.js`・`content_check.js`・`v4_views_eval.js` — variants-worker / views-worker 担当。中身は触っていない
-
 ## 通しの検査（Python、別プロセス）
 
-- `v4_update_e2e.py`※ — `python tools/v4_update_e2e.py`。`build.py site` を自動実行し、ヘッドレスEdgeで旧版→新版の切り替え・オフライン起動を確認。終了コード0で合格
+- `v4_update_e2e.py` — `python tools/v4_update_e2e.py`。`build.py site` を自動実行し（`docs/` が書き換わる）、ヘッドレスEdgeで旧版→新版の切り替え・オフライン起動を確認。終了コード0で合格
 
 ## 作業用の道具（検査ではない）
 
