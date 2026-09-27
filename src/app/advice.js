@@ -30,7 +30,7 @@ function altFor(exId, wantBodyweight){
     if(!c.p.includes(mine)) return false;
     if(todayPats.has(patternOf(c.id))) return false;
     if(wantBodyweight && c.kind === "w") return false;
-    if(c.kind === "w" && !gearOptions(c.id).length) return false;
+    if(!gearReady(c.id, c)) return false;
     return true;
   });
   if(!cands.length) return null;
@@ -49,13 +49,17 @@ function todayAdvice(item, sug){
   const opts = holdOf(id) ? itemOptions(item) : [];
   const optText = o => o ? "「" + o.text + "」" : "";
 
-  /* 1. ダンベルが要る種目なのに登録がない */
-  if(ex.kind === "w" && !opts.length){
+  /* 1. ダンベルが要る種目なのに登録がない（HOLD のある種目は種類を問わず、無ければ needsDb の組み方も） */
+  if(holdOf(id) && !opts.length){
     const alt = altFor(id, true);
     return {level:"skip", warn:true, short:"ダンベルなし",
       text: "ダンベルが登録されていません。" + (hs.down ? "「" + hs.down + "」で代用できます。" : "")
           + (alt ? "自重でやるなら、同じ" + MUSCLES[ex.p[0]] + "を使う「" + alt.name + "」に替えられます。" : (hs.down ? "" : "今日は飛ばしてください。")),
       alt: alt ? alt.id : null};
+  }
+  if(item.needsDb && !inventory().length){
+    return {level:"skip", warn:true, short:"ダンベルなし",
+      text: "ダンベルが登録されていません。今日は飛ばすか、素の組み方に戻してください。"};
   }
 
   /* 2. 主働筋を昨日しっかり使っている（回復優先） */

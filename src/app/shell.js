@@ -207,6 +207,7 @@ function settingsHTML(){
 function wireSettings(){
   wireActs(sheetInner);
   wireInputs(sheetInner);
+  if(typeof wireGearCard === "function") wireGearCard(sheetInner);
   if(typeof syncWire === "function") syncWire(sheetInner);
   const sel = sheetInner.querySelector("#dayStartSel");
   if(sel) sel.onchange = ()=>{

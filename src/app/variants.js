@@ -51,9 +51,9 @@ const VARIANT_TEXT = {
                easy: ["膝をつく",          "膝をついて行い、頭から膝までを一直線に保つ。"]},
   sideplank:  {hard: ["上の脚を上げる",    "上側の脚を床から浮かせて保つ。"],
                easy: ["膝をつく",          "下側の膝をついて行う。"]},
-  crunch:     {hard: ["胸に重りを抱える",  "ダンベルを胸に抱えて行う。"],
+  crunch:     {hard: ["胸に重りを抱える",  "ダンベルを胸に抱えて行う。", {needsDb:true}],
                easy: ["腕を体の横に置く",  "手を体の横に置き、首を引っ張らないようにして行う。"]},
-  deadbug:    {hard: ["ダンベルを持って行う", "両手に1つずつダンベルを持ち、いつもどおり対角の腕と脚を伸ばす。腰が浮くなら片手だけで持つ。"],
+  deadbug:    {hard: ["ダンベルを持って行う", "両手に1つずつダンベルを持ち、いつもどおり対角の腕と脚を伸ばす。腰が浮くなら片手だけで持つ。", {needsDb:true}],
                easy: ["腕か脚だけ動かす",  "腕だけ、または脚だけを動かす。"]}
 };
 
@@ -129,6 +129,7 @@ const VARIANT_ROWS = (function(){
       if(VARIANT_MOTION[key]) row.mo = VARIANT_MOTION[key];
       else if(!VARIANT_SAME_LOOK[key]) row.baseFig = true;
       if(e.side || cfg.side || routineWantsSide(e.id)) row.side = true;
+      if(cfg.needsDb) row.needsDb = true;      /* HOLD の無い種目でも、この組み方だけダンベルを使う（C19） */
       rows.push(row);
     });
   });

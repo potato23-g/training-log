@@ -254,16 +254,20 @@ function setDeload(on){
 ACTIONS.deloadon = () => { setDeload(true); replanToday(); };
 ACTIONS.deloadoff = () => { setDeload(false); replanToday(); };
 
-/* ---- ウォームアップ（その日の最初の種目の1セット目の前だけ） ---- */
+/* ---- ウォームアップ（その日の最初の種目の1セット目の前だけ） ----
+   ダンベルを使う種目は、今日の重さの半分くらい（60%以下で一番近い使い方、無ければ一番軽い使い方）で8回。
+   今日の重さより軽い使い方が無ければ、何も持たずに行う */
 function warmupText(item, sug){
   const kind = EXMAP[item.ex].kind;
   if(kind === "t" || !sug) return "";
-  const reps = Math.max(5, Math.round((sug.r || 10) / 2));
   if(kind === "w"){
-    const opts = itemOptions(item), i = sug.opt ? optionIndex(opts, sug.opt) : -1;
-    return i > 0 ? "「" + opts[i - 1].text + "」で" + reps + "回を1セット（記録しない）"
-                 : "何も持たずに" + reps + "回を1セット（記録しない）";
+    const opts = itemOptions(item);
+    if(!opts.length || sug.w === undefined) return "何も持たずに8回を1セット（記録しない）";
+    const pick = nearestOption(opts, sug.w * 0.6);
+    return pick.total < sug.w - 1e-9 ? "「" + pick.text + "」で8回を1セット（記録しない）"
+                                      : "何も持たずに8回を1セット（記録しない）";
   }
+  const reps = Math.max(5, Math.round((sug.r || 10) / 2));
   const easier = stepItem(item, -1);
   return (easier ? "「" + itemName(easier) + "」で" : "") + reps + "回を1セット（記録しない）";
 }

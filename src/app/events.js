@@ -119,12 +119,18 @@ function step(t, id, d){
   if(!inp) return;
   let val = parseFloat(inp.value||"0");
   if(t==="w"){
-    /* 重量は、持っているダンベルで作れる使い方だけを順にたどる（腕の種目は片手あたりで見せる） */
+    /* 重量は、持っているダンベルで作れる使い方だけを順にたどる（腕の種目は画面の値=key で比べる）。
+       手で打った値が使い方のどれとも一致しないときは、＋は次に重い使い方、−は次に軽い使い方へ
+       （どちらも「それ以下で一番重い使い方」に飛んでいた不具合の修正: C1） */
     const item = itemOf(id), opts = itemOptions(item);
     if(opts.length){
-      const total = wStored(item, val);
-      let i = opts.findIndex(o => Math.abs(o.total - total) < 0.01);
-      i = i < 0 ? opts.indexOf(nearestOption(opts, isNaN(total) ? 0 : total)) : Math.max(0, Math.min(opts.length - 1, i + d));
+      let i = opts.findIndex(o => Math.abs(o.key - val) < 0.01);
+      if(i < 0){
+        if(d > 0){ i = opts.findIndex(o => o.key > val + 1e-9); if(i < 0) i = opts.length - 1; }
+        else{ i = 0; opts.forEach((o, idx) => { if(o.key < val - 1e-9) i = idx; }); }
+      }else{
+        i = Math.max(0, Math.min(opts.length - 1, i + d));
+      }
       inp.value = String(wShown(item, opts[i].total));
       const h = document.getElementById("wh_" + id);
       if(h) h.textContent = gearLine(id, {opt: opts[i]});
@@ -133,7 +139,11 @@ function step(t, id, d){
     val = Math.max(0, val + d*0.5);
   }
   else if(t==="e") val = Math.min(10, Math.max(1, val + d));
-  else val = Math.max(1, val + d);
+  else{
+    /* C5: 秒の種目は5秒刻み（伸ばし方の増減と合わせる）。回数は1刻みのまま */
+    const st = progStep(EXMAP[itemOf(id).ex].kind);
+    val = Math.max(st, val + d * st);
+  }
   inp.value = (t==="w") ? String(val) : String(Math.round(val));
 }
 /* きつさのボタン。選び直すと取り消し。入力欄は描き直さない（打ち替えた回数・重さを消さないため） */

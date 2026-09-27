@@ -78,7 +78,7 @@ function stepItem(item, dir){
   const cands = catalog().filter(c => {
     if(patternOf(c.ex) !== pat) return false;
     if(c.ex === item.ex && (c.label || "") === (item.label || "")) return false;
-    if(EXMAP[c.ex].kind === "w" && !gearOptions(c.ex).length) return false;   /* 持っているダンベルで作れない */
+    if(!gearReady(c.ex, c)) return false;   /* 持っているダンベルで作れない（種目の種類・needsDb の組み方を問わず） */
     const lv = itemLevel(c);
     return dir > 0 ? lv > now : lv < now;
   });

@@ -1,16 +1,38 @@
 /* ============================================================
    持っているダンベル
-   設定で入れるのは「何kgを何本持っているか」だけ。種目ごとにどれを何本・どう持つかはアプリが決める。
-   持っていない重さは提案しない。足りない分は日用品（タオル・リュック・ペットボトルなど）の工夫で補う。
+   設定で入れるのは「何kgを何本持っているか」（固定）と、必要なら可変式（設定できる範囲・刻み・本数）。
+   種目ごとにどれを何本・どう持つかはアプリが決める。
+   持っていない重さ・設定できない重さは提案しない。足りない分は日用品（タオル・リュック・ペットボトルなど）の工夫で補う。
    既定は 5kg×2本（引き継ぎ時の前提）
    ============================================================ */
 const GEAR_DEFAULT_ITEMS = [{kg:5, n:2}];
+const ADJ_MAX_STEPS = 80;                    /* 可変式1本の「設定できる重さ」の上限 */
+/* 可変式1行ぶんの検証。おかしければ null（行ごと捨てる） */
+function readGearItem(x){
+  if(!x || typeof x !== "object") return null;
+  if(x.adj){
+    const n = Math.round(+x.n);
+    if(!(n >= 1 && n <= 20)) return null;
+    const min = Math.round(+x.min * 100) / 100, max = Math.round(+x.max * 100) / 100, step = Math.round(+x.step * 100) / 100;
+    if(!(min > 0 && min <= 100) || !(max >= min && max <= 100) || !(step >= 0.25)) return null;
+    const baseCount = Math.round((max - min) / step) + 1;
+    if(!(baseCount >= 1) || baseCount > ADJ_MAX_STEPS) return null;
+    const out = {adj:true, n, min, max, step};
+    if(Array.isArray(x.list)){
+      const cleaned = x.list.map(Number).filter(v => isFinite(v) && v > 0 && v <= 100)
+        .sort((a, b) => a - b).filter((v, i, a) => i === 0 || v - a[i - 1] > 1e-9)
+        .map(v => Math.round(v * 100) / 100);
+      if(cleaned.length >= 2 && cleaned.length <= ADJ_MAX_STEPS) out.list = cleaned;
+    }
+    return out;
+  }
+  return (+x.kg > 0 && +x.n > 0) ? {kg:+x.kg, n:Math.round(+x.n)} : null;
+}
 /* 保存データの器具設定を読む。旧形式 {unit,count,adjustable,max} は「unit kg を count 本」に読み替える */
 function readGear(g){
   if(!g || typeof g !== "object") return undefined;
   if(Array.isArray(g.items)){
-    return {items: g.items.filter(x => x && +x.kg > 0 && +x.n > 0).map(x => ({kg:+x.kg, n:Math.round(+x.n)})),
-            updatedAt: +g.updatedAt || 0};
+    return {items: g.items.map(readGearItem).filter(Boolean), updatedAt: +g.updatedAt || 0};
   }
   if(g.unit !== undefined || g.count !== undefined){
     const n = Math.round(+g.count || 0), kg = +g.unit || 5;
@@ -18,25 +40,49 @@ function readGear(g){
   }
   return undefined;
 }
-/* 入力欄に並べる行（入れたとおり） */
+/* 入力欄に並べる行（入れたとおり）。固定は {kg,n}、可変式は {adj:true,n,min,max,step,list?} */
 function gearItems(){
   const g = state.gear;
   const items = g && Array.isArray(g.items) ? g.items : GEAR_DEFAULT_ITEMS;
-  return items.map(x => ({kg:+x.kg || 0, n:Math.max(0, Math.round(+x.n || 0))}));
+  return items.map(x => (x && x.adj)
+    ? {adj:true, n:Math.max(0, Math.round(+x.n || 0)), min:+x.min || 0, max:+x.max || 0, step:+x.step || 0,
+       list: Array.isArray(x.list) ? x.list.slice() : undefined}
+    : {kg:+(x && x.kg) || 0, n:Math.max(0, Math.round((x && x.n) || 0))});
 }
 function setGearItems(items){
   state.gear = {items, updatedAt: Date.now()};
   persistProgram();
   if(typeof syncSchedule === "function") syncSchedule();        /* 同期: ダンベル設定を変えたとき */
 }
-/* 計算用: 同じ重さはまとめ、軽い順 */
+/* 可変式1本の「設定できる重さ」（軽い順）。list があればそれを優先、なければ min〜max を step 刻みで */
+function adjWeights(row){
+  if(Array.isArray(row.list) && row.list.length >= 2) return row.list;
+  const out = [], n = Math.max(0, Math.round((row.max - row.min) / row.step));
+  for(let i = 0; i <= n; i++) out.push(Math.round((row.min + i * row.step) * 100) / 100);
+  return out;
+}
+/* 計算用: 重さごとに「その重さにできる本数」をまとめ、軽い順に並べる。
+   固定はその重さの本数をそのまま数え、可変式は本数ぶんを「設定できる重さ」のどれにでも数える
+   （同じ可変式ダンベルを同時に2つの重さにはできないが、行が違えば別本として独立に数える）。
+   adjN は n のうち可変式で作る分（text・優先度の判定に使う。固定を先に使う想定で数える） */
 function inventory(){
   const m = {};
-  gearItems().forEach(x => { if(x.kg > 0 && x.n > 0) m[x.kg] = (m[x.kg] || 0) + x.n; });
-  return Object.keys(m).map(Number).sort((a, b) => a - b).map(kg => ({kg, n:m[kg]}));
+  const add = (kg, n, adjN) => { const e = m[kg] || (m[kg] = {n:0, adjN:0}); e.n += n; e.adjN += adjN; };
+  gearItems().forEach(x => {
+    if(x.adj){
+      if(!(x.n > 0)) return;
+      adjWeights(x).forEach(kg => { if(kg > 0) add(kg, x.n, x.n); });
+    }else if(x.kg > 0 && x.n > 0){
+      add(x.kg, x.n, 0);
+    }
+  });
+  return Object.keys(m).map(Number).sort((a, b) => a - b).map(kg => ({kg, n:m[kg].n, adjN:m[kg].adjN}));
 }
 /* 引き継ぎ時の 5kg×2本 のままか（元の解説文・メモがそのまま当てはまる） */
-function isDefaultGear(){ const inv = inventory(); return inv.length === 1 && inv[0].kg === 5 && inv[0].n === 2; }
+function isDefaultGear(){
+  const rows = gearItems();
+  return rows.length === 1 && !rows[0].adj && rows[0].kg === 5 && rows[0].n === 2;
+}
 function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
 
 /* 種目ごとの持ち方
@@ -45,7 +91,7 @@ function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
    per    = "arm" なら片腕あたりの重さで重い・軽いを決める（腕の種目）。"total" なら合計で決める
    prefer = 同じ重さになる使い方が複数あるとき、1つで持つほうを選ぶ（"one"） */
 const HOLD = {
-  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
+  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total"},
   rdl:       {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"},
   split:     {pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
   hipthrust: {pair:"骨盤の上に並べて置く", one:"骨盤の上に置く",         per:"total", prefer:"one", mixed:true},
@@ -69,30 +115,65 @@ const HOLD = {
   sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"縦にして胸の前で抱える", per:"total", prefer:"one"}
 };
 function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
+/* この種目（catalog の行）は、今持っているダンベルで行えるか。C19: HOLD の無い種目は常に true。
+   HOLD があれば使い方が1つ以上作れること、needsDb の印（ダンベルを持って行う楽/大変の組み方）は
+   ダンベルを1本も持っていなければ不可とする */
+function gearReady(id, row){
+  if(row && row.needsDb && !inventory().length) return false;
+  const h = holdOf(id);
+  return !h || gearOptions(id).length > 0;
+}
+
+/* 使い方1つぶんの文。pieces は実際に使う重さ、adjPieces は各 piece が可変式かどうか */
+function optionText(o){
+  const [kg0, kg1] = o.pieces, [adj0, adj1] = o.adjPieces || [false, false];
+  const solo = (kg, adj) => adj ? "可変式ダンベルを" + kgText(kg) + "にしたもの" : kgText(kg);
+  if(o.n === 1){
+    return (adj0 ? "可変式ダンベルを" + kgText(kg0) + "にして1つ、" : kgText(kg0) + "を1つ、") + o.how;
+  }
+  if(o.mixed){
+    const body = (adj0 || adj1) ? solo(kg0, adj0) + "と" + solo(kg1, adj1) + "を1つずつ、"
+                                 : kgText(kg0) + "と" + kgText(kg1) + "を1つずつ、";
+    return body + o.how + "（合計" + kgText(o.total) + "）";
+  }
+  const body = (adj0 && adj1) ? "可変式ダンベル2つを" + kgText(kg0) + "にして、"
+             : (adj0 || adj1) ? kgText(kg0) + "を2つ（うち可変式1つ）、"
+             : kgText(kg0) + "を2つ、";
+  return body + o.how + "（合計" + kgText(o.total) + "）";
+}
 
 /* 持っているダンベルで作れる使い方を、軽い順に並べる。同じ重さになる使い方は1つに絞る */
 function gearOptions(id){
   const h = holdOf(id); if(!h) return [];
   const inv = inventory(), out = [];
-  inv.forEach(({kg, n})=>{
-    if(h.pair && n >= 2) out.push({n:2, pieces:[kg, kg], total:kg * 2, key:h.per === "arm" ? kg : kg * 2, how:h.pair});
-    if(h.one && !(h.per === "arm" && h.pair && n >= 2)) out.push({n:1, pieces:[kg], total:kg, key:kg, how:h.one});
+  inv.forEach(({kg, n, adjN})=>{
+    const fixedN = n - adjN;
+    if(h.pair && n >= 2){
+      const adjUsed = Math.max(0, Math.min(2, 2 - fixedN));
+      out.push({n:2, pieces:[kg, kg], adjPieces:[adjUsed >= 1, adjUsed >= 2], adjUsed,
+                total:kg * 2, key:h.per === "arm" ? kg : kg * 2, how:h.pair});
+    }
+    if(h.one && !(h.per === "arm" && h.pair && n >= 2)){
+      const adjUsed = fixedN >= 1 ? 0 : 1;
+      out.push({n:1, pieces:[kg], adjPieces:[adjUsed >= 1], adjUsed, total:kg, key:kg, how:h.one});
+    }
   });
   if(h.mixed){
     for(let i = 0; i < inv.length; i++) for(let j = i + 1; j < inv.length; j++){
-      const a = inv[j].kg, b = inv[i].kg;
-      out.push({n:2, pieces:[a, b], total:a + b, key:a + b, how:h.pair, mixed:true});
+      const A = inv[j], B = inv[i], a = A.kg, b = B.kg;
+      const adjA = (A.n - A.adjN) >= 1 ? 0 : 1, adjB = (B.n - B.adjN) >= 1 ? 0 : 1;
+      out.push({n:2, pieces:[a, b], adjPieces:[adjA >= 1, adjB >= 1], adjUsed:adjA + adjB,
+                total:a + b, key:a + b, how:h.pair, mixed:true});
     }
   }
   const rank = o => h.prefer === "one" ? (o.n === 1 ? 0 : o.mixed ? 2 : 1) : (o.n === 2 && !o.mixed ? 0 : o.mixed ? 1 : 2);
-  out.sort((x, y) => (x.key - y.key) || (rank(x) - rank(y)));
+  /* 追加の優先: 同じ重さ（key）を作れる使い方が複数あるときは、固定のダンベルだけで作れるものを先にする */
+  out.sort((x, y) => (x.key - y.key) || (rank(x) - rank(y)) || ((x.adjUsed > 0 ? 1 : 0) - (y.adjUsed > 0 ? 1 : 0)));
   const uniq = [];
   out.forEach(o => { if(!uniq.length || Math.abs(uniq[uniq.length - 1].key - o.key) > 1e-9) uniq.push(o); });
   uniq.forEach(o => {
     o.total = Math.round(o.total * 10) / 10;
-    o.text = o.n === 1 ? kgText(o.pieces[0]) + "を1つ、" + o.how
-           : (o.mixed ? kgText(o.pieces[0]) + "と" + kgText(o.pieces[1]) + "を1つずつ、" : kgText(o.pieces[0]) + "を2つ、")
-             + o.how + "（合計" + kgText(o.total) + "）";
+    o.text = optionText(o);
   });
   return uniq;
 }
@@ -108,7 +189,7 @@ function nearestOption(opts, w){
   return best || opts.reduce((a, o) => o.total < a.total ? o : a, opts[0]);
 }
 
-/* 記録がない種目の最初の重さの目安（per が arm の種目は片腕あたり）。この重さ以下で一番重い使い方から始める */
+/* 記録がない種目の最初の重さの目安(per が arm の種目は片腕あたり)。この重さ以下で一番重い使い方から始める */
 const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity};
 function startKg(id){ const v = START_KG[id] !== undefined ? START_KG[id] : START_KG[baseOf(id)]; return v === undefined ? 8 : v; }
 function defaultOption(id){
@@ -136,7 +217,11 @@ function itemOptions(item){
   const id = item.ex, h = holdOf(id);
   if(!h) return [];
   if(!isOneHanded(item) || !h.one) return gearOptions(id);
-  return inventory().map(({kg}) => ({n:1, pieces:[kg], total:kg, key:kg, how:h.one, text:kgText(kg) + "を1つ、" + h.one}));
+  return inventory().map(({kg, n, adjN}) => {
+    const adj = (n - adjN) < 1;
+    return {n:1, pieces:[kg], adjPieces:[adj], adjUsed:adj ? 1 : 0, total:kg, key:kg, how:h.one,
+            text:(adj ? "可変式ダンベルを" + kgText(kg) + "にして1つ、" : kgText(kg) + "を1つ、") + h.one};
+  });
 }
 function defaultOptionFor(item){
   const opts = itemOptions(item); if(!opts.length) return null;
@@ -232,9 +317,15 @@ function noteFor(item, opt){
   return kept.length ? kept.join("。") + "。" : "";
 }
 
+/* 設定できる重さの短い一覧（多いときは先頭3つと最後だけ）。例: 「2, 4, 6 … 24kg（12段階）」 */
+function adjListSummary(list){
+  const fmt = v => Math.round(v * 10) / 10, n = list.length;
+  if(n <= 4) return list.map(fmt).join("、") + "kg（" + n + "段階）";
+  return list.slice(0, 3).map(fmt).join("、") + " … " + kgText(list[n - 1]) + "（" + n + "段階）";
+}
 function gearCard(){
-  const rows = gearItems(), inv = inventory();
-  const row = (x, i) => `<div class="dbrow">
+  const rows = gearItems();
+  const fixedRow = (x, i) => `<div class="dbrow">
       <div class="fld"><label>重さ kg</label>
         <div class="stepper">
           <button data-act="dbstep" data-i="${i}" data-t="kg" data-d="-1" aria-label="軽く">−</button>
@@ -249,17 +340,41 @@ function gearCard(){
         </div></div>
       <button class="dbdel" data-act="dbdel" data-i="${i}" aria-label="この重さを削除">×</button>
     </div>`;
+  const adjField = (i, field, label, val, step, min) => `<div class="fld"><label>${label}</label>
+      <div class="stepper">
+        <button data-act="adjstep" data-i="${i}" data-f="${field}" data-d="-1" aria-label="減らす">−</button>
+        <input type="number" id="adj_${field}_${i}" value="${val}" step="${step}" min="${min}" inputmode="decimal">
+        <button data-act="adjstep" data-i="${i}" data-f="${field}" data-d="1" aria-label="増やす">＋</button>
+      </div></div>`;
+  const adjRow = (x, i) => `<div class="dbrow adjrow">
+      <div class="adjflds">
+        ${adjField(i, "min", "一番軽い kg", x.min, 0.25, 0.25)}
+        ${adjField(i, "max", "一番重い kg", x.max, 0.25, 0.25)}
+        ${adjField(i, "step", "刻み kg", x.step, 0.25, 0.25)}
+        ${adjField(i, "n", "本数", x.n, 1, 1)}
+      </div>
+      <button class="dbdel" data-act="adjdel" data-i="${i}" aria-label="この可変式ダンベルを削除">×</button>
+      <p class="lastline">設定できる重さ: ${esc(adjListSummary(adjWeights(x)))}</p>
+      <div class="fld"><label>刻みが一定でないときは、設定できる重さを「,」で区切って入力</label>
+        <input type="text" id="adjlist_${i}" value="${esc((x.list || []).join(", "))}" placeholder="例: 2.5, 3.5, 4.5, 6.5" inputmode="decimal"></div>
+    </div>`;
+  const invText = x => x.adj
+    ? "可変式 " + (x.list
+        ? (Math.round(x.list[0] * 10) / 10) + "〜" + kgText(x.list[x.list.length - 1]) + "（" + x.list.length + "段階）"
+        : (Math.round(x.min * 10) / 10) + "〜" + kgText(x.max) + "（" + (Math.round(x.step * 100) / 100) + "kg刻み）")
+      + "×" + x.n + "本"
+    : kgText(x.kg) + "×" + x.n + "本";
   return `<h3 class="sec">持っているダンベル</h3>
   <div class="card">
-    ${rows.length ? rows.map(row).join("") : `<p style="margin:0;font-size:14px">登録なし</p>`}
-    <div class="rowbtns"><button data-act="dbadd">${rows.length ? "別の重さを追加" : "ダンベルを追加"}</button></div>
+    ${rows.length ? rows.map((x, i) => x.adj ? adjRow(x, i) : fixedRow(x, i)).join("") : `<p style="margin:0;font-size:14px">登録なし</p>`}
+    <div class="rowbtns"><button data-act="dbadd">${rows.length ? "別の重さを追加" : "ダンベルを追加"}</button><button data-act="adjadd">可変式ダンベルを追加</button></div>
     ${!state.gear ? `<p class="lastline"><b>ダンベルがまだ登録されていません。</b>いまは5kg×2本をお持ちの前提で提案しています。実際の内容に直してください。</p>` : ""}
-    <p class="lastline">${inv.length ? (state.gear ? "登録中: " : "前提: ") + inv.map(x => kgText(x.kg) + "×" + x.n + "本").join("、") : "登録なし。ダンベルを使わない種目と、日用品で代用するやり方を提案します"}</p>
+    <p class="lastline">${rows.length ? (state.gear ? "登録中: " : "前提: ") + rows.map(invText).join("、") : "登録なし。ダンベルを使わない種目と、日用品で代用するやり方を提案します"}</p>
     <p class="lastline">持っている重さと本数を入れてください。</p>
   </div>`;
 }
 function dbStep(i, t, d){
-  const it = gearItems(); if(!it[i]) return;
+  const it = gearItems(); if(!it[i] || it[i].adj) return;
   if(t === "kg"){
     const cur = it[i].kg;
     const st = d > 0 ? (cur >= 20 ? 2.5 : cur >= 3 ? 1 : 0.5) : (cur > 20 ? 2.5 : cur > 3 ? 1 : 0.5);
@@ -268,6 +383,54 @@ function dbStep(i, t, d){
     it[i].n = Math.max(1, Math.min(20, it[i].n + d));
   }
   setGearItems(it); render();
+}
+/* 可変式の行の −／＋（min/max/step/本数）。値がおかしくならないよう min<=max を保つ */
+function adjStep(i, field, d){
+  const it = gearItems(); if(!it[i] || !it[i].adj) return;
+  const row = it[i];
+  if(field === "n") row.n = Math.max(1, Math.min(20, row.n + d));
+  else if(field === "step") row.step = Math.max(0.25, Math.round((row.step + d * (row.step >= 5 ? 1 : 0.25)) * 100) / 100);
+  else{
+    const cur = row[field], st = d > 0 ? (cur >= 20 ? 2.5 : cur >= 3 ? 1 : 0.5) : (cur > 20 ? 2.5 : cur > 3 ? 1 : 0.5);
+    row[field] = Math.max(0.25, Math.round((cur + d * st) * 100) / 100);
+    if(row.min > row.max){ if(field === "min") row.max = row.min; else row.min = row.max; }
+  }
+  setGearItems(it); render();
+}
+ACTIONS.adjstep = el => adjStep(+el.dataset.i, el.dataset.f, +el.dataset.d);
+ACTIONS.adjdel = el => { const it = gearItems(); it.splice(+el.dataset.i, 1); setGearItems(it); render(); };
+ACTIONS.adjadd = () => { const it = gearItems(); it.push({adj:true, min:2, max:24, step:2, n:2}); setGearItems(it); render(); };
+/* 可変式の行の入力欄（min/max/step/本数・「,」区切りの一覧）。設定シートが開くたびに shell.js から呼ぶ */
+function wireGearCard(root){
+  root.querySelectorAll('input[id^="adj_"]').forEach(inp => {
+    inp.onchange = () => {
+      const parts = inp.id.split("_"), field = parts[1], i = +parts[2];
+      const it = gearItems();
+      if(!it[i] || !it[i].adj){ render(); return; }
+      const val = parseFloat(inp.value || "0");
+      if(isNaN(val) || val <= 0){ render(); return; }
+      if(field === "n") it[i].n = Math.max(1, Math.min(20, Math.round(val)));
+      else{
+        it[i][field] = Math.round(val * 100) / 100;
+        if(it[i].min > it[i].max){ if(field === "min") it[i].max = it[i].min; else it[i].min = it[i].max; }
+      }
+      setGearItems(it); render();
+    };
+  });
+  root.querySelectorAll('input[id^="adjlist_"]').forEach(inp => {
+    inp.onchange = () => {
+      const i = +inp.id.slice("adjlist_".length);
+      const it = gearItems();
+      if(!it[i] || !it[i].adj){ render(); return; }
+      const txt = inp.value.trim();
+      if(!txt) delete it[i].list;
+      else{
+        const nums = txt.split(/[,、]/).map(s => parseFloat(s.trim())).filter(v => isFinite(v) && v > 0 && v <= 100);
+        if(nums.length >= 2) it[i].list = nums; else delete it[i].list;
+      }
+      setGearItems(it); render();
+    };
+  });
 }
 
 function settingsCard(){
@@ -294,4 +457,3 @@ function settingsCard(){
       : "音楽と一緒に使えます。鳴るのはアプリを開いて画面がついている間だけで、iPhoneはマナーモード中だと鳴りません。画面から離れている間に休憩が終わったら、戻ったときに知らせます。"}</p>
   </div>`;
 }
-
