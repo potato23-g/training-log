@@ -93,6 +93,5 @@ function viewToday(){
       <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${esc(s.note||"")}</textarea>
     </div>
     ${typeof backupReminder === "function" ? backupReminder() : ""}
-    <p class="lastline" style="text-align:center;margin-top:18px">ダンベルの登録・休憩の知らせ方・同期・バックアップは、右上の ⚙ から。</p>
-    <p class="lastline" style="text-align:center;margin-top:6px">バージョン ${esc(BUILD_VERSION)}（更新があるときは、アプリを開き直すと切り替わります）</p>`;
+    <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${esc(BUILD_VERSION)}</p>`;
 }

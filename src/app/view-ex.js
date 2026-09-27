@@ -63,7 +63,7 @@ function viewEx(){
     </div>
     <div class="card">
       <h4 class="warn">中止する合図</h4>
-      <p style="margin:0;font-size:14px">関節（膝・腰・肩）に鋭い痛みが走ったら、その種目はその場で中止してください。翌日以降にくる筋肉痛とは別物です。痛みが数日続く場合は整形外科の判断が先で、このアプリの助言は当てになりません。</p>
+      <p style="margin:0;font-size:14px">関節（膝・腰・肩）に鋭い痛みが走ったら、その種目はその場で中止してください。翌日以降にくる筋肉痛とは別物です。痛みが数日続く場合は、整形外科を受診してください。</p>
     </div>`;
 
   return `<div class="card"><select id="exSel">${opts}</select></div>

@@ -50,7 +50,6 @@ function openPicker(){
   }).join("");
 
   sheetInner.innerHTML = `<h4>種目を選んで追加</h4>
-    <p class="lastline" style="margin-top:0">回復や1日の上限は見ません。アプリに選ばせるときは「おまかせで1種目追加」を使ってください。</p>
     ${body}
     <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
   sheetInner.querySelectorAll("[data-pick]").forEach(b=>{
