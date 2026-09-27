@@ -31,7 +31,7 @@ setTimeout(async () => {
     mkSet(keyDaysAgo(7), "hipthrust", 15, { w: 10 });               /* d7: hipthrust 3セット */
     mkSet(keyDaysAgo(7), "hipthrust", 15, { w: 10 });
     mkSet(keyDaysAgo(7), "hipthrust", 15, { w: 10 });
-    mkSet(keyDaysAgo(3), "goblet", 8, { w: 12, label: "ゴブレットスクワット（深くしゃがむ）" });
+    mkSet(keyDaysAgo(3), "goblet", 8, { w: 12, label: "ゴブレットスクワット（一番下で3秒止める）" });
     mkSet(keyDaysAgo(3), "plank", 30);
     mkSet(keyDaysAgo(2), "plank", 45);
     mkSet(keyDaysAgo(1), "row", 12, { w: 10 });                     /* 昨日: row 1セットだけ（動きの印のみ） */
@@ -144,7 +144,7 @@ setTimeout(async () => {
 
     /* その日の plan に row の「組み方あり」の項目を仕込んでおく。追加するセットに label="" を
        明示しないと、setLabel() がここへ迷い込んで別の組み方の記録として扱われてしまう */
-    session(d7).plan = [{ ex: "row", label: "ワンハンドロウ（下で一度止める）" }];
+    session(d7).plan = [{ ex: "row", label: "ワンハンドロウ（下で2秒止める）" }];
     let exSel = qs("#haddex", sheetInner);
     if (exSel) { exSel.value = "row|"; exSel.dispatchEvent(new Event("change")); }
     const wIn = qs("#haddw", sheetInner), rIn = qs("#haddr", sheetInner), eIn = qs("#hadde", sheetInner);

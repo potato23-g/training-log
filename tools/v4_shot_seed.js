@@ -23,7 +23,7 @@ setTimeout(async () => {
   mkSet(keyDaysAgo(14), "goblet", 12, { w: 12 });
   mkSet(keyDaysAgo(14), "row", 12, { w: 10 });
   mkSet(keyDaysAgo(10), "row", 13, { w: 10 });
-  mkSet(keyDaysAgo(7), "goblet", 8, { w: 12, label: "ゴブレットスクワット（深くしゃがむ）" });
+  mkSet(keyDaysAgo(7), "goblet", 8, { w: 12, label: "ゴブレットスクワット（一番下で3秒止める）" });
   mkSet(keyDaysAgo(7), "hipthrust", 15, { w: 10 });
   mkSet(keyDaysAgo(7), "hipthrust", 15, { w: 10 });
   mkSet(keyDaysAgo(7), "hipthrust", 15, { w: 10 });
