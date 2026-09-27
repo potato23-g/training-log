@@ -24,12 +24,19 @@ var SYNC_LS_KEY = "trainlog.sync.v1";
 var SYNC_API_OVERRIDE_KEY = "trainlog.sync.api";
 var SYNC_LAST_KEY = "trainlog.sync.lastAt";
 var SYNC_META_KEY = "trainlog.sync.meta.v2";
+/* 端末の時計のずれ（サーバー時刻 − 端末時刻、ミリ秒）。core.js の stampNow() が読む。
+   キー名の文字列はそちらにも直書きしてある（artifact 版など sync-github.js が無い版でも
+   stampNow() が動くように、core.js からこのファイルへの依存は作らない） */
+var SYNC_SKEW_KEY = "trainlog.sync.clockSkew";
+var SYNC_SKEW_MAX_MS = 86400000; /* これを超えるずれは測り損ないとして捨てる（±1日） */
 var SYNC_REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 var SYNC_BACKOFF_MS = [800, 1600];
 var SYNC_DIR = "trainlog";
 var SYNC_SETTINGS_NAME = "settings.json";
 var SYNC_LEGACY_PATH = "trainlog.json";
 var SYNC_MONTH_FILE_RE = /^(\d{4}-\d{2})\.json$/;
+/* 消した印（del）の間引き。180日より前の日は保存・統合のたびに削る（新しい日は必ず残す） */
+var SYNC_DEL_PRUNE_DAYS = 180;
 
 /* メモ・ダンベル設定の変更から同期までの待ち時間（入力中に何度も送らないため）。テストから縮めて使う */
 var SYNC_TUNE = { debounce: 4000 };
@@ -163,8 +170,31 @@ function mergeState(local, remote){
     var sa = a.sessions[date], sb = b.sessions[date];
     sessions[date] = (sa && sb) ? syncMergeSession(sa, sb) : (sa || sb);
   });
+  syncPruneOldDel(sessions);
 
   return { sessions: sessions, gear: syncMergeGear(a.gear, b.gear) };
+}
+
+/* "YYYY-MM-DD" が今日から何日前か。core.js の todayKey/daysAgo には頼らない
+   （1日の区切り時刻の設定ぶんのズレはあるが、180日のしきい値には効かない差でしかない上、
+   sync-github.js はテストの vm サンドボックスで core.js を読み込まずに動かすことがあるため） */
+function syncDaysAgo(dateKey){
+  var p = String(dateKey).split("-").map(Number);
+  var d = new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
+  var now = new Date();
+  var t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((t - d) / 86400000);
+}
+/* 消した印（del）は集合として意味を持つだけなので、古い日はいつまでも持ち続ける必要がない。
+   180日より前の日は統合のたびに間引く（新しい日の del はそのまま残す）。
+   sessions は mergeState が新しく作ったオブジェクト（呼び出し側の引数のクローン）なので、
+   ここで直接書き換えてよい */
+function syncPruneOldDel(sessions){
+  Object.keys(sessions || {}).forEach(function(date){
+    var s = sessions[date];
+    if(s && s.del && s.del.length && syncDaysAgo(date) > SYNC_DEL_PRUNE_DAYS) delete s.del;
+  });
+  return sessions;
 }
 
 /* del は集合として意味を持つだけで順序は決まっていない。ソートしておかないと
@@ -185,24 +215,18 @@ function syncMergeSession(a, b){
   var delLookup = {};
   del.forEach(function(id){ delLookup[id] = true; });
 
-  /* entries の並び: a のエントリ、続けて a に無い ex を持つ b のエントリ。
-     ※ 仕様どおりの非対称な規則。両端末が同じ日に別々の新しい種目を足すと
-     並び順そのものは端末ごとに食い違ったままになり得るが、セットの中身（データ）
-     は id で正しく収束する。並びだけの食い違いは無害（表示は日付・種目名基準）。
-     アルファベット順などに揃える「修正」はしない — 表示順（viewHist）が崩れる。 */
-  var aMap = {}, order = [];
-  (a.entries || []).forEach(function(e){
-    if(!(e.ex in aMap)) order.push(e.ex);
-    aMap[e.ex] = e;
-  });
-  var bMap = {};
-  (b.entries || []).forEach(function(e){
-    if(!(e.ex in bMap)) bMap[e.ex] = e;
-    if(!(e.ex in aMap) && order.indexOf(e.ex) === -1) order.push(e.ex);
-  });
+  /* entries の並びは、どちらを local(a) と呼ぶかに左右されない決まった順にする
+     （その種目の最初のセットの時刻。同じ／セットが無ければ種目ID）。
+     以前は「a のエントリ、続けて a に無い ex を持つ b のエントリ」という非対称な順で、
+     同じ日に同じ種目を両端末が持っていると、記録していなくても並びの違いだけで
+     「変わった」と判定され（stableKey は配列の順を見る）、同期のたびに送り合っていた。
+     今日の画面の並び（今日のメニュー）は plan 側の順で決めているので、ここを変えても影響しない。 */
+  var aMap = {}, bMap = {}, exSet = {};
+  (a.entries || []).forEach(function(e){ aMap[e.ex] = e; exSet[e.ex] = true; });
+  (b.entries || []).forEach(function(e){ bMap[e.ex] = e; exSet[e.ex] = true; });
 
   var entries = [];
-  order.forEach(function(ex){
+  Object.keys(exSet).forEach(function(ex){
     var ea = aMap[ex], eb = bMap[ex];
     var setMap = {};
     (eb ? eb.sets || [] : []).forEach(function(s){ setMap[s.id] = s; });
@@ -216,6 +240,12 @@ function syncMergeSession(a, b){
       return xi < yi ? -1 : (xi > yi ? 1 : 0);
     });
     if(sets.length > 0 || ea) entries.push({ ex: ex, sets: sets });
+  });
+  entries.sort(function(x, y){
+    var ax = x.sets.length ? (x.sets[0].at === undefined ? 0 : x.sets[0].at) : Infinity;
+    var ay = y.sets.length ? (y.sets[0].at === undefined ? 0 : y.sets[0].at) : Infinity;
+    if(ax !== ay) return ax - ay;
+    return x.ex < y.ex ? -1 : (x.ex > y.ex ? 1 : 0);
   });
 
   var noteAtA = a.noteAt || 0, noteAtB = b.noteAt || 0;
@@ -263,6 +293,7 @@ function syncErrorMessage(kind){
   switch(kind){
     case "auth": return "鍵が無効か、期限が切れています。GitHubで作り直して入れ直してください";
     case "forbidden": return "鍵にこのリポジトリへの書き込み権限がありません。Contents を Read and write にしてください";
+    case "ratelimit": return "GitHubの回数制限に達しました。しばらく待つと同期が再開します";
     case "repo404": return "リポジトリが見つかりません。名前と、鍵で選んだリポジトリを確かめてください";
     case "public": return "公開リポジトリには保存しません。非公開（Private）のリポジトリを指定してください";
     case "network": return "通信できませんでした。次に起動したときや記録したときに、まとめて同期します";
@@ -279,6 +310,19 @@ function syncMakeError(kind, cause){
   err.syncKind = kind;
   err.cause = cause;
   return err;
+}
+
+/* 403 の中身を見て、回数制限（rate limit）か本当の権限不足かを見分ける。
+   GitHub は回数制限を x-ratelimit-remaining: 0 か retry-after ヘッダ、
+   または本文の "rate limit" で示す。判別できなければ今までどおり forbidden 扱いにする */
+async function syncClassify403(res){
+  try{ if(res.headers.get("x-ratelimit-remaining") === "0") return "ratelimit"; }catch(e){}
+  try{ if(res.headers.get("retry-after")) return "ratelimit"; }catch(e){}
+  try{
+    var text = await res.clone().text();
+    if(/rate limit/i.test(text)) return "ratelimit";
+  }catch(e){}
+  return "forbidden";
 }
 
 /* ============================================================
@@ -304,7 +348,7 @@ async function syncCheckRepo(repo, token){
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 401) throw syncMakeError("auth");
   if(res.status === 404) throw syncMakeError("repo404");
-  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 403) throw syncMakeError(await syncClassify403(res));
   if(!res.ok) throw syncMakeError("network");
   var data;
   try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
@@ -321,7 +365,7 @@ async function syncListDir(cfg){
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 404) return [];
   if(res.status === 401) throw syncMakeError("auth");
-  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 403) throw syncMakeError(await syncClassify403(res));
   if(!res.ok) throw syncMakeError("network");
   var data;
   try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
@@ -338,7 +382,7 @@ async function syncGetFile(cfg, path){
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 404) return { parsed: null, sha: null };
   if(res.status === 401) throw syncMakeError("auth");
-  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 403) throw syncMakeError(await syncClassify403(res));
   if(!res.ok) throw syncMakeError("network");
   var data;
   try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
@@ -373,11 +417,33 @@ async function syncGetFileLenient(cfg, path){
   }
 }
 
+/* PUT の応答にある commit.committer.date（サーバー時刻）と、送った時刻・受け取った時刻の
+   中間から端末の時計のずれを見積もり、localStorage に持つ。core.js の stampNow() が使う。
+   極端な値（測り損ない）は捨てて、前に見積もった値をそのまま残す */
+function syncLoadClockSkew(){
+  try{
+    var v = parseInt(localStorage.getItem(SYNC_SKEW_KEY), 10);
+    return isFinite(v) ? v : 0;
+  }catch(e){ return 0; }
+}
+function syncSaveClockSkew(ms){
+  try{ localStorage.setItem(SYNC_SKEW_KEY, String(Math.round(ms))); }catch(e){}
+}
+function syncEstimateClockSkew(committerDateStr, sentAt, receivedAt){
+  var serverMs = Date.parse(committerDateStr);
+  if(!isFinite(serverMs)) return;
+  var mid = (sentAt + receivedAt) / 2;
+  var offset = serverMs - mid;
+  if(Math.abs(offset) > SYNC_SKEW_MAX_MS) return; /* 測り損ない（±1日を超える）は捨てる */
+  syncSaveClockSkew(offset);
+}
+
 async function syncPushFile(cfg, path, payloadObj, sha){
   var url = syncContentsUrl(cfg.repo, path);
   var body = { message: "記録を同期", content: syncUtf8ToBase64(JSON.stringify(payloadObj)) };
   if(sha) body.sha = sha;
   var res;
+  var sentAt = Date.now();
   try{
     res = await fetch(url, {
       method: "PUT",
@@ -386,12 +452,17 @@ async function syncPushFile(cfg, path, payloadObj, sha){
       body: JSON.stringify(body)
     });
   }catch(e){ throw syncMakeError("network", e); }
+  var receivedAt = Date.now();
   if(res.status === 401) throw syncMakeError("auth");
-  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 403) throw syncMakeError(await syncClassify403(res));
   if(res.status === 409 || res.status === 422) throw syncMakeError("conflict");
   if(!res.ok) throw syncMakeError("network");
   var data = null;
   try{ data = await res.json(); }catch(e){}
+  try{
+    var committerDate = data && data.commit && data.commit.committer && data.commit.committer.date;
+    if(committerDate) syncEstimateClockSkew(committerDate, sentAt, receivedAt);
+  }catch(e){}
   return { sha: (data && data.content) ? data.content.sha : null };
 }
 

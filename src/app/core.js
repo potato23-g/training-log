@@ -25,6 +25,20 @@ function asDate(k){ const [y,m,d] = k.split("-").map(Number); return new Date(y,
 function daysAgo(k){
   return Math.round((asDate(todayKey()) - asDate(k)) / 86400000);
 }
+/* この端末の時計に、GitHub同期で見積もったずれ（サーバー時刻との差。sync-github.js の
+   syncEstimateClockSkew が localStorage に置く）を足した「だいたい合っている」今の時刻。
+   ずれの記録が無ければ Date.now() と同じ。noteAt・planAt・gear.updatedAt・削除の印など、
+   端末をまたいで「後から書いたほうが勝つ」判定に使う時刻はこれを使う。
+   キー名の文字列は sync-github.js 側にも直書きしてある（artifact 版など sync-github.js が
+   無い版でも動くように、ここから sync-github.js への依存は作らない） */
+function stampNow(){
+  var skew = 0;
+  try{
+    var v = parseInt(localStorage.getItem("trainlog.sync.clockSkew"), 10);
+    if(isFinite(v)) skew = v;
+  }catch(e){}
+  return Date.now() + skew;
+}
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
 const BUILD_VERSION = "__BUILD__";

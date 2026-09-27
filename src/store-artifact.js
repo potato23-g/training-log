@@ -18,7 +18,16 @@ function loadLocal(){
   }catch(e){}
 }
 function saveLocal(){
-  try{ localStorage.setItem(LS, JSON.stringify(state)); return true; }catch(e){ return false; }
+  try{
+    /* 消した印（del）は古い日ならもう要らない。180日より前の日は保存のたびに間引く
+       （新しい日の del はそのまま残す）。daysAgo は core.js（常に一緒に埋め込まれる） */
+    Object.keys(state.sessions).forEach(function(date){
+      var s = state.sessions[date];
+      if(s && s.del && s.del.length && typeof daysAgo === "function" && daysAgo(date) > 180) delete s.del;
+    });
+    localStorage.setItem(LS, JSON.stringify(state));
+    return true;
+  }catch(e){ return false; }
 }
 function setStatus(t){ document.getElementById("status").textContent = t; }
 

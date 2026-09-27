@@ -15,6 +15,7 @@ const IDS_SRC = fs.readFileSync(path.join(ROOT, "src", "ids.js"), "utf8");
 const SANITIZE_SRC = fs.readFileSync(path.join(ROOT, "src", "app", "sanitize.js"), "utf8");
 const SYNC_SRC = fs.readFileSync(path.join(ROOT, "src", "sync-github.js"), "utf8");
 const STORE_SRC = fs.readFileSync(path.join(ROOT, "src", "store-local.js"), "utf8");
+const CORE_SRC = fs.readFileSync(path.join(ROOT, "src", "app", "core.js"), "utf8");
 
 /* ---------- 結果の記録 ---------- */
 let passed = 0, failed = 0;
@@ -275,7 +276,12 @@ async function runMainIntegration(port){
   try{
     const A = makeDevice(mock.base);
     const B = makeDevice(mock.base);
-    const day = "2026-02-01", month = "2026-02";
+    /* この下ですぐ削除(del)を試すので、実行時の実際の日付から見て十分新しい日にする
+       （C14: 180日より前の日の del は間引かれる。固定の日付だと、このテストの実行時期
+       によっては削除が180日超え扱いになり、間引かれたdelが原因でAが2回目の同期で
+       Bの削除を巻き戻してしまう＝無関係のはずのこのテストが不安定になる） */
+    const day = new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10);
+    const month = day.slice(0, 7);
 
     A.ctx.state.sessions[day] = {
       date: day, entries: [{ ex: "squat", sets: [{ id: "a1", at: 1, w: 10, r: 10, rpe: 8 }] }], updatedAt: Date.now()
@@ -339,7 +345,9 @@ async function runMainIntegration(port){
     A.ctx.state.sessions["2026-02-06"] = { date: "2026-02-06", entries: [{ ex: "curl", sets: [{ id: "retry1", at: 1, w: 6, r: 12, rpe: 7 }] }], updatedAt: Date.now() };
     await A.ctx.syncNow();
     ok(A.ctx.syncCard().indexOf("GitHubと同期しました") !== -1, "409を1回強制: 自動リトライの末に成功する");
-    monthFile = await mockFile(mock.base, "trainlog/" + month + ".json");
+    /* この2026-02-06は day(=month) とは別の、固定の日付のまま（del を使わないので180日の
+       間引きには関わらない）。ファイルの場所は自分の月から求める */
+    monthFile = await mockFile(mock.base, "trainlog/2026-02.json");
     ok(!!monthFile.sessions["2026-02-06"], "409を1回強制: リトライ後の内容がリモートに反映されている");
 
     // 誤った鍵 → 401
@@ -765,6 +773,164 @@ function runSanitizeTests(){
 }
 
 /* ============================================================
+   11. 403: 回数制限（rate limit）と権限エラーを見分ける（C8）
+   ============================================================ */
+async function testRateLimitVsForbidden(port){
+  console.log("\n-- (11) C8: 403の回数制限と権限エラーを見分ける --");
+  const token = "tok-403";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const D = makeDevice(mock.base);
+
+    await fetch(mock.base + "/_mock/403?kind=ratelimit", { method: "POST" });
+    let threw = null;
+    try{ await D.ctx.syncCheckRepo("acme/repo", token); }catch(e){ threw = e; }
+    ok(!!threw && threw.syncKind === "ratelimit", "403(回数制限): syncKind が ratelimit になる");
+    ok(!!threw && threw.message.indexOf("回数制限") !== -1, "403(回数制限): 「しばらく待つと再開」の文言になる");
+    ok(!!threw && threw.message.indexOf("書き込み権限") === -1, "403(回数制限): 鍵の作り直しを促す文言は出さない");
+
+    await fetch(mock.base + "/_mock/403?kind=perm", { method: "POST" });
+    let threw2 = null;
+    try{ await D.ctx.syncCheckRepo("acme/repo", token); }catch(e){ threw2 = e; }
+    ok(!!threw2 && threw2.syncKind === "forbidden", "403(権限): syncKind は今までどおり forbidden");
+    ok(!!threw2 && threw2.message.indexOf("書き込み権限") !== -1, "403(権限): 権限エラーの文言のまま");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   12. commit の時刻からの時計のずれ推定（C9・sync-github.js側）
+   ============================================================ */
+async function testClockSkew(port){
+  console.log("\n-- (12) C9: commit.committer.date から端末の時計のずれを見積もる --");
+  const token = "tok-skew";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const D = makeDevice(mock.base);
+    await fetch(mock.base + "/_mock/clockoffset?ms=" + (6 * 3600000), { method: "POST" }); // サーバーを6時間進める
+    D.ctx.state.sessions["2026-09-01"] = { date: "2026-09-01", entries: [{ ex: "squat", sets: [{ id: "k1", at: 1, w: 10, r: 10, rpe: 8 }] }], updatedAt: Date.now() };
+    await D.ctx.syncConnect("acme/skew", token);
+    const skew = +(D.ctx.localStorage.getItem("trainlog.sync.clockSkew") || 0);
+    ok(Math.abs(skew - 6 * 3600000) < 10000, "時計のずれ: サーバーが6時間進んでいれば、ずれもおよそ+6時間になる (" + skew + ")");
+
+    // 極端な値（1日を超える）は捨てて、前のまともな値を保つ
+    await fetch(mock.base + "/_mock/clockoffset?ms=" + (3 * 86400000), { method: "POST" });
+    D.ctx.state.sessions["2026-09-02"] = { date: "2026-09-02", entries: [{ ex: "squat", sets: [{ id: "k2", at: 1, w: 10, r: 10, rpe: 8 }] }], updatedAt: Date.now() };
+    await D.ctx.syncNow();
+    const skew2 = +(D.ctx.localStorage.getItem("trainlog.sync.clockSkew") || 0);
+    ok(Math.abs(skew2 - 6 * 3600000) < 10000, "時計のずれ: 極端な値(3日)は測り損ないとして捨て、前の値を保つ (" + skew2 + ")");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
+   13. stampNow（core.js側）: Date.now() に見積もったずれを足す
+   ============================================================ */
+function testStampNow(){
+  console.log("\n-- (13) C9: stampNow() は保存されたずれを Date.now() に足す --");
+  const ls = makeLocalStorage();
+  const ctx = vm.createContext({ console, localStorage: ls });
+  vm.runInContext(CORE_SRC, ctx, { filename: "core.js" });
+
+  const before = Date.now();
+  const noSkew = vm.runInContext("stampNow()", ctx);
+  ok(Math.abs(noSkew - before) < 2000, "stampNow: ずれの記録が無ければ Date.now() とほぼ同じ");
+
+  ls.setItem("trainlog.sync.clockSkew", "3600000"); // +1時間
+  const withSkew = vm.runInContext("stampNow()", ctx);
+  const diff = withSkew - before;
+  ok(diff > 3500000 && diff < 3700000, "stampNow: ずれの記録があれば Date.now() に足して返す (" + diff + ")");
+}
+
+/* ============================================================
+   14. 消した印（del）は古い日だけ間引く（C14）
+   ============================================================ */
+function testDelPruning(){
+  console.log("\n-- (14) C14: 古い日の del は統合のときに間引かれる --");
+  const D = makeDevice("http://127.0.0.1:1");
+  const M = D.ctx;
+  const oldDate = "2020-01-01"; // 180日をはるかに超えている
+  const recentDate = new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10); // 10日前
+
+  const aOld = { sessions: {} };
+  aOld.sessions[oldDate] = { date: oldDate, entries: [], del: ["old1", "old2"] };
+  const bOld = { sessions: {} };
+  bOld.sessions[oldDate] = { date: oldDate, entries: [] };
+  const mOld = M.mergeState(aOld, bOld);
+  ok(!mOld.sessions[oldDate].del, "del間引き: 180日より前の日の del は統合すると消える");
+
+  const aNew = { sessions: {} };
+  aNew.sessions[recentDate] = { date: recentDate, entries: [], del: ["new1"] };
+  const bNew = { sessions: {} };
+  bNew.sessions[recentDate] = { date: recentDate, entries: [] };
+  const mNew = M.mergeState(aNew, bNew);
+  ok(!!mNew.sessions[recentDate].del && mNew.sessions[recentDate].del.indexOf("new1") !== -1, "del間引き: 新しい日の del はそのまま残る");
+}
+
+/* ============================================================
+   15. entries の並び順だけの食い違いでは「変わった」と判定しない（C16）
+   ============================================================ */
+function testEntriesOrderStable(){
+  console.log("\n-- (15) C16: 並び順だけの食い違いは内容の変化として扱わない --");
+  const D = makeDevice("http://127.0.0.1:1");
+  const M = D.ctx;
+  const day = "2026-08-01";
+  const a = { sessions: {} };
+  a.sessions[day] = { date: day, entries: [
+    { ex: "squat", sets: [{ id: "sq1", at: 100, w: 10, r: 10, rpe: 8 }] },
+    { ex: "bench", sets: [{ id: "bn1", at: 200, w: 20, r: 8, rpe: 8 }] }
+  ] };
+  const b = { sessions: {} };
+  b.sessions[day] = { date: day, entries: [
+    { ex: "bench", sets: [{ id: "bn1", at: 200, w: 20, r: 8, rpe: 8 }] },
+    { ex: "squat", sets: [{ id: "sq1", at: 100, w: 10, r: 10, rpe: 8 }] }
+  ] };
+  const mAB = M.mergeState(a, b);
+  const mBA = M.mergeState(b, a);
+  ok(M.stableKey(mAB) === M.stableKey(mBA), "並び順: a,bどちらの向きで統合しても同じ内容key(stableKey)になる");
+  ok(mAB.sessions[day].entries.map(e => e.ex).join(",") === "squat,bench",
+    "並び順: 統合結果はその種目の最初のセットの時刻順になる(sq1のat=100が先)");
+
+  const mAgain = M.mergeState({ sessions: mAB.sessions }, { sessions: mBA.sessions });
+  ok(M.stableKey(mAgain) === M.stableKey(mAB), "並び順: 同じ内容を繰り返し統合しても key が変わらない(送り合いが止まる)");
+}
+
+/* ============================================================
+   16. 並び順のみの食い違いでは、記録していなくても送り合わない（C16・結合）
+   ============================================================ */
+async function testNoResendOnOrderOnly(port){
+  console.log("\n-- (16) C16結合: 何も記録していなければ、繰り返し同期してもPUTは起きない --");
+  const token = "tok-order";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  try{
+    const A = makeDevice(mock.base), B = makeDevice(mock.base);
+    const day = "2026-08-10";
+    A.ctx.state.sessions[day] = { date: day, entries: [
+      { ex: "squat", sets: [{ id: "o1", at: 1, w: 10, r: 10, rpe: 8 }] },
+      { ex: "curl", sets: [{ id: "o2", at: 2, w: 5, r: 12, rpe: 8 }] }
+    ], updatedAt: Date.now() };
+    await A.ctx.syncConnect("acme/order", token);
+    await B.ctx.syncConnect("acme/order", token);
+
+    await mockLogReset(mock.base);
+    await B.ctx.syncNow();
+    await A.ctx.syncNow();
+    await B.ctx.syncNow();
+    await A.ctx.syncNow();
+    const log = await mockLog(mock.base);
+    const puts = log.filter(e => e.method === "PUT");
+    ok(puts.length === 0, "並び順のみ: 中身を何も変えずに4回同期しても、PUTは一度も起きない (" + puts.length + "件)");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* ============================================================
    実行
    ============================================================ */
 async function main(){
@@ -782,6 +948,12 @@ async function main(){
     await testTwoTabs(8821);
     await testDeletePropagates(8822);
     await testPublicAfterConnect(8823);
+    await testRateLimitVsForbidden(8830);
+    await testClockSkew(8831);
+    testStampNow();
+    testDelPruning();
+    testEntriesOrderStable();
+    await testNoResendOnOrderOnly(8832);
   }catch(e){
     failed++;
     console.log("FAIL - 予期しない例外で停止: " + (e && e.stack || e));

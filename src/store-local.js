@@ -60,6 +60,10 @@ function saveLocal(){
         if(m.gear) state.gear = m.gear;
       }catch(e){}
     }
+    /* 消した印（del）は古い日ならもう要らない。統合のときだけでなく、ここでも間引く
+       （同期を設定していない・同じ端末の1タブしか無い、といった mergeState を通らない
+       保存でも、del が消えずに増え続けないように） */
+    if(typeof syncPruneOldDel === "function") syncPruneOldDel(state.sessions);
     const next = JSON.stringify(state);
     try{ localStorage.setItem(LS, next); }
     catch(e){
@@ -95,7 +99,7 @@ async function initStore(){
 }
 
 function persistSession(date){
-  if(state.sessions[date]) state.sessions[date].updatedAt = Date.now();
+  if(state.sessions[date]) state.sessions[date].updatedAt = typeof stampNow === "function" ? stampNow() : Date.now();
   return saveLocal();
 }
 function persistProgram(){

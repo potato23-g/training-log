@@ -15,14 +15,20 @@
   OPTIONS *                                    CORS プリフライトに 204 で答える
 
 テスト制御用（認証不要。リクエストログには載らない）:
-  POST /_mock/conflict     次の1回の PUT だけを 409 にする
-  POST /_mock/public       private フラグを反転する
+  POST /_mock/conflict          次の1回の PUT だけを 409 にする
+  POST /_mock/public            private フラグを反転する
+  POST /_mock/403?kind=K        次の1回のAPI呼び出し（GET/PUT）だけを403にする。
+                                 kind=ratelimit なら回数制限（x-ratelimit-remaining: 0）、
+                                 kind=perm（省略時）なら本当の権限エラーの体で返す
+  POST /_mock/clockoffset?ms=N  PUTの応答に載せる commit.committer.date を、
+                                 実際の時刻から N ミリ秒ずらす（時計のずれ推定のテスト用）
   GET  /_mock/file?path=   保存されている生バイトを返す（省略時 trainlog.json。無ければ404）
   GET  /_mock/list         保存されている全パスの配列 {"paths":[...]}
   GET  /_mock/log          直近のリクエスト履歴 [{method,path,status,reqBytes,resBytes}, ...]
   POST /_mock/log/reset    リクエスト履歴を空にする
 """
 import base64
+import datetime
 import hashlib
 import http.server
 import json
@@ -38,9 +44,18 @@ STATE = {
     "private": True,
     "files": {},          # path -> bytes
     "force_conflict": False,
+    "force_403": None,    # None | "ratelimit" | "perm"（次の1回だけ）
+    "clock_offset_ms": 0, # PUT応答の commit.committer.date に足すオフセット
 }
 REQUEST_LOG = []
 LOCK = threading.Lock()
+
+
+def _commit_date():
+    with LOCK:
+        offset_ms = STATE.get("clock_offset_ms", 0)
+    t = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(milliseconds=offset_ms)
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 CONTENTS_RE = re.compile(r"^/repos/([^/]+)/([^/]+)/contents/(.+)$")
 REPO_RE = re.compile(r"^/repos/([^/]+)/([^/]+)$")
@@ -72,15 +87,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 "resBytes": res_bytes,
             })
 
-    def _send_json(self, status, obj, req_bytes=0):
+    def _send_json(self, status, obj, req_bytes=0, extra_headers=None):
         body = json.dumps(obj).encode("utf-8")
-        self._send_raw(status, body, "application/json; charset=utf-8", req_bytes)
+        self._send_raw(status, body, "application/json; charset=utf-8", req_bytes, extra_headers)
 
-    def _send_raw(self, status, body, content_type="application/octet-stream", req_bytes=0):
+    def _send_raw(self, status, body, content_type="application/octet-stream", req_bytes=0, extra_headers=None):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        if extra_headers:
+            for k, v in extra_headers.items():
+                self.send_header(k, v)
         self.end_headers()
         if body:
             self.wfile.write(body)
@@ -92,6 +110,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _read_body(self):
         n = int(self.headers.get("Content-Length", "0") or "0")
         return self.rfile.read(n) if n else b""
+
+    def _consume_forced_403(self):
+        """予約されていれば1回だけ消費して種類を返す（無ければ None）。"""
+        with LOCK:
+            kind = STATE.get("force_403")
+            if kind:
+                STATE["force_403"] = None
+        return kind
+
+    def _send_403(self, kind, req_bytes=0):
+        if kind == "ratelimit":
+            self._send_json(403, {"message": "API rate limit exceeded for 127.0.0.1."},
+                             req_bytes=req_bytes,
+                             extra_headers={"X-RateLimit-Remaining": "0", "X-RateLimit-Reset": "9999999999"})
+        else:
+            self._send_json(403, {"message": "Resource not accessible by personal access token"}, req_bytes=req_bytes)
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -125,6 +159,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             with LOCK:
                 data = list(REQUEST_LOG)
             self._send_json(200, data)
+            return
+
+        kind = self._consume_forced_403()
+        if kind:
+            self._send_403(kind)
             return
 
         m = CONTENTS_RE.match(path)
@@ -198,6 +237,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 p = STATE["private"]
             self._send_json(200, {"private": p})
             return
+        if path == "/_mock/403":
+            qs = parse_qs(urlsplit(self.path).query)
+            kind = (qs.get("kind") or ["perm"])[0]
+            with LOCK:
+                STATE["force_403"] = kind
+            self._send_json(200, {"ok": True, "kind": kind})
+            return
+        if path == "/_mock/clockoffset":
+            qs = parse_qs(urlsplit(self.path).query)
+            ms = int((qs.get("ms") or ["0"])[0])
+            with LOCK:
+                STATE["clock_offset_ms"] = ms
+            self._send_json(200, {"ok": True, "ms": ms})
+            return
         if path == "/_mock/log/reset":
             with LOCK:
                 REQUEST_LOG.clear()
@@ -213,6 +266,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not m:
             self._send_json(404, {"message": "Not Found"}, req_bytes=len(raw))
             return
+        kind = self._consume_forced_403()
+        if kind:
+            self._send_403(kind, req_bytes=len(raw))
+            return
         if not self._authed():
             self._send_json(401, {"message": "Bad credentials"}, req_bytes=len(raw))
             return
@@ -224,8 +281,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send_json(400, {"message": "Bad Request"}, req_bytes=len(raw))
             return
 
-        # ロックの中では状態の読み書きだけ行い、レスポンス送信はロックを離してから行う。
-        # _send_json は自前で LOCK を取る（リクエストログのため）ので、保持したまま呼ぶとデッドロックする。
+        # ロックの中では状態の読み書きだけ行い、レスポンス送信・_commit_date()（自前でLOCKを取る）は
+        # ロックを離してから／取る前に行う。保持したまま呼ぶとデッドロックする。
+        commit_date = _commit_date()
         status = None
         obj = None
         with LOCK:
@@ -249,7 +307,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         STATE["files"][filepath] = new_bytes
                         new_sha = hashlib.sha1(new_bytes).hexdigest()
                         status = 200 if existing is not None else 201
-                        obj = {"content": {"sha": new_sha, "path": filepath}, "commit": {"sha": new_sha}}
+                        obj = {"content": {"sha": new_sha, "path": filepath},
+                               "commit": {"sha": new_sha, "committer": {"date": commit_date}}}
 
         self._send_json(status, obj, req_bytes=len(raw))
 
