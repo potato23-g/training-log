@@ -135,12 +135,14 @@ function buildPlan(){
     }
   };
   const need = it => { const m = EXMAP[it.ex].p[0]; return WEEK_TARGET - (week[m] || 0) - (today[m] || 0); };
-  /* 大きい部位が週の目標に届いていなければ、その部位が主役の種目を1セットずつ増やす（足りない部位から、4セットまで） */
+  /* 部位が週の目標に届いていなければ、その部位が主役の種目を1セットずつ増やす（足りない部位から、4セットまで）。
+     肩・腕・ふくらはぎ・体幹のような小さい部位も対象。週3回のように1回3セットのままだと
+     週の目標に1セット届かない頻度でも、ここで4セットまで増やせるようにする */
   const addSets = () => {
     for(;;){
       const it = plan.filter(x => {
         const ex = EXMAP[x.ex], n = x.sets || 3, add = exLoad(x.ex, 1);
-        if(x.seed || !BIG_MUSCLES.includes(ex.p[0]) || n >= 4 || need(x) < 1) return false;
+        if(x.seed || n >= 4 || need(x) < 1) return false;
         if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m)) || sets + 1 > LIM.sets) return false;
         return minutes + mins(Object.assign({}, x, {sets: n + 1})) - mins(x) <= LIM.minutes;
       }).sort((p, q) => need(q) - need(p))[0];
@@ -174,9 +176,10 @@ function buildPlan(){
     /* 組み直し: 残す種目を先に入れる */
     (planKeep || []).forEach(keepIn);
     fill(1, LIM.exercises, isBig);           /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
-    if(!planShort) addSets();                /* 2. まだ足りなければ、その種目のセットを増やす */
+    if(!planShort) addSets();                /* 2. まだ足りなければ、その種目のセットを増やす（大きい部位から） */
     fill(1, LIM.exercises);                  /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
-    fill(0.5, Math.min(3, LIM.exercises));   /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    if(!planShort) addSets();                /* 4. 小さい部位も、週の目標に届いていなければ4セットまで増やす */
+    fill(0.5, Math.min(3, LIM.exercises));   /* 5. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
@@ -257,6 +260,7 @@ function fixPlan(s){
    同じ記録なら同じメニューになる（さっき出ていた種目を避けて入れ替える、ということはしない）。
    short: 20分で終わる短いメニューにする */
 function replanToday(opt){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const s = session(TODAY);
   const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
   const before = todayItems();

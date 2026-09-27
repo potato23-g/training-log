@@ -1,7 +1,13 @@
 /* ============================================================
    人体図
    ============================================================ */
-function figFront(){ return `
+/* class="rg" の部位図形に、読み上げ・キーボード操作のための role・tabindex・aria-label を足す（C15）。
+   クリックの結び直しは events.js の wire() 側で行う */
+function addRgA11y(svg){
+  return svg.replace(/<(\w+) class="rg" data-m="(\w+)"/g,
+    (full, tag, m) => `<${tag} class="rg" data-m="${m}" role="button" tabindex="0" aria-label="${MUSCLES[m] || ""}"`);
+}
+function figFront(){ return addRgA11y(`
 <svg class="fig" viewBox="0 0 200 378" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正面の筋肉図">
  <g class="nt">
   <ellipse cx="100" cy="28" rx="18" ry="21"/>
@@ -28,9 +34,9 @@ function figFront(){ return `
  <rect class="rg" data-m="quads" x="101" y="189" width="23" height="89" rx="11"/>
  <path class="rg" data-m="adductors" d="M98,191 L98,248 L90,236 C88,216 90,199 93,191 Z"/>
  <path class="rg" data-m="adductors" d="M102,191 L102,248 L110,236 C112,216 110,199 107,191 Z"/>
-</svg>`; }
+</svg>`); }
 
-function figBack(){ return `
+function figBack(){ return addRgA11y(`
 <svg class="fig" viewBox="0 0 200 378" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="背面の筋肉図">
  <g class="nt">
   <ellipse cx="100" cy="28" rx="18" ry="21"/>
@@ -54,7 +60,7 @@ function figBack(){ return `
  <rect class="rg" data-m="hams" x="101" y="213" width="22" height="68" rx="10"/>
  <rect class="rg" data-m="calves" x="80" y="292" width="17" height="60" rx="8"/>
  <rect class="rg" data-m="calves" x="103" y="292" width="17" height="60" rx="8"/>
-</svg>`; }
+</svg>`); }
 
 function bothFigs(clickable){
   const c = clickable ? " clickable" : "";

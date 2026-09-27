@@ -7,6 +7,49 @@ let refEx = EX[0].id;
 let bodyDays = 7;
 let selMuscle = null;
 
+/* ---------- 入力欄の下書き（C7） ----------
+   まだ記録していない重さ・回数と、書きかけのメモ。種目ごと・その日だけの一時的なもの。
+   別端末の記録を取り込んで render() が描き直しても、これで元の入力欄の値に戻す。
+   記録したら（addSet）その種目の下書きは消す。日付が変わったら全部消す */
+let draftDay = TODAY;
+const inputDrafts = {};
+let noteDraft = null;
+/* 記録した直後など、その種目だけは今の描き直しで拾い直さないようにする一回限りの印。
+   render() の中で使ったら必ず null に戻す（addSet が延ばした「消した」を、直後の
+   captureDrafts が古いDOMの値で上書きしてしまわないようにするため） */
+let suppressDraftCapture = null;
+function clearInputDrafts(){
+  Object.keys(inputDrafts).forEach(k => delete inputDrafts[k]);
+  noteDraft = null;
+}
+/* 描き直す直前の #view から、開いている種目の入力欄とメモの値を拾っておく */
+function captureDrafts(){
+  const v = document.getElementById("view");
+  if(!v) return;
+  v.querySelectorAll('input[id^="w_"], input[id^="r_"]').forEach(inp=>{
+    const m = /^([wr])_(.+)$/.exec(inp.id);
+    if(!m || !EXMAP[m[2]] || m[2] === suppressDraftCapture) return;
+    (inputDrafts[m[2]] || (inputDrafts[m[2]] = {}))[m[1]] = inp.value;
+  });
+  const note = document.getElementById("note");
+  if(note) noteDraft = note.value;
+}
+/* 描き直した後の同じ入力欄に、拾っておいた下書きを戻す */
+function restoreDrafts(){
+  const v = document.getElementById("view");
+  if(!v) return;
+  v.querySelectorAll('input[id^="w_"], input[id^="r_"]').forEach(inp=>{
+    const m = /^([wr])_(.+)$/.exec(inp.id);
+    if(!m) return;
+    const d = inputDrafts[m[2]];
+    if(d && d[m[1]] !== undefined) inp.value = d[m[1]];
+  });
+  if(noteDraft !== null){
+    const note = document.getElementById("note");
+    if(note) note.value = noteDraft;
+  }
+}
+
 document.querySelectorAll("nav.tabs button").forEach(b=>{
   b.onclick = ()=>{
     tab = b.dataset.tab;
@@ -108,9 +151,26 @@ function figInit(){
     f.setSize(480, 560);
     f.canvas = c;
     bindFigDrag(c);
+    bindFigContext(c);
     FIG = f;
   }catch(e){ FIG = false; }
   return FIG;
+}
+/* ---------- 描画の土台（WebGL）が失われたとき（C10） ----------
+   iPhoneでアプリを裏に回した後などに起きる。そのまま使うと、直前の（真っ白な）姿が
+   静止画としてキャッシュされ続け、再読み込みするまで戻らない。
+   覚えている静止画を捨て、今のcanvasは手放して、次に使うときに新しい土台を作り直す */
+function figDropContext(){
+  stopAnim();
+  Object.keys(figShots).forEach(k => delete figShots[k]);
+  FIG = null;
+}
+function bindFigContext(c){
+  c.addEventListener("webglcontextlost", (e)=>{ e.preventDefault(); figDropContext(); }, false);
+  c.addEventListener("webglcontextrestored", ()=>{
+    figDropContext();
+    if(tab === "ex" || tab === "body") render();     /* 今その図を見ていれば、新しい土台で描き直す */
+  }, false);
 }
 function bindFigDrag(c){
   let down = false, x0 = 0, a0 = 0;
@@ -256,8 +316,12 @@ function figThemeChanged(){
 }
 
 function render(){
+  const resumeId = playingId;                /* 再生中の動きがあれば、描き直した後に再開する（C7） */
+  if(draftDay === TODAY) captureDrafts();     /* 描き直す前に、今の入力欄・メモの値を拾っておく（C7） */
+  suppressDraftCapture = null;                /* 一回限りの印は、使うか使わないかに関わらずここで戻す */
   stopAnim();
-  rollDay();
+  const rolled = rollDay();
+  if(rolled || draftDay !== TODAY){ clearInputDrafts(); draftDay = TODAY; }
   planMemo = null;
   if(typeof resetProg === "function") resetProg();
   document.getElementById("todayLabel").textContent = fmtDate(TODAY);
@@ -276,5 +340,20 @@ function render(){
     try{ console.error(e); }catch(x){}
   }
   wire();
+  restoreDrafts();
+  /* 再生中だった動きは、同じ図がまだ画面にあれば再生を続ける（C7） */
+  if(resumeId && document.querySelector('[data-dia="' + resumeId + '"]')) togglePlay(resumeId);
 }
 
+/* 表示が「自動」（data-theme未設定）のとき、OSのダーク／ライト切り替えにも図の色を追従させる（C10）。
+   手動で選んでいる間（data-theme あり）はそちらを優先し、ここでは何もしない */
+if(window.matchMedia){
+  const osThemeMq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onOsThemeChange = ()=>{
+    if(document.documentElement.getAttribute("data-theme")) return;
+    figThemeChanged();
+    render();
+  };
+  if(osThemeMq.addEventListener) osThemeMq.addEventListener("change", onOsThemeChange);
+  else if(osThemeMq.addListener) osThemeMq.addListener(onOsThemeChange);
+}

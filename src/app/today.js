@@ -67,7 +67,7 @@ function viewToday(){
     const e = entryFor(TODAY, next.ex, false);
     const sug = suggestNext(next, e);
     const inner = ex.kind==="w"
-      ? `<div class="bigset"><span class="v num">${wShown(next, sug.w)}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">${perArm(next.ex) ? "kg（片手）・回" : "kg・回"}</span></div>`
+      ? `<div class="bigset"><span class="v num">${wShown(next, sug.w)}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">${perArm(next.ex) ? "kg（片手）・回" : "kg・回"}${next.side?"・左右":""}</span></div>`
       : `<div class="bigset"><span class="v num">${sug.r}</span><span class="u">${ex.kind==="t"?"秒":"回"}${next.side?"・左右":""}</span></div>`;
     hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${esc(itemName(next))}</h2>${inner}

@@ -33,7 +33,12 @@ function wire(){
     paintFigs(v, load, max);
     v.querySelectorAll("svg.fig .rg").forEach(el=>{
       if(selMuscle && el.getAttribute("data-m")===selMuscle) el.classList.add("sel");
-      el.onclick = ()=>{ selMuscle = el.getAttribute("data-m"); render(); };
+      const pick = ()=>{ selMuscle = el.getAttribute("data-m"); render(); };
+      el.onclick = pick;
+      /* 読み上げ・キーボードだけの操作でも選べるように（role・tabindex・aria-labelはbodyfig.js側、C15） */
+      el.onkeydown = (e)=>{
+        if(e.key==="Enter" || e.key===" " || e.key==="Spacebar"){ e.preventDefault(); pick(); }
+      };
     });
   }
   if(typeof syncWire === "function") syncWire(v);
@@ -196,6 +201,8 @@ function addSet(id){
   const e = entryFor(TODAY, id, true);
   e.sets.push(st);
   rpeSel[id] = 0;
+  delete inputDrafts[id];                            /* 記録したので、この種目の下書きは消す（C7） */
+  suppressDraftCapture = id;                          /* このあとの render() が、消したそばから古い値を拾い直さないように */
   const ok = persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: 記録したとき */
   if(ok && typeof prMessage === "function"){
@@ -250,6 +257,7 @@ ACTIONS.undodel = ()=>{
 /* 種目を選んで今日のメニューに足す（組み方も選べる）。足した種目は今日のメニューに入り、
    組み直しても残る（manual）。すでにあって外していたら戻す */
 function addToProgramToday(id, label){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   if(isDoneToday(id)){
     openEx = null; editEx = null;
     switchTab("today");
@@ -280,6 +288,7 @@ function addToProgramToday(id, label){
 /* 今日のメニューの種目を別の種目に替える（「今日の調整」と、やさしく／難しくの持ち替え）。
    toLabel は「カーフレイズ（片脚）」のような同じ種目の別の組み方を指すときに使う */
 function replaceInPlan(fromId, toId, toLabel){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const s = session(TODAY);
   fixPlan(s);
   if(!s.plan) s.plan = [];
@@ -314,6 +323,7 @@ function editPlanItem(id, fn){
   if(typeof syncNow === "function") syncNow();
 }
 ACTIONS.later = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;
   editPlanItem(id, (plan, i)=>{ const it = plan.splice(i, 1)[0]; plan.push(it); });
   if(openEx === id) openEx = null;
@@ -321,6 +331,7 @@ ACTIONS.later = el=>{
   render();
 };
 ACTIONS.skip = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;
   editPlanItem(id, (plan, i)=>{ plan[i].skip = true; });
   if(openEx === id) openEx = null;
@@ -328,6 +339,7 @@ ACTIONS.skip = el=>{
   render();
 };
 ACTIONS.unskip = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;
   editPlanItem(id, (plan, i)=>{ delete plan[i].skip; });
   render();
@@ -344,6 +356,7 @@ function stepButtons(item){
 
 /* アプリに選ばせて1種目足す（今のメニューに合うものを、回復と上限の範囲で選ぶ） */
 function addAutoToday(){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const s = session(TODAY);
   fixPlan(s);
   const all = todayItems(), cur = all.filter(it => !it.skip);
