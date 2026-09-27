@@ -86,8 +86,9 @@
         planMemo = null;
         const sug = suggestNext(item, null, last ? lastPerformance(id, TODAY) : null);
         if(ex.kind === "w" && opts.length && !totals.has(sug.w)) out.unowned.push({inv, id, name, where:"sug.w", w: sug.w});
+        /* 「次の一手」の文言は todayAdvice().text（progressFor の why 経由）に含まれるので、
+           単体の nextStepText() は無い（廃止済み）。ここでは重複して足さない */
         const texts = [gearLine(id, sug), (todayAdvice(item, sug) || {}).text || "", sug.why || ""];
-        if(last) texts.push(nextStepText(id));
         texts.forEach(t => kgNums(t).forEach(k => {
           if(name === "作れない重さ" && k === 7.3) return;          /* 「前回の7.3kgは作れない」という説明は可 */
           if(!owned.has(k) && !totals.has(k)) out.unowned.push({inv, id, name, text: t});

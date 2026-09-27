@@ -10,17 +10,20 @@ window.T = {
     planMemo = null; tab = "today"; openEx = null; editEx = null;
     saveLocal(); render();
   },
-  /* 種目を開いて、規定のセット数まで「記録」を押す */
+  /* 種目を開いて、規定のセット数まで「記録」を押す。
+     記録すると休憩タイマーが始まり休憩中は増えない・二重押し防止(lastAddAt)で
+     間隔が短いクリックも無視される仕様なので、次のクリックの前に毎回どちらも解除する */
   async recordAll(id, maxClicks){
     openEx = id; render();
     for(let k = 0; k < (maxClicks || 10); k++){
       if(isDoneToday(id)) break;
       const btn = document.querySelector(`[data-act="addset"][data-ex="${id}"]`);
       if(!btn) break;
+      if(typeof lastAddAt === "object" && lastAddAt) lastAddAt[id] = 0;
       btn.click();
       await T.wait(30);
+      stopRest();
     }
-    stopRest();
   },
   sets(id){ const e = entryFor(TODAY, id, false); return e ? e.sets.length : 0; },
   scrollTo(sel){ const el = document.querySelector(sel); if(el) window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 12); }
