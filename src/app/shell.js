@@ -21,14 +21,17 @@ function swReloadBlocked(){
 }
 /* 保存待ちのメモ（今日のメモ #note・履歴の編集シートのメモ #hnote）があれば確定して保存する。
    どちらも入力から600ms後に保存する作り（src/app/events.js・src/app/view-hist.js）なので、
-   その手前で再読み込みされると、打ちかけの文字が保存されないまま消えてしまう */
+   その手前で再読み込みされると、打ちかけの文字が保存されないまま消えてしまう。
+   #hnote は「閉じる」で sheet.classList を外すだけで中身（innerHTML）は残るため、閉じたあとも
+   古い値のまま要素が残る。sheet が開いている（表示中の）ときだけ確定させる — そうしないと、
+   閉じたシートの古い値で、あとから同期で届いた新しいメモを上書きしてしまう */
 function swFlushPendingNotes(){
   let dirty = false;
   try{
     const note = document.getElementById("note");
     if(note && typeof session === "function" && typeof TODAY !== "undefined"){
       const s = session(TODAY);
-      if(s.note !== note.value){
+      if((s.note || "") !== note.value){
         s.note = note.value;
         s.noteAt = typeof stampNow === "function" ? stampNow() : Date.now();
         persistSession(TODAY);
@@ -37,13 +40,14 @@ function swFlushPendingNotes(){
     }
   }catch(e){}
   try{
-    const hnote = document.getElementById("hnote");
+    const sheetOpen = typeof sheet !== "undefined" && sheet && sheet.classList && sheet.classList.contains("on");
+    const hnote = sheetOpen ? document.getElementById("hnote") : null;
     if(hnote && typeof session === "function"){
       const marker = document.querySelector("[data-histday]");
       const date = marker && marker.dataset ? marker.dataset.histday : null;
       if(date){
         const sx = session(date);
-        if(sx.note !== hnote.value){
+        if((sx.note || "") !== hnote.value){
           sx.note = hnote.value;
           sx.noteAt = typeof stampNow === "function" ? stampNow() : Date.now();
           persistSession(date);
