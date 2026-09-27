@@ -200,9 +200,13 @@ def main():
             focused = cdp.js("(function(){var t=document.createElement('input'); t.id='__e2e_probe';"
                               "document.body.appendChild(t); t.focus(); return document.activeElement===t;})()", wait=False)
             cdp.js("navigator.serviceWorker.getRegistration().then(function(r){return r.update();}).then(function(){return true;})", wait=False)
-            time.sleep(3.0)
+            # 「まだ古い版」だけでは、単に新しいSWの有効化がまだ終わっていないだけでも成立してしまう。
+            # controllerchangeが実際に起き、後回しの予約(__swReloadScheduled)が立ったことを先に確かめる
+            scheduled = wait_for(cdp, "!!window.__swReloadScheduled", timeout=15)
             still_old = cdp.js("BUILD_VERSION", wait=False)
-            results.append(("入力中は自動の再読み込みを後回しにする", bool(focused) and still_old == new_ver, still_old))
+            results.append(("入力中は自動の再読み込みを後回しにする",
+                             bool(focused) and bool(scheduled) and still_old == new_ver,
+                             {"focused": focused, "scheduled": scheduled, "still_old": still_old}))
 
             cdp.js("(function(){var el=document.activeElement; if(el&&el.blur) el.blur(); return true;})()", wait=False)
             got3 = wait_for(cdp, "typeof BUILD_VERSION!=='undefined' && BUILD_VERSION===%s" % json.dumps(ver3), timeout=20)
