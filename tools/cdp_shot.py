@@ -70,6 +70,24 @@ def wait_http(port, timeout=20):
     raise RuntimeError("Edge の CDP ポートに接続できない")
 
 
+def kill_edge_using(profile):
+    """このプロファイルを使っている msedge.exe をすべて止める。起動した msedge.exe は別の本体に
+    引き継いで先に終わることがあり、起動したプロセスを止めるだけでは実際に動いている Edge が残る。
+    パスの書き方（/ と \\）の違いをならしてから、コマンドラインにそのパスを含むものだけを止める"""
+    want = os.path.abspath(profile).replace("\\", "/").lower()
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command",
+                              "Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | "
+                              "ForEach-Object { \"$($_.ProcessId)`t$($_.CommandLine)\" }"],
+                             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30).stdout
+    except Exception:
+        return
+    for line in out.splitlines():
+        pid, _, cmd = line.partition("\t")
+        if pid.strip().isdigit() and want in cmd.replace("\\", "/").lower():
+            subprocess.run(["taskkill", "/PID", pid.strip(), "/F"], capture_output=True)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("url")
@@ -99,6 +117,7 @@ def main():
         f"--window-size={args.width},{args.height}", "about:blank",
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     log = {"url": args.url, "errors": [], "console": [], "failed": []}
+    closed = False          # Browser.close まで進んだか（途中で失敗したら、残った Edge を探して止める）
     try:
         wait_http(args.port)
         with urllib.request.urlopen(f"http://127.0.0.1:{args.port}/json", timeout=5) as r:
@@ -165,6 +184,7 @@ def main():
                     log["failed"].append(f"{st} {p['response'].get('url')}")
         try:
             cdp.call("Browser.close")
+            closed = True
         except Exception:
             pass
     finally:
@@ -175,6 +195,10 @@ def main():
             proc.wait(timeout=5)
         except Exception:
             proc.kill()
+            closed = False
+        if not closed:
+            kill_edge_using(profile)
+            time.sleep(1.0)
         if not args.profile:
             shutil.rmtree(profile, ignore_errors=True)
     print("ok", args.out, "errors:", len(log["errors"]), "failed:", len(log["failed"]))

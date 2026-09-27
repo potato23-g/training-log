@@ -165,13 +165,26 @@ def main():
         off = wait_for(cdp, "typeof BUILD_VERSION!=='undefined' && BUILD_VERSION===%s" % json.dumps(new_ver), timeout=20)
         results.append(("オフラインでも新しい版が開く", bool(off), cdp.js("BUILD_VERSION", wait=False)))
     finally:
+        # 起動した msedge.exe は別の本体に引き継いで先に終わることがあり、親子をたどって止めても
+        # 実際に動いている Edge が残る（プロファイルを掴んだままになり、フォルダも消えない）。
+        # この検査の一時フォルダ名を含む Edge を、コマンドラインで探してすべて止める
         try:
             proc.kill()
         except Exception:
             pass
+        try:
+            ps = ("Get-CimInstance Win32_Process -Filter \"Name='msedge.exe'\" | "
+                  "Where-Object { $_.CommandLine -like '*%s*' } | "
+                  "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }") % os.path.basename(work)
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, timeout=30)
+        except Exception:
+            pass
         httpd.shutdown()
-        time.sleep(1.0)
-        shutil.rmtree(work, ignore_errors=True)
+        for _ in range(5):
+            time.sleep(1.0)
+            shutil.rmtree(work, ignore_errors=True)
+            if not os.path.exists(work):
+                break
 
     bad = 0
     for name, passed, detail in results:

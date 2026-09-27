@@ -86,6 +86,19 @@ def _sweep_orphans():
         subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, timeout=30)
     except Exception:
         pass
+    # 各検査の後の削除は、Edge の子プロセスがまだファイルを掴んでいると消し残る。
+    # Edge を止めたあとで、この実行の一時フォルダ（RUN_TAG 入り）をまとめて消し直す
+    tmp = tempfile.gettempdir()
+    for _ in range(5):
+        try:
+            left = [os.path.join(tmp, d) for d in os.listdir(tmp) if d.startswith(RUN_TAG + "_")]
+        except Exception:
+            break
+        if not left:
+            break
+        for d in left:
+            shutil.rmtree(d, ignore_errors=True)
+        time.sleep(1.0)
 
 
 def _free_port(port):
