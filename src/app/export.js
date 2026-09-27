@@ -11,9 +11,14 @@ function buildCSV(){
         first = false;
       });
     });
+    /* セットが無くメモだけの日も、日付とメモだけの行として出す（今までは丸ごと抜けていた） */
+    if(first && s.note) rows.push([d, "", "", "", "", "", s.note]);
   });
   return rows.map(r=>r.map(c=>{
-    const v = String(c===undefined?"":c);
+    let v = String(c===undefined?"":c);
+    /* = + - @ やタブ・改行で始まるセル（メモなど）は表計算ソフトに式として読まれうるので、
+       頭に ' を付けて文字列として扱わせる */
+    if(/^[=+\-@\t\r\n]/.test(v)) v = "'" + v;
     return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
   }).join(",")).join("\n");
 }
@@ -27,7 +32,7 @@ function showText(){
   sortedDates().slice().reverse().forEach(d=>{
     const s = state.sessions[d];
     const es = (s.entries||[]).filter(e=>e.sets.length);
-    if(!es.length) return;
+    if(!es.length && !s.note) return;          /* セットが無くメモだけの日は、メモだけ出す */
     lines.push(fmtDate(d));
     es.forEach(e=>{
       const ex = EXMAP[e.ex];
