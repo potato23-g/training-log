@@ -280,6 +280,44 @@
   ok(!noDbPlan2.some(it => it.needsDb),
      "C19: 過去に胸に重りを抱える組み方をしていても、ダンベル無しでは今日のメニューに出さない: " + noDbPlan2.filter(it => it.needsDb).map(itemName).join("、"));
 
+  /* ---- 13. C7: 日付が変わったら、入力欄の下書きは残らない ---- */
+  fresh(); goTo(shift(base, -2)); doDay(8);
+  goTo(base);
+  tab = "today"; selMuscle = null; editEx = null;
+  session(TODAY).plan = [{ex: "curl", sets: 3, r: 12}];
+  session(TODAY).planAt = Date.now(); planMemo = null; resetProg();
+  openEx = "curl"; render();
+  const curlR = document.getElementById("r_curl");
+  if(curlR) curlR.value = "321";
+  const nextDay3 = shift(base, 1);
+  todayKey = () => nextDay3;                 /* 実際の時計は進んだが、画面はまだ前日のまま */
+  render();                                  /* 日付の確認が走ったのと同じ状態 */
+  ok(TODAY === nextDay3, "C7: 日付をまたいでも TODAY が更新されない");
+  ok(inputDrafts.curl === undefined, "C7: 日付が変わっても前日の下書きが残っている: " + JSON.stringify(inputDrafts.curl));
+  todayKey = realTodayKey; goTo(base);
+
+  /* ---- 13. C20: 日付が変わってから確認が走るまでの間、今日のメニューを書き換えるボタンは
+     前日を書き換えない（先に rollDay() を呼び、変わっていたらそこでやめる） ---- */
+  const c20Check = (label, fn) => {
+    fresh();
+    const oldDay = shift(base, -1);
+    goTo(oldDay); doDay(8);
+    const exId = activeItems()[0].ex;
+    const before = JSON.stringify(session(oldDay).plan);
+    todayKey = () => base;                   /* 実際の時計は進んだが、画面はまだ前日のまま */
+    fn(exId);
+    ok(TODAY === base, "C20: " + label + " が rollDay を呼んでいない（前日の画面のまま処理された）");
+    ok(JSON.stringify(session(oldDay).plan) === before, "C20: " + label + " が前日のメニューを書き換えた");
+    todayKey = realTodayKey;
+  };
+  c20Check("replanToday", () => replanToday());
+  c20Check("addAutoToday", () => addAutoToday());
+  c20Check("ACTIONS.skip", id => ACTIONS.skip({dataset: {ex: id}}));
+  c20Check("addToProgramToday", () => {
+    const other = catalog().find(c => EXMAP[c.ex].kind !== "w" || gearOptions(c.ex).length);
+    if(other) addToProgramToday(other.ex, other.label || "");
+  });
+
   todayKey = realTodayKey; goTo(realTodayKey());
   fresh(); render();
   window.__result = out; window.__ready = true;

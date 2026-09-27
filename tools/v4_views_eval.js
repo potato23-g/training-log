@@ -103,6 +103,83 @@ setTimeout(async () => {
     r.body.target30Found = document.getElementById("view").innerHTML.indexOf(expected30) >= 0;
     bodyDays = 7; render();
 
+    /* ======== からだタブ「この部位に効く種目」 ======== */
+    const findCard = h4text => qsa(".card").find(c => { const h = qs("h4", c); return h && h.textContent === h4text; });
+    const rowByName = (card, name) => card ? qsa(".exbyrow", card).find(row => { const b = qs(".exbyname", row); return b && b.textContent === name; }) : null;
+    selMuscle = "glutes"; render();
+    const exByCard = findCard(MUSCLES.glutes);
+    r.exBy = { cardFound: !!exByCard };
+    const heads = exByCard ? qsa(".exbyhead", exByCard).map(h => h.textContent) : [];
+    r.exBy.hasPrimaryHead = heads.some(t => t.indexOf("主に効く") >= 0);
+    r.exBy.hasSecondaryHead = heads.some(t => t.indexOf("補助") >= 0);
+    /* ヒップスラストは大殿筋が主働筋（主に効く種目）、サイドプランクは補助（s に glutes を含む） */
+    const hipRow = rowByName(exByCard, "ヒップスラスト");
+    r.exBy.primaryListed = !!hipRow;
+    r.exBy.secondaryListed = !!rowByName(exByCard, "サイドプランク");
+    const hipNameBtn = hipRow ? qs(".exbyname", hipRow) : null;
+    if(hipNameBtn) hipNameBtn.click();
+    r.exBy.opensExTab = tab === "ex" && refEx === "hipthrust";
+    /* goblet は今日のメニューにあるので印が付き、足すボタンは出ない */
+    selMuscle = "quads"; switchTab("body");
+    const quadCard = findCard(MUSCLES.quads);
+    const gobletRow = rowByName(quadCard, "ゴブレットスクワット");
+    r.exBy.inPlanTagged = !!gobletRow && gobletRow.textContent.indexOf("今日のメニューにある") >= 0;
+    r.exBy.inPlanNoAddBtn = !!gobletRow && !qs('[data-act="addtoday"]', gobletRow);
+    /* まだ入っていない種目は足すボタンで今日のメニューに入る */
+    selMuscle = "glutes"; render();
+    const hipRow2 = rowByName(findCard(MUSCLES.glutes), "ヒップスラスト");
+    const hipAddBtn = hipRow2 ? qs('[data-act="addtoday"]', hipRow2) : null;
+    r.exBy.addBtnFound = !!hipAddBtn;
+    if(hipAddBtn) hipAddBtn.click();
+    r.exBy.addBtnWorks = (session(TODAY).plan || []).some(x => x.ex === "hipthrust");
+    /* ダンベルが無いと「ダンベルが必要」の印が付き、足すボタンは出ない */
+    const savedGear = state.gear;
+    state.gear = { items: [] };
+    selMuscle = "glutes"; switchTab("body");
+    const rdlRow = rowByName(findCard(MUSCLES.glutes), "ルーマニアンデッドリフト");
+    r.exBy.noGearTagged = !!rdlRow && rdlRow.textContent.indexOf("ダンベルが必要") >= 0;
+    r.exBy.noGearNoAddBtn = !!rdlRow && !qs('[data-act="addtoday"]', rdlRow);
+    state.gear = savedGear;
+
+    /* ======== C15: からだの図（読み上げ・キーボードだけの操作） ======== */
+    selMuscle = null; switchTab("body");
+    const rgEls = qsa("svg.fig .rg");
+    r.a11y = {
+      rgCount: rgEls.length,
+      allRole: rgEls.length > 0 && rgEls.every(el => el.getAttribute("role") === "button"),
+      allTabindex: rgEls.length > 0 && rgEls.every(el => el.getAttribute("tabindex") === "0"),
+      allLabel: rgEls.length > 0 && rgEls.every(el => !!(el.getAttribute("aria-label") || "").trim())
+    };
+    const glutesRg = rgEls.find(el => el.getAttribute("data-m") === "glutes");
+    if(glutesRg) glutesRg.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    r.a11y.enterSelects = selMuscle === "glutes";
+    selMuscle = null; render();
+    const glutesRg2 = qsa("svg.fig .rg").find(el => el.getAttribute("data-m") === "glutes");
+    if(glutesRg2) glutesRg2.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true }));
+    r.a11y.spaceSelects = selMuscle === "glutes";
+    selMuscle = null;
+
+    /* ======== C7: 入力欄の下書き ======== */
+    tab = "today"; editEx = null;
+    session(TODAY).plan = [{ ex: "curl", sets: 3, r: 12 }];
+    session(TODAY).planAt = Date.now();
+    planMemo = null; if(typeof resetProg === "function") resetProg();
+    openEx = "curl"; render();
+    const draftR = document.getElementById("r_curl"), draftW = document.getElementById("w_curl");
+    r.draft = { inputsFound: !!draftR && !!draftW };
+    if(draftR && draftW){
+      draftR.value = "111"; draftW.value = "6";
+      render();                                                    /* 同期などによる再描画を想定 */
+      const draftR2 = document.getElementById("r_curl"), draftW2 = document.getElementById("w_curl");
+      r.draft.survivesRerender = !!draftR2 && draftR2.value === "111" && !!draftW2 && draftW2.value === "6";
+      draftR2.value = "13"; draftW2.value = "5";
+      lastAddAt.curl = 0;
+      addSet("curl");
+      /* 描き直された入力欄の値ではなく、下書き自体が消えたかで確かめる
+         （次のセットの提案値がたまたま同じ数字になることがあるため） */
+      r.draft.clearsAfterRecord = inputDrafts.curl === undefined;
+    }
+
     /* ======== U9+F3: 履歴の日付シート ======== */
     tab = "hist"; render();
     const d7 = keyDaysAgo(7);
@@ -284,6 +361,26 @@ setTimeout(async () => {
     check("body.target14Found", r.body.target14Found);
     check("body.target30Found", r.body.target30Found);
     check("body.first5AreBig", r.body.first5AreBig);
+    check("exBy.cardFound", r.exBy.cardFound);
+    check("exBy.hasPrimaryHead", r.exBy.hasPrimaryHead);
+    check("exBy.hasSecondaryHead", r.exBy.hasSecondaryHead);
+    check("exBy.primaryListed", r.exBy.primaryListed);
+    check("exBy.secondaryListed", r.exBy.secondaryListed);
+    check("exBy.opensExTab", r.exBy.opensExTab);
+    check("exBy.inPlanTagged", r.exBy.inPlanTagged);
+    check("exBy.inPlanNoAddBtn", r.exBy.inPlanNoAddBtn);
+    check("exBy.addBtnFound", r.exBy.addBtnFound);
+    check("exBy.addBtnWorks", r.exBy.addBtnWorks);
+    check("exBy.noGearTagged", r.exBy.noGearTagged);
+    check("exBy.noGearNoAddBtn", r.exBy.noGearNoAddBtn);
+    check("a11y.allRole", r.a11y.allRole);
+    check("a11y.allTabindex", r.a11y.allTabindex);
+    check("a11y.allLabel", r.a11y.allLabel);
+    check("a11y.enterSelects", r.a11y.enterSelects);
+    check("a11y.spaceSelects", r.a11y.spaceSelects);
+    check("draft.inputsFound", r.draft.inputsFound);
+    check("draft.survivesRerender", r.draft.survivesRerender);
+    check("draft.clearsAfterRecord", r.draft.clearsAfterRecord);
     check("hist.rowFound", r.hist.rowFound);
     check("hist.sheetOpen", r.hist.sheetOpen);
     check("hist.markerDate===d7", r.hist.markerDate === d7);
