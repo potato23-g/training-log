@@ -177,6 +177,26 @@
   todayKey = realTodayKey;
   ok(dayStartHour() === 4, "F2: 1日の区切りの既定が4時でない");
 
+  /* ---- 11. 更新前の形の記録（A4・B7 の前に保存されたもの） ---- */
+  todayKey = realTodayKey; goTo(realTodayKey());
+  fresh();
+  /* 目標を書いていない古い記録（1セット目を目標とみなす）が解説の幅の外でも、目標は幅に収める */
+  const oldDay = shift(TODAY, -3), gobRow = catalogRow("goblet", "");
+  entryFor(oldDay, "goblet", true).sets.push(...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 18, w: 10})));
+  resetProg();
+  const pOld = progressFor(gobRow);
+  ok(pOld.target >= pOld.lo && pOld.target <= pOld.hi,
+     "B7: 目標なしの古い記録（18回）から、解説の幅の外の目標 " + pOld.target + " が出た（幅 " + pOld.lo + "〜" + pOld.hi + "）");
+  ok(/幅（/.test(pOld.why), "B7: 幅に収めたことを理由に書いていない: " + pOld.why);
+  /* 更新前に保存した今日のメニューの行（今は無い組み方の名前・動きのID）は、今の素の組み方で出す。セット数と印は残す */
+  session(TODAY).plan = [{ex: "goblet", label: "ゴブレットスクワット（深くしゃがむ）", lv: 1, sets: 2, r: 14, mo: "goblet_deep",
+                          tag: "深くしゃがむ", note: "古い説明", manual: true}];
+  planMemo = null; resetProg();
+  const stale = todayItems().find(i => i.ex === "goblet") || {};
+  ok((stale.label || "") === "" && !stale.mo && stale.sets === 2 && stale.manual === true && stale.note === gobRow.note,
+     "A4: 保存済みの古い組み方の行が今の素の組み方で出ていない: " + JSON.stringify(stale));
+  ok(/data-dia="goblet"/.test(diaHTML("goblet", false, stale, null)), "A4: 保存済みの古い組み方の行で図が出ない");
+
   todayKey = realTodayKey; goTo(realTodayKey());
   fresh(); render();
   window.__result = out; window.__ready = true;

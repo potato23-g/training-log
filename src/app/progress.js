@@ -197,7 +197,11 @@ function progressFor(item){
       }
     }
   }
-  res.target = Math.max(1, Math.round(res.target));
+  /* 目標はいつも解説の回数の幅の中（B7）。目標を書いていない古い記録（1セット目の回数を目標とみなす）は
+     幅の外のことがあるので、幅に収めてそう添える */
+  const t0 = Math.round(res.target);
+  res.target = Math.max(1, Math.min(rr.hi, Math.max(rr.lo, t0)));
+  if(res.target !== t0) res.why += "。解説の" + u + "数の幅（" + rr.lo + "〜" + rr.hi + "）に合わせて" + res.target + u + "にします";
   if(res.opt) res.w = res.opt.total;
   return (progMemo.items[key] = res);
 }

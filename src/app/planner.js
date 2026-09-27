@@ -218,10 +218,21 @@ function restText(){
        + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
        + "今日は休むほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から足せます。";
 }
+/* 保存したメニューの行を、今の種目表の中身で出す。行は保存した時点の写しなので、版が変わって
+   組み方の名前・回数・動きが変わっても（2026-09 の A4・B7）古いまま残っている。
+   セット数と「自分で足した」「外した」「メニュー外」の印だけは保存した値を使う。
+   今は無い組み方（名前が変わって無くなったもの）は、素の組み方として出す（記録の数え方と同じ） */
+function currentRow(x){
+  const row = catalogRow(x.ex, x.label || "") || catalogRow(x.ex, "");
+  if(!row) return Object.assign({}, x);
+  const out = Object.assign({}, row, {sets: x.sets || row.sets});
+  ["manual", "skip", "extra"].forEach(k => { if(x[k]) out[k] = true; });
+  return out;
+}
 /* 今日のメニュー（「外した」種目も skip:true のまま含む。数えるときは除く） */
 function todayItems(){
   const s = session(TODAY);
-  const items = (s.plan && s.plan.length ? s.plan : buildPlan()).map(x=>Object.assign({}, x));
+  const items = s.plan && s.plan.length ? s.plan.map(currentRow) : buildPlan().map(x=>Object.assign({}, x));
   (s.entries||[]).forEach(e=>{
     if(!items.some(i=>i.ex===e.ex) && EXMAP[e.ex]){
       /* メニューに無い記録（以前の版で足した種目など）も、同じ組み方で出す */
