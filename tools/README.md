@@ -46,6 +46,7 @@
 | `v3_dayroll_eval.js` | 日付をまたいだら今日のメニューが切り替わるか（既定の操作確認モード） | 実行が完了すること（値は目視で確認） |
 | `v3_update_eval.js` | 更新ボタン：同じ版・取得失敗時・ラベルの戻り | 実行が完了すること（値は目視で確認） |
 | `v3_persist_eval.js` | ダンベル設定と今日のメニューが再読み込み後も残るか | write→read の2段階とも実行が完了すること |
+| `v3_timer_eval.js`＊ | 休憩タイマー（+30秒・追いつき・止める・重ねて始める）と合図の予約・合図のWAV | 各場面の `ok` が true、止めたら合図が残らない、WAV の長さと中身が合う |
 | `v4_views_eval.js` | 種目を選ぶシート・からだ・履歴タブ（日付シート・過去の日を足す・自己ベスト・推移） | 途中で止まらず `__result.failCount` が0 |
 
 ＊ は `v3_ui_common.js` を先に連結して実行する。
@@ -65,6 +66,7 @@
 
 - `v3_look_eval.js` — `window.__look` で場面（gear/up/ex/settings/plan/desktop）を選んでスクリーンショット用の状態を作る。settings 場面は今回、右上⚙のシート（`openSettings()`）を開くよう直した（旧: ページ内見出しへのスクロールで、その見出し文言が無くなっていたため何も映らなかった）
 - `v3_schedule_look_eval.js` — `window.__phase`（normal/short/rest）で今日タブの見え方を作る
+- `v4_shot_seed.js` — URL の `?shot=`（body/hist/histsheet/histadd/histundo/addday/picker、末尾 `_dark` で暗い表示）で、種目を選ぶシート・からだ・履歴の見え方を作る
 
 ## 通しの検査（Python、別プロセス）
 

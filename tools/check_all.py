@@ -374,6 +374,23 @@ def judge_swap_add(dump):
     return (len(bad) == 0, "%d 件不成立" % len(bad) + (": " + ", ".join(bad) if bad else ""))
 
 
+def judge_timer(dump):
+    """v3_timer_eval.js: 休憩タイマーと合図の予約。各場面の ok・止めたら合図が消えること・合図の WAV の形を見る。"""
+    if dump is None:
+        return (False, "__result が取れない")
+    g = lambda k: dump.get(k) or {}
+    checks = {
+        "webaudio": g("webaudio").get("ok"),
+        "plus30": g("plus30").get("ok"),
+        "caughtUp": g("caughtUp").get("ok"),
+        "stopped": g("stopped").get("nodes") == 0 and not g("stopped").get("visible"),
+        "overlap": g("overlap").get("running") and g("overlap").get("visible"),
+        "wav": g("wav").get("riff") == "RIFF" and g("wav").get("bytes") == g("wav").get("expect") and (g("wav").get("peakAfter") or 0) > 0,
+    }
+    bad = [k for k, v in checks.items() if not v]
+    return (len(bad) == 0, "%d 件不成立" % len(bad) + (": " + ", ".join(bad) if bad else ""))
+
+
 def judge_smoke(dump):
     """assert 用の値を持たない（目視用の）検査: cdp_shot が最後まで走って __ready になれば合格。"""
     return (True, "実行完了（表示のみ、要目視）")
@@ -442,6 +459,7 @@ def main():
     run_browser("v3_update_eval.js", "v3_update_eval.js", judge_smoke, needs_common=True)
     run_browser_2phase("v3_persist_eval.js", "v3_persist_eval.js")
 
+    run_browser("v3_timer_eval.js", "v3_timer_eval.js", judge_timer, needs_common=True)
     run_browser("v4_views_eval.js", "v4_views_eval.js", judge_views, timeout=90)
     # data.js / variants.js の中身どうしの食い違い（bun で動く。最後の「合わない項目: N 件」で判定）
     run_bun("content_check.js", "content_check.js", judge_trailing_count("合わない項目"))
