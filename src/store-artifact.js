@@ -20,10 +20,15 @@ function loadLocal(){
 function saveLocal(){
   try{
     /* 消した印（del）は古い日ならもう要らない。180日より前の日は保存のたびに間引く
-       （新しい日の del はそのまま残す）。daysAgo は core.js（常に一緒に埋め込まれる） */
+       （新しい日の del はそのまま残す）。ただし、日付は古くても最近さわった(updatedAt)日は
+       間引かない（そうしないと、半年より前の日を今消したときに del が消え、他の端末に
+       まだ届いていない削除が復活しうる）。daysAgo は core.js（常に一緒に埋め込まれる） */
     Object.keys(state.sessions).forEach(function(date){
       var s = state.sessions[date];
-      if(s && s.del && s.del.length && typeof daysAgo === "function" && daysAgo(date) > 180) delete s.del;
+      if(!s || !s.del || !s.del.length) return;
+      if(typeof daysAgo !== "function" || daysAgo(date) <= 180) return;
+      if(s.updatedAt !== undefined && Math.round((Date.now() - s.updatedAt) / 86400000) <= 180) return;
+      delete s.del;
     });
     localStorage.setItem(LS, JSON.stringify(state));
     return true;

@@ -187,12 +187,24 @@ function syncDaysAgo(dateKey){
 }
 /* 消した印（del）は集合として意味を持つだけなので、古い日はいつまでも持ち続ける必要がない。
    180日より前の日は統合のたびに間引く（新しい日の del はそのまま残す）。
+
+   ただし「その日の日付が古い」というだけで即間引くと、半年より前の日の記録を"今"直したとき
+   （履歴タブでセットを消す、など）に壊れる: 消した側の端末が保存・統合した時点で del が
+   間引かれてしまい、まだそれを見ていない別の端末が後から同期すると、間引かれて消えた del の
+   せいで削除が「無かったこと」になり、消したはずのセットが復活してしまう。
+   これを避けるため、その日の updatedAt（最後にその日の記録を触った時刻。persistSession が
+   更新する）も見て、最近さわっていれば（180日以内なら）日付が古くても del は残す。
+   updatedAt が無い（古い形式のまま誰も触っていない）日は、日付だけで判断する。
+
    sessions は mergeState が新しく作ったオブジェクト（呼び出し側の引数のクローン）なので、
    ここで直接書き換えてよい */
 function syncPruneOldDel(sessions){
   Object.keys(sessions || {}).forEach(function(date){
     var s = sessions[date];
-    if(s && s.del && s.del.length && syncDaysAgo(date) > SYNC_DEL_PRUNE_DAYS) delete s.del;
+    if(!s || !s.del || !s.del.length) return;
+    if(syncDaysAgo(date) <= SYNC_DEL_PRUNE_DAYS) return;                         /* 日付そのものが新しい */
+    if(s.updatedAt !== undefined && Math.round((Date.now() - s.updatedAt) / 86400000) <= SYNC_DEL_PRUNE_DAYS) return; /* 最近さわった */
+    delete s.del;
   });
   return sessions;
 }

@@ -276,12 +276,11 @@ async function runMainIntegration(port){
   try{
     const A = makeDevice(mock.base);
     const B = makeDevice(mock.base);
-    /* この下ですぐ削除(del)を試すので、実行時の実際の日付から見て十分新しい日にする
-       （C14: 180日より前の日の del は間引かれる。固定の日付だと、このテストの実行時期
-       によっては削除が180日超え扱いになり、間引かれたdelが原因でAが2回目の同期で
-       Bの削除を巻き戻してしまう＝無関係のはずのこのテストが不安定になる） */
-    const day = new Date(Date.now() - 20 * 86400000).toISOString().slice(0, 10);
-    const month = day.slice(0, 7);
+    /* わざと「実行時の実際の日付」から見て180日を超える日にする。この下ですぐ del を試すが、
+       B が消す際に updatedAt も更新するので（C14: 日付が古くても最近さわった日の del は
+       間引かない）、削除は巻き戻らずにAへ届くはず。ここが古い日のままでも壊れないことが、
+       C14の間引きが「日付だけ」で見ていないことの確認を兼ねる */
+    const day = "2026-02-01", month = "2026-02";
 
     A.ctx.state.sessions[day] = {
       date: day, entries: [{ ex: "squat", sets: [{ id: "a1", at: 1, w: 10, r: 10, rpe: 8 }] }], updatedAt: Date.now()
@@ -345,9 +344,7 @@ async function runMainIntegration(port){
     A.ctx.state.sessions["2026-02-06"] = { date: "2026-02-06", entries: [{ ex: "curl", sets: [{ id: "retry1", at: 1, w: 6, r: 12, rpe: 7 }] }], updatedAt: Date.now() };
     await A.ctx.syncNow();
     ok(A.ctx.syncCard().indexOf("GitHubと同期しました") !== -1, "409を1回強制: 自動リトライの末に成功する");
-    /* この2026-02-06は day(=month) とは別の、固定の日付のまま（del を使わないので180日の
-       間引きには関わらない）。ファイルの場所は自分の月から求める */
-    monthFile = await mockFile(mock.base, "trainlog/2026-02.json");
+    monthFile = await mockFile(mock.base, "trainlog/" + month + ".json");
     ok(!!monthFile.sessions["2026-02-06"], "409を1回強制: リトライ後の内容がリモートに反映されている");
 
     // 誤った鍵 → 401
@@ -869,6 +866,17 @@ function testDelPruning(){
   bNew.sessions[recentDate] = { date: recentDate, entries: [] };
   const mNew = M.mergeState(aNew, bNew);
   ok(!!mNew.sessions[recentDate].del && mNew.sessions[recentDate].del.indexOf("new1") !== -1, "del間引き: 新しい日の del はそのまま残る");
+
+  // 日付そのものは古くても、最後にその日を触った(updatedAt)のが最近なら del は残す。
+  // そうしないと「半年より前の日を今消す」操作が、まだそれを見ていない別の端末で
+  // 復活してしまう（間引かれたdelのせいで消した印が無かったことになるため）
+  const aOldRecentTouch = { sessions: {} };
+  aOldRecentTouch.sessions[oldDate] = { date: oldDate, entries: [], del: ["old3"], updatedAt: Date.now() };
+  const bOldRecentTouch = { sessions: {} };
+  bOldRecentTouch.sessions[oldDate] = { date: oldDate, entries: [] };
+  const mOldRecentTouch = M.mergeState(aOldRecentTouch, bOldRecentTouch);
+  ok(!!mOldRecentTouch.sessions[oldDate].del && mOldRecentTouch.sessions[oldDate].del.indexOf("old3") !== -1,
+    "del間引き: 日付が古くても、最後に触ったのが最近なら del は残る（復活を防ぐ）");
 }
 
 /* ============================================================
@@ -903,19 +911,26 @@ function testEntriesOrderStable(){
    16. 並び順のみの食い違いでは、記録していなくても送り合わない（C16・結合）
    ============================================================ */
 async function testNoResendOnOrderOnly(port){
-  console.log("\n-- (16) C16結合: 何も記録していなければ、繰り返し同期してもPUTは起きない --");
+  console.log("\n-- (16) C16結合: 並び順だけ食い違う2台が同期しても、送り合いが続かない --");
   const token = "tok-order";
   const mock = startMock(port, token);
   await waitReady(mock.base);
   try{
     const A = makeDevice(mock.base), B = makeDevice(mock.base);
     const day = "2026-08-10";
+    /* 中身（種目・セットの id）は同じだが、entries の並び順が端末ごとに逆になっている状態を
+       それぞれのローカルに独立に作ってから接続する（片方が空のまま相手の並びをそのまま
+       受け取るだけだと、並び順は最初から食い違わないので、この不具合を確かめられない） */
     A.ctx.state.sessions[day] = { date: day, entries: [
       { ex: "squat", sets: [{ id: "o1", at: 1, w: 10, r: 10, rpe: 8 }] },
       { ex: "curl", sets: [{ id: "o2", at: 2, w: 5, r: 12, rpe: 8 }] }
     ], updatedAt: Date.now() };
-    await A.ctx.syncConnect("acme/order", token);
-    await B.ctx.syncConnect("acme/order", token);
+    B.ctx.state.sessions[day] = { date: day, entries: [
+      { ex: "curl", sets: [{ id: "o2", at: 2, w: 5, r: 12, rpe: 8 }] },
+      { ex: "squat", sets: [{ id: "o1", at: 1, w: 10, r: 10, rpe: 8 }] }
+    ], updatedAt: Date.now() };
+    await A.ctx.syncConnect("acme/order", token); // Aが先に接続・push
+    await B.ctx.syncConnect("acme/order", token); // Bは自分のローカル(逆順)を持ったまま接続・合流
 
     await mockLogReset(mock.base);
     await B.ctx.syncNow();
@@ -924,7 +939,7 @@ async function testNoResendOnOrderOnly(port){
     await A.ctx.syncNow();
     const log = await mockLog(mock.base);
     const puts = log.filter(e => e.method === "PUT");
-    ok(puts.length === 0, "並び順のみ: 中身を何も変えずに4回同期しても、PUTは一度も起きない (" + puts.length + "件)");
+    ok(puts.length === 0, "並び順のみ: 並びが逆の状態から4回同期しても、PUTは一度も起きない (" + puts.length + "件)");
   } finally {
     mock.proc.kill();
   }
