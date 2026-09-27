@@ -22,7 +22,7 @@ function viewBody(){
       <p class="lastline" style="margin-top:0">直近${bodyDays}日で <b>${(load[selMuscle]||0).toFixed(1)}</b> 有効セット</p>
       ${hits.length ? `<ul class="plain">${hits.map(h=>`<li>${fmtDate(h.d)}　${h.name}　${h.n}セット（${h.role}）</li>`).join("")}</ul>`
         : `<p style="font-size:14px;margin:6px 0 0">この期間、この部位を使う種目はありません。</p>`}
-      ${zeroAdvice(selMuscle)}
+      ${exercisesForMuscle(selMuscle)}
     </div>`;
   }
 
@@ -54,10 +54,27 @@ function viewBody(){
     </div>`;
   return `<div class="splitcols"><div>${fig}</div><div>${side}${note}</div></div>`;
 }
-function zeroAdvice(m){
-  const cands = EX.filter(e=>e.p.includes(m)).slice(0,3);
-  if(!cands.length) return "";
-  return `<p class="lastline">この部位を主に使う種目: ${cands.map(c=>c.name).join("、")}</p>`;
+/* この部位に効く種目の一覧（主に効く／補助で使う）。押すと種目タブの解説が開き、
+   今日のメニューにまだ無ければその場で足せる */
+function exByRow(e){
+  const inPlan = todayItems().some(it=>it.ex===e.id);
+  const noGear = holdOf(e.id) && !gearOptions(e.id).length;
+  const right = inPlan ? `<span class="exbytag plan">今日のメニューにある</span>`
+    : noGear ? `<span class="exbytag warn">ダンベルが必要</span>`
+    : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">今日のメニューに追加</button>`;
+  return `<div class="exbyrow">
+    <button class="exbyname" data-act="goref" data-ex="${e.id}">${esc(e.name)}</button>
+    ${right}
+  </div>`;
+}
+function exByList(title, list){
+  if(!list.length) return "";
+  return `<p class="exbyhead">${title}</p><div class="exbylist">${list.map(exByRow).join("")}</div>`;
+}
+function exercisesForMuscle(m){
+  const primary = EX.filter(e=>e.p.includes(m));
+  const secondary = EX.filter(e=>!e.p.includes(m) && (e.s||[]).includes(m));
+  return exByList("主に効く種目", primary) + exByList("補助で使う種目", secondary);
 }
 /* 数の表示: 整数はそのまま、半端は小数1桁 */
 function fmtSets(v){
