@@ -137,6 +137,9 @@ def main():
         # ブラウザの控え（HTTPキャッシュ）にも古い版が入っている状態にする
         cdp.js("fetch('./', {cache:'default'}).then(r=>r.text()).then(()=>true)")
         cdp.js("fetch('./index.html', {cache:'default'}).then(r=>r.text()).then(()=>true)")
+        # C18: 同じアドレスで動く別のアプリの保存（trainlog- で始まらない名前）を仕込んでおく。
+        # 新しい版に切り替わったあとも、これが残っているかを確かめる
+        cdp.js("caches.open('other-app-cache').then(c=>c.put(new Request('/other'), new Response('x'))).then(()=>true)")
 
         # 配る中身を新しい版に差し替える（GitHub Pages に新しい版が出た）
         for name in os.listdir(v2):
@@ -157,13 +160,55 @@ def main():
         results.append(("1回押しただけで新しい版に切り替わる", bool(got), cdp.js("BUILD_VERSION", wait=False)))
         # 新しい版の保存がそろっていて、古い保存は消えている
         names = cdp.js("caches.keys()") or []
-        results.append(("保存は新しい版だけ", len(names) == 1 and "new" in names[0], names))
+        own_names = [n for n in names if n.startswith("trainlog-")]
+        results.append(("自分の保存は新しい版だけ", len(own_names) == 1 and "new" in own_names[0], names))
+        # C18: 同じアドレスの他アプリの保存（trainlog- で始まらない）は消えていない
+        results.append(("同じアドレスの他アプリの保存は消えない", "other-app-cache" in names, names))
         # オフラインでも新しい版が開く
         cdp.call("Network.enable")
         cdp.call("Network.emulateNetworkConditions", offline=True, latency=0, downloadThroughput=-1, uploadThroughput=-1)
         cdp.call("Page.reload")
         off = wait_for(cdp, "typeof BUILD_VERSION!=='undefined' && BUILD_VERSION===%s" % json.dumps(new_ver), timeout=20)
         results.append(("オフラインでも新しい版が開く", bool(off), cdp.js("BUILD_VERSION", wait=False)))
+
+        # C6: 入力中は自動の再読み込みを後回しにする（追加の検査。壊れても他の結果は失わないように囲う）
+        try:
+            cdp.call("Network.emulateNetworkConditions", offline=False, latency=0, downloadThroughput=-1, uploadThroughput=-1)
+            cdp.call("Page.reload")
+            wait_for(cdp, "document.readyState==='complete' && typeof BUILD_VERSION!=='undefined'")
+            cdp.js("navigator.serviceWorker.ready.then(()=>true)")
+
+            v3 = os.path.join(work, "v3")
+            shutil.copytree(v2, v3)
+            idx3 = io.open(os.path.join(v3, "index.html"), encoding="utf-8").read()
+            ver3 = new_ver + "-3"
+            io.open(os.path.join(v3, "index.html"), "w", encoding="utf-8", newline="\n").write(
+                idx3.replace('BUILD_VERSION = "' + new_ver + '"', 'BUILD_VERSION = "' + ver3 + '"'))
+            sw3 = io.open(os.path.join(v3, "service-worker.js"), encoding="utf-8").read()
+            io.open(os.path.join(v3, "service-worker.js"), "w", encoding="utf-8", newline="\n").write(
+                sw3.replace("const CACHE_NAME = 'trainlog-new-", "const CACHE_NAME = 'trainlog-v3-"))
+            for name in os.listdir(v3):
+                src = os.path.join(v3, name)
+                dst = os.path.join(live, name)
+                if os.path.isdir(src):
+                    shutil.rmtree(dst, ignore_errors=True)
+                    shutil.copytree(src, dst)
+                else:
+                    shutil.copyfile(src, dst)
+
+            # アプリのUIには依存せず、その場で作った入力欄にフォーカスしてから、裏で新しい版を見つけさせる
+            focused = cdp.js("(function(){var t=document.createElement('input'); t.id='__e2e_probe';"
+                              "document.body.appendChild(t); t.focus(); return document.activeElement===t;})()", wait=False)
+            cdp.js("navigator.serviceWorker.getRegistration().then(function(r){return r.update();}).then(function(){return true;})", wait=False)
+            time.sleep(3.0)
+            still_old = cdp.js("BUILD_VERSION", wait=False)
+            results.append(("入力中は自動の再読み込みを後回しにする", bool(focused) and still_old == new_ver, still_old))
+
+            cdp.js("(function(){var el=document.activeElement; if(el&&el.blur) el.blur(); return true;})()", wait=False)
+            got3 = wait_for(cdp, "typeof BUILD_VERSION!=='undefined' && BUILD_VERSION===%s" % json.dumps(ver3), timeout=20)
+            results.append(("フォーカスが外れたら切り替わる", bool(got3), cdp.js("BUILD_VERSION", wait=False)))
+        except Exception as e:
+            results.append(("入力中は自動の再読み込みを後回しにする（追加検査が例外で止まった）", False, repr(e)))
     finally:
         # 起動した msedge.exe は別の本体に引き継いで先に終わることがあり、親子をたどって止めても
         # 実際に動いている Edge が残る（プロファイルを掴んだままになり、フォルダも消えない）。

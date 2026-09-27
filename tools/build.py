@@ -58,7 +58,10 @@ def add_pwa_tags(src):
     """マニフェスト・アイコン・SW登録など、ホーム画面追加とオフライン化に要るタグを足す。"""
     head_extra = (
         '<link rel="manifest" href="./manifest.json">\n'
-        '<meta name="theme-color" content="#EFEFE9">\n'
+        # ライト/ダークそれぞれの theme-color（アドレスバーの色）。OSの設定に応じてブラウザが
+        # media の合う方を選ぶ。「表示」ボタンでテーマを固定したときは shell.js が中身を書き換える
+        '<meta name="theme-color" content="#EFEFE9" media="(prefers-color-scheme: light)">\n'
+        '<meta name="theme-color" content="#13171B" media="(prefers-color-scheme: dark)">\n'
         '<meta name="mobile-web-app-capable" content="yes">\n'
         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
         '<meta name="apple-mobile-web-app-status-bar-style" content="default">\n'
@@ -74,7 +77,13 @@ def add_pwa_tags(src):
         "  var __hadController = !!navigator.serviceWorker.controller;\n"  # 初回インストール時は false
         "  navigator.serviceWorker.register('./service-worker.js').catch(function(){});\n"
         "  navigator.serviceWorker.addEventListener('controllerchange', function(){\n"
-        "    if(__hadController && !window.__swReloaded){ window.__swReloaded = true; location.reload(); }\n"
+        # 入力中・休憩タイマー中はすぐ開き直さない（shell.js の swWhenReady に判定を任せる）。
+        # 二重リロード防止（__hadController・__swReloaded）は崩さず、待っている間の
+        # 二重の予約だけを __swReloadScheduled で防ぐ
+        "    if(!__hadController || window.__swReloaded || window.__swReloadScheduled) return;\n"
+        "    window.__swReloadScheduled = true;\n"
+        "    var go = function(){ window.__swReloaded = true; location.reload(); };\n"
+        "    if(typeof swWhenReady === 'function') swWhenReady(go); else go();\n"
         "  });\n"
         "}\n"
         '</script>\n'

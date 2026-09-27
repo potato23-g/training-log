@@ -1,4 +1,84 @@
 /* ---------- テーマ ---------- */
+/* ---- 新しい版への切り替え（再読み込み）を後回しにする判定 ----
+   入力欄・メモ欄にフォーカスがある間、または休憩タイマーが動いている間は、
+   Service Worker が新しい版を取り込んだときの自動の再読み込みを後回しにする。休憩中に
+   打ちかけた数字やメモの入力が、気づかないうちの再読み込みで消えないようにするため。
+   後回しにした条件が外れたとき・画面が隠れたときに、保存待ちのメモを確定させてから行う。
+   休憩タイマー（restIv。src/app/timer.js）はそちらを直接編集せず、外に出ている変数を読むだけ */
+function swBusyEditing(){
+  try{
+    const el = document.activeElement;
+    if(!el) return false;
+    const tag = (el.tagName || "").toUpperCase();
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  }catch(e){ return false; }
+}
+function swBusyResting(){
+  try{ return !!restIv; }catch(e){ return false; }
+}
+function swReloadBlocked(){
+  return swBusyEditing() || swBusyResting();
+}
+/* 保存待ちのメモ（今日のメモ #note・履歴の編集シートのメモ #hnote）があれば確定して保存する。
+   どちらも入力から600ms後に保存する作り（src/app/events.js・src/app/view-hist.js）なので、
+   その手前で再読み込みされると、打ちかけの文字が保存されないまま消えてしまう */
+function swFlushPendingNotes(){
+  let dirty = false;
+  try{
+    const note = document.getElementById("note");
+    if(note && typeof session === "function" && typeof TODAY !== "undefined"){
+      const s = session(TODAY);
+      if(s.note !== note.value){
+        s.note = note.value;
+        s.noteAt = typeof stampNow === "function" ? stampNow() : Date.now();
+        persistSession(TODAY);
+        dirty = true;
+      }
+    }
+  }catch(e){}
+  try{
+    const hnote = document.getElementById("hnote");
+    if(hnote && typeof session === "function"){
+      const marker = document.querySelector("[data-histday]");
+      const date = marker && marker.dataset ? marker.dataset.histday : null;
+      if(date){
+        const sx = session(date);
+        if(sx.note !== hnote.value){
+          sx.note = hnote.value;
+          sx.noteAt = typeof stampNow === "function" ? stampNow() : Date.now();
+          persistSession(date);
+          dirty = true;
+        }
+      }
+    }
+  }catch(e){}
+  try{
+    if(dirty && typeof syncNow === "function") syncNow();             /* 同期: メモを確定させたとき */
+    else if(typeof syncFlushPending === "function") syncFlushPending(); /* 何も無くても、他の変更が同期待ちなら送る */
+  }catch(e){}
+}
+/* 後回しにする条件が外れる（フォーカスが外れる・休憩が終わる）か、画面が隠れたときに
+   保存してから fn を1回呼ぶ。条件が最初から外れていれば、保存だけしてすぐ呼ぶ */
+function swWhenReady(fn){
+  const go = ()=>{ swFlushPendingNotes(); fn(); };
+  if(!swReloadBlocked()){ go(); return; }
+  let done = false;
+  const finish = ()=>{
+    if(done) return;
+    done = true;
+    try{ document.removeEventListener("focusout", onClear, true); }catch(e){}
+    try{ document.removeEventListener("visibilitychange", onHidden); }catch(e){}
+    clearInterval(poll);
+    go();
+  };
+  const onClear = ()=> setTimeout(()=>{ if(!swReloadBlocked()) finish(); }, 0);
+  const onHidden = ()=>{ if(document.hidden) finish(); };
+  try{ document.addEventListener("focusout", onClear, true); }catch(e){}
+  try{ document.addEventListener("visibilitychange", onHidden); }catch(e){}
+  /* 休憩タイマーはイベントを出さないので、念のためポーリングでも確かめる */
+  const poll = setInterval(()=>{ if(!swReloadBlocked()) finish(); }, 1000);
+}
+
 /* ---- アプリの更新 ----
    PWAは端末に保存した版で動くので、押したときに版の日時をネットから確かめる（端末の保存を通さない）。
    新しければ Service Worker に新しい版を取り込ませ、切り替わったら開き直す */
@@ -53,23 +133,47 @@ if(updBtn) updBtn.onclick = async ()=>{
       }
     }
     setStatus("新しい版（" + (m ? m[1] : "") + "）に切り替えます");
+    if(typeof swFlushPendingNotes === "function") swFlushPendingNotes();   /* 保存待ちのメモを先に保存する */
     if(!window.__swReloaded){ window.__swReloaded = true; setTimeout(()=> location.reload(), 200); }
   }catch(e){
     back("更新", "更新を確認できませんでした。通信を確かめてもう一度押してください");
   }
 };
 
+/* アドレスバーの色（<meta name="theme-color">）を、今のテーマに合わせる。
+   自動（テーマを固定していない）ときは、ライト/ダークそれぞれの media 付きタグが
+   OSの設定に追従するのでそのまま。「表示」ボタンで固定したときは、両方のタグの中身を
+   固定した側の色に揃える（どちらの media に一致してもその色になる） */
+function applyThemeColorMeta(){
+  try{
+    const forced = document.documentElement.getAttribute("data-theme");
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    if(!metas.length) return;
+    if(forced === "dark" || forced === "light"){
+      const c = forced === "dark" ? "#13171B" : "#EFEFE9";
+      metas.forEach(m=> m.setAttribute("content", c));
+    }else{
+      const defaults = {"(prefers-color-scheme: light)":"#EFEFE9", "(prefers-color-scheme: dark)":"#13171B"};
+      metas.forEach(m=>{
+        const key = m.getAttribute("media");
+        if(key && defaults[key]) m.setAttribute("content", defaults[key]);
+      });
+    }
+  }catch(e){}
+}
 const themeBtn = document.getElementById("themeBtn");
 (function(){
   let t = null;
   try{ t = localStorage.getItem("trainlog.theme"); }catch(e){}
   if(t) document.documentElement.setAttribute("data-theme", t);
+  applyThemeColorMeta();
   themeBtn.onclick = ()=>{
     const cur = document.documentElement.getAttribute("data-theme");
     const next = cur==="dark" ? "light" : (cur==="light" ? "" : "dark");
     if(next) document.documentElement.setAttribute("data-theme", next);
     else document.documentElement.removeAttribute("data-theme");
     try{ next ? localStorage.setItem("trainlog.theme", next) : localStorage.removeItem("trainlog.theme"); }catch(e){}
+    applyThemeColorMeta();
     figThemeChanged(); render();
   };
 })();
