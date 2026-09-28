@@ -120,10 +120,10 @@ function buildPlan(){
     return !allowed(K);                    /* 決めた組み方が今日できないときだけ、ほかを候補にする */
   };
   const score = c => {
-    const K = nextOf(patternOf(c.ex));
-    if(K && itemKey(c) === itemKey(K)) return gain(c);
+    const K = nextOf(patternOf(c.ex)), pref = PATTERN_PREF[patternOf(c.ex)] || 1;
+    if(K && itemKey(c) === itemKey(K)) return gain(c) * pref;
     const want = K ? itemLevel(K) : 2;
-    return gain(c) / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
+    return gain(c) * pref / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
   };
   const take = c => {
     const it = Object.assign({}, c), add = exLoad(it.ex, it.sets || 3);

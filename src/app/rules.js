@@ -47,9 +47,14 @@ const PRIORITY = {quads:1, glutes:1, hams:1, chest:1, lats:1, shoulders:0.8,
                   triceps:0.5, biceps:0.5, calves:0.5, abs:0.4, obliques:0.4, traps:0.4,
                   erectors:0.2, forearms:0.2, adductors:0.2};
 /* メニューを選ぶときの部位の重み。不足を2乗で数えるので、差は小さめにしてある（PRIORITY は「からだ」タブの並び順用） */
+/* 腹直筋・脊柱起立筋・前腕・内転筋はほかの種目の補助で十分に使われるので軽くしてある */
 const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, shoulders:0.9,
-                     triceps:0.8, biceps:0.8, calves:0.8, abs:0.6, obliques:0.6, traps:0.6,
-                     erectors:0.3, forearms:0.3, adductors:0.3};
+                     triceps:0.8, biceps:0.8, calves:0.9, abs:0.5, obliques:0.8, traps:0.6,
+                     erectors:0.3, forearms:0.3, adductors:0.15};
+/* 同じくらいの価値なら、定番の動き（スクワット・ヒンジ・ロウ・プレス）を少し先にする係数。
+   部位の不足だけで比べると、主役の部位が多い種目（サイドランジ）や補助の多い種目（プルオーバー）が
+   いつも勝ってしまい、スクワットやロウが出なくなるため。書いていない動きは1 */
+const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9};
 /* 主役として使った部位を休ませる日数と、そのあいだの主役のセット数の目安（これ以上なら回復の途中） */
 const RECOVER_DAYS = 2, RECOVER_PRIMARY = 3;
 /* 部位 m が主役（主働筋）だったセット数（fromDaysAgo〜toDaysAgo 日前） */
