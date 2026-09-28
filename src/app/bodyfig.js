@@ -1,13 +1,16 @@
 /* ============================================================
    人体図
    ============================================================ */
-/* class="rg" の部位図形に、読み上げ・キーボード操作のための role・tabindex・aria-label を足す（C15）。
-   クリックの結び直しは events.js の wire() 側で行う */
+/* タップして部位を選べる（からだタブの）図にだけ、読み上げ・キーボード操作のための
+   role・tabindex・aria-label を足す（C15）。外側の <svg role="img"> のままだと、支援技術は
+   中身をひとつの画像として読み、子のrole="button"は読み上げに出てこないので、
+   svg側もrole="group"に替える。クリックの結び直しは events.js の wire() 側で行う */
 function addRgA11y(svg){
-  return svg.replace(/<(\w+) class="rg" data-m="(\w+)"/g,
-    (full, tag, m) => `<${tag} class="rg" data-m="${m}" role="button" tabindex="0" aria-label="${MUSCLES[m] || ""}"`);
+  return svg.replace(' role="img"', ' role="group"')
+    .replace(/<(\w+) class="rg" data-m="(\w+)"/g,
+      (full, tag, m) => `<${tag} class="rg" data-m="${m}" role="button" tabindex="0" aria-label="${MUSCLES[m] || ""}"`);
 }
-function figFront(){ return addRgA11y(`
+function figFront(){ return `
 <svg class="fig" viewBox="0 0 200 378" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正面の筋肉図">
  <g class="nt">
   <ellipse cx="100" cy="28" rx="18" ry="21"/>
@@ -34,9 +37,9 @@ function figFront(){ return addRgA11y(`
  <rect class="rg" data-m="quads" x="101" y="189" width="23" height="89" rx="11"/>
  <path class="rg" data-m="adductors" d="M98,191 L98,248 L90,236 C88,216 90,199 93,191 Z"/>
  <path class="rg" data-m="adductors" d="M102,191 L102,248 L110,236 C112,216 110,199 107,191 Z"/>
-</svg>`); }
+</svg>`; }
 
-function figBack(){ return addRgA11y(`
+function figBack(){ return `
 <svg class="fig" viewBox="0 0 200 378" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="背面の筋肉図">
  <g class="nt">
   <ellipse cx="100" cy="28" rx="18" ry="21"/>
@@ -60,13 +63,15 @@ function figBack(){ return addRgA11y(`
  <rect class="rg" data-m="hams" x="101" y="213" width="22" height="68" rx="10"/>
  <rect class="rg" data-m="calves" x="80" y="292" width="17" height="60" rx="8"/>
  <rect class="rg" data-m="calves" x="103" y="292" width="17" height="60" rx="8"/>
-</svg>`); }
+</svg>`; }
 
 function bothFigs(clickable){
   const c = clickable ? " clickable" : "";
+  const front = clickable ? addRgA11y(figFront()) : figFront();
+  const back = clickable ? addRgA11y(figBack()) : figBack();
   return `<div class="figs">
-    <div class="figwrap">${figFront().replace('class="fig"','class="fig'+c+'"')}<div class="cap">前面</div></div>
-    <div class="figwrap">${figBack().replace('class="fig"','class="fig'+c+'"')}<div class="cap">背面</div></div>
+    <div class="figwrap">${front.replace('class="fig"','class="fig'+c+'"')}<div class="cap">前面</div></div>
+    <div class="figwrap">${back.replace('class="fig"','class="fig'+c+'"')}<div class="cap">背面</div></div>
   </div>`;
 }
 

@@ -21,18 +21,28 @@ let suppressDraftCapture = null;
 function clearInputDrafts(){
   Object.keys(inputDrafts).forEach(k => delete inputDrafts[k]);
   noteDraft = null;
+  /* きつさも「まだ記録していない入力」のひとつ。card.js の rpeSel はこのファイルより後に
+     読み込まれるが、実際に呼ばれるのは全部読み終わってからなので参照して問題ない */
+  if(typeof rpeSel !== "undefined") Object.keys(rpeSel).forEach(k => delete rpeSel[k]);
 }
-/* 描き直す直前の #view から、開いている種目の入力欄とメモの値を拾っておく */
+/* 描き直す直前の #view から、開いている種目の入力欄とメモの値を拾っておく。
+   触っていない（提案値のままの）入力は下書きに残さない。そうしないと、やさしく／難しくで
+   同じ種目idの別の組み方に替えたときなど、新しい提案値の上に前の提案値を復元してしまう */
 function captureDrafts(){
   const v = document.getElementById("view");
   if(!v) return;
   v.querySelectorAll('input[id^="w_"], input[id^="r_"]').forEach(inp=>{
     const m = /^([wr])_(.+)$/.exec(inp.id);
     if(!m || !EXMAP[m[2]] || m[2] === suppressDraftCapture) return;
-    (inputDrafts[m[2]] || (inputDrafts[m[2]] = {}))[m[1]] = inp.value;
+    const id = m[2], t = m[1], d = inputDrafts[id];
+    if(inp.value === inp.defaultValue){
+      if(d){ delete d[t]; if(!Object.keys(d).length) delete inputDrafts[id]; }
+    }else{
+      (d || (inputDrafts[id] = {}))[t] = inp.value;
+    }
   });
   const note = document.getElementById("note");
-  if(note) noteDraft = note.value;
+  if(note) noteDraft = (note.value !== note.defaultValue) ? note.value : null;
 }
 /* 描き直した後の同じ入力欄に、拾っておいた下書きを戻す */
 function restoreDrafts(){
@@ -169,7 +179,9 @@ function bindFigContext(c){
   c.addEventListener("webglcontextlost", (e)=>{ e.preventDefault(); figDropContext(); }, false);
   c.addEventListener("webglcontextrestored", ()=>{
     figDropContext();
-    if(tab === "ex" || tab === "body") render();     /* 今その図を見ていれば、新しい土台で描き直す */
+    /* 今その図（種目タブ、または今日タブで開いている種目）が見えていれば、新しい土台で描き直す。
+       からだタブの図は3Dではないので data-dia は無く、ここでは再描画しない */
+    if(document.querySelector("#view [data-dia]")) render();
   }, false);
 }
 function bindFigDrag(c){

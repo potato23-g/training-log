@@ -140,6 +140,16 @@ setTimeout(async () => {
     r.exBy.noGearTagged = !!rdlRow && rdlRow.textContent.indexOf("ダンベルが必要") >= 0;
     r.exBy.noGearNoAddBtn = !!rdlRow && !qs('[data-act="addtoday"]', rdlRow);
     state.gear = savedGear;
+    /* 「今日は外した」種目（skip:true）は、今日のメニューに実質無いのと同じなので
+       「今日のメニューにある」印ではなく足すボタンを出し、押すと外した印が消えて戻る */
+    ACTIONS.skip({dataset: {ex: "goblet"}});
+    selMuscle = "quads"; switchTab("body");
+    const gobletRowSkipped = rowByName(findCard(MUSCLES.quads), "ゴブレットスクワット");
+    r.exBy.skippedNotTagged = !!gobletRowSkipped && gobletRowSkipped.textContent.indexOf("今日のメニューにある") < 0;
+    const gobletAddBtnAfterSkip = gobletRowSkipped ? qs('[data-act="addtoday"]', gobletRowSkipped) : null;
+    r.exBy.skippedHasAddBtn = !!gobletAddBtnAfterSkip;
+    if(gobletAddBtnAfterSkip) gobletAddBtnAfterSkip.click();
+    r.exBy.skippedAddBtnUnskips = (session(TODAY).plan || []).some(x => x.ex === "goblet" && !x.skip);
 
     /* ======== C15: からだの図（読み上げ・キーボードだけの操作） ======== */
     selMuscle = null; switchTab("body");
@@ -179,6 +189,20 @@ setTimeout(async () => {
          （次のセットの提案値がたまたま同じ数字になることがあるため） */
       r.draft.clearsAfterRecord = inputDrafts.curl === undefined;
     }
+    /* 触っていない入力欄の値まで下書き扱いにすると、やさしく／難しくで同じ種目idの
+       別の組み方に替えたときや、他所からの新しい値を拾ったときに、前の提案値を
+       上書きで復元してしまう。メモで確かめる: 触っていなければ新しい値をそのまま見せ、
+       打ちかけなら残す */
+    session(TODAY).plan = [{ ex: "curl", sets: 3, r: 12 }]; planMemo = null;
+    tab = "today"; openEx = null; render();
+    session(TODAY).note = "書きかけ前A"; render();               /* まだ触っていない */
+    session(TODAY).note = "別端末からB";                          /* 同期などで中身が変わった想定 */
+    render();
+    const todayNoteEl = document.getElementById("note");
+    r.draft.untouchedNoteShowsNewValue = !!todayNoteEl && todayNoteEl.value === "別端末からB";
+    if(todayNoteEl){ todayNoteEl.value = "入力中のメモ"; render(); }
+    const todayNoteEl2 = document.getElementById("note");
+    r.draft.typedNoteSurvivesRerender = !!todayNoteEl2 && todayNoteEl2.value === "入力中のメモ";
 
     /* ======== U9+F3: 履歴の日付シート ======== */
     tab = "hist"; render();
@@ -373,6 +397,9 @@ setTimeout(async () => {
     check("exBy.addBtnWorks", r.exBy.addBtnWorks);
     check("exBy.noGearTagged", r.exBy.noGearTagged);
     check("exBy.noGearNoAddBtn", r.exBy.noGearNoAddBtn);
+    check("exBy.skippedNotTagged", r.exBy.skippedNotTagged);
+    check("exBy.skippedHasAddBtn", r.exBy.skippedHasAddBtn);
+    check("exBy.skippedAddBtnUnskips", r.exBy.skippedAddBtnUnskips);
     check("a11y.allRole", r.a11y.allRole);
     check("a11y.allTabindex", r.a11y.allTabindex);
     check("a11y.allLabel", r.a11y.allLabel);
@@ -381,6 +408,8 @@ setTimeout(async () => {
     check("draft.inputsFound", r.draft.inputsFound);
     check("draft.survivesRerender", r.draft.survivesRerender);
     check("draft.clearsAfterRecord", r.draft.clearsAfterRecord);
+    check("draft.untouchedNoteShowsNewValue", r.draft.untouchedNoteShowsNewValue);
+    check("draft.typedNoteSurvivesRerender", r.draft.typedNoteSurvivesRerender);
     check("hist.rowFound", r.hist.rowFound);
     check("hist.sheetOpen", r.hist.sheetOpen);
     check("hist.markerDate===d7", r.hist.markerDate === d7);

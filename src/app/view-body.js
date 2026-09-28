@@ -57,11 +57,14 @@ function viewBody(){
 /* この部位に効く種目の一覧（主に効く／補助で使う）。押すと種目タブの解説が開き、
    今日のメニューにまだ無ければその場で足せる */
 function exByRow(e){
-  const inPlan = todayItems().some(it=>it.ex===e.id);
+  /* 「今日は外した」種目（skip:true）は、今日のメニューには実質無いのと同じ。印を付けて
+     足すボタンを隠すと戻せなくなるので、外した種目は「まだ無い」側として扱う
+     （addToProgramToday はskipを消して戻す作りなので、そのまま押せば戻る） */
+  const inPlan = todayItems().some(it=>it.ex===e.id && !it.skip);
   const noGear = holdOf(e.id) && !gearOptions(e.id).length;
   const right = inPlan ? `<span class="exbytag plan">今日のメニューにある</span>`
     : noGear ? `<span class="exbytag warn">ダンベルが必要</span>`
-    : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">今日のメニューに追加</button>`;
+    : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">今日のメニューに足す</button>`;
   return `<div class="exbyrow">
     <button class="exbyname" data-act="goref" data-ex="${e.id}">${esc(e.name)}</button>
     ${right}
