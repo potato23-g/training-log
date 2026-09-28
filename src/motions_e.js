@@ -311,7 +311,7 @@
     base: {
       'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,
       'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 4, 'head.flex': 0,
-      'upperarmR.abd': 8, 'upperarmL.abd': 8,
+      'upperarmR.abd': -16, 'upperarmL.abd': -16,   /* 両手を寄せて、ダンベル1つの端を下から一緒に支える */
       'forearmR.flex': 22, 'forearmL.flex': 22, 'forearmR.rot': 170, 'forearmL.rot': 170,
       'handR.flex': -10, 'handL.flex': -10
     },
