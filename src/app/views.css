@@ -36,11 +36,10 @@
 .exbylist{display:flex;flex-direction:column}
 .exbyrow{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;padding:2px 0;border-bottom:1px solid var(--rule)}
 .exbyrow:last-child{border-bottom:none}
-/* 名前が長い種目（片脚ルーマニアンデッドリフト等）でも、足すボタン・印と同じ行に収まるよう
-   折り返さずに省略する。display:blockにしてline-heightで縦中央にそろえる */
-.exbyname{flex:1 1 0;min-width:0;min-height:44px;line-height:44px;display:block;
-  background:none;border:none;text-align:left;font-size:13.5px;color:var(--ink);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 名前が長い種目（片脚ルーマニアンデッドリフト等）は省略せずに折り返す（どの種目か分かるように）。
+   足すボタン・印は右に置いたまま、名前だけが2行になる */
+.exbyname{flex:1 1 0;min-width:0;min-height:44px;display:flex;align-items:center;padding:6px 0;
+  background:none;border:none;text-align:left;font-size:13.5px;line-height:1.4;color:var(--ink)}
 .exbyadd{flex:0 0 auto;min-height:44px;background:none;border:1px solid var(--rule);border-radius:3px;
   padding:4px 10px;font-size:12px;font-weight:600;color:var(--ink-2)}
 .exbytag{flex:0 0 auto;display:inline-block;font-size:10px;font-weight:600;white-space:nowrap;
