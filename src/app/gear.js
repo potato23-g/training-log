@@ -84,10 +84,11 @@ function inventory(){
   });
   return Object.keys(m).map(Number).sort((a, b) => a - b).map(kg => ({kg, n:m[kg].n, adjN:m[kg].adjN}));
 }
-/* 引き継ぎ時の 5kg×2本 のままか（元の解説文・メモがそのまま当てはまる） */
+/* 引き継ぎ時の 5kg×2本 のままか（元の解説文・メモがそのまま当てはまる）。
+   固定の行の扱いは今のまま（inventory() で同じ重さの行をまとめて判定）。可変式が1本でもあれば対象外 */
 function isDefaultGear(){
-  const rows = gearItems();
-  return rows.length === 1 && !rows[0].adj && rows[0].kg === 5 && rows[0].n === 2;
+  const inv = inventory();
+  return inv.length === 1 && inv[0].kg === 5 && inv[0].n === 2 && inv[0].adjN === 0;
 }
 function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
 
@@ -130,6 +131,20 @@ function gearReady(id, row){
   return !h || gearOptions(id).length > 0;
 }
 
+/* その重さ kg を作れる行（固定はその重さの行、可変式は kg を設定できる行） */
+function rowsCovering(rows, kg){ return rows.filter(r => r.adj ? adjWeights(r).some(w => Math.abs(w - kg) < 1e-9) : Math.abs(r.kg - kg) < 1e-9); }
+/* mixed（違う重さ2つを同時に使う）が物として成立するか。同じ可変式1本を同時に2つの重さにはできない
+   ので、行ごとの本数を「重さaに1本」「重さbに1本」に割り振れるかを総当たりで確かめる（a≠b前提） */
+function twoUnitFeasible(rows, a, b){
+  const rowsA = rowsCovering(rows, a);
+  for(const ra of rowsA){
+    const remain = rows.map(r => r === ra ? r.n - 1 : r.n);
+    const okB = rows.some((r, idx) => remain[idx] >= 1 && (r.adj ? adjWeights(r).some(w => Math.abs(w - b) < 1e-9) : Math.abs(r.kg - b) < 1e-9));
+    if(okB) return true;
+  }
+  return false;
+}
+
 /* 使い方1つぶんの文。pieces は実際に使う重さ、adjPieces は各 piece が可変式かどうか */
 function optionText(o){
   const [kg0, kg1] = o.pieces, [adj0, adj1] = o.adjPieces || [false, false];
@@ -165,9 +180,14 @@ function gearOptions(id){
     }
   });
   if(h.mixed){
+    /* 違う重さ2つを同時に使うので、可変式1本が同時に2つの重さにはなれない点を物として確かめる
+       （固定の行の扱いは変わらない: 別々の行・別々の本数はいつも通り独立に数える） */
+    const rows = gearItems().filter(r => r.n > 0 && (r.adj ? true : r.kg > 0));
     for(let i = 0; i < inv.length; i++) for(let j = i + 1; j < inv.length; j++){
-      const A = inv[j], B = inv[i], a = A.kg, b = B.kg;
-      const adjA = (A.n - A.adjN) >= 1 ? 0 : 1, adjB = (B.n - B.adjN) >= 1 ? 0 : 1;
+      const a = inv[j].kg, b = inv[i].kg;
+      if(!twoUnitFeasible(rows, a, b)) continue;
+      const adjA = rowsCovering(rows, a).some(r => !r.adj) ? 0 : 1;
+      const adjB = rowsCovering(rows, b).some(r => !r.adj) ? 0 : 1;
       out.push({n:2, pieces:[a, b], adjPieces:[adjA >= 1, adjB >= 1], adjUsed:adjA + adjB,
                 total:a + b, key:a + b, how:h.pair, mixed:true});
     }
@@ -390,10 +410,12 @@ function dbStep(i, t, d){
   }
   setGearItems(it); render();
 }
-/* 可変式の行の −／＋（min/max/step/本数）。値がおかしくならないよう min<=max を保つ */
+/* 可変式の行の −／＋（min/max/step/本数）。値がおかしくならないよう min<=max を保ち、
+   readGearItem の検査を通ったときだけ反映する（設定できる重さが80個を超える変更などは無視し、
+   保存→読み込みで行が消える不具合を防ぐ） */
 function adjStep(i, field, d){
   const it = gearItems(); if(!it[i] || !it[i].adj) return;
-  const row = it[i];
+  const row = Object.assign({}, it[i]);
   if(field === "n") row.n = Math.max(1, Math.min(20, row.n + d));
   else if(field === "step") row.step = Math.max(0.25, Math.round((row.step + d * (row.step >= 5 ? 1 : 0.25)) * 100) / 100);
   else{
@@ -401,12 +423,16 @@ function adjStep(i, field, d){
     row[field] = Math.max(0.25, Math.round((cur + d * st) * 100) / 100);
     if(row.min > row.max){ if(field === "min") row.max = row.min; else row.min = row.max; }
   }
+  const checked = readGearItem(row);
+  if(!checked) return;                  /* 検査に落ちる変更（設定できる重さが80個を超えるなど）は反映しない */
+  it[i] = checked;
   setGearItems(it); render();
 }
 ACTIONS.adjstep = el => adjStep(+el.dataset.i, el.dataset.f, +el.dataset.d);
 ACTIONS.adjdel = el => { const it = gearItems(); it.splice(+el.dataset.i, 1); setGearItems(it); render(); };
 ACTIONS.adjadd = () => { const it = gearItems(); it.push({adj:true, min:2, max:24, step:2, n:2}); setGearItems(it); render(); };
-/* 可変式の行の入力欄（min/max/step/本数・「,」区切りの一覧）。設定シートが開くたびに shell.js から呼ぶ */
+/* 可変式の行の入力欄（min/max/step/本数・「,」区切りの一覧）。設定シートが開くたびに shell.js から呼ぶ。
+   ここも readGearItem の検査を通ったときだけ反映する（adjStep と同じ理由） */
 function wireGearCard(root){
   root.querySelectorAll('input[id^="adj_"]').forEach(inp => {
     inp.onchange = () => {
@@ -415,11 +441,15 @@ function wireGearCard(root){
       if(!it[i] || !it[i].adj){ render(); return; }
       const val = parseFloat(inp.value || "0");
       if(isNaN(val) || val <= 0){ render(); return; }
-      if(field === "n") it[i].n = Math.max(1, Math.min(20, Math.round(val)));
+      const row = Object.assign({}, it[i]);
+      if(field === "n") row.n = Math.max(1, Math.min(20, Math.round(val)));
       else{
-        it[i][field] = Math.round(val * 100) / 100;
-        if(it[i].min > it[i].max){ if(field === "min") it[i].max = it[i].min; else it[i].min = it[i].max; }
+        row[field] = Math.round(val * 100) / 100;
+        if(row.min > row.max){ if(field === "min") row.max = row.min; else row.min = row.max; }
       }
+      const checked = readGearItem(row);
+      if(!checked){ render(); return; }
+      it[i] = checked;
       setGearItems(it); render();
     };
   });
@@ -429,11 +459,15 @@ function wireGearCard(root){
       const it = gearItems();
       if(!it[i] || !it[i].adj){ render(); return; }
       const txt = inp.value.trim();
-      if(!txt) delete it[i].list;
+      const row = Object.assign({}, it[i]);
+      if(!txt) delete row.list;
       else{
         const nums = txt.split(/[,、]/).map(s => parseFloat(s.trim())).filter(v => isFinite(v) && v > 0 && v <= 100);
-        if(nums.length >= 2) it[i].list = nums; else delete it[i].list;
+        if(nums.length >= 2) row.list = nums; else delete row.list;
       }
+      const checked = readGearItem(row);
+      if(!checked){ render(); return; }
+      it[i] = checked;
       setGearItems(it); render();
     };
   });

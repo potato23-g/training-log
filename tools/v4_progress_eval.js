@@ -266,6 +266,19 @@
   const noDbPlan = buildPlan();
   ok(!noDbPlan.some(it => it.ex === "farmer"), "C19: ダンベル無しでファーマーズウォークが今日のメニューに出る: " + noDbPlan.map(itemName).join("、"));
   ok(!noDbPlan.some(it => it.needsDb), "C19: ダンベル無しでダンベルを使う組み方が今日のメニューに出る: " + noDbPlan.filter(it => it.needsDb).map(itemName).join("、"));
+  /* 新しく空の状態から選ばれるかだけでなく、過去に「胸に重りを抱える」組み方をしていて
+     伸ばし方がその組み方を today の候補にしてくる場合も、ダンベルが無ければ外れること */
+  fresh(); goTo(base);
+  const crunchOldDay = shift(base, -3);
+  const crunchHardLabel = (VARIANT_ROWS.find(v => v.ex === "crunch" && v.needsDb) || {}).label || "";
+  ok(!!crunchHardLabel, "C19: crunch の needsDb 組み方(hard)が VARIANT_ROWS に見つからない");
+  entryFor(crunchOldDay, "crunch", true).sets.push(
+    ...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 20, rpe: 8, target: 20, label: crunchHardLabel || ""})));
+  state.gear = {items: [], updatedAt: 1};
+  planMemo = null; resetProg();
+  const noDbPlan2 = buildPlan();
+  ok(!noDbPlan2.some(it => it.needsDb),
+     "C19: 過去に胸に重りを抱える組み方をしていても、ダンベル無しでは今日のメニューに出さない: " + noDbPlan2.filter(it => it.needsDb).map(itemName).join("、"));
 
   todayKey = realTodayKey; goTo(realTodayKey());
   fresh(); render();

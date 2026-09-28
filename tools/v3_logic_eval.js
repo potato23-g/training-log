@@ -67,10 +67,26 @@
     /* 「持っている重さ」は、固定の重さに加えて、可変式で設定できる重さも数える */
     const owned = new Set();
     inv.forEach(x => { if(x.adj) adjWeights(x).forEach(k => owned.add(k)); else owned.add(x.kg); });
-    const invCount = {};
-    inventory().forEach(({kg, n}) => { invCount[kg] = n; });
-    const pieceOk = o => { const c = {}; o.pieces.forEach(k => c[k] = (c[k]||0) + 1);
-      return Object.keys(c).every(k => (invCount[+k] || 0) >= c[k]); };
+    /* pieceOk: o.pieces の各重さに、別々の「物」（固定の1本、可変式の1本）を割り当てられるか。
+       inventory() の重さごとの合計本数だけで見ると、可変式1本が同時に2つの重さになれる計算に
+       なってしまう（mixed のバグの温床）ので、ここでは inv の行を物として総当たりで確かめる */
+    const rowsList = inv.filter(x => x.n > 0);
+    const rowCoversKg = (row, kg) => row.adj ? adjWeights(row).some(w => Math.abs(w - kg) < 1e-9) : Math.abs(row.kg - kg) < 1e-9;
+    const pieceOk = o => {
+      const used = new Array(rowsList.length).fill(0);
+      const assign = idx => {
+        if(idx >= o.pieces.length) return true;
+        const kg = o.pieces[idx];
+        for(let r = 0; r < rowsList.length; r++){
+          if(used[r] >= rowsList[r].n || !rowCoversKg(rowsList[r], kg)) continue;
+          used[r]++;
+          if(assign(idx + 1)) return true;
+          used[r]--;
+        }
+        return false;
+      };
+      return assign(0);
+    };
     for(const ex of weighted){
       const id = ex.id, opts = gearOptions(id), totals = new Set(opts.map(o => o.total));
       opts.forEach(o => {
