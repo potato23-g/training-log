@@ -446,6 +446,7 @@ def main():
     run_bun("anim_check.js", "anim_check.js", judge_trailing_count("ラベルと動きが食い違う場面"))
     run_bun("variant_check.js", "variant_check.js", judge_variant_check)
     run_bun("sync_test.js", "sync_test.js", judge_sync_test, timeout=180)
+    run_bun("export_test.js", "export_test.js", judge_sync_test)          # CSV・テキストの書き出し
 
     print("\n== ブラウザ内検査 ==")
     run_browser("v4_progress_eval.js", "v4_progress_eval.js", judge_fail_array, timeout=90)
