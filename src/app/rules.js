@@ -1,7 +1,7 @@
 /* ---------- 今日 ---------- */
 const REST = {split:120, goblet:120, sumo:120, splitfloor:120, rdl:120, rdl1:120, hipthrust:105, bridge:90,
               row:105, row2:105, ohp:105, pushup:105, pushupknee:105, floorpress:105, fly:90,
-              sidelunge:120};
+              sidelunge:120, slidecurl:90, pullover:90};
 function restFor(item){
   const ex = EXMAP[item.ex];
   if(ex.kind === "t") return 60;
@@ -30,10 +30,11 @@ const PATTERN = {
   curl:"curl", triext:"ext", plank:"abs", deadbug:"abs", crunch:"abs", sideplank:"side",
   sumo:"squat", splitfloor:"squat", bridge:"bridge", pushupknee:"hpush", fly:"fly",
   skull:"ext", front:"raise", shrug:"shrug", row2:"pull",
-  calfseat:"calf", sidebend:"side", sidelunge:"lunge"
+  calfseat:"calf", sidebend:"side", sidelunge:"lunge",
+  slidecurl:"legcurl", pullover:"pullover", twist:"twist"
 };
 /* メニューに並べる順（大きい動きを先に、体幹は最後に） */
-const PATTERN_ORDER = ["squat","lunge","hinge","hpush","fly","pull","vpush","bridge","carry","shrug","raise","curl","ext","calf","abs","side"];
+const PATTERN_ORDER = ["squat","lunge","hinge","legcurl","hpush","fly","pull","pullover","vpush","bridge","carry","shrug","raise","curl","ext","calf","abs","side","twist"];
 /* 昨日この有効セット数以上使った部位は、今日は主役にしない。体幹・ふくらはぎ・前腕は回復が早い */
 const RECOVER_SETS = {abs:10, obliques:10, calves:6, forearms:6};
 const WEEK_TARGET = 10, WEEK_MAX = 16;

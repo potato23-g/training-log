@@ -119,7 +119,8 @@ const HOLD = {
   row2:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、左右を入れ替える",       per:"total"},
   calfseat:  {pair:"左右の膝に1つずつ置く", one:"片方の膝に置き、両手で押さえる",     per:"total"},
   sidebend:  {one:"片手に持ち、左右を入れ替える",                                    per:"total"},
-  sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"縦にして胸の前で抱える", per:"total", prefer:"one"}
+  sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
+  pullover:  {one:"両手でまとめて持つ",                                    per:"total"}
 };
 function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
 /* この種目（catalog の行）は、今持っているダンベルで行えるか。C19: HOLD の無い種目は常に true。
@@ -216,7 +217,7 @@ function nearestOption(opts, w){
 }
 
 /* 記録がない種目の最初の重さの目安(per が arm の種目は片腕あたり)。この重さ以下で一番重い使い方から始める */
-const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity};
+const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity, pullover:8};
 function startKg(id){ const v = START_KG[id] !== undefined ? START_KG[id] : START_KG[baseOf(id)]; return v === undefined ? 8 : v; }
 function defaultOption(id){
   const opts = gearOptions(id); if(!opts.length) return null;
@@ -306,7 +307,10 @@ const HOUSE = {
   row2:      {up:"本や水のペットボトルを詰めたリュックの持ち手を握って引く", down:"水を入れた2Lのペットボトルで行う"},
   calfseat:  {up:"荷物を詰めたリュックを膝の上に乗せる", down:"水を入れた2Lのペットボトルを膝に乗せる"},
   sidebend:  {up:"荷物を詰めた袋を持つ", down:"水を入れた2Lのペットボトルを持つ"},
-  sidelunge: {up:"荷物を詰めたリュックを背負う", down:"水を入れた2Lのペットボトルを胸の前で抱える"}
+  sidelunge: {up:"荷物を詰めたリュックを背負う", down:"水を入れた2Lのペットボトルを胸の前で抱える"},
+  slidecurl: {up:"荷物を詰めたリュックを骨盤に乗せる（畳んだタオルを挟むと痛くない）"},
+  pullover:  {down:"水を入れた2Lのペットボトルを両手でまとめて持つ"},
+  twist:     {up:"荷物を詰めた袋を持つ"}
 };
 function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
 

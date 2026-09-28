@@ -54,7 +54,13 @@ const VARIANT_TEXT = {
   crunch:     {hard: ["胸に重りを抱える",  "ダンベルを胸に抱えて行う。", {needsDb:true}],
                easy: ["腕を体の横に置く",  "手を体の横に置き、首を引っ張らないようにして行う。"]},
   deadbug:    {hard: ["ダンベルを持って行う", "両手に1つずつダンベルを持ち、いつもどおり対角の腕と脚を伸ばす。腰が浮くなら片手だけで持つ。", {needsDb:true}],
-               easy: ["腕か脚だけ動かす",  "腕だけ、または脚だけを動かす。"]}
+               easy: ["腕か脚だけ動かす",  "腕だけ、または脚だけを動かす。"]},
+  slidecurl:  {hard: ["片脚で行う",       "片脚を浮かせたまま、反対のかかとだけを滑らせて伸ばし、引き寄せる。浮かせた脚は伸ばしたままでよい。"],
+               easy: ["浅く行う",         "かかとを浅めまで滑らせ、膝が浅く曲がったところで引き寄せに戻る。"]},
+  pullover:   {hard: ["頭の後ろで2秒止める", "腕を頭の後ろまで下ろした位置で2秒止めてから引き上げる。"],
+               easy: ["浅めに下ろす",      "胸の真上から少し後ろまでで止め、可動域を狭くする。"]},
+  twist:      {hard: ["ダンベルを持って行う", "ダンベルを両手でまとめて持ち、いつもどおり体幹をひねる。", {needsDb:true}],
+               easy: ["浅くひねる",        "体幹をひねる角度を浅くする。"]}
 };
 
 /* 組み方ごとの動き（src/motions_f.js）。無いものは基本のやり方の図を出し、
@@ -83,7 +89,10 @@ const VARIANT_MOTION = {
   "farmer|片手だけで持つ":"farmer_one",
   "plank|片脚を上げる":"plank_leg", "sideplank|上の脚を上げる":"sideplank_leg",
   "crunch|胸に重りを抱える":"crunch_db", "crunch|腕を体の横に置く":"crunch_arms",
-  "deadbug|ダンベルを持って行う":"deadbug_db", "deadbug|腕か脚だけ動かす":"deadbug_half"
+  "deadbug|ダンベルを持って行う":"deadbug_db", "deadbug|腕か脚だけ動かす":"deadbug_half",
+  "slidecurl|片脚で行う":"slidecurl_one", "slidecurl|浅く行う":"slidecurl_shallow",
+  "pullover|頭の後ろで2秒止める":"pullover_hold", "pullover|浅めに下ろす":"pullover_shallow",
+  "twist|ダンベルを持って行う":"twist_db", "twist|浅くひねる":"twist_shallow"
 };
 /* 動きの見た目が基本と変わらない組み方（重さや時間だけ変えるもの）。図の断り書きを出さない */
 const VARIANT_SAME_LOOK = {
