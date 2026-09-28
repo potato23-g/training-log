@@ -93,7 +93,7 @@ function buildPlan(){
     if(donePattern.has(patternOf(c.ex))) return false;                              /* 今日もうやった動き */
     if(planSkip && planSkip.has(patternOf(c.ex))) return false;                     /* 今日は外した動き */
     if(touched.has(patternOf(c.ex))) return false;                                  /* 昨日と同じ動きは続けない */
-    if(holdOf(c.ex) && ex.kind === "w" && !gearOptions(c.ex).length) return false;  /* 持っているダンベルで作れない */
+    if(!gearReady(c.ex, c)) return false;                                           /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
     if(ex.p.some(m => (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役 */
     if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m))) return false;   /* 1日の上限（補助で使う部位も含む） */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
@@ -253,7 +253,7 @@ function fixPlan(s){
   const plan = buildPlan();
   if(!plan.length) return;                 /* 休みの日（メニューが空）は保存しない。別の端末の今日のメニューを空で上書きしないため */
   s.plan = plan.map(x => Object.assign({}, x));
-  s.planAt = Date.now();
+  s.planAt = stampNow();
 }
 /* 今日のメニューを、今の記録と決まりで組み直す。
    残すもの: 今日すでに記録した種目・自分で足した種目・今日は外した種目（外したまま）。
@@ -284,7 +284,7 @@ function replanToday(opt){
   /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく） */
   const added = fresh.filter(x => !keep.some(k => k.ex === x.ex));
   const plan = keep.filter(k => !k.skip).concat(added).concat(keep.filter(k => k.skip));
-  if(plan.length){ s.plan = plan; s.planAt = Date.now(); }
+  if(plan.length){ s.plan = plan; s.planAt = stampNow(); }
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
   openEx = null; editEx = null;

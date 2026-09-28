@@ -333,7 +333,7 @@ function renderDaySheet(date){
       clearTimeout(t);
       t = setTimeout(()=>{
         const sx = session(date);
-        sx.note = noteEl.value; sx.noteAt = Date.now();
+        sx.note = noteEl.value; sx.noteAt = stampNow();
         persistSession(date);
         if(typeof syncNow === "function") syncNow();
         render();

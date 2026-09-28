@@ -280,7 +280,7 @@
   ok(!noDbPlan2.some(it => it.needsDb),
      "C19: 過去に胸に重りを抱える組み方をしていても、ダンベル無しでは今日のメニューに出さない: " + noDbPlan2.filter(it => it.needsDb).map(itemName).join("、"));
 
-  /* ---- 13. C7: 日付が変わったら、入力欄の下書きは残らない ---- */
+  /* ---- 16. C7: 日付が変わったら、入力欄の下書きは残らない ---- */
   fresh(); goTo(shift(base, -2)); doDay(8);
   goTo(base);
   tab = "today"; selMuscle = null; editEx = null;
@@ -296,7 +296,7 @@
   ok(inputDrafts.curl === undefined, "C7: 日付が変わっても前日の下書きが残っている: " + JSON.stringify(inputDrafts.curl));
   todayKey = realTodayKey; goTo(base);
 
-  /* ---- 13. C20: 日付が変わってから確認が走るまでの間、今日のメニューを書き換えるボタンは
+  /* ---- 17. C20: 日付が変わってから確認が走るまでの間、今日のメニューを書き換えるボタンは
      前日を書き換えない（先に rollDay() を呼び、変わっていたらそこでやめる） ---- */
   const c20Check = (label, fn) => {
     fresh();
