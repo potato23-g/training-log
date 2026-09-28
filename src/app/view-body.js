@@ -43,8 +43,7 @@ function viewBody(){
     ${detail}
     <div class="card">
       <h4>使えていない部位</h4>
-      ${zero.length ? `<div class="mlist">${zero.map(x=>`<span class="chip">${MUSCLES[x.k]}</span>`).join("")}</div>
-        <p class="lastline">全部を毎週埋める必要はありません。ただし大腿四頭筋・大殿筋・ハムストリング・広背筋がここに並び続けている場合は、メニューの組み方を見直したほうがいいです。体の中で大きい筋肉が抜けていると、同じ時間をかけても効果の範囲が狭くなります。</p>`
+      ${zero.length ? `<div class="mlist">${zero.map(x=>`<span class="chip">${MUSCLES[x.k]}</span>`).join("")}</div>`
         : `<p style="margin:0;font-size:14px">この期間、主要な部位はひと通り使えています。</p>`}
     </div>`;
   const note = `

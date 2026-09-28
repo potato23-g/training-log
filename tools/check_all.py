@@ -469,6 +469,9 @@ def main():
     run_browser("v3_ui_fix_eval.js", "v3_ui_fix_eval.js", judge_smoke, needs_common=True)
     run_browser("v3_variant_eval.js", "v3_variant_eval.js", judge_smoke, needs_common=True)
     run_browser("v3_volume_eval.js", "v3_volume_eval.js", judge_smoke, timeout=90)
+    # 部位の回復（中1日で同じ部位を主役にしない）と1回の上限。部位ごとの週のセットは __result.weekly に出る
+    run_browser("v5_balance_eval.js", "v5_balance_eval.js",
+                judge_empty_arrays("recoverViolations", "capViolations"), timeout=240)
     run_browser("v3_dayroll_eval.js", "v3_dayroll_eval.js", judge_smoke)
     run_browser("v3_update_eval.js", "v3_update_eval.js", judge_smoke, needs_common=True)
     run_browser_2phase("v3_persist_eval.js", "v3_persist_eval.js")
