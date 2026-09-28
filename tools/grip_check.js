@@ -76,7 +76,9 @@ const WANT = {
   sidebend: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' },
              { t: 2.5, hand: 'handR', to: [0, 0, -1], label: '倒した位置でも手の向きは変えない' }],
   /* ゴブレットと同じ持ち方 */
-  sidelunge: [{ t: 0, hand: 'handR', to: [0, 1, 0], label: '胸の前: 手のひらは上（下から支える）' }]
+  sidelunge: [{ t: 0, hand: 'handR', to: [0, 1, 0], label: '胸の前: 手のひらは上（下から支える）' }],
+  /* ダンベルの下側を両手でまとめて支える。頭の後ろまで下ろした位置では手のひらが上を向く */
+  pullover: [{ t: 3.2, hand: 'handR', to: [0, 1, 0], label: '頭の後ろ: 手のひらは上（下から支える）' }]
 };
 
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(WANT);

@@ -180,6 +180,9 @@
   insertHold('skull', 'skull_hold', 0, 2, '下ろしたところで2秒止める');
   /* 前腕が床と平行（肘の曲げ約90°）になる付近。巻き上げ始めの約0.75秒後 */
   insertHold('curl', 'curl_hold', 0.75, 2, '途中で2秒止める');
+  /* ダンベルプルオーバー: t=3.0 はもともと「頭の後ろで止める」で0.4秒の場面（秒数なし）。
+     この0.4秒は新しい場面にそのまま吸収されるので、合計が2秒になるよう1.6秒だけ挿し込む */
+  insertHold('pullover', 'pullover_hold', 3.0, 1.6, '頭の後ろで2秒止める');
 
   /* ============ 深さ・角度が変わる組み方（楽にする方） ============ */
   derive('goblet', { id: 'goblet_box',
@@ -197,6 +200,36 @@
     set: { phases: [{ t: 0, label: '持ち上げる 1.3秒' }, { t: 1.3, label: '上で2秒止める' },
                     { t: 3.3, label: '下ろす 2秒' }] },
     keys: { 1.3: { 'pelvis.pitch': -104 }, 3.3: { 'pelvis.pitch': -104 } } });
+  derive('pullover', { id: 'pullover_shallow',
+    keys: { 1.8: { 'upperarmR.flex': 105, 'upperarmL.flex': 105 },
+            3.0: { 'upperarmR.flex': 120, 'upperarmL.flex': 120 },
+            3.4: { 'upperarmR.flex': 120, 'upperarmL.flex': 120 } } });
+
+  /* スライディングレッグカール: 左脚は曲げたまま浮かせて止め、右脚だけを滑らせる */
+  const SC_BENT = { 'thighL.flex': 18.5, 'shankL.flex': 116, 'footL.flex': 14 };
+  derive('slidecurl', { id: 'slidecurl_one',
+    keys: { 0.0: SC_BENT, 0.7: SC_BENT, 1.4: SC_BENT, 2.0: SC_BENT, 2.3: SC_BENT, 3.0: SC_BENT, 3.7: SC_BENT, 4.3: SC_BENT } });
+
+  /* ロシアンツイスト: ダンベルを両手でまとめて持つ（動きはそのまま）。
+     胸の高さで持つので、フロアプレス系と違って下げすぎると太ももに当たる。手の位置より少し上で持つ */
+  derive('twist', { id: 'twist_db',
+    set: { dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, 0.08, 0] }] } });
+
+  /* ロシアンツイスト: ひねる角度を浅くする */
+  const twistShallow = (bend) => ({ 'spineL.rot': bend * 5, 'spineT.rot': bend * 8, 'spineC.rot': bend * 10 });
+  derive('twist', { id: 'twist_shallow',
+    keys: { 1.4: twistShallow(1), 1.7: twistShallow(1), 4.5: twistShallow(-1), 4.8: twistShallow(-1) } });
+
+  /* スライディングレッグカール: 浅く行う（伸ばしきらない） */
+  derive('slidecurl', { id: 'slidecurl_shallow',
+    keys: { 1.4: { 'thighR.flex': 12, 'shankR.flex': 88, 'footR.flex': -9,
+                   'thighL.flex': 12, 'shankL.flex': 88, 'footL.flex': -9 },
+            2.0: { 'thighR.flex': 9, 'shankR.flex': 78, 'footR.flex': -14,
+                   'thighL.flex': 9, 'shankL.flex': 78, 'footL.flex': -14 },
+            2.3: { 'thighR.flex': 9, 'shankR.flex': 78, 'footR.flex': -14,
+                   'thighL.flex': 9, 'shankL.flex': 78, 'footL.flex': -14 },
+            3.0: { 'thighR.flex': 12, 'shankR.flex': 88, 'footR.flex': -9,
+                   'thighL.flex': 12, 'shankL.flex': 88, 'footL.flex': -9 } } });
 
   /* ============ 片側だけ動かす組み方 ============ */
   /* ダンベルショルダープレス: 右手だけ押し上げ、左手は体の横に下ろす */

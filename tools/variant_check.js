@@ -116,6 +116,24 @@ const CHECKS = [
   }],
   ['deadbug_db', 'deadbug', 'ダンベルを持って行う', (v, b) => [dbCount(v) === 2 && dbCount(b) === 0,
     `ダンベル ${dbCount(v)}個（元は ${dbCount(b)}個）`]],
+  ['pullover_hold', 'pullover', '頭の後ろで2秒止める', (v) => [seg(v, /^頭の後ろで\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^頭の後ろで\d+秒止める/)}秒`]],
+  ['pullover_shallow', 'pullover', '浅めに下ろす', (v, b) => {
+    const a = range(v, 'upperarmR.flex').hi, c = range(b, 'upperarmR.flex').hi;
+    return [a < c - 20, `下ろす深さ（上腕の角度） ${a.toFixed(0)}°（元は ${c.toFixed(0)}°）`];
+  }],
+  ['slidecurl_shallow', 'slidecurl', '浅く行う', (v, b) => {
+    const a = range(v, 'shankR.flex').lo, c = range(b, 'shankR.flex').lo;
+    return [a > c + 20, `一番伸ばした位置の膝屈曲 ${a.toFixed(0)}°（元は ${c.toFixed(0)}°）`];
+  }],
+  ['slidecurl_one', 'slidecurl', '片脚で行う', (v, b) => {
+    const a = moves(v, 'shankL.flex'), c = moves(b, 'shankL.flex');
+    return [a < 5 && c > 20, `左脚（膝）の動き ${a}°（元は ${c}°）`];
+  }],
+  ['twist_db', 'twist', 'ダンベルを持って行う', (v, b) => [dbCount(v) > dbCount(b), `ダンベル ${dbCount(v)}個（元は ${dbCount(b)}個）`]],
+  ['twist_shallow', 'twist', '浅くひねる', (v, b) => {
+    const a = range(v, 'spineC.rot').hi, c = range(b, 'spineC.rot').hi;
+    return [a < c - 5, `ひねる角度（脊柱） ${a.toFixed(0)}°（元は ${c.toFixed(0)}°）`];
+  }],
   ['calfseat_single', 'calfseat', '片脚ずつ行う', (v) => {
     const Tv = T(v);
     let rHi = -9, rLo = 9, lHi = -9, lLo = 9;

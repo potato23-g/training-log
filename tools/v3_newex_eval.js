@@ -2,7 +2,7 @@
    図が描けているか・解説文が揃っているか・持ち方や日用品の案内が出ているかを確かめる */
 (async () => {
   const NEW = ["sumo", "splitfloor", "bridge", "pushupknee", "fly", "skull", "front", "shrug", "row2",
-               "calfseat", "sidebend", "sidelunge"];
+               "calfseat", "sidebend", "sidelunge", "slidecurl", "pullover", "twist"];
   const out = {missing: [], noFigure: [], noDetail: [], noHold: [], noHouse: [], noMotion: [], noPattern: [],
                notInCatalog: [], badLevel: [], samples: {}};
 

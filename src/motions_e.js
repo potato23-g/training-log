@@ -293,4 +293,115 @@
     ]
   });
 
+  /* ---------------- ダンベルプルオーバー ----------------
+     仰向け、膝を立てる（フロアプレスと同じ仰向け姿勢）。ダンベル1つを両手でまとめて持ち、
+     胸の真上から弧を描いて頭の後ろへ。肘の角度（前腕の曲げ）は最後まで変えない。 */
+  const pulloverFoot = (z) => ({
+    at: [0.50, 0, z], local: [0, -FOOT.ankleH, 0], yaw: 0, pitch: 0,
+    pins: [FOOT.heel, FOOT.ball], pole: [0, 1, 0.5 * Math.sign(z)]
+  });
+  M.register({
+    id: 'pullover',
+    view: { az: 14, el: 15, dist: 3.3, target: [0.1, 0.3, 0] },
+    phases: [
+      { t: 0, label: '下ろす 3秒' }, { t: 3.0, label: '頭の後ろで止める' }, { t: 3.4, label: '引き上げる 2秒' }
+    ],
+    feet: { R: pulloverFoot(0.13), L: pulloverFoot(-0.13) },
+    dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, -0.05, 0] }],
+    base: {
+      'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,
+      'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 4, 'head.flex': 0,
+      'upperarmR.abd': 8, 'upperarmL.abd': 8,
+      'forearmR.flex': 22, 'forearmL.flex': 22, 'forearmR.rot': 170, 'forearmL.rot': 170,
+      'handR.flex': -10, 'handL.flex': -10
+    },
+    keys: [
+      { t: 0.0, hold: true, d: { 'upperarmR.flex': 88, 'upperarmL.flex': 88 } },
+      { t: 1.8, d: { 'upperarmR.flex': 128, 'upperarmL.flex': 128 } },
+      { t: 3.0, hold: true, d: { 'upperarmR.flex': 163, 'upperarmL.flex': 163 } },
+      { t: 3.4, hold: true, d: { 'upperarmR.flex': 163, 'upperarmL.flex': 163 } },
+      { t: 5.4, hold: true, d: { 'upperarmR.flex': 88, 'upperarmL.flex': 88 } }
+    ]
+  });
+
+  /* ---------------- スライディングレッグカール ----------------
+     仰向けでヒップリフトの姿勢を保ったまま（肩甲骨は床に固定）、かかとを滑らせて膝を伸ばし・引き寄せる。
+     脚は接地点を固定するIKではなく、股関節・膝・足首の角度を直接キーにして動かす（かかとが床の上を
+     前後に動くため）。肩甲骨の1点だけを anchor で固定し、股関節の高さはそこから自然に決まる。 */
+  M.register({
+    id: 'slidecurl',
+    view: { az: 20, el: 11, dist: 3.4, target: [0.15, 0.35, 0] },
+    anchor: { bone: 'spineT', local: [-0.1, 0, 0], at: [-0.15, 0.148, 0] },
+    contacts: [{ name: 'scap', bone: 'spineT', local: [-0.1, 0, 0], weight: 1 }],
+    phases: [
+      { t: 0, label: '伸ばす 2秒' }, { t: 2.0, label: '伸ばしきる直前' }, { t: 2.3, label: '引き寄せる 2秒' }
+    ],
+    base: {
+      'spineL.flex': 2, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 8, 'head.flex': 4,
+      'upperarmR.flex': -26, 'upperarmR.abd': 50, 'forearmR.flex': 0, 'forearmR.rot': 160,
+      'upperarmL.flex': -26, 'upperarmL.abd': 50, 'forearmL.flex': 0, 'forearmL.rot': 160,
+      'pelvis.pitch': -100
+    },
+    /* 股関節・膝・足首の角度は、かかとが常に床の高さ（腰の骨盤アンカーを基準にヒップリフトの姿勢を保った
+       まま）になるよう、それぞれの膝の曲げに対して個別に解いた値（tools/pose_fit.js 相当の手作業）。
+       曲げ(t=0/4.3)→伸ばし(t=2.0/2.3)のあいだ、かかとが床から浮いたり沈んだりしないようにしてある */
+    keys: [
+      { t: 0.0, hold: true, d: { 'thighR.flex': 18.5, 'shankR.flex': 116, 'footR.flex': 14,
+                                 'thighL.flex': 18.5, 'shankL.flex': 116, 'footL.flex': 14 } },
+      { t: 0.7, d: { 'thighR.flex': 16, 'shankR.flex': 100, 'footR.flex': 0,
+                     'thighL.flex': 16, 'shankL.flex': 100, 'footL.flex': 0 } },
+      { t: 1.4, d: { 'thighR.flex': 6.5, 'shankR.flex': 70, 'footR.flex': -18,
+                     'thighL.flex': 6.5, 'shankL.flex': 70, 'footL.flex': -18 } },
+      { t: 2.0, hold: true, d: { 'thighR.flex': -6, 'shankR.flex': 40, 'footR.flex': -34,
+                                 'thighL.flex': -6, 'shankL.flex': 40, 'footL.flex': -34 } },
+      { t: 2.3, hold: true, d: { 'thighR.flex': -6, 'shankR.flex': 40, 'footR.flex': -34,
+                                 'thighL.flex': -6, 'shankL.flex': 40, 'footL.flex': -34 } },
+      { t: 3.0, d: { 'thighR.flex': 6.5, 'shankR.flex': 70, 'footR.flex': -18,
+                     'thighL.flex': 6.5, 'shankL.flex': 70, 'footL.flex': -18 } },
+      { t: 3.7, d: { 'thighR.flex': 16, 'shankR.flex': 100, 'footR.flex': 0,
+                     'thighL.flex': 16, 'shankL.flex': 100, 'footL.flex': 0 } },
+      { t: 4.3, hold: true, d: { 'thighR.flex': 18.5, 'shankR.flex': 116, 'footR.flex': 14,
+                                 'thighL.flex': 18.5, 'shankL.flex': 116, 'footL.flex': 14 } }
+    ]
+  });
+
+  /* ---------------- ロシアンツイスト ----------------
+     床に座り、膝を曲げて足は床。上体を少し後ろに倒す。脚と骨盤は動かさず、脊柱の回旋だけで
+     体幹を左右にひねる。手は体の前で合わせ、体幹と一緒についてくる（腕自体の角度は変えない）。 */
+  const twistFoot = (x, z, yaw) => ({
+    at: [x, 0, z], local: [0, -FOOT.ankleH, 0], yaw: yaw, pitch: 0,
+    pins: [FOOT.heel, FOOT.ball]
+  });
+  const twistPose = (bend) => ({
+    'spineL.rot': bend * 10, 'spineT.rot': bend * 16, 'spineC.rot': bend * 20
+  });
+  M.register({
+    id: 'twist',
+    view: { az: 30, el: 14, dist: 3.3, target: [0.15, 0.45, 0] },
+    feet: { R: twistFoot(0.55, 0.13, 6), L: twistFoot(0.55, -0.13, -6) },
+    phases: [
+      { t: 0, label: '右へひねる 1.4秒' }, { t: 1.4, label: '右で止める' },
+      { t: 1.7, label: '中心へ戻る 1.4秒' }, { t: 3.1, label: '左へひねる 1.4秒' }, { t: 4.5, label: '左で止める' },
+      { t: 4.8, label: '中心へ戻る 1.4秒' }
+    ],
+    base: {
+      'pelvis.y': 0.22, 'pelvis.pitch': -40, 'pelvis.x': 0, 'pelvis.z': 0,
+      'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 6, 'head.flex': 2,
+      'clavR.prot': 10, 'clavL.prot': -10,
+      'upperarmR.flex': 10, 'upperarmR.abd': -12, 'upperarmR.rot': 10,
+      'upperarmL.flex': 10, 'upperarmL.abd': -12, 'upperarmL.rot': -10,
+      'forearmR.flex': 55, 'forearmR.rot': 96, 'handR.flex': 0,
+      'forearmL.flex': 55, 'forearmL.rot': 96, 'handL.flex': 0
+    },
+    keys: [
+      { t: 0.0, hold: true, d: twistPose(0) },
+      { t: 1.4, hold: true, d: twistPose(1) },
+      { t: 1.7, hold: true, d: twistPose(1) },
+      { t: 3.1, hold: true, d: twistPose(0) },
+      { t: 4.5, hold: true, d: twistPose(-1) },
+      { t: 4.8, hold: true, d: twistPose(-1) },
+      { t: 6.2, hold: true, d: twistPose(0) }
+    ]
+  });
+
 })(typeof window !== 'undefined' ? window : globalThis);

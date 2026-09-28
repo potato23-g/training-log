@@ -450,6 +450,45 @@ const CHECKS = {
       ['骨盤は動かさない', `骨盤の移動 ${(hip * 100).toFixed(1)}cm`, hip < 0.05]
     ];
   },
+  slidecurl: (m) => {
+    const bent = at(m, 0), ext = at(m, 2.0);
+    const kneeBent = M.boneAngles(bent.pose, 'shankR').flex, kneeExt = M.boneAngles(ext.pose, 'shankR').flex;
+    const heelBent = M.at(bent, 'footR', M.FOOT.heel), heelExt = M.at(ext, 'footR', M.FOOT.heel);
+    const lineBent = ang3(bent.b.upperarmR.pos, bent.b.thighR.pos, bent.b.shankR.pos);
+    const lineExt = ang3(ext.b.upperarmR.pos, ext.b.thighR.pos, ext.b.shankR.pos);
+    return [
+      ['戻した位置で膝がしっかり曲がる', `膝屈曲 ${kneeBent.toFixed(0)}°`, kneeBent > 95],
+      ['伸ばした位置で膝がほぼ伸びきる', `膝屈曲 ${kneeExt.toFixed(0)}°`, kneeExt < 55],
+      ['かかとは動作中ずっと床の高さのまま', `かかとの高さ 曲げ${(heelBent[1] * 100).toFixed(1)}cm / 伸ばし${(heelExt[1] * 100).toFixed(1)}cm`,
+        Math.abs(heelBent[1]) < 0.05 && Math.abs(heelExt[1]) < 0.05],
+      ['肩・腰・膝が一直線に近い（尻を浮かせたまま）', `肩-腰-膝 曲げ${lineBent.toFixed(0)}° / 伸ばし${lineExt.toFixed(0)}°`,
+        lineBent > 140 && lineExt > 140],
+      ['かかとが体から離れる方向へ大きく滑る', `かかとの移動 ${((heelExt[0] - heelBent[0]) * 100).toFixed(0)}cm`, (heelExt[0] - heelBent[0]) > 0.20]
+    ];
+  },
+  pullover: (m) => {
+    const top = at(m, 0), bottom = at(m, 3.2);
+    const elbowTop = M.boneAngles(top.pose, 'forearmR').flex, elbowBottom = M.boneAngles(bottom.pose, 'forearmR').flex;
+    const armTop = M.boneAngles(top.pose, 'upperarmR').flex, armBottom = M.boneAngles(bottom.pose, 'upperarmR').flex;
+    const dbBottom = bottom.dumbbells[0].pos;
+    return [
+      ['肘の角度を動作中ずっと変えない', `肘屈曲 上${elbowTop.toFixed(0)}° / 下${elbowBottom.toFixed(0)}°`, Math.abs(elbowTop - elbowBottom) < 5],
+      ['胸の上では腕がほぼ垂直', `上腕の角度 ${armTop.toFixed(0)}°`, armTop > 75 && armTop < 100],
+      ['頭の後ろまで大きく弧を描いて下ろす', `上腕の角度 上${armTop.toFixed(0)}° → 下${armBottom.toFixed(0)}°`, armBottom - armTop > 60],
+      ['下ろしてもダンベルは床につかない', `ダンベルの高さ ${(dbBottom[1] * 100).toFixed(0)}cm`, dbBottom[1] > 0.05]
+    ];
+  },
+  twist: (m) => {
+    const center = at(m, 0), right = at(m, 1.5), left = at(m, 4.6);
+    const rotRight = M.boneAngles(right.pose, 'spineC').rot, rotLeft = M.boneAngles(left.pose, 'spineC').rot;
+    const pelvisMove = Math.max(V.dist(center.b.pelvis.pos, right.b.pelvis.pos), V.dist(center.b.pelvis.pos, left.b.pelvis.pos));
+    const lean = (() => { const d = V.norm(V.sub(center.b.spineC.tip, center.b.pelvis.pos)); return Math.atan2(d[0], d[1]) * DEG; })();
+    return [
+      ['体幹が左右にしっかりひねれる', `脊柱の回旋 右${rotRight.toFixed(0)}° / 左${rotLeft.toFixed(0)}°`, rotRight > 15 && rotLeft < -15],
+      ['腰の位置は動かさない', `骨盤の移動 ${(pelvisMove * 100).toFixed(1)}cm`, pelvisMove < 0.01],
+      ['上体は少し後ろに倒す（倒しすぎない）', `体幹の傾き ${lean.toFixed(0)}°（0=垂直、負=後ろに倒す）`, lean < -25 && lean > -60]
+    ];
+  },
   sidelunge: (m) => {
     const bottom = findT(m, (fr) => -fr.b.pelvis.pos[1]);
     const bend = M.boneAngles(bottom.fr.pose, 'shankR').flex;
