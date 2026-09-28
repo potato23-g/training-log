@@ -59,6 +59,8 @@ function buildPlan(){
   const LIM = planShort ? SHORT_MAX : SESSION_MAX;
   const week = loadMap(1, 6);              /* 直近7日 = 1〜6日前 + 今日の分 */
   const yesterday = loadMap(1, 1);
+  const recentPrim = {};                   /* 中1日をはさんで2日のうちに主役だったセット数 */
+  Object.keys(MUSCLES).forEach(m => recentPrim[m] = primaryLoadBetween(m, 1, RECOVER_DAYS));
   const touched = patternsYesterday();
   const today = {}, plan = [];
   let sets = 0, minutes = 0;
@@ -79,12 +81,14 @@ function buildPlan(){
     minutes += itemMinutes({ex: e.ex, sets: e.sets.length, r: EXMAP[e.ex].r});
   });
 
-  /* 部位 m に add セット足したときの価値。週の目標までは1、目標を超えて上限までは0.35 */
+  /* 部位 m に add セット足したときの価値。週の目標までの不足を2乗で数えるので、目標から遠い部位ほど価値が大きい
+     （大きい部位ばかりで埋まって、小さい部位が0セットのまま残らないように）。目標を超えて上限までは少しだけ */
+  const short = x => Math.max(0, WEEK_TARGET - x);
   const worth = (m, add) => {
     const have = (week[m] || 0) + (today[m] || 0);
-    const under = Math.max(0, Math.min(add, WEEK_TARGET - have));
-    const over = Math.max(0, Math.min(add - under, WEEK_MAX - Math.max(have, WEEK_TARGET)));
-    return (PRIORITY[m] || 0) * (under + over * 0.35);
+    const under = (short(have) ** 2 - short(have + add) ** 2) / WEEK_TARGET;
+    const over = Math.max(0, Math.min(have + add, WEEK_MAX) - Math.max(have, WEEK_TARGET));
+    return (PLAN_WEIGHT[m] || 0) * (under + over * 0.15);
   };
   const gain = c => { const add = exLoad(c.ex, c.sets || 3); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
   const allowed = c => {
@@ -94,7 +98,8 @@ function buildPlan(){
     if(planSkip && planSkip.has(patternOf(c.ex))) return false;                     /* 今日は外した動き */
     if(touched.has(patternOf(c.ex))) return false;                                  /* 昨日と同じ動きは続けない */
     if(!gearReady(c.ex, c)) return false;                                           /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
-    if(ex.p.some(m => (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役 */
+    if(ex.p.some(m => (recentPrim[m] || 0) >= RECOVER_PRIMARY
+                   || (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役（中1日をはさんで2日） */
     if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m))) return false;   /* 1日の上限（補助で使う部位も含む） */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
@@ -134,25 +139,23 @@ function buildPlan(){
       take(best.c);
     }
   };
-  const need = it => { const m = EXMAP[it.ex].p[0]; return WEEK_TARGET - (week[m] || 0) - (today[m] || 0); };
-  /* 部位が週の目標に届いていなければ、その部位が主役の種目を1セットずつ増やす（足りない部位から、4セットまで）。
-     肩・腕・ふくらはぎ・体幹のような小さい部位も対象。週3回のように1回3セットのままだと
-     週の目標に1セット届かない頻度でも、ここで4セットまで増やせるようにする */
-  const addSets = () => {
+  /* 1セット増やしたときの価値（足りない部位ほど大きい） */
+  const oneMore = x => { const add = exLoad(x.ex, 1); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
+  /* 入れた種目のセットを、価値の大きいものから1セットずつ増やす（4セットまで）。部位の大小は問わない */
+  const addSets = minGain => {
     for(;;){
       const it = plan.filter(x => {
-        const ex = EXMAP[x.ex], n = x.sets || 3, add = exLoad(x.ex, 1);
-        if(x.seed || n >= 4 || need(x) < 1) return false;
+        const n = x.sets || 3, add = exLoad(x.ex, 1);
+        if(x.seed || n >= 4 || oneMore(x) < minGain) return false;
         if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m)) || sets + 1 > LIM.sets) return false;
         return minutes + mins(Object.assign({}, x, {sets: n + 1})) - mins(x) <= LIM.minutes;
-      }).sort((p, q) => need(q) - need(p))[0];
+      }).sort((p, q) => oneMore(q) - oneMore(p))[0];
       if(!it) return;
       const n = it.sets || 3, add = exLoad(it.ex, 1);
       Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
       sets += 1; minutes += mins(Object.assign({}, it, {sets: n + 1})) - mins(it); it.sets = n + 1;
     }
   };
-  const isBig = c => BIG_MUSCLES.includes(EXMAP[c.ex].p[0]);
   /* 残す種目（おまかせ追加・組み直し）を入れる。記録済みのセットは上で数えたので、残りのセットの分だけ足す */
   const keepIn = it => {
     if(plan.some(p => p.ex === it.ex)) return;
@@ -169,17 +172,16 @@ function buildPlan(){
        記録済みの種目は上で実際のセット数を数えたので、ここでは足さない（二重に数えない） */
     planSeed.forEach(it => { if(!it.skip) keepIn(it); });
     const seedLen = plan.length;
-    fill(1, seedLen + 1, isBig);
-    if(plan.length === seedLen) fill(0.5, seedLen + 1);
+    fill(1, seedLen + 1);
+    if(plan.length === seedLen) fill(0.2, seedLen + 1);
     if(plan.length === seedLen) fill(0.01, seedLen + 1);
   }else{
     /* 組み直し: 残す種目を先に入れる */
     (planKeep || []).forEach(keepIn);
-    fill(1, LIM.exercises, isBig);           /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
-    if(!planShort) addSets();                /* 2. まだ足りなければ、その種目のセットを増やす（大きい部位から） */
-    fill(1, LIM.exercises);                  /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
-    if(!planShort) addSets();                /* 4. 小さい部位も、週の目標に届いていなければ4セットまで増やす */
-    fill(0.5, Math.min(3, LIM.exercises));   /* 5. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
+    if(!planShort) addSets(0.5);             /* 2. 時間が残れば、足りない部位の種目のセットを4まで増やす */
+    fill(1, LIM.exercises);                  /* 3. まだ入るなら、もう1種目 */
+    fill(0.2, Math.min(3, LIM.exercises));   /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
@@ -214,10 +216,10 @@ function buildPlan(){
 /* 今日のメニューが空の日（休み）に出す説明 */
 function restText(){
   const big = ["quads","glutes","hams","chest","lats","shoulders"];
-  const tired = big.filter(m => muscleLoadBetween(m, 1, 1) >= recoverLimit(m));
+  const tired = big.filter(recovering);
   const enough = big.filter(m => !tired.includes(m) && muscleLoadBetween(m, 1, 6) >= WEEK_TARGET);
   const names = ms => ms.map(m => MUSCLES[m]).join("・");
-  return (tired.length ? names(tired) + "は、昨日しっかり使ったので回復の途中です。" : "")
+  return (tired.length ? names(tired) + "は、この2日でしっかり使ったので回復の途中です。" : "")
        + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
        + "今日は休むほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から足せます。";
 }
