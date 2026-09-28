@@ -56,7 +56,7 @@ function gearItems(){
     : {kg:+(x && x.kg) || 0, n:Math.max(0, Math.round((x && x.n) || 0))});
 }
 function setGearItems(items){
-  state.gear = {items, updatedAt: Date.now()};
+  state.gear = {items, updatedAt: typeof stampNow === "function" ? stampNow() : Date.now()};   /* 端末をまたいで新しい方を決める時刻（C9） */
   persistProgram();
   if(typeof syncSchedule === "function") syncSchedule();        /* 同期: ダンベル設定を変えたとき */
 }
@@ -373,7 +373,7 @@ function gearCard(){
         <button data-act="adjstep" data-i="${i}" data-f="${field}" data-d="1" aria-label="増やす">＋</button>
       </div></div>`;
   const adjRow = (x, i) => `<div class="dbrow adjrow">
-      <div class="adjdelwrap"><button class="dbdel" data-act="adjdel" data-i="${i}" aria-label="この可変式ダンベルを削除">×</button></div>
+      <div class="adjdelwrap"><b>可変式ダンベル</b><button class="dbdel" data-act="adjdel" data-i="${i}" aria-label="この可変式ダンベルを削除">×</button></div>
       <div class="adjflds">
         ${adjField(i, "min", "一番軽い kg", x.min, 0.25, 0.25)}
         ${adjField(i, "max", "一番重い kg", x.max, 0.25, 0.25)}
