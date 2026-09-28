@@ -286,7 +286,7 @@ function replanToday(opt){
   /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく） */
   const added = fresh.filter(x => !keep.some(k => k.ex === x.ex));
   const plan = keep.filter(k => !k.skip).concat(added).concat(keep.filter(k => k.skip));
-  if(plan.length){ s.plan = plan; s.planAt = stampNow(); }
+  if(plan.length){ s.plan = plan; s.planAt = s.planEdit = stampNow(); }   /* 組み直しは意図した変更（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
   openEx = null; editEx = null;

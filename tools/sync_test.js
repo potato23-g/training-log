@@ -232,6 +232,21 @@ function runUnitTests(){
   }
 
   {
+    /* 組み直し・追加・外すなど、利用者が意図して変えたメニュー（planEdit）は、先に自動で決めたメニューに負けない。
+       以前は常に「先に決めた方」が勝ち、スマホで組み直しても同期で朝のメニューに戻っていた */
+    const d = "2026-01-05";
+    const auto = { sessions: { [d]: { date: d, entries: [], plan: [{ ex: "morning" }], planAt: 200 } } };
+    const edited = { sessions: { [d]: { date: d, entries: [], plan: [{ ex: "replanned" }], planAt: 900, planEdit: 900 } } };
+    const m1 = M.mergeState(edited, auto).sessions[d];
+    ok(m1.plan[0].ex === "replanned" && m1.planEdit === 900, "merge: 組み直したメニュー（ローカル）が、先に決めた自動のメニュー（リモート）に勝つ");
+    const m2 = M.mergeState(auto, edited).sessions[d];
+    ok(m2.plan[0].ex === "replanned", "merge: 組み直したメニュー（リモート）が、先に決めた自動のメニュー（ローカル）に勝つ");
+    const edited2 = { sessions: { [d]: { date: d, entries: [], plan: [{ ex: "later" }], planAt: 1200, planEdit: 1200 } } };
+    ok(M.mergeState(edited, edited2).sessions[d].plan[0].ex === "later" && M.mergeState(edited2, edited).sessions[d].plan[0].ex === "later",
+       "merge: どちらも意図して変えたなら、後から変えた方");
+  }
+
+  {
     const a = { sessions: {}, gear: { items: [{ kg: 5, n: 2 }], updatedAt: 10 } };
     const b = { sessions: {}, gear: { items: [{ kg: 10, n: 2 }], updatedAt: 20 } };
     const m = M.mergeState(a, b);

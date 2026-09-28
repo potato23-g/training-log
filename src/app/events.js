@@ -279,7 +279,7 @@ function addToProgramToday(id, label){
   }else{
     s.plan.push(Object.assign({}, row, {manual: true}));
   }
-  s.planAt = stampNow();
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = id; editEx = null;
@@ -302,7 +302,7 @@ function replaceInPlan(fromId, toId, toLabel){
     s.plan.push(Object.assign({}, to));
     if(e && !e.sets.length) s.entries = s.entries.filter(x => x !== e);
   }
-  s.planAt = stampNow();
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = toId; editEx = null;
@@ -318,7 +318,7 @@ function editPlanItem(id, fn){
   const i = s.plan.findIndex(x => x.ex === id);
   if(i < 0) return;
   fn(s.plan, i);
-  s.planAt = stampNow();
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
 }
@@ -381,7 +381,7 @@ function addAutoToday(){
   }
   if(!s.plan) s.plan = [];
   s.plan = s.plan.concat([Object.assign({}, picked)]);
-  s.planAt = stampNow();
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = picked.ex; editEx = null;

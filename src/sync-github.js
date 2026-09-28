@@ -263,12 +263,21 @@ function syncMergeSession(a, b){
   var noteAtA = a.noteAt || 0, noteAtB = b.noteAt || 0;
   var noteWinner = noteAtB > noteAtA ? b : a;
 
+  /* 今日のメニュー: 利用者が意図して変えた（組み直し・追加・外すなど。planEdit）メニューがあれば、
+     最後に変えた方を残す。どちらも自動で決めただけなら、先に決めた方を残す（B16。2台が別々に
+     自動で組んだとき、記録を始めた方のメニューが後から入れ替わらないように）。
+     以前は常に「先に決めた方」だったため、組み直しても同期で朝のメニューに戻っていた */
   var hasPlanA = a.plan !== undefined, hasPlanB = b.plan !== undefined;
   var planWinner = null;
   if(hasPlanA && hasPlanB){
-    var planAtA = a.planAt === undefined ? Infinity : a.planAt;
-    var planAtB = b.planAt === undefined ? Infinity : b.planAt;
-    planWinner = planAtB < planAtA ? b : a;
+    var editA = a.planEdit || 0, editB = b.planEdit || 0;
+    if(editA || editB){
+      planWinner = editB > editA ? b : a;
+    }else{
+      var planAtA = a.planAt === undefined ? Infinity : a.planAt;
+      var planAtB = b.planAt === undefined ? Infinity : b.planAt;
+      planWinner = planAtB < planAtA ? b : a;
+    }
   }else if(hasPlanA){ planWinner = a; }
   else if(hasPlanB){ planWinner = b; }
 
@@ -279,6 +288,7 @@ function syncMergeSession(a, b){
   if(planWinner){
     merged.plan = planWinner.plan;
     if(planWinner.planAt !== undefined) merged.planAt = planWinner.planAt;
+    if(planWinner.planEdit !== undefined) merged.planEdit = planWinner.planEdit;
   }
   var routine = a.routine || b.routine;
   if(routine !== undefined) merged.routine = routine;

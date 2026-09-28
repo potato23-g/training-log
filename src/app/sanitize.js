@@ -23,7 +23,7 @@ function sanitizeState(obj){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || !s || typeof s !== "object") return;
     var x = { date: typeof s.date === "string" ? s.date : day, entries: [] };
     ["note", "routine"].forEach(function(k){ if(typeof s[k] === "string") x[k] = s[k]; });
-    ["noteAt", "planAt", "updatedAt"].forEach(function(k){ var n = num(s[k]); if(n !== null) x[k] = n; });
+    ["noteAt", "planAt", "planEdit", "updatedAt"].forEach(function(k){ var n = num(s[k]); if(n !== null) x[k] = n; });
     if(Array.isArray(s.del)) x.del = s.del.filter(function(v){ return typeof v === "string"; });
     if(s.deload === true) x.deload = true;
 
