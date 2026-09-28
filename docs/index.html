@@ -3761,7 +3761,7 @@ function sanitizeState(obj){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || !s || typeof s !== "object") return;
     var x = { date: typeof s.date === "string" ? s.date : day, entries: [] };
     ["note", "routine"].forEach(function(k){ if(typeof s[k] === "string") x[k] = s[k]; });
-    ["noteAt", "planAt", "updatedAt"].forEach(function(k){ var n = num(s[k]); if(n !== null) x[k] = n; });
+    ["noteAt", "planAt", "planEdit", "updatedAt"].forEach(function(k){ var n = num(s[k]); if(n !== null) x[k] = n; });
     if(Array.isArray(s.del)) x.del = s.del.filter(function(v){ return typeof v === "string"; });
     if(s.deload === true) x.deload = true;
 
@@ -4395,12 +4395,21 @@ function syncMergeSession(a, b){
   var noteAtA = a.noteAt || 0, noteAtB = b.noteAt || 0;
   var noteWinner = noteAtB > noteAtA ? b : a;
 
+  /* 今日のメニュー: 利用者が意図して変えた（組み直し・追加・外すなど。planEdit）メニューがあれば、
+     最後に変えた方を残す。どちらも自動で決めただけなら、先に決めた方を残す（B16。2台が別々に
+     自動で組んだとき、記録を始めた方のメニューが後から入れ替わらないように）。
+     以前は常に「先に決めた方」だったため、組み直しても同期で朝のメニューに戻っていた */
   var hasPlanA = a.plan !== undefined, hasPlanB = b.plan !== undefined;
   var planWinner = null;
   if(hasPlanA && hasPlanB){
-    var planAtA = a.planAt === undefined ? Infinity : a.planAt;
-    var planAtB = b.planAt === undefined ? Infinity : b.planAt;
-    planWinner = planAtB < planAtA ? b : a;
+    var editA = a.planEdit || 0, editB = b.planEdit || 0;
+    if(editA || editB){
+      planWinner = editB > editA ? b : a;
+    }else{
+      var planAtA = a.planAt === undefined ? Infinity : a.planAt;
+      var planAtB = b.planAt === undefined ? Infinity : b.planAt;
+      planWinner = planAtB < planAtA ? b : a;
+    }
   }else if(hasPlanA){ planWinner = a; }
   else if(hasPlanB){ planWinner = b; }
 
@@ -4411,6 +4420,7 @@ function syncMergeSession(a, b){
   if(planWinner){
     merged.plan = planWinner.plan;
     if(planWinner.planAt !== undefined) merged.planAt = planWinner.planAt;
+    if(planWinner.planEdit !== undefined) merged.planEdit = planWinner.planEdit;
   }
   var routine = a.routine || b.routine;
   if(routine !== undefined) merged.routine = routine;
@@ -5100,7 +5110,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-28 16:00";
+const BUILD_VERSION = "2026-09-28 21:44";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6404,7 +6414,7 @@ function replanToday(opt){
   /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく） */
   const added = fresh.filter(x => !keep.some(k => k.ex === x.ex));
   const plan = keep.filter(k => !k.skip).concat(added).concat(keep.filter(k => k.skip));
-  if(plan.length){ s.plan = plan; s.planAt = stampNow(); }
+  if(plan.length){ s.plan = plan; s.planAt = s.planEdit = stampNow(); }   /* 組み直しは意図した変更（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
   openEx = null; editEx = null;
@@ -8553,7 +8563,7 @@ function addToProgramToday(id, label){
   }else{
     s.plan.push(Object.assign({}, row, {manual: true}));
   }
-  s.planAt = stampNow();
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = id; editEx = null;
@@ -8576,7 +8586,7 @@ function replaceInPlan(fromId, toId, toLabel){
     s.plan.push(Object.assign({}, to));
     if(e && !e.sets.length) s.entries = s.entries.filter(x => x !== e);
   }
-  s.planAt = stampNow();
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = toId; editEx = null;
@@ -8592,7 +8602,7 @@ function editPlanItem(id, fn){
   const i = s.plan.findIndex(x => x.ex === id);
   if(i < 0) return;
   fn(s.plan, i);
-  s.planAt = stampNow();
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
 }
@@ -8655,7 +8665,7 @@ function addAutoToday(){
   }
   if(!s.plan) s.plan = [];
   s.plan = s.plan.concat([Object.assign({}, picked)]);
-  s.planAt = stampNow();
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = picked.ex; editEx = null;
