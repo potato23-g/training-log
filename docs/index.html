@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>トレーニング記録</title>
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#EFEFE9">
+<meta name="theme-color" content="#EFEFE9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#13171B" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -246,6 +247,10 @@ textarea{min-height:64px;resize:vertical}
 .dbrow:first-child{padding-top:0}
 .dbrow .dbdel{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:3px;width:38px;height:38px;
   font-size:17px;line-height:1;color:var(--ink-3)}
+/* 可変式ダンベルの行: 項目が多く .dbrow の折り返し+margin-left:auto だけでは削除ボタンが右に寄らないため、
+   専用の行で明示的に右寄せする（gear.js の adjRow） */
+.adjdelwrap{width:100%;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.adjflds .fld{margin-bottom:2px}
 .side{font-size:10px;color:var(--muscle);border:1px solid var(--muscle);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
 .adv{font-size:10px;color:var(--ink-2);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
 .adv.warn{color:var(--muscle);border-color:var(--muscle)}
@@ -353,6 +358,23 @@ textarea{min-height:64px;resize:vertical}
 .mbar.reach .mbfill{opacity:1}
 .mbar .mbtgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-3)}
 .mbar .mbv{flex:0 0 30px;text-align:right;font-size:13px;font-weight:700;color:var(--ink)}
+
+/* ---- からだ: 部位に効く種目一覧 ---- */
+.exbyhead{font-size:12.5px;font-weight:700;color:var(--ink-2);margin:14px 0 4px}
+.exbyhead:first-of-type{margin-top:10px}
+.exbylist{display:flex;flex-direction:column}
+.exbyrow{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;padding:2px 0;border-bottom:1px solid var(--rule)}
+.exbyrow:last-child{border-bottom:none}
+/* 名前が長い種目（片脚ルーマニアンデッドリフト等）は省略せずに折り返す（どの種目か分かるように）。
+   足すボタン・印は右に置いたまま、名前だけが2行になる */
+.exbyname{flex:1 1 0;min-width:0;min-height:44px;display:flex;align-items:center;padding:6px 0;
+  background:none;border:none;text-align:left;font-size:13.5px;line-height:1.4;color:var(--ink)}
+.exbyadd{flex:0 0 auto;min-height:44px;background:none;border:1px solid var(--rule);border-radius:3px;
+  padding:4px 10px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.exbytag{flex:0 0 auto;display:inline-block;font-size:10px;font-weight:600;white-space:nowrap;
+  border:1px solid var(--rule);border-radius:3px;padding:2px 6px;color:var(--ink-2)}
+.exbytag.plan{color:var(--done);border-color:var(--done)}
+.exbytag.warn{color:var(--muscle);border-color:var(--muscle)}
 
 /* ---- 履歴: セッション行・種目ごとの推移（U9/U10） ---- */
 table.hist tbody tr{cursor:pointer}
@@ -3638,6 +3660,10 @@ function saveLocal(){
         if(m.gear) state.gear = m.gear;
       }catch(e){}
     }
+    /* 消した印（del）は古い日ならもう要らない。統合のときだけでなく、ここでも間引く
+       （同期を設定していない・同じ端末の1タブしか無い、といった mergeState を通らない
+       保存でも、del が消えずに増え続けないように） */
+    if(typeof syncPruneOldDel === "function") syncPruneOldDel(state.sessions);
     const next = JSON.stringify(state);
     try{ localStorage.setItem(LS, next); }
     catch(e){
@@ -3673,7 +3699,7 @@ async function initStore(){
 }
 
 function persistSession(date){
-  if(state.sessions[date]) state.sessions[date].updatedAt = Date.now();
+  if(state.sessions[date]) state.sessions[date].updatedAt = typeof stampNow === "function" ? stampNow() : Date.now();
   return saveLocal();
 }
 function persistProgram(){
@@ -3911,12 +3937,19 @@ var SYNC_LS_KEY = "trainlog.sync.v1";
 var SYNC_API_OVERRIDE_KEY = "trainlog.sync.api";
 var SYNC_LAST_KEY = "trainlog.sync.lastAt";
 var SYNC_META_KEY = "trainlog.sync.meta.v2";
+/* 端末の時計のずれ（サーバー時刻 − 端末時刻、ミリ秒）。core.js の stampNow() が読む。
+   キー名の文字列はそちらにも直書きしてある（artifact 版など sync-github.js が無い版でも
+   stampNow() が動くように、core.js からこのファイルへの依存は作らない） */
+var SYNC_SKEW_KEY = "trainlog.sync.clockSkew";
+var SYNC_SKEW_MAX_MS = 86400000; /* これを超えるずれは測り損ないとして捨てる（±1日） */
 var SYNC_REPO_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 var SYNC_BACKOFF_MS = [800, 1600];
 var SYNC_DIR = "trainlog";
 var SYNC_SETTINGS_NAME = "settings.json";
 var SYNC_LEGACY_PATH = "trainlog.json";
 var SYNC_MONTH_FILE_RE = /^(\d{4}-\d{2})\.json$/;
+/* 消した印（del）の間引き。180日より前の日は保存・統合のたびに削る（新しい日は必ず残す） */
+var SYNC_DEL_PRUNE_DAYS = 180;
 
 /* メモ・ダンベル設定の変更から同期までの待ち時間（入力中に何度も送らないため）。テストから縮めて使う */
 var SYNC_TUNE = { debounce: 4000 };
@@ -4050,8 +4083,43 @@ function mergeState(local, remote){
     var sa = a.sessions[date], sb = b.sessions[date];
     sessions[date] = (sa && sb) ? syncMergeSession(sa, sb) : (sa || sb);
   });
+  syncPruneOldDel(sessions);
 
   return { sessions: sessions, gear: syncMergeGear(a.gear, b.gear) };
+}
+
+/* "YYYY-MM-DD" が今日から何日前か。core.js の todayKey/daysAgo には頼らない
+   （1日の区切り時刻の設定ぶんのズレはあるが、180日のしきい値には効かない差でしかない上、
+   sync-github.js はテストの vm サンドボックスで core.js を読み込まずに動かすことがあるため） */
+function syncDaysAgo(dateKey){
+  var p = String(dateKey).split("-").map(Number);
+  var d = new Date(p[0], (p[1] || 1) - 1, p[2] || 1);
+  var now = new Date();
+  var t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((t - d) / 86400000);
+}
+/* 消した印（del）は集合として意味を持つだけなので、古い日はいつまでも持ち続ける必要がない。
+   180日より前の日は統合のたびに間引く（新しい日の del はそのまま残す）。
+
+   ただし「その日の日付が古い」というだけで即間引くと、半年より前の日の記録を"今"直したとき
+   （履歴タブでセットを消す、など）に壊れる: 消した側の端末が保存・統合した時点で del が
+   間引かれてしまい、まだそれを見ていない別の端末が後から同期すると、間引かれて消えた del の
+   せいで削除が「無かったこと」になり、消したはずのセットが復活してしまう。
+   これを避けるため、その日の updatedAt（最後にその日の記録を触った時刻。persistSession が
+   更新する）も見て、最近さわっていれば（180日以内なら）日付が古くても del は残す。
+   updatedAt が無い（古い形式のまま誰も触っていない）日は、日付だけで判断する。
+
+   sessions は mergeState が新しく作ったオブジェクト（呼び出し側の引数のクローン）なので、
+   ここで直接書き換えてよい */
+function syncPruneOldDel(sessions){
+  Object.keys(sessions || {}).forEach(function(date){
+    var s = sessions[date];
+    if(!s || !s.del || !s.del.length) return;
+    if(syncDaysAgo(date) <= SYNC_DEL_PRUNE_DAYS) return;                         /* 日付そのものが新しい */
+    if(s.updatedAt !== undefined && Math.round((Date.now() - s.updatedAt) / 86400000) <= SYNC_DEL_PRUNE_DAYS) return; /* 最近さわった */
+    delete s.del;
+  });
+  return sessions;
 }
 
 /* del は集合として意味を持つだけで順序は決まっていない。ソートしておかないと
@@ -4072,24 +4140,18 @@ function syncMergeSession(a, b){
   var delLookup = {};
   del.forEach(function(id){ delLookup[id] = true; });
 
-  /* entries の並び: a のエントリ、続けて a に無い ex を持つ b のエントリ。
-     ※ 仕様どおりの非対称な規則。両端末が同じ日に別々の新しい種目を足すと
-     並び順そのものは端末ごとに食い違ったままになり得るが、セットの中身（データ）
-     は id で正しく収束する。並びだけの食い違いは無害（表示は日付・種目名基準）。
-     アルファベット順などに揃える「修正」はしない — 表示順（viewHist）が崩れる。 */
-  var aMap = {}, order = [];
-  (a.entries || []).forEach(function(e){
-    if(!(e.ex in aMap)) order.push(e.ex);
-    aMap[e.ex] = e;
-  });
-  var bMap = {};
-  (b.entries || []).forEach(function(e){
-    if(!(e.ex in bMap)) bMap[e.ex] = e;
-    if(!(e.ex in aMap) && order.indexOf(e.ex) === -1) order.push(e.ex);
-  });
+  /* entries の並びは、どちらを local(a) と呼ぶかに左右されない決まった順にする
+     （その種目の最初のセットの時刻。同じ／セットが無ければ種目ID）。
+     以前は「a のエントリ、続けて a に無い ex を持つ b のエントリ」という非対称な順で、
+     同じ日に同じ種目を両端末が持っていると、記録していなくても並びの違いだけで
+     「変わった」と判定され（stableKey は配列の順を見る）、同期のたびに送り合っていた。
+     今日の画面の並び（今日のメニュー）は plan 側の順で決めているので、ここを変えても影響しない。 */
+  var aMap = {}, bMap = {}, exSet = {};
+  (a.entries || []).forEach(function(e){ aMap[e.ex] = e; exSet[e.ex] = true; });
+  (b.entries || []).forEach(function(e){ bMap[e.ex] = e; exSet[e.ex] = true; });
 
   var entries = [];
-  order.forEach(function(ex){
+  Object.keys(exSet).forEach(function(ex){
     var ea = aMap[ex], eb = bMap[ex];
     var setMap = {};
     (eb ? eb.sets || [] : []).forEach(function(s){ setMap[s.id] = s; });
@@ -4103,6 +4165,12 @@ function syncMergeSession(a, b){
       return xi < yi ? -1 : (xi > yi ? 1 : 0);
     });
     if(sets.length > 0 || ea) entries.push({ ex: ex, sets: sets });
+  });
+  entries.sort(function(x, y){
+    var ax = x.sets.length ? (x.sets[0].at === undefined ? 0 : x.sets[0].at) : Infinity;
+    var ay = y.sets.length ? (y.sets[0].at === undefined ? 0 : y.sets[0].at) : Infinity;
+    if(ax !== ay) return ax - ay;
+    return x.ex < y.ex ? -1 : (x.ex > y.ex ? 1 : 0);
   });
 
   var noteAtA = a.noteAt || 0, noteAtB = b.noteAt || 0;
@@ -4150,6 +4218,7 @@ function syncErrorMessage(kind){
   switch(kind){
     case "auth": return "鍵が無効か、期限が切れています。GitHubで作り直して入れ直してください";
     case "forbidden": return "鍵にこのリポジトリへの書き込み権限がありません。Contents を Read and write にしてください";
+    case "ratelimit": return "GitHubの回数制限に達しました。しばらく待つと同期が再開します";
     case "repo404": return "リポジトリが見つかりません。名前と、鍵で選んだリポジトリを確かめてください";
     case "public": return "公開リポジトリには保存しません。非公開（Private）のリポジトリを指定してください";
     case "network": return "通信できませんでした。次に起動したときや記録したときに、まとめて同期します";
@@ -4166,6 +4235,19 @@ function syncMakeError(kind, cause){
   err.syncKind = kind;
   err.cause = cause;
   return err;
+}
+
+/* 403 の中身を見て、回数制限（rate limit）か本当の権限不足かを見分ける。
+   GitHub は回数制限を x-ratelimit-remaining: 0 か retry-after ヘッダ、
+   または本文の "rate limit" で示す。判別できなければ今までどおり forbidden 扱いにする */
+async function syncClassify403(res){
+  try{ if(res.headers.get("x-ratelimit-remaining") === "0") return "ratelimit"; }catch(e){}
+  try{ if(res.headers.get("retry-after")) return "ratelimit"; }catch(e){}
+  try{
+    var text = await res.clone().text();
+    if(/rate limit/i.test(text)) return "ratelimit";
+  }catch(e){}
+  return "forbidden";
 }
 
 /* ============================================================
@@ -4191,7 +4273,7 @@ async function syncCheckRepo(repo, token){
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 401) throw syncMakeError("auth");
   if(res.status === 404) throw syncMakeError("repo404");
-  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 403) throw syncMakeError(await syncClassify403(res));
   if(!res.ok) throw syncMakeError("network");
   var data;
   try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
@@ -4208,7 +4290,7 @@ async function syncListDir(cfg){
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 404) return [];
   if(res.status === 401) throw syncMakeError("auth");
-  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 403) throw syncMakeError(await syncClassify403(res));
   if(!res.ok) throw syncMakeError("network");
   var data;
   try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
@@ -4225,7 +4307,7 @@ async function syncGetFile(cfg, path){
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 404) return { parsed: null, sha: null };
   if(res.status === 401) throw syncMakeError("auth");
-  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 403) throw syncMakeError(await syncClassify403(res));
   if(!res.ok) throw syncMakeError("network");
   var data;
   try{ data = await res.json(); }catch(e){ throw syncMakeError("network", e); }
@@ -4260,11 +4342,33 @@ async function syncGetFileLenient(cfg, path){
   }
 }
 
+/* PUT の応答にある commit.committer.date（サーバー時刻）と、送った時刻・受け取った時刻の
+   中間から端末の時計のずれを見積もり、localStorage に持つ。core.js の stampNow() が使う。
+   極端な値（測り損ない）は捨てて、前に見積もった値をそのまま残す */
+function syncLoadClockSkew(){
+  try{
+    var v = parseInt(localStorage.getItem(SYNC_SKEW_KEY), 10);
+    return isFinite(v) ? v : 0;
+  }catch(e){ return 0; }
+}
+function syncSaveClockSkew(ms){
+  try{ localStorage.setItem(SYNC_SKEW_KEY, String(Math.round(ms))); }catch(e){}
+}
+function syncEstimateClockSkew(committerDateStr, sentAt, receivedAt){
+  var serverMs = Date.parse(committerDateStr);
+  if(!isFinite(serverMs)) return;
+  var mid = (sentAt + receivedAt) / 2;
+  var offset = serverMs - mid;
+  if(Math.abs(offset) > SYNC_SKEW_MAX_MS) return; /* 測り損ない（±1日を超える）は捨てる */
+  syncSaveClockSkew(offset);
+}
+
 async function syncPushFile(cfg, path, payloadObj, sha){
   var url = syncContentsUrl(cfg.repo, path);
   var body = { message: "記録を同期", content: syncUtf8ToBase64(JSON.stringify(payloadObj)) };
   if(sha) body.sha = sha;
   var res;
+  var sentAt = Date.now();
   try{
     res = await fetch(url, {
       method: "PUT",
@@ -4273,12 +4377,17 @@ async function syncPushFile(cfg, path, payloadObj, sha){
       body: JSON.stringify(body)
     });
   }catch(e){ throw syncMakeError("network", e); }
+  var receivedAt = Date.now();
   if(res.status === 401) throw syncMakeError("auth");
-  if(res.status === 403) throw syncMakeError("forbidden");
+  if(res.status === 403) throw syncMakeError(await syncClassify403(res));
   if(res.status === 409 || res.status === 422) throw syncMakeError("conflict");
   if(!res.ok) throw syncMakeError("network");
   var data = null;
   try{ data = await res.json(); }catch(e){}
+  try{
+    var committerDate = data && data.commit && data.commit.committer && data.commit.committer.date;
+    if(committerDate) syncEstimateClockSkew(committerDate, sentAt, receivedAt);
+  }catch(e){}
   return { sha: (data && data.content) ? data.content.sha : null };
 }
 
@@ -4756,9 +4865,23 @@ function asDate(k){ const [y,m,d] = k.split("-").map(Number); return new Date(y,
 function daysAgo(k){
   return Math.round((asDate(todayKey()) - asDate(k)) / 86400000);
 }
+/* この端末の時計に、GitHub同期で見積もったずれ（サーバー時刻との差。sync-github.js の
+   syncEstimateClockSkew が localStorage に置く）を足した「だいたい合っている」今の時刻。
+   ずれの記録が無ければ Date.now() と同じ。noteAt・planAt・gear.updatedAt・削除の印など、
+   端末をまたいで「後から書いたほうが勝つ」判定に使う時刻はこれを使う。
+   キー名の文字列は sync-github.js 側にも直書きしてある（artifact 版など sync-github.js が
+   無い版でも動くように、ここから sync-github.js への依存は作らない） */
+function stampNow(){
+  var skew = 0;
+  try{
+    var v = parseInt(localStorage.getItem("trainlog.sync.clockSkew"), 10);
+    if(isFinite(v)) skew = v;
+  }catch(e){}
+  return Date.now() + skew;
+}
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-27 17:50";
+const BUILD_VERSION = "2026-09-28 10:10";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -4815,6 +4938,15 @@ function setText(st, kind){
 /* ============================================================
    人体図
    ============================================================ */
+/* タップして部位を選べる（からだタブの）図にだけ、読み上げ・キーボード操作のための
+   role・tabindex・aria-label を足す（C15）。外側の <svg role="img"> のままだと、支援技術は
+   中身をひとつの画像として読み、子のrole="button"は読み上げに出てこないので、
+   svg側もrole="group"に替える。クリックの結び直しは events.js の wire() 側で行う */
+function addRgA11y(svg){
+  return svg.replace(' role="img"', ' role="group"')
+    .replace(/<(\w+) class="rg" data-m="(\w+)"/g,
+      (full, tag, m) => `<${tag} class="rg" data-m="${m}" role="button" tabindex="0" aria-label="${MUSCLES[m] || ""}"`);
+}
 function figFront(){ return `
 <svg class="fig" viewBox="0 0 200 378" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正面の筋肉図">
  <g class="nt">
@@ -4872,9 +5004,11 @@ function figBack(){ return `
 
 function bothFigs(clickable){
   const c = clickable ? " clickable" : "";
+  const front = clickable ? addRgA11y(figFront()) : figFront();
+  const back = clickable ? addRgA11y(figBack()) : figBack();
   return `<div class="figs">
-    <div class="figwrap">${figFront().replace('class="fig"','class="fig'+c+'"')}<div class="cap">前面</div></div>
-    <div class="figwrap">${figBack().replace('class="fig"','class="fig'+c+'"')}<div class="cap">背面</div></div>
+    <div class="figwrap">${front.replace('class="fig"','class="fig'+c+'"')}<div class="cap">前面</div></div>
+    <div class="figwrap">${back.replace('class="fig"','class="fig'+c+'"')}<div class="cap">背面</div></div>
   </div>`;
 }
 
@@ -5129,6 +5263,59 @@ let refEx = EX[0].id;
 let bodyDays = 7;
 let selMuscle = null;
 
+/* ---------- 入力欄の下書き（C7） ----------
+   まだ記録していない重さ・回数と、書きかけのメモ。種目ごと・その日だけの一時的なもの。
+   別端末の記録を取り込んで render() が描き直しても、これで元の入力欄の値に戻す。
+   記録したら（addSet）その種目の下書きは消す。日付が変わったら全部消す */
+let draftDay = TODAY;
+const inputDrafts = {};
+let noteDraft = null;
+/* 記録した直後など、その種目だけは今の描き直しで拾い直さないようにする一回限りの印。
+   render() の中で使ったら必ず null に戻す（addSet が延ばした「消した」を、直後の
+   captureDrafts が古いDOMの値で上書きしてしまわないようにするため） */
+let suppressDraftCapture = null;
+function clearInputDrafts(){
+  Object.keys(inputDrafts).forEach(k => delete inputDrafts[k]);
+  noteDraft = null;
+  /* きつさも「まだ記録していない入力」のひとつ。card.js の rpeSel はこのファイルより後に
+     読み込まれるが、実際に呼ばれるのは全部読み終わってからなので参照して問題ない */
+  if(typeof rpeSel !== "undefined") Object.keys(rpeSel).forEach(k => delete rpeSel[k]);
+}
+/* 描き直す直前の #view から、開いている種目の入力欄とメモの値を拾っておく。
+   触っていない（提案値のままの）入力は下書きに残さない。そうしないと、やさしく／難しくで
+   同じ種目idの別の組み方に替えたときなど、新しい提案値の上に前の提案値を復元してしまう */
+function captureDrafts(){
+  const v = document.getElementById("view");
+  if(!v) return;
+  v.querySelectorAll('input[id^="w_"], input[id^="r_"]').forEach(inp=>{
+    const m = /^([wr])_(.+)$/.exec(inp.id);
+    if(!m || !EXMAP[m[2]] || m[2] === suppressDraftCapture) return;
+    const id = m[2], t = m[1], d = inputDrafts[id];
+    if(inp.value === inp.defaultValue){
+      if(d){ delete d[t]; if(!Object.keys(d).length) delete inputDrafts[id]; }
+    }else{
+      (d || (inputDrafts[id] = {}))[t] = inp.value;
+    }
+  });
+  const note = document.getElementById("note");
+  if(note) noteDraft = (note.value !== note.defaultValue) ? note.value : null;
+}
+/* 描き直した後の同じ入力欄に、拾っておいた下書きを戻す */
+function restoreDrafts(){
+  const v = document.getElementById("view");
+  if(!v) return;
+  v.querySelectorAll('input[id^="w_"], input[id^="r_"]').forEach(inp=>{
+    const m = /^([wr])_(.+)$/.exec(inp.id);
+    if(!m) return;
+    const d = inputDrafts[m[2]];
+    if(d && d[m[1]] !== undefined) inp.value = d[m[1]];
+  });
+  if(noteDraft !== null){
+    const note = document.getElementById("note");
+    if(note) note.value = noteDraft;
+  }
+}
+
 document.querySelectorAll("nav.tabs button").forEach(b=>{
   b.onclick = ()=>{
     tab = b.dataset.tab;
@@ -5230,9 +5417,28 @@ function figInit(){
     f.setSize(480, 560);
     f.canvas = c;
     bindFigDrag(c);
+    bindFigContext(c);
     FIG = f;
   }catch(e){ FIG = false; }
   return FIG;
+}
+/* ---------- 描画の土台（WebGL）が失われたとき（C10） ----------
+   iPhoneでアプリを裏に回した後などに起きる。そのまま使うと、直前の（真っ白な）姿が
+   静止画としてキャッシュされ続け、再読み込みするまで戻らない。
+   覚えている静止画を捨て、今のcanvasは手放して、次に使うときに新しい土台を作り直す */
+function figDropContext(){
+  stopAnim();
+  Object.keys(figShots).forEach(k => delete figShots[k]);
+  FIG = null;
+}
+function bindFigContext(c){
+  c.addEventListener("webglcontextlost", (e)=>{ e.preventDefault(); figDropContext(); }, false);
+  c.addEventListener("webglcontextrestored", ()=>{
+    figDropContext();
+    /* 今その図（種目タブ、または今日タブで開いている種目）が見えていれば、新しい土台で描き直す。
+       からだタブの図は3Dではないので data-dia は無く、ここでは再描画しない */
+    if(document.querySelector("#view [data-dia]")) render();
+  }, false);
 }
 function bindFigDrag(c){
   let down = false, x0 = 0, a0 = 0;
@@ -5378,8 +5584,12 @@ function figThemeChanged(){
 }
 
 function render(){
+  const resumeId = playingId;                /* 再生中の動きがあれば、描き直した後に再開する（C7） */
+  if(draftDay === TODAY) captureDrafts();     /* 描き直す前に、今の入力欄・メモの値を拾っておく（C7） */
+  suppressDraftCapture = null;                /* 一回限りの印は、使うか使わないかに関わらずここで戻す */
   stopAnim();
-  rollDay();
+  const rolled = rollDay();
+  if(rolled || draftDay !== TODAY){ clearInputDrafts(); draftDay = TODAY; }
   planMemo = null;
   if(typeof resetProg === "function") resetProg();
   document.getElementById("todayLabel").textContent = fmtDate(TODAY);
@@ -5398,8 +5608,23 @@ function render(){
     try{ console.error(e); }catch(x){}
   }
   wire();
+  restoreDrafts();
+  /* 再生中だった動きは、同じ図がまだ画面にあれば再生を続ける（C7） */
+  if(resumeId && document.querySelector('[data-dia="' + resumeId + '"]')) togglePlay(resumeId);
 }
 
+/* 表示が「自動」（data-theme未設定）のとき、OSのダーク／ライト切り替えにも図の色を追従させる（C10）。
+   手動で選んでいる間（data-theme あり）はそちらを優先し、ここでは何もしない */
+if(window.matchMedia){
+  const osThemeMq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onOsThemeChange = ()=>{
+    if(document.documentElement.getAttribute("data-theme")) return;
+    figThemeChanged();
+    render();
+  };
+  if(osThemeMq.addEventListener) osThemeMq.addEventListener("change", onOsThemeChange);
+  else if(osThemeMq.addListener) osThemeMq.addListener(onOsThemeChange);
+}
 /* ---------- 今日 ---------- */
 const REST = {split:120, goblet:120, sumo:120, splitfloor:120, rdl:120, rdl1:120, hipthrust:105, bridge:90,
               row:105, row2:105, ohp:105, pushup:105, pushupknee:105, floorpress:105, fly:90,
@@ -5480,7 +5705,7 @@ function stepItem(item, dir){
   const cands = catalog().filter(c => {
     if(patternOf(c.ex) !== pat) return false;
     if(c.ex === item.ex && (c.label || "") === (item.label || "")) return false;
-    if(EXMAP[c.ex].kind === "w" && !gearOptions(c.ex).length) return false;   /* 持っているダンベルで作れない */
+    if(!gearReady(c.ex, c)) return false;   /* 持っているダンベルで作れない（種目の種類・needsDb の組み方を問わず） */
     const lv = itemLevel(c);
     return dir > 0 ? lv > now : lv < now;
   });
@@ -5547,9 +5772,9 @@ const VARIANT_TEXT = {
                easy: ["膝をつく",          "膝をついて行い、頭から膝までを一直線に保つ。"]},
   sideplank:  {hard: ["上の脚を上げる",    "上側の脚を床から浮かせて保つ。"],
                easy: ["膝をつく",          "下側の膝をついて行う。"]},
-  crunch:     {hard: ["胸に重りを抱える",  "ダンベルを胸に抱えて行う。"],
+  crunch:     {hard: ["胸に重りを抱える",  "ダンベルを胸に抱えて行う。", {needsDb:true}],
                easy: ["腕を体の横に置く",  "手を体の横に置き、首を引っ張らないようにして行う。"]},
-  deadbug:    {hard: ["ダンベルを持って行う", "両手に1つずつダンベルを持ち、いつもどおり対角の腕と脚を伸ばす。腰が浮くなら片手だけで持つ。"],
+  deadbug:    {hard: ["ダンベルを持って行う", "両手に1つずつダンベルを持ち、いつもどおり対角の腕と脚を伸ばす。腰が浮くなら片手だけで持つ。", {needsDb:true}],
                easy: ["腕か脚だけ動かす",  "腕だけ、または脚だけを動かす。"]}
 };
 
@@ -5625,6 +5850,7 @@ const VARIANT_ROWS = (function(){
       if(VARIANT_MOTION[key]) row.mo = VARIANT_MOTION[key];
       else if(!VARIANT_SAME_LOOK[key]) row.baseFig = true;
       if(e.side || cfg.side || routineWantsSide(e.id)) row.side = true;
+      if(cfg.needsDb) row.needsDb = true;      /* HOLD の無い種目でも、この組み方だけダンベルを使う（C19） */
       rows.push(row);
     });
   });
@@ -5725,7 +5951,7 @@ function buildPlan(){
     if(donePattern.has(patternOf(c.ex))) return false;                              /* 今日もうやった動き */
     if(planSkip && planSkip.has(patternOf(c.ex))) return false;                     /* 今日は外した動き */
     if(touched.has(patternOf(c.ex))) return false;                                  /* 昨日と同じ動きは続けない */
-    if(holdOf(c.ex) && ex.kind === "w" && !gearOptions(c.ex).length) return false;  /* 持っているダンベルで作れない */
+    if(!gearReady(c.ex, c)) return false;                                           /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
     if(ex.p.some(m => (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役 */
     if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m))) return false;   /* 1日の上限（補助で使う部位も含む） */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
@@ -5767,12 +5993,14 @@ function buildPlan(){
     }
   };
   const need = it => { const m = EXMAP[it.ex].p[0]; return WEEK_TARGET - (week[m] || 0) - (today[m] || 0); };
-  /* 大きい部位が週の目標に届いていなければ、その部位が主役の種目を1セットずつ増やす（足りない部位から、4セットまで） */
+  /* 部位が週の目標に届いていなければ、その部位が主役の種目を1セットずつ増やす（足りない部位から、4セットまで）。
+     肩・腕・ふくらはぎ・体幹のような小さい部位も対象。週3回のように1回3セットのままだと
+     週の目標に1セット届かない頻度でも、ここで4セットまで増やせるようにする */
   const addSets = () => {
     for(;;){
       const it = plan.filter(x => {
         const ex = EXMAP[x.ex], n = x.sets || 3, add = exLoad(x.ex, 1);
-        if(x.seed || !BIG_MUSCLES.includes(ex.p[0]) || n >= 4 || need(x) < 1) return false;
+        if(x.seed || n >= 4 || need(x) < 1) return false;
         if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m)) || sets + 1 > LIM.sets) return false;
         return minutes + mins(Object.assign({}, x, {sets: n + 1})) - mins(x) <= LIM.minutes;
       }).sort((p, q) => need(q) - need(p))[0];
@@ -5806,9 +6034,10 @@ function buildPlan(){
     /* 組み直し: 残す種目を先に入れる */
     (planKeep || []).forEach(keepIn);
     fill(1, LIM.exercises, isBig);           /* 1. 脚・尻・胸・背中の足りない分を埋める種目 */
-    if(!planShort) addSets();                /* 2. まだ足りなければ、その種目のセットを増やす */
+    if(!planShort) addSets();                /* 2. まだ足りなければ、その種目のセットを増やす（大きい部位から） */
     fill(1, LIM.exercises);                  /* 3. 残りの時間で、肩・腕・ふくらはぎ・体幹などの種目 */
-    fill(0.5, Math.min(3, LIM.exercises));   /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    if(!planShort) addSets();                /* 4. 小さい部位も、週の目標に届いていなければ4セットまで増やす */
+    fill(0.5, Math.min(3, LIM.exercises));   /* 5. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
@@ -5882,13 +6111,14 @@ function fixPlan(s){
   const plan = buildPlan();
   if(!plan.length) return;                 /* 休みの日（メニューが空）は保存しない。別の端末の今日のメニューを空で上書きしないため */
   s.plan = plan.map(x => Object.assign({}, x));
-  s.planAt = Date.now();
+  s.planAt = stampNow();
 }
 /* 今日のメニューを、今の記録と決まりで組み直す。
    残すもの: 今日すでに記録した種目・自分で足した種目・今日は外した種目（外したまま）。
    同じ記録なら同じメニューになる（さっき出ていた種目を避けて入れ替える、ということはしない）。
    short: 20分で終わる短いメニューにする */
 function replanToday(opt){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const s = session(TODAY);
   const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
   const before = todayItems();
@@ -5912,7 +6142,7 @@ function replanToday(opt){
   /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく） */
   const added = fresh.filter(x => !keep.some(k => k.ex === x.ex));
   const plan = keep.filter(k => !k.skip).concat(added).concat(keep.filter(k => k.skip));
-  if(plan.length){ s.plan = plan; s.planAt = Date.now(); }
+  if(plan.length){ s.plan = plan; s.planAt = stampNow(); }
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
   openEx = null; editEx = null;
@@ -6067,7 +6297,7 @@ function viewToday(){
     const e = entryFor(TODAY, next.ex, false);
     const sug = suggestNext(next, e);
     const inner = ex.kind==="w"
-      ? `<div class="bigset"><span class="v num">${wShown(next, sug.w)}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">${perArm(next.ex) ? "kg（片手）・回" : "kg・回"}</span></div>`
+      ? `<div class="bigset"><span class="v num">${wShown(next, sug.w)}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">${perArm(next.ex) ? "kg（片手）・回" : "kg・回"}${next.side?"・左右":""}</span></div>`
       : `<div class="bigset"><span class="v num">${sug.r}</span><span class="u">${ex.kind==="t"?"秒":"回"}${next.side?"・左右":""}</span></div>`;
     hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${esc(itemName(next))}</h2>${inner}
@@ -6093,22 +6323,49 @@ function viewToday(){
       <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${esc(s.note||"")}</textarea>
     </div>
     ${typeof backupReminder === "function" ? backupReminder() : ""}
-    <p class="lastline" style="text-align:center;margin-top:18px">ダンベルの登録・休憩の知らせ方・同期・バックアップは、右上の ⚙ から。</p>
-    <p class="lastline" style="text-align:center;margin-top:6px">バージョン ${esc(BUILD_VERSION)}（更新があるときは、アプリを開き直すと切り替わります）</p>`;
+    <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${esc(BUILD_VERSION)}</p>`;
 }
 /* ============================================================
    持っているダンベル
-   設定で入れるのは「何kgを何本持っているか」だけ。種目ごとにどれを何本・どう持つかはアプリが決める。
-   持っていない重さは提案しない。足りない分は日用品（タオル・リュック・ペットボトルなど）の工夫で補う。
+   設定で入れるのは「何kgを何本持っているか」（固定）と、必要なら可変式（設定できる範囲・刻み・本数）。
+   種目ごとにどれを何本・どう持つかはアプリが決める。
+   持っていない重さ・設定できない重さは提案しない。足りない分は日用品（タオル・リュック・ペットボトルなど）の工夫で補う。
    既定は 5kg×2本（引き継ぎ時の前提）
    ============================================================ */
 const GEAR_DEFAULT_ITEMS = [{kg:5, n:2}];
+const ADJ_MAX_STEPS = 80;                    /* 可変式1本の「設定できる重さ」の上限 */
+/* 可変式1行ぶんの検証。おかしければ null（行ごと捨てる）。
+   min〜max〜step が有効ならそれを使い、list（2個以上、0<x≤100、80個まで）があれば併せて持つ。
+   min〜max が無効でも list が有効なら list だけで行を成立させる（list の範囲を仮の min〜max にする） */
+function readGearItem(x){
+  if(!x || typeof x !== "object") return null;
+  if(x.adj){
+    const n = Math.round(+x.n);
+    if(!(n >= 1 && n <= 20)) return null;
+    let list;
+    if(Array.isArray(x.list)){
+      const cleaned = x.list.map(Number).filter(v => isFinite(v) && v > 0 && v <= 100)
+        .sort((a, b) => a - b).filter((v, i, a) => i === 0 || v - a[i - 1] > 1e-9)
+        .map(v => Math.round(v * 100) / 100);
+      if(cleaned.length >= 2 && cleaned.length <= ADJ_MAX_STEPS) list = cleaned;
+    }
+    const min = Math.round(+x.min * 100) / 100, max = Math.round(+x.max * 100) / 100, step = Math.round(+x.step * 100) / 100;
+    const baseCount = Math.round((max - min) / step) + 1;
+    const rangeOk = min > 0 && min <= 100 && max >= min && max <= 100 && step >= 0.25 && baseCount >= 1 && baseCount <= ADJ_MAX_STEPS;
+    if(rangeOk){
+      const out = {adj:true, n, min, max, step};
+      if(list) out.list = list;
+      return out;
+    }
+    return list ? {adj:true, n, min:list[0], max:list[list.length - 1], step:0.25, list} : null;
+  }
+  return (+x.kg > 0 && +x.n > 0) ? {kg:+x.kg, n:Math.round(+x.n)} : null;
+}
 /* 保存データの器具設定を読む。旧形式 {unit,count,adjustable,max} は「unit kg を count 本」に読み替える */
 function readGear(g){
   if(!g || typeof g !== "object") return undefined;
   if(Array.isArray(g.items)){
-    return {items: g.items.filter(x => x && +x.kg > 0 && +x.n > 0).map(x => ({kg:+x.kg, n:Math.round(+x.n)})),
-            updatedAt: +g.updatedAt || 0};
+    return {items: g.items.map(readGearItem).filter(Boolean), updatedAt: +g.updatedAt || 0};
   }
   if(g.unit !== undefined || g.count !== undefined){
     const n = Math.round(+g.count || 0), kg = +g.unit || 5;
@@ -6116,25 +6373,50 @@ function readGear(g){
   }
   return undefined;
 }
-/* 入力欄に並べる行（入れたとおり） */
+/* 入力欄に並べる行（入れたとおり）。固定は {kg,n}、可変式は {adj:true,n,min,max,step,list?} */
 function gearItems(){
   const g = state.gear;
   const items = g && Array.isArray(g.items) ? g.items : GEAR_DEFAULT_ITEMS;
-  return items.map(x => ({kg:+x.kg || 0, n:Math.max(0, Math.round(+x.n || 0))}));
+  return items.map(x => (x && x.adj)
+    ? {adj:true, n:Math.max(0, Math.round(+x.n || 0)), min:+x.min || 0, max:+x.max || 0, step:+x.step || 0,
+       list: Array.isArray(x.list) ? x.list.slice() : undefined}
+    : {kg:+(x && x.kg) || 0, n:Math.max(0, Math.round((x && x.n) || 0))});
 }
 function setGearItems(items){
-  state.gear = {items, updatedAt: Date.now()};
+  state.gear = {items, updatedAt: typeof stampNow === "function" ? stampNow() : Date.now()};   /* 端末をまたいで新しい方を決める時刻（C9） */
   persistProgram();
   if(typeof syncSchedule === "function") syncSchedule();        /* 同期: ダンベル設定を変えたとき */
 }
-/* 計算用: 同じ重さはまとめ、軽い順 */
+/* 可変式1本の「設定できる重さ」（軽い順）。list があればそれを優先、なければ min〜max を step 刻みで */
+function adjWeights(row){
+  if(Array.isArray(row.list) && row.list.length >= 2) return row.list;
+  const out = [], n = Math.max(0, Math.round((row.max - row.min) / row.step));
+  for(let i = 0; i <= n; i++) out.push(Math.round((row.min + i * row.step) * 100) / 100);
+  return out;
+}
+/* 計算用: 重さごとに「その重さにできる本数」をまとめ、軽い順に並べる。
+   固定はその重さの本数をそのまま数え、可変式は本数ぶんを「設定できる重さ」のどれにでも数える
+   （同じ可変式ダンベルを同時に2つの重さにはできないが、行が違えば別本として独立に数える）。
+   adjN は n のうち可変式で作る分（text・優先度の判定に使う。固定を先に使う想定で数える） */
 function inventory(){
   const m = {};
-  gearItems().forEach(x => { if(x.kg > 0 && x.n > 0) m[x.kg] = (m[x.kg] || 0) + x.n; });
-  return Object.keys(m).map(Number).sort((a, b) => a - b).map(kg => ({kg, n:m[kg]}));
+  const add = (kg, n, adjN) => { const e = m[kg] || (m[kg] = {n:0, adjN:0}); e.n += n; e.adjN += adjN; };
+  gearItems().forEach(x => {
+    if(x.adj){
+      if(!(x.n > 0)) return;
+      adjWeights(x).forEach(kg => { if(kg > 0) add(kg, x.n, x.n); });
+    }else if(x.kg > 0 && x.n > 0){
+      add(x.kg, x.n, 0);
+    }
+  });
+  return Object.keys(m).map(Number).sort((a, b) => a - b).map(kg => ({kg, n:m[kg].n, adjN:m[kg].adjN}));
 }
-/* 引き継ぎ時の 5kg×2本 のままか（元の解説文・メモがそのまま当てはまる） */
-function isDefaultGear(){ const inv = inventory(); return inv.length === 1 && inv[0].kg === 5 && inv[0].n === 2; }
+/* 引き継ぎ時の 5kg×2本 のままか（元の解説文・メモがそのまま当てはまる）。
+   固定の行の扱いは今のまま（inventory() で同じ重さの行をまとめて判定）。可変式が1本でもあれば対象外 */
+function isDefaultGear(){
+  const inv = inventory();
+  return inv.length === 1 && inv[0].kg === 5 && inv[0].n === 2 && inv[0].adjN === 0;
+}
 function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
 
 /* 種目ごとの持ち方
@@ -6143,7 +6425,7 @@ function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
    per    = "arm" なら片腕あたりの重さで重い・軽いを決める（腕の種目）。"total" なら合計で決める
    prefer = 同じ重さになる使い方が複数あるとき、1つで持つほうを選ぶ（"one"） */
 const HOLD = {
-  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
+  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total"},
   rdl:       {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"},
   split:     {pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
   hipthrust: {pair:"骨盤の上に並べて置く", one:"骨盤の上に置く",         per:"total", prefer:"one", mixed:true},
@@ -6167,30 +6449,84 @@ const HOLD = {
   sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"縦にして胸の前で抱える", per:"total", prefer:"one"}
 };
 function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
+/* この種目（catalog の行）は、今持っているダンベルで行えるか。C19: HOLD の無い種目は常に true。
+   HOLD があれば使い方が1つ以上作れること、needsDb の印（ダンベルを持って行う楽/大変の組み方）は
+   ダンベルを1本も持っていなければ不可とする */
+function gearReady(id, row){
+  if(row && row.needsDb && !inventory().length) return false;
+  const h = holdOf(id);
+  return !h || gearOptions(id).length > 0;
+}
+
+/* その重さ kg を作れる行（固定はその重さの行、可変式は kg を設定できる行） */
+function rowsCovering(rows, kg){ return rows.filter(r => r.adj ? adjWeights(r).some(w => Math.abs(w - kg) < 1e-9) : Math.abs(r.kg - kg) < 1e-9); }
+/* mixed（違う重さ2つを同時に使う）が物として成立するか。同じ可変式1本を同時に2つの重さにはできない
+   ので、行ごとの本数を「重さaに1本」「重さbに1本」に割り振れるかを総当たりで確かめる（a≠b前提） */
+function twoUnitFeasible(rows, a, b){
+  const rowsA = rowsCovering(rows, a);
+  for(const ra of rowsA){
+    const remain = rows.map(r => r === ra ? r.n - 1 : r.n);
+    const okB = rows.some((r, idx) => remain[idx] >= 1 && (r.adj ? adjWeights(r).some(w => Math.abs(w - b) < 1e-9) : Math.abs(r.kg - b) < 1e-9));
+    if(okB) return true;
+  }
+  return false;
+}
+
+/* 使い方1つぶんの文。pieces は実際に使う重さ、adjPieces は各 piece が可変式かどうか */
+function optionText(o){
+  const [kg0, kg1] = o.pieces, [adj0, adj1] = o.adjPieces || [false, false];
+  const solo = (kg, adj) => adj ? "可変式ダンベルを" + kgText(kg) + "にしたもの" : kgText(kg);
+  if(o.n === 1){
+    return (adj0 ? "可変式ダンベルを" + kgText(kg0) + "にして1つ、" : kgText(kg0) + "を1つ、") + o.how;
+  }
+  if(o.mixed){
+    const body = (adj0 || adj1) ? solo(kg0, adj0) + "と" + solo(kg1, adj1) + "を1つずつ、"
+                                 : kgText(kg0) + "と" + kgText(kg1) + "を1つずつ、";
+    return body + o.how + "（合計" + kgText(o.total) + "）";
+  }
+  const body = (adj0 && adj1) ? "可変式ダンベル2つを" + kgText(kg0) + "にして、"
+             : (adj0 || adj1) ? kgText(kg0) + "を2つ（うち可変式1つ）、"
+             : kgText(kg0) + "を2つ、";
+  return body + o.how + "（合計" + kgText(o.total) + "）";
+}
 
 /* 持っているダンベルで作れる使い方を、軽い順に並べる。同じ重さになる使い方は1つに絞る */
 function gearOptions(id){
   const h = holdOf(id); if(!h) return [];
   const inv = inventory(), out = [];
-  inv.forEach(({kg, n})=>{
-    if(h.pair && n >= 2) out.push({n:2, pieces:[kg, kg], total:kg * 2, key:h.per === "arm" ? kg : kg * 2, how:h.pair});
-    if(h.one && !(h.per === "arm" && h.pair && n >= 2)) out.push({n:1, pieces:[kg], total:kg, key:kg, how:h.one});
+  inv.forEach(({kg, n, adjN})=>{
+    const fixedN = n - adjN;
+    if(h.pair && n >= 2){
+      const adjUsed = Math.max(0, Math.min(2, 2 - fixedN));
+      out.push({n:2, pieces:[kg, kg], adjPieces:[adjUsed >= 1, adjUsed >= 2], adjUsed,
+                total:kg * 2, key:h.per === "arm" ? kg : kg * 2, how:h.pair});
+    }
+    if(h.one && !(h.per === "arm" && h.pair && n >= 2)){
+      const adjUsed = fixedN >= 1 ? 0 : 1;
+      out.push({n:1, pieces:[kg], adjPieces:[adjUsed >= 1], adjUsed, total:kg, key:kg, how:h.one});
+    }
   });
   if(h.mixed){
+    /* 違う重さ2つを同時に使うので、可変式1本が同時に2つの重さにはなれない点を物として確かめる
+       （固定の行の扱いは変わらない: 別々の行・別々の本数はいつも通り独立に数える） */
+    const rows = gearItems().filter(r => r.n > 0 && (r.adj ? true : r.kg > 0));
     for(let i = 0; i < inv.length; i++) for(let j = i + 1; j < inv.length; j++){
       const a = inv[j].kg, b = inv[i].kg;
-      out.push({n:2, pieces:[a, b], total:a + b, key:a + b, how:h.pair, mixed:true});
+      if(!twoUnitFeasible(rows, a, b)) continue;
+      const adjA = rowsCovering(rows, a).some(r => !r.adj) ? 0 : 1;
+      const adjB = rowsCovering(rows, b).some(r => !r.adj) ? 0 : 1;
+      out.push({n:2, pieces:[a, b], adjPieces:[adjA >= 1, adjB >= 1], adjUsed:adjA + adjB,
+                total:a + b, key:a + b, how:h.pair, mixed:true});
     }
   }
   const rank = o => h.prefer === "one" ? (o.n === 1 ? 0 : o.mixed ? 2 : 1) : (o.n === 2 && !o.mixed ? 0 : o.mixed ? 1 : 2);
-  out.sort((x, y) => (x.key - y.key) || (rank(x) - rank(y)));
+  /* 追加の優先: 同じ重さ（key）を作れる使い方が複数あるときは、固定のダンベルだけで作れるものを先にする */
+  out.sort((x, y) => (x.key - y.key) || (rank(x) - rank(y)) || ((x.adjUsed > 0 ? 1 : 0) - (y.adjUsed > 0 ? 1 : 0)));
   const uniq = [];
   out.forEach(o => { if(!uniq.length || Math.abs(uniq[uniq.length - 1].key - o.key) > 1e-9) uniq.push(o); });
   uniq.forEach(o => {
     o.total = Math.round(o.total * 10) / 10;
-    o.text = o.n === 1 ? kgText(o.pieces[0]) + "を1つ、" + o.how
-           : (o.mixed ? kgText(o.pieces[0]) + "と" + kgText(o.pieces[1]) + "を1つずつ、" : kgText(o.pieces[0]) + "を2つ、")
-             + o.how + "（合計" + kgText(o.total) + "）";
+    o.text = optionText(o);
   });
   return uniq;
 }
@@ -6206,7 +6542,7 @@ function nearestOption(opts, w){
   return best || opts.reduce((a, o) => o.total < a.total ? o : a, opts[0]);
 }
 
-/* 記録がない種目の最初の重さの目安（per が arm の種目は片腕あたり）。この重さ以下で一番重い使い方から始める */
+/* 記録がない種目の最初の重さの目安(per が arm の種目は片腕あたり)。この重さ以下で一番重い使い方から始める */
 const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity};
 function startKg(id){ const v = START_KG[id] !== undefined ? START_KG[id] : START_KG[baseOf(id)]; return v === undefined ? 8 : v; }
 function defaultOption(id){
@@ -6234,7 +6570,11 @@ function itemOptions(item){
   const id = item.ex, h = holdOf(id);
   if(!h) return [];
   if(!isOneHanded(item) || !h.one) return gearOptions(id);
-  return inventory().map(({kg}) => ({n:1, pieces:[kg], total:kg, key:kg, how:h.one, text:kgText(kg) + "を1つ、" + h.one}));
+  return inventory().map(({kg, n, adjN}) => {
+    const adj = (n - adjN) < 1;
+    return {n:1, pieces:[kg], adjPieces:[adj], adjUsed:adj ? 1 : 0, total:kg, key:kg, how:h.one,
+            text:(adj ? "可変式ダンベルを" + kgText(kg) + "にして1つ、" : kgText(kg) + "を1つ、") + h.one};
+  });
 }
 function defaultOptionFor(item){
   const opts = itemOptions(item); if(!opts.length) return null;
@@ -6330,9 +6670,15 @@ function noteFor(item, opt){
   return kept.length ? kept.join("。") + "。" : "";
 }
 
+/* 設定できる重さの短い一覧（多いときは先頭3つと最後だけ）。例: 「2, 4, 6 … 24kg（12段階）」 */
+function adjListSummary(list){
+  const fmt = v => Math.round(v * 10) / 10, n = list.length;
+  if(n <= 4) return list.map(fmt).join("、") + "kg（" + n + "段階）";
+  return list.slice(0, 3).map(fmt).join("、") + " … " + kgText(list[n - 1]) + "（" + n + "段階）";
+}
 function gearCard(){
-  const rows = gearItems(), inv = inventory();
-  const row = (x, i) => `<div class="dbrow">
+  const rows = gearItems();
+  const fixedRow = (x, i) => `<div class="dbrow">
       <div class="fld"><label>重さ kg</label>
         <div class="stepper">
           <button data-act="dbstep" data-i="${i}" data-t="kg" data-d="-1" aria-label="軽く">−</button>
@@ -6347,17 +6693,41 @@ function gearCard(){
         </div></div>
       <button class="dbdel" data-act="dbdel" data-i="${i}" aria-label="この重さを削除">×</button>
     </div>`;
+  const adjField = (i, field, label, val, step, min) => `<div class="fld"><label>${label}</label>
+      <div class="stepper">
+        <button data-act="adjstep" data-i="${i}" data-f="${field}" data-d="-1" aria-label="減らす">−</button>
+        <input type="number" id="adj_${field}_${i}" value="${val}" step="${step}" min="${min}" inputmode="decimal">
+        <button data-act="adjstep" data-i="${i}" data-f="${field}" data-d="1" aria-label="増やす">＋</button>
+      </div></div>`;
+  const adjRow = (x, i) => `<div class="dbrow adjrow">
+      <div class="adjdelwrap"><b>可変式ダンベル</b><button class="dbdel" data-act="adjdel" data-i="${i}" aria-label="この可変式ダンベルを削除">×</button></div>
+      <div class="adjflds">
+        ${adjField(i, "min", "一番軽い kg", x.min, 0.25, 0.25)}
+        ${adjField(i, "max", "一番重い kg", x.max, 0.25, 0.25)}
+        ${adjField(i, "step", "刻み kg", x.step, 0.25, 0.25)}
+        ${adjField(i, "n", "本数", x.n, 1, 1)}
+      </div>
+      <p class="lastline">設定できる重さ: ${esc(adjListSummary(adjWeights(x)))}</p>
+      <div class="fld"><label>刻みが一定でないときは、設定できる重さを「,」で区切って入力</label>
+        <input type="text" id="adjlist_${i}" value="${esc((x.list || []).join(", "))}" placeholder="例: 2.5, 3.5, 4.5, 6.5" inputmode="decimal"></div>
+    </div>`;
+  const invText = x => x.adj
+    ? "可変式 " + (x.list
+        ? (Math.round(x.list[0] * 10) / 10) + "〜" + kgText(x.list[x.list.length - 1]) + "（" + x.list.length + "段階）"
+        : (Math.round(x.min * 10) / 10) + "〜" + kgText(x.max) + "（" + (Math.round(x.step * 100) / 100) + "kg刻み）")
+      + "×" + x.n + "本"
+    : kgText(x.kg) + "×" + x.n + "本";
   return `<h3 class="sec">持っているダンベル</h3>
   <div class="card">
-    ${rows.length ? rows.map(row).join("") : `<p style="margin:0;font-size:14px">登録なし</p>`}
-    <div class="rowbtns"><button data-act="dbadd">${rows.length ? "別の重さを追加" : "ダンベルを追加"}</button></div>
+    ${rows.length ? rows.map((x, i) => x.adj ? adjRow(x, i) : fixedRow(x, i)).join("") : `<p style="margin:0;font-size:14px">登録なし</p>`}
+    <div class="rowbtns"><button data-act="dbadd">${rows.length ? "別の重さを追加" : "ダンベルを追加"}</button><button data-act="adjadd">可変式ダンベルを追加</button></div>
     ${!state.gear ? `<p class="lastline"><b>ダンベルがまだ登録されていません。</b>いまは5kg×2本をお持ちの前提で提案しています。実際の内容に直してください。</p>` : ""}
-    <p class="lastline">${inv.length ? (state.gear ? "登録中: " : "前提: ") + inv.map(x => kgText(x.kg) + "×" + x.n + "本").join("、") : "登録なし。ダンベルを使わない種目と、日用品で代用するやり方を提案します"}</p>
-    <p class="lastline">持っている重さと本数だけ入れてください。種目ごとにどれを何本・どう持つかはアプリが決めます。持っていない重さは提案しません。足りないときは、タオルやリュックなどの日用品を使うやり方を出します。</p>
+    <p class="lastline">${rows.length ? (state.gear ? "登録中: " : "前提: ") + rows.map(invText).join("、") : "登録なし。ダンベルを使わない種目と、日用品で代用するやり方を提案します"}</p>
+    <p class="lastline">持っている重さと本数を入れてください。</p>
   </div>`;
 }
 function dbStep(i, t, d){
-  const it = gearItems(); if(!it[i]) return;
+  const it = gearItems(); if(!it[i] || it[i].adj) return;
   if(t === "kg"){
     const cur = it[i].kg;
     const st = d > 0 ? (cur >= 20 ? 2.5 : cur >= 3 ? 1 : 0.5) : (cur > 20 ? 2.5 : cur > 3 ? 1 : 0.5);
@@ -6366,6 +6736,68 @@ function dbStep(i, t, d){
     it[i].n = Math.max(1, Math.min(20, it[i].n + d));
   }
   setGearItems(it); render();
+}
+/* 可変式の行の −／＋（min/max/step/本数）。値がおかしくならないよう min<=max を保ち、
+   readGearItem の検査を通ったときだけ反映する（設定できる重さが80個を超える変更などは無視し、
+   保存→読み込みで行が消える不具合を防ぐ） */
+function adjStep(i, field, d){
+  const it = gearItems(); if(!it[i] || !it[i].adj) return;
+  const row = Object.assign({}, it[i]);
+  if(field === "n") row.n = Math.max(1, Math.min(20, row.n + d));
+  else if(field === "step") row.step = Math.max(0.25, Math.round((row.step + d * (row.step >= 5 ? 1 : 0.25)) * 100) / 100);
+  else{
+    const cur = row[field], st = d > 0 ? (cur >= 20 ? 2.5 : cur >= 3 ? 1 : 0.5) : (cur > 20 ? 2.5 : cur > 3 ? 1 : 0.5);
+    row[field] = Math.max(0.25, Math.round((cur + d * st) * 100) / 100);
+    if(row.min > row.max){ if(field === "min") row.max = row.min; else row.min = row.max; }
+  }
+  const checked = readGearItem(row);
+  if(!checked) return;                  /* 検査に落ちる変更（設定できる重さが80個を超えるなど）は反映しない */
+  it[i] = checked;
+  setGearItems(it); render();
+}
+ACTIONS.adjstep = el => adjStep(+el.dataset.i, el.dataset.f, +el.dataset.d);
+ACTIONS.adjdel = el => { const it = gearItems(); it.splice(+el.dataset.i, 1); setGearItems(it); render(); };
+ACTIONS.adjadd = () => { const it = gearItems(); it.push({adj:true, min:2, max:24, step:2, n:2}); setGearItems(it); render(); };
+/* 可変式の行の入力欄（min/max/step/本数・「,」区切りの一覧）。設定シートが開くたびに shell.js から呼ぶ。
+   ここも readGearItem の検査を通ったときだけ反映する（adjStep と同じ理由） */
+function wireGearCard(root){
+  root.querySelectorAll('input[id^="adj_"]').forEach(inp => {
+    inp.onchange = () => {
+      const parts = inp.id.split("_"), field = parts[1], i = +parts[2];
+      const it = gearItems();
+      if(!it[i] || !it[i].adj){ render(); return; }
+      const val = parseFloat(inp.value || "0");
+      if(isNaN(val) || val <= 0){ render(); return; }
+      const row = Object.assign({}, it[i]);
+      if(field === "n") row.n = Math.max(1, Math.min(20, Math.round(val)));
+      else{
+        row[field] = Math.round(val * 100) / 100;
+        if(row.min > row.max){ if(field === "min") row.max = row.min; else row.min = row.max; }
+      }
+      const checked = readGearItem(row);
+      if(!checked){ render(); return; }
+      it[i] = checked;
+      setGearItems(it); render();
+    };
+  });
+  root.querySelectorAll('input[id^="adjlist_"]').forEach(inp => {
+    inp.onchange = () => {
+      const i = +inp.id.slice("adjlist_".length);
+      const it = gearItems();
+      if(!it[i] || !it[i].adj){ render(); return; }
+      const txt = inp.value.trim();
+      const row = Object.assign({}, it[i]);
+      if(!txt) delete row.list;
+      else{
+        const nums = txt.split(/[,、]/).map(s => parseFloat(s.trim())).filter(v => isFinite(v) && v > 0 && v <= 100);
+        if(nums.length >= 2) row.list = nums; else delete row.list;
+      }
+      const checked = readGearItem(row);
+      if(!checked){ render(); return; }
+      it[i] = checked;
+      setGearItems(it); render();
+    };
+  });
 }
 
 function settingsCard(){
@@ -6392,7 +6824,6 @@ function settingsCard(){
       : "音楽と一緒に使えます。鳴るのはアプリを開いて画面がついている間だけで、iPhoneはマナーモード中だと鳴りません。画面から離れている間に休憩が終わったら、戻ったときに知らせます。"}</p>
   </div>`;
 }
-
 /* ============================================================
    伸ばし方（ダブルプログレッション）と軽い週
    ・前回の同じ組み方で、全部のセットが目標に届き、きつさの平均が9以下 → 目標を1回（秒の種目は5秒）増やす
@@ -6649,16 +7080,20 @@ function setDeload(on){
 ACTIONS.deloadon = () => { setDeload(true); replanToday(); };
 ACTIONS.deloadoff = () => { setDeload(false); replanToday(); };
 
-/* ---- ウォームアップ（その日の最初の種目の1セット目の前だけ） ---- */
+/* ---- ウォームアップ（その日の最初の種目の1セット目の前だけ） ----
+   ダンベルを使う種目は、今日の重さの半分くらい（60%以下で一番近い使い方、無ければ一番軽い使い方）で8回。
+   今日の重さより軽い使い方が無ければ、何も持たずに行う */
 function warmupText(item, sug){
   const kind = EXMAP[item.ex].kind;
   if(kind === "t" || !sug) return "";
-  const reps = Math.max(5, Math.round((sug.r || 10) / 2));
   if(kind === "w"){
-    const opts = itemOptions(item), i = sug.opt ? optionIndex(opts, sug.opt) : -1;
-    return i > 0 ? "「" + opts[i - 1].text + "」で" + reps + "回を1セット（記録しない）"
-                 : "何も持たずに" + reps + "回を1セット（記録しない）";
+    const opts = itemOptions(item);
+    if(!opts.length || sug.w === undefined) return "何も持たずに8回を1セット（記録しない）";
+    const pick = nearestOption(opts, sug.w * 0.6);
+    return pick.total < sug.w - 1e-9 ? "「" + pick.text + "」で8回を1セット（記録しない）"
+                                      : "何も持たずに8回を1セット（記録しない）";
   }
+  const reps = Math.max(5, Math.round((sug.r || 10) / 2));
   const easier = stepItem(item, -1);
   return (easier ? "「" + itemName(easier) + "」で" : "") + reps + "回を1セット（記録しない）";
 }
@@ -6694,7 +7129,7 @@ function altFor(exId, wantBodyweight){
     if(!c.p.includes(mine)) return false;
     if(todayPats.has(patternOf(c.id))) return false;
     if(wantBodyweight && c.kind === "w") return false;
-    if(c.kind === "w" && !gearOptions(c.id).length) return false;
+    if(!gearReady(c.id, c)) return false;
     return true;
   });
   if(!cands.length) return null;
@@ -6713,13 +7148,17 @@ function todayAdvice(item, sug){
   const opts = holdOf(id) ? itemOptions(item) : [];
   const optText = o => o ? "「" + o.text + "」" : "";
 
-  /* 1. ダンベルが要る種目なのに登録がない */
-  if(ex.kind === "w" && !opts.length){
+  /* 1. ダンベルが要る種目なのに登録がない（HOLD のある種目は種類を問わず、無ければ needsDb の組み方も） */
+  if(holdOf(id) && !opts.length){
     const alt = altFor(id, true);
     return {level:"skip", warn:true, short:"ダンベルなし",
       text: "ダンベルが登録されていません。" + (hs.down ? "「" + hs.down + "」で代用できます。" : "")
           + (alt ? "自重でやるなら、同じ" + MUSCLES[ex.p[0]] + "を使う「" + alt.name + "」に替えられます。" : (hs.down ? "" : "今日は飛ばしてください。")),
       alt: alt ? alt.id : null};
+  }
+  if(item.needsDb && !inventory().length){
+    return {level:"skip", warn:true, short:"ダンベルなし",
+      text: "ダンベルが登録されていません。今日は飛ばすか、素の組み方に戻してください。"};
   }
 
   /* 2. 主働筋を昨日しっかり使っている（回復優先） */
@@ -6930,7 +7369,7 @@ function viewEx(){
     </div>
     <div class="card">
       <h4 class="warn">中止する合図</h4>
-      <p style="margin:0;font-size:14px">関節（膝・腰・肩）に鋭い痛みが走ったら、その種目はその場で中止してください。翌日以降にくる筋肉痛とは別物です。痛みが数日続く場合は整形外科の判断が先で、このアプリの助言は当てになりません。</p>
+      <p style="margin:0;font-size:14px">関節（膝・腰・肩）に鋭い痛みが走ったら、その種目はその場で中止してください。翌日以降にくる筋肉痛とは別物です。痛みが数日続く場合は、整形外科を受診してください。</p>
     </div>`;
 
   return `<div class="card"><select id="exSel">${opts}</select></div>
@@ -6961,7 +7400,7 @@ function viewBody(){
       <p class="lastline" style="margin-top:0">直近${bodyDays}日で <b>${(load[selMuscle]||0).toFixed(1)}</b> 有効セット</p>
       ${hits.length ? `<ul class="plain">${hits.map(h=>`<li>${fmtDate(h.d)}　${h.name}　${h.n}セット（${h.role}）</li>`).join("")}</ul>`
         : `<p style="font-size:14px;margin:6px 0 0">この期間、この部位を使う種目はありません。</p>`}
-      ${zeroAdvice(selMuscle)}
+      ${exercisesForMuscle(selMuscle)}
     </div>`;
   }
 
@@ -6989,14 +7428,34 @@ function viewBody(){
   const note = `
     <div class="card">
       <h4>有効セット数とは</h4>
-      <p style="margin:0;font-size:14px">主に効く部位は1セットを1.0、補助的に使う部位は0.5として足した数です。重量は含めていません。週あたり各部位10前後が初心者の一般的な目安とされますが、この数字は研究間でばらつきが大きく、個人差も大きいので、絶対視しないでください。偏りを見るための指標だと思ってもらうのが適切です。</p>
+      <p style="margin:0;font-size:14px">主に効く部位は1セットを1.0、補助的に使う部位は0.5として足した数です。重量は含めていません。週あたり各部位10前後が初心者の一般的な目安です（個人差があります）。</p>
     </div>`;
   return `<div class="splitcols"><div>${fig}</div><div>${side}${note}</div></div>`;
 }
-function zeroAdvice(m){
-  const cands = EX.filter(e=>e.p.includes(m)).slice(0,3);
-  if(!cands.length) return "";
-  return `<p class="lastline">この部位を主に使う種目: ${cands.map(c=>c.name).join("、")}</p>`;
+/* この部位に効く種目の一覧（主に効く／補助で使う）。押すと種目タブの解説が開き、
+   今日のメニューにまだ無ければその場で足せる */
+function exByRow(e){
+  /* 「今日は外した」種目（skip:true）は、今日のメニューには実質無いのと同じ。印を付けて
+     足すボタンを隠すと戻せなくなるので、外した種目は「まだ無い」側として扱う
+     （addToProgramToday はskipを消して戻す作りなので、そのまま押せば戻る） */
+  const inPlan = todayItems().some(it=>it.ex===e.id && !it.skip);
+  const noGear = holdOf(e.id) && !gearOptions(e.id).length;
+  const right = inPlan ? `<span class="exbytag plan">今日のメニューにある</span>`
+    : noGear ? `<span class="exbytag warn">ダンベルが必要</span>`
+    : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">今日のメニューに足す</button>`;
+  return `<div class="exbyrow">
+    <button class="exbyname" data-act="goref" data-ex="${e.id}">${esc(e.name)}</button>
+    ${right}
+  </div>`;
+}
+function exByList(title, list){
+  if(!list.length) return "";
+  return `<p class="exbyhead">${title}</p><div class="exbylist">${list.map(exByRow).join("")}</div>`;
+}
+function exercisesForMuscle(m){
+  const primary = EX.filter(e=>e.p.includes(m));
+  const secondary = EX.filter(e=>!e.p.includes(m) && (e.s||[]).includes(m));
+  return exByList("主に効く種目", primary) + exByList("補助で使う種目", secondary);
 }
 /* 数の表示: 整数はそのまま、半端は小数1桁 */
 function fmtSets(v){
@@ -7144,7 +7603,7 @@ function viewPlan(){
     ${balanceCards}
     <div class="card">
       <h4>この提案の仕組み</h4>
-      <p style="margin:0;font-size:14px">前回の同じ組み方で、全部のセットが目標に届き、きつさの平均が9以下なら、次は1回（秒の種目は5秒）増やします。回数の幅の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方に進みます。2回続けて届かないときは1回減らします。判定はこの端末の中で行い、ClaudeなどのAIには送っていません。持っていない重さは勧めません。</p>
+      <p style="margin:0;font-size:14px">前回の同じ組み方で、全部のセットが目標に届き、きつさの平均が9以下なら、次は1回（秒の種目は5秒）増やします。回数の幅の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方に進みます。2回続けて届かないときは1回減らします。</p>
     </div>`;
 }
 /* ---------- 履歴 ---------- */
@@ -7183,7 +7642,7 @@ function viewHist(){
     ${addDayRow}
     <h3 class="sec">書き出し</h3>
     <div class="card">
-      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。スマホとPCでの共有（同期）とバックアップは、右上の ⚙ から。</p>
+      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。</p>
       <div class="rowbtns">
         <button data-act="csv">CSVで保存</button>
         <button data-act="txt">テキストで表示</button>
@@ -7482,7 +7941,7 @@ function renderDaySheet(date){
       clearTimeout(t);
       t = setTimeout(()=>{
         const sx = session(date);
-        sx.note = noteEl.value; sx.noteAt = Date.now();
+        sx.note = noteEl.value; sx.noteAt = stampNow();
         persistSession(date);
         if(typeof syncNow === "function") syncNow();
         render();
@@ -7565,7 +8024,7 @@ function wire(){
     note.oninput = ()=>{
       clearTimeout(t);
       t = setTimeout(()=>{
-        const s = session(TODAY); s.note = note.value; s.noteAt = Date.now(); persistSession(TODAY);
+        const s = session(TODAY); s.note = note.value; s.noteAt = stampNow(); persistSession(TODAY);
         if(typeof syncSchedule === "function") syncSchedule();      /* 同期: メモを変えたとき */
       }, 600);
     };
@@ -7582,7 +8041,12 @@ function wire(){
     paintFigs(v, load, max);
     v.querySelectorAll("svg.fig .rg").forEach(el=>{
       if(selMuscle && el.getAttribute("data-m")===selMuscle) el.classList.add("sel");
-      el.onclick = ()=>{ selMuscle = el.getAttribute("data-m"); render(); };
+      const pick = ()=>{ selMuscle = el.getAttribute("data-m"); render(); };
+      el.onclick = pick;
+      /* 読み上げ・キーボードだけの操作でも選べるように（role・tabindex・aria-labelはbodyfig.js側、C15） */
+      el.onkeydown = (e)=>{
+        if(e.key==="Enter" || e.key===" " || e.key==="Spacebar"){ e.preventDefault(); pick(); }
+      };
     });
   }
   if(typeof syncWire === "function") syncWire(v);
@@ -7668,12 +8132,18 @@ function step(t, id, d){
   if(!inp) return;
   let val = parseFloat(inp.value||"0");
   if(t==="w"){
-    /* 重量は、持っているダンベルで作れる使い方だけを順にたどる（腕の種目は片手あたりで見せる） */
+    /* 重量は、持っているダンベルで作れる使い方だけを順にたどる（腕の種目は画面の値=key で比べる）。
+       手で打った値が使い方のどれとも一致しないときは、＋は次に重い使い方、−は次に軽い使い方へ
+       （どちらも「それ以下で一番重い使い方」に飛んでいた不具合の修正: C1） */
     const item = itemOf(id), opts = itemOptions(item);
     if(opts.length){
-      const total = wStored(item, val);
-      let i = opts.findIndex(o => Math.abs(o.total - total) < 0.01);
-      i = i < 0 ? opts.indexOf(nearestOption(opts, isNaN(total) ? 0 : total)) : Math.max(0, Math.min(opts.length - 1, i + d));
+      let i = opts.findIndex(o => Math.abs(o.key - val) < 0.01);
+      if(i < 0){
+        if(d > 0){ i = opts.findIndex(o => o.key > val + 1e-9); if(i < 0) i = opts.length - 1; }
+        else{ i = 0; opts.forEach((o, idx) => { if(o.key < val - 1e-9) i = idx; }); }
+      }else{
+        i = Math.max(0, Math.min(opts.length - 1, i + d));
+      }
       inp.value = String(wShown(item, opts[i].total));
       const h = document.getElementById("wh_" + id);
       if(h) h.textContent = gearLine(id, {opt: opts[i]});
@@ -7682,7 +8152,11 @@ function step(t, id, d){
     val = Math.max(0, val + d*0.5);
   }
   else if(t==="e") val = Math.min(10, Math.max(1, val + d));
-  else val = Math.max(1, val + d);
+  else{
+    /* C5: 秒の種目は5秒刻み（伸ばし方の増減と合わせる）。回数は1刻みのまま */
+    const st = progStep(EXMAP[itemOf(id).ex].kind);
+    val = Math.max(st, val + d * st);
+  }
   inp.value = (t==="w") ? String(val) : String(Math.round(val));
 }
 /* きつさのボタン。選び直すと取り消し。入力欄は描き直さない（打ち替えた回数・重さを消さないため） */
@@ -7735,6 +8209,8 @@ function addSet(id){
   const e = entryFor(TODAY, id, true);
   e.sets.push(st);
   rpeSel[id] = 0;
+  delete inputDrafts[id];                            /* 記録したので、この種目の下書きは消す（C7） */
+  suppressDraftCapture = id;                          /* このあとの render() が、消したそばから古い値を拾い直さないように */
   const ok = persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: 記録したとき */
   if(ok && typeof prMessage === "function"){
@@ -7789,6 +8265,7 @@ ACTIONS.undodel = ()=>{
 /* 種目を選んで今日のメニューに足す（組み方も選べる）。足した種目は今日のメニューに入り、
    組み直しても残る（manual）。すでにあって外していたら戻す */
 function addToProgramToday(id, label){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   if(isDoneToday(id)){
     openEx = null; editEx = null;
     switchTab("today");
@@ -7810,7 +8287,7 @@ function addToProgramToday(id, label){
   }else{
     s.plan.push(Object.assign({}, row, {manual: true}));
   }
-  s.planAt = Date.now();
+  s.planAt = stampNow();
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = id; editEx = null;
@@ -7819,6 +8296,7 @@ function addToProgramToday(id, label){
 /* 今日のメニューの種目を別の種目に替える（「今日の調整」と、やさしく／難しくの持ち替え）。
    toLabel は「カーフレイズ（片脚）」のような同じ種目の別の組み方を指すときに使う */
 function replaceInPlan(fromId, toId, toLabel){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const s = session(TODAY);
   fixPlan(s);
   if(!s.plan) s.plan = [];
@@ -7832,7 +8310,7 @@ function replaceInPlan(fromId, toId, toLabel){
     s.plan.push(Object.assign({}, to));
     if(e && !e.sets.length) s.entries = s.entries.filter(x => x !== e);
   }
-  s.planAt = Date.now();
+  s.planAt = stampNow();
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = toId; editEx = null;
@@ -7848,11 +8326,12 @@ function editPlanItem(id, fn){
   const i = s.plan.findIndex(x => x.ex === id);
   if(i < 0) return;
   fn(s.plan, i);
-  s.planAt = Date.now();
+  s.planAt = stampNow();
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
 }
 ACTIONS.later = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;
   editPlanItem(id, (plan, i)=>{ const it = plan.splice(i, 1)[0]; plan.push(it); });
   if(openEx === id) openEx = null;
@@ -7860,6 +8339,7 @@ ACTIONS.later = el=>{
   render();
 };
 ACTIONS.skip = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;
   editPlanItem(id, (plan, i)=>{ plan[i].skip = true; });
   if(openEx === id) openEx = null;
@@ -7867,6 +8347,7 @@ ACTIONS.skip = el=>{
   render();
 };
 ACTIONS.unskip = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;
   editPlanItem(id, (plan, i)=>{ delete plan[i].skip; });
   render();
@@ -7883,6 +8364,7 @@ function stepButtons(item){
 
 /* アプリに選ばせて1種目足す（今のメニューに合うものを、回復と上限の範囲で選ぶ） */
 function addAutoToday(){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const s = session(TODAY);
   fixPlan(s);
   const all = todayItems(), cur = all.filter(it => !it.skip);
@@ -7907,7 +8389,7 @@ function addAutoToday(){
   }
   if(!s.plan) s.plan = [];
   s.plan = s.plan.concat([Object.assign({}, picked)]);
-  s.planAt = Date.now();
+  s.planAt = stampNow();
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = picked.ex; editEx = null;
@@ -7971,7 +8453,6 @@ function openPicker(){
   }).join("");
 
   sheetInner.innerHTML = `<h4>種目を選んで追加</h4>
-    <p class="lastline" style="margin-top:0">回復や1日の上限は見ません。アプリに選ばせるときは「おまかせで1種目追加」を使ってください。</p>
     ${body}
     <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
   sheetInner.querySelectorAll("[data-pick]").forEach(b=>{
@@ -7993,9 +8474,14 @@ function buildCSV(){
         first = false;
       });
     });
+    /* セットが無くメモだけの日も、日付とメモだけの行として出す（今までは丸ごと抜けていた） */
+    if(first && s.note) rows.push([d, "", "", "", "", "", s.note]);
   });
   return rows.map(r=>r.map(c=>{
-    const v = String(c===undefined?"":c);
+    let v = String(c===undefined?"":c);
+    /* = + - @ やタブ・改行で始まるセル（メモなど）は表計算ソフトに式として読まれうるので、
+       頭に ' を付けて文字列として扱わせる */
+    if(/^[=+\-@\t\r\n]/.test(v)) v = "'" + v;
     return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
   }).join(",")).join("\n");
 }
@@ -8009,7 +8495,7 @@ function showText(){
   sortedDates().slice().reverse().forEach(d=>{
     const s = state.sessions[d];
     const es = (s.entries||[]).filter(e=>e.sets.length);
-    if(!es.length) return;
+    if(!es.length && !s.note) return;          /* セットが無くメモだけの日は、メモだけ出す */
     lines.push(fmtDate(d));
     es.forEach(e=>{
       const ex = EXMAP[e.ex];
@@ -8030,6 +8516,90 @@ function showText(){
 }
 
 /* ---------- テーマ ---------- */
+/* ---- 新しい版への切り替え（再読み込み）を後回しにする判定 ----
+   入力欄・メモ欄にフォーカスがある間、または休憩タイマーが動いている間は、
+   Service Worker が新しい版を取り込んだときの自動の再読み込みを後回しにする。休憩中に
+   打ちかけた数字やメモの入力が、気づかないうちの再読み込みで消えないようにするため。
+   後回しにした条件が外れたとき・画面が隠れたときに、保存待ちのメモを確定させてから行う。
+   休憩タイマー（restIv。src/app/timer.js）はそちらを直接編集せず、外に出ている変数を読むだけ */
+function swBusyEditing(){
+  try{
+    const el = document.activeElement;
+    if(!el) return false;
+    const tag = (el.tagName || "").toUpperCase();
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  }catch(e){ return false; }
+}
+function swBusyResting(){
+  try{ return !!restIv; }catch(e){ return false; }
+}
+function swReloadBlocked(){
+  return swBusyEditing() || swBusyResting();
+}
+/* 保存待ちのメモ（今日のメモ #note・履歴の編集シートのメモ #hnote）があれば確定して保存する。
+   どちらも入力から600ms後に保存する作り（src/app/events.js・src/app/view-hist.js）なので、
+   その手前で再読み込みされると、打ちかけの文字が保存されないまま消えてしまう。
+   #hnote は「閉じる」で sheet.classList を外すだけで中身（innerHTML）は残るため、閉じたあとも
+   古い値のまま要素が残る。sheet が開いている（表示中の）ときだけ確定させる — そうしないと、
+   閉じたシートの古い値で、あとから同期で届いた新しいメモを上書きしてしまう */
+function swFlushPendingNotes(){
+  let dirty = false;
+  try{
+    const note = document.getElementById("note");
+    if(note && typeof session === "function" && typeof TODAY !== "undefined"){
+      const s = session(TODAY);
+      if((s.note || "") !== note.value){
+        s.note = note.value;
+        s.noteAt = typeof stampNow === "function" ? stampNow() : Date.now();
+        persistSession(TODAY);
+        dirty = true;
+      }
+    }
+  }catch(e){}
+  try{
+    const sheetOpen = typeof sheet !== "undefined" && sheet && sheet.classList && sheet.classList.contains("on");
+    const hnote = sheetOpen ? document.getElementById("hnote") : null;
+    if(hnote && typeof session === "function"){
+      const marker = document.querySelector("[data-histday]");
+      const date = marker && marker.dataset ? marker.dataset.histday : null;
+      if(date){
+        const sx = session(date);
+        if((sx.note || "") !== hnote.value){
+          sx.note = hnote.value;
+          sx.noteAt = typeof stampNow === "function" ? stampNow() : Date.now();
+          persistSession(date);
+          dirty = true;
+        }
+      }
+    }
+  }catch(e){}
+  try{
+    if(dirty && typeof syncNow === "function") syncNow();             /* 同期: メモを確定させたとき */
+    else if(typeof syncFlushPending === "function") syncFlushPending(); /* 何も無くても、他の変更が同期待ちなら送る */
+  }catch(e){}
+}
+/* 後回しにする条件が外れる（フォーカスが外れる・休憩が終わる）か、画面が隠れたときに
+   保存してから fn を1回呼ぶ。条件が最初から外れていれば、保存だけしてすぐ呼ぶ */
+function swWhenReady(fn){
+  const go = ()=>{ swFlushPendingNotes(); fn(); };
+  if(!swReloadBlocked()){ go(); return; }
+  let done = false;
+  const finish = ()=>{
+    if(done) return;
+    done = true;
+    try{ document.removeEventListener("focusout", onClear, true); }catch(e){}
+    try{ document.removeEventListener("visibilitychange", onHidden); }catch(e){}
+    clearInterval(poll);
+    go();
+  };
+  const onClear = ()=> setTimeout(()=>{ if(!swReloadBlocked()) finish(); }, 0);
+  const onHidden = ()=>{ if(document.hidden) finish(); };
+  try{ document.addEventListener("focusout", onClear, true); }catch(e){}
+  try{ document.addEventListener("visibilitychange", onHidden); }catch(e){}
+  /* 休憩タイマーはイベントを出さないので、念のためポーリングでも確かめる */
+  const poll = setInterval(()=>{ if(!swReloadBlocked()) finish(); }, 1000);
+}
+
 /* ---- アプリの更新 ----
    PWAは端末に保存した版で動くので、押したときに版の日時をネットから確かめる（端末の保存を通さない）。
    新しければ Service Worker に新しい版を取り込ませ、切り替わったら開き直す */
@@ -8084,23 +8654,47 @@ if(updBtn) updBtn.onclick = async ()=>{
       }
     }
     setStatus("新しい版（" + (m ? m[1] : "") + "）に切り替えます");
+    if(typeof swFlushPendingNotes === "function") swFlushPendingNotes();   /* 保存待ちのメモを先に保存する */
     if(!window.__swReloaded){ window.__swReloaded = true; setTimeout(()=> location.reload(), 200); }
   }catch(e){
     back("更新", "更新を確認できませんでした。通信を確かめてもう一度押してください");
   }
 };
 
+/* アドレスバーの色（<meta name="theme-color">）を、今のテーマに合わせる。
+   自動（テーマを固定していない）ときは、ライト/ダークそれぞれの media 付きタグが
+   OSの設定に追従するのでそのまま。「表示」ボタンで固定したときは、両方のタグの中身を
+   固定した側の色に揃える（どちらの media に一致してもその色になる） */
+function applyThemeColorMeta(){
+  try{
+    const forced = document.documentElement.getAttribute("data-theme");
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    if(!metas.length) return;
+    if(forced === "dark" || forced === "light"){
+      const c = forced === "dark" ? "#13171B" : "#EFEFE9";
+      metas.forEach(m=> m.setAttribute("content", c));
+    }else{
+      const defaults = {"(prefers-color-scheme: light)":"#EFEFE9", "(prefers-color-scheme: dark)":"#13171B"};
+      metas.forEach(m=>{
+        const key = m.getAttribute("media");
+        if(key && defaults[key]) m.setAttribute("content", defaults[key]);
+      });
+    }
+  }catch(e){}
+}
 const themeBtn = document.getElementById("themeBtn");
 (function(){
   let t = null;
   try{ t = localStorage.getItem("trainlog.theme"); }catch(e){}
   if(t) document.documentElement.setAttribute("data-theme", t);
+  applyThemeColorMeta();
   themeBtn.onclick = ()=>{
     const cur = document.documentElement.getAttribute("data-theme");
     const next = cur==="dark" ? "light" : (cur==="light" ? "" : "dark");
     if(next) document.documentElement.setAttribute("data-theme", next);
     else document.documentElement.removeAttribute("data-theme");
     try{ next ? localStorage.setItem("trainlog.theme", next) : localStorage.removeItem("trainlog.theme"); }catch(e){}
+    applyThemeColorMeta();
     figThemeChanged(); render();
   };
 })();
@@ -8130,6 +8724,7 @@ function settingsHTML(){
 function wireSettings(){
   wireActs(sheetInner);
   wireInputs(sheetInner);
+  if(typeof wireGearCard === "function") wireGearCard(sheetInner);
   if(typeof syncWire === "function") syncWire(sheetInner);
   const sel = sheetInner.querySelector("#dayStartSel");
   if(sel) sel.onchange = ()=>{
@@ -8181,7 +8776,10 @@ if('serviceWorker' in navigator){
   var __hadController = !!navigator.serviceWorker.controller;
   navigator.serviceWorker.register('./service-worker.js').catch(function(){});
   navigator.serviceWorker.addEventListener('controllerchange', function(){
-    if(__hadController && !window.__swReloaded){ window.__swReloaded = true; location.reload(); }
+    if(!__hadController || window.__swReloaded || window.__swReloadScheduled) return;
+    window.__swReloadScheduled = true;
+    var go = function(){ window.__swReloaded = true; location.reload(); };
+    if(typeof swWhenReady === 'function') swWhenReady(go); else go();
   });
 }
 </script>

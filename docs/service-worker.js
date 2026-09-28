@@ -1,6 +1,6 @@
 /* トレーニング記録 — オフラインキャッシュ
-   ビルド時に 63ef1fa831 を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
-const CACHE_NAME = 'trainlog-63ef1fa831';
+   ビルド時に e4389af932 を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
+const CACHE_NAME = 'trainlog-e4389af932';
 const PRECACHE = [
   './',
   './index.html',
@@ -21,11 +21,13 @@ self.addEventListener('install', (event) => {
   );
 });
 
-/* ここに来るのは、新しい版の保存がそろったときだけ。古い版の保存を消す */
+/* ここに来るのは、新しい版の保存がそろったときだけ。古い版の保存を消す。
+   同じアドレス（GitHub Pagesのユーザーサイト）で別のアプリも動いていることがあるので、
+   消すのは自分の名前（trainlog-）で始まる保存だけにする。他アプリの保存には触れない */
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((names) => Promise.all(names.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))))
+      .then((names) => Promise.all(names.filter((n) => n !== CACHE_NAME && n.indexOf('trainlog-') === 0).map((n) => caches.delete(n))))
       .then(() => self.clients.claim())
   );
 });
