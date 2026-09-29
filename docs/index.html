@@ -5119,7 +5119,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-09-29 23:31";
+const BUILD_VERSION = "2026-09-29 23:36";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6472,7 +6472,7 @@ function suggestNext(item, e){
   }
   const prev = sets[sets.length-1];
   const target = typeof prev.target === "number" ? prev.target : p.target;
-  const src = "目標は" + target + unitOf(kind) + "。入力欄は前のセットと同じ数字です";
+  const src = "目標は" + target + unitOf(kind);
   if(!weighted || prev.w === undefined) return {r:clampR(kind, prev.r), target, w: weighted ? p.opt.total : undefined, opt:p.opt, why:"", src, prog:p};
   const cur = itemOptions(item).find(o => Math.abs(o.total - prev.w) < 0.01) || null;
   return {r:clampR(kind, prev.r), target, w:prev.w, opt:cur || p.opt, why:"", src, prog:p};
