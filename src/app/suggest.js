@@ -18,7 +18,7 @@ function suggestNext(item, e){
   }
   const prev = sets[sets.length-1];
   const target = typeof prev.target === "number" ? prev.target : p.target;
-  const src = "目標は" + target + unitOf(kind) + "。入力欄は前のセットと同じ数字です";
+  const src = "目標は" + target + unitOf(kind);
   if(!weighted || prev.w === undefined) return {r:clampR(kind, prev.r), target, w: weighted ? p.opt.total : undefined, opt:p.opt, why:"", src, prog:p};
   const cur = itemOptions(item).find(o => Math.abs(o.total - prev.w) < 0.01) || null;
   return {r:clampR(kind, prev.r), target, w:prev.w, opt:cur || p.opt, why:"", src, prog:p};

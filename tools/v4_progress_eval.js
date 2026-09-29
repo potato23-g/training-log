@@ -386,7 +386,7 @@
     const s20b = suggestNext(it20, e20);
     ok(s20b.r === clampR(kind20, prevR) && s20b.target === s20a.target && (!other || Math.abs(s20b.w - other.total) < 0.01),
        "2セット目: 前のセットの数字がそのまま入らない: " + itemName(it20) + " " + JSON.stringify({prevR, prevW: other && other.total, r: s20b.r, w: s20b.w, target: s20b.target}));
-    ok(/前のセットと同じ数字/.test(s20b.src) && s20b.src.indexOf("目標は" + s20a.target) === 0, "2セット目: 目標と入力欄の出どころの説明が違う: " + s20b.src);
+    ok(s20b.src === "目標は" + s20a.target + unitOf(kind20), "2セット目: 今日の目標が出ない: " + s20b.src);
   }
 
   /* ---- 21. 前の版で保存したメニューの行が5セット（grow の名残・古い版の端末から同期）でも、3セット全部届けば上げる ---- */
