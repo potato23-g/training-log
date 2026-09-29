@@ -1,6 +1,7 @@
 /* メニューの選び方の検査（部位の回復と偏り）。dist/local/training-log.html の中で動かす。
    毎日・週4回・週3回・1日おきの頻度で35日分メニューを組み、全部こなした場合に:
-   ・主役（主働筋）として3セット以上やった部位が、中1日（2日以内）でまた主役になっていないか（recoverViolations が空で合格）
+   ・主役（主働筋）として3セット以上やった部位が、部位ごとの回復の日数（rules.js の RECOVER_GAP。量が多い日は1日延ばす）
+     のうちにまた主役になっていないか（recoverViolations が空で合格）
    ・1回の量が上限（16セット・6種目・50分）に収まっているか（capViolations が空で合格）
    ・部位ごとの週あたり有効セット（主働筋1.0・補助0.5。2〜5週目の平均）と、週の目標に遠い部位（weekly・low は目で見る）
    を出す。日付は記録の日付を1日ずつずらして進める（v3_volume_eval.js と同じやり方） */
@@ -48,14 +49,15 @@ setTimeout(() => {
       }
       nextDay();
     }
-    /* 主役で3セット以上やった部位が、次の日か中1日でまた主役で3セット以上 */
+    /* 主役で3セット以上やった部位が、部位ごとの回復の日数（量が多い日は1日延ばす）のうちに、また主役で3セット以上 */
     for(let d = FROM; d < DAYS; d++){
       Object.keys(prim[d]).forEach(m => {
         if(prim[d][m] < 3) return;
-        [1, 2].forEach(g => {
+        const gap = recoverGap(m) + (prim[d][m] >= RECOVER_HEAVY ? 1 : 0);
+        for(let g = 1; g <= gap; g++){
           if(d + g < DAYS && (prim[d + g][m] || 0) >= 3)
-            out.recoverViolations.push(name + ": " + MUSCLES[m] + " " + d + "日目→" + (d + g) + "日目（中" + (g - 1) + "日）");
-        });
+            out.recoverViolations.push(name + ": " + MUSCLES[m] + " " + d + "日目→" + (d + g) + "日目（中" + (g - 1) + "日。目安は中" + gap + "日）");
+        }
       });
     }
     const weeks = (DAYS - FROM) / 7, weekly = {};

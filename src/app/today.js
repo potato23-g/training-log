@@ -85,8 +85,10 @@ function viewToday(){
   const rows = items.map(it=>exRow(it)).join("");
   const skippedLine = skipped.length
     ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
-  return storeBanners() + deloadAsk + hero + undo + rows + skippedLine + `
-    <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button></div>
+  const sore = soreToday();
+  const soreLine = sore.length ? `<p class="skipped">筋肉痛: ${sore.map(m => MUSCLES[m]).join("・")}（今日は主役にしません）</p>` : "";
+  return storeBanners() + deloadAsk + hero + undo + rows + skippedLine + soreLine + `
+    <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
     <div class="card">

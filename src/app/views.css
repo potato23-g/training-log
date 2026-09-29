@@ -1,5 +1,11 @@
 /* ---- 種目を選ぶシート・からだ・履歴タブの見た目（index.html の <style> の最後に埋め込まれる） ---- */
 
+/* ---- 筋肉痛の部位を選ぶシート ---- */
+.sorechips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+.sheet .inner .sorechip{min-height:44px;padding:6px 14px;border:1px solid var(--rule);border-radius:22px;
+  background:var(--panel-2);color:var(--ink-2);font-size:13.5px;font-weight:600}
+.sheet .inner .sorechip.on{background:var(--muscle);border-color:var(--muscle);color:#fff}
+
 /* ---- 種目を選ぶシート（U4） ---- */
 .pickhead{font-size:12.5px;font-weight:700;color:var(--ink-2);margin:18px 0 6px}
 .pickhead:first-of-type{margin-top:6px}

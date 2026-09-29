@@ -247,6 +247,19 @@ function runUnitTests(){
   }
 
   {
+    /* その日「筋肉痛」と選んだ部位は、後から選んだ方。全部外した（空）ことも伝わる */
+    const d = "2026-01-06";
+    const older = { sessions: { [d]: { date: d, entries: [], sore: ["quads", "glutes"], soreAt: 100 } } };
+    const newer = { sessions: { [d]: { date: d, entries: [], sore: ["chest"], soreAt: 300 } } };
+    const cleared = { sessions: { [d]: { date: d, entries: [], sore: [], soreAt: 500 } } };
+    const none = { sessions: { [d]: { date: d, entries: [] } } };
+    ok(JSON.stringify(M.mergeState(older, newer).sessions[d].sore) === '["chest"]'
+       && JSON.stringify(M.mergeState(newer, older).sessions[d].sore) === '["chest"]', "merge: 筋肉痛の部位は後から選んだ方");
+    ok(JSON.stringify(M.mergeState(newer, cleared).sessions[d].sore) === '[]', "merge: 筋肉痛を全部外したことも伝わる");
+    ok(JSON.stringify(M.mergeState(none, older).sessions[d].sore) === '["quads","glutes"]', "merge: 片側にしか無ければそれを採用");
+  }
+
+  {
     const a = { sessions: {}, gear: { items: [{ kg: 5, n: 2 }], updatedAt: 10 } };
     const b = { sessions: {}, gear: { items: [{ kg: 10, n: 2 }], updatedAt: 20 } };
     const m = M.mergeState(a, b);

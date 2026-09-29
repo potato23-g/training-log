@@ -41,8 +41,10 @@ setTimeout(() => {
     const pats = plan.map(it => patternOf(it.ex));
     if(new Set(pats).size !== pats.length) out.dupPatterns.push({day, pats});
     plan.forEach(it => {
-      /* 昨日やった動きは今日は出さない（種目ではなく動きで見る。2026-09-21に本人の方針で変更） */
-      if(prevTouched.includes(patternOf(it.ex))) out.repeatedNextDay.push({day, ex: it.ex, pat: patternOf(it.ex)});
+      /* 昨日やった動きは今日は出さない（種目ではなく動きで見る。2026-09-21に本人の方針で変更）。
+         ただし連日でもよい部位（回復の日数0: 腹筋・前腕など）だけが主役の動きは除く（2026-09-29 本人の要望） */
+      const dailyOk = EXMAP[it.ex].p.every(m => recoverGap(m) === 0);
+      if(prevTouched.includes(patternOf(it.ex)) && !dailyOk) out.repeatedNextDay.push({day, ex: it.ex, pat: patternOf(it.ex)});
       const adv = todayAdvice(it, suggestNext(it, null, lastPerformance(it.ex, TODAY)));
       if(adv && adv.level === "recover") out.recoverOnPlan.push({day, ex: it.ex});
     });

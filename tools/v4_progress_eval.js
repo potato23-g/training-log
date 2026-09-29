@@ -318,6 +318,43 @@
     if(other) addToProgramToday(other.ex, other.label || "");
   });
 
+  /* ---- 18. 部位ごとの回復の日数（RECOVER_GAP）と、量が多い日の延長 ---- */
+  todayKey = realTodayKey; goTo(realTodayKey());
+  const putSets = (agoDays, ex, n) => {
+    const d = shift(TODAY, -agoDays), e = entryFor(d, ex, true);
+    for(let k = 0; k < n; k++) e.sets.push({id: newSetId(), at: k, r: 10, rpe: 8, label: ""});
+  };
+  const primHas = (plan, m) => plan.some(p => EXMAP[p.ex].p.includes(m));
+  const gq = recoverGap("quads");
+  fresh(); putSets(gq, "goblet", 4); planMemo = null; resetProg();
+  ok(recovering("quads") && !primHas(buildPlan(), "quads"), "回復: 大腿四頭筋を" + gq + "日前にやったのに今日また主役になる（中" + gq + "日のはず）");
+  fresh(); putSets(gq + 1, "goblet", 4); planMemo = null; resetProg();
+  ok(!recovering("quads") && recoverDaysLeft("quads") === 0, "回復: 大腿四頭筋を" + (gq + 1) + "日前にやったのに、まだ回復の途中になっている");
+  fresh(); putSets(gq + 1, "goblet", 6); planMemo = null; resetProg();
+  ok(recovering("quads") && recoverDaysLeft("quads") === 1, "回復: 主役で6セット以上やった日は1日延ばすはず");
+  fresh(); putSets(1, "plank", 3); planMemo = null; resetProg();
+  ok(recoverGap("abs") === 0 && !recovering("abs"), "回復: 腹直筋は連日でもよいはずなのに、昨日の3セットで回復の途中になっている");
+  ok(catalog().some(c => EXMAP[c.ex].p.includes("abs") && patternOf(c.ex) === "abs"),
+     "回復: 腹筋の動きが候補に無い");
+
+  /* ---- 19. 筋肉痛の部位は、今日のメニューで主役にしない。組み直すとその部位を外したメニューになり、同期で戻らないよう印が付く ---- */
+  fresh(); planMemo = null; resetProg();
+  const before19 = buildPlan().map(p => p.ex);
+  const soreM = EXMAP[before19[0]].p[0];
+  session(TODAY).sore = [soreM]; session(TODAY).soreAt = stampNow();
+  planMemo = null; resetProg();
+  ok(!primHas(buildPlan(), soreM), "筋肉痛: 筋肉痛と選んだ部位（" + MUSCLES[soreM] + "）が主役の種目が今日のメニューに出る");
+  ok(!!tiredMuscle(before19[0]), "筋肉痛: 種目を選ぶシートで、筋肉痛の部位の種目に印が付かない");
+  replanToday();
+  const s19 = session(TODAY);
+  ok(Array.isArray(s19.plan) && !primHas(s19.plan.filter(p => !p.skip), soreM) && s19.planEdit > 0,
+     "筋肉痛: 組み直したメニューに筋肉痛の部位が残る、または意図した変更の印（planEdit）が無い");
+  /* 全部の部位を筋肉痛にして組み直すと、空のメニューも保存する（保存しないと同期でほかの端末のメニューが戻る） */
+  s19.sore = Object.keys(MUSCLES); s19.soreAt = stampNow();
+  replanToday();
+  ok(Array.isArray(session(TODAY).plan) && session(TODAY).plan.filter(p => !p.skip).length === 0 && session(TODAY).planEdit > 0,
+     "組み直し: 空になったメニューが保存されていない");
+
   todayKey = realTodayKey; goTo(realTodayKey());
   fresh(); render();
   window.__result = out; window.__ready = true;

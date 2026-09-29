@@ -58,10 +58,13 @@ function buildPlan(){
   if(planMemo) return planMemo;
   const LIM = planShort ? SHORT_MAX : SESSION_MAX;
   const week = loadMap(1, 6);              /* 直近7日 = 1〜6日前 + 今日の分 */
-  const yesterday = loadMap(1, 1);
-  const recentPrim = {};                   /* 中1日をはさんで2日のうちに主役だったセット数 */
-  Object.keys(MUSCLES).forEach(m => recentPrim[m] = primaryLoadBetween(m, 1, RECOVER_DAYS));
+  /* 回復の途中の部位（部位ごとの日数。rules.js の RECOVER_GAP）と、今日「筋肉痛」と選んだ部位は主役にしない */
+  const rest = {};
+  Object.keys(MUSCLES).forEach(m => rest[m] = recovering(m));
+  soreToday().forEach(m => rest[m] = true);
   const touched = patternsYesterday();
+  /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕）だけが主役の動きは、昨日やっていても続けてよい */
+  const daily = ex => ex.p.every(m => recoverGap(m) === 0);
   const today = {}, plan = [];
   let sets = 0, minutes = 0;
   const minutesMemo = {};
@@ -96,10 +99,9 @@ function buildPlan(){
     if(plan.some(p => patternOf(p.ex) === patternOf(c.ex))) return false;          /* 同じ動きは1日1つ */
     if(donePattern.has(patternOf(c.ex))) return false;                              /* 今日もうやった動き */
     if(planSkip && planSkip.has(patternOf(c.ex))) return false;                     /* 今日は外した動き */
-    if(touched.has(patternOf(c.ex))) return false;                                  /* 昨日と同じ動きは続けない */
+    if(touched.has(patternOf(c.ex)) && !daily(ex)) return false;                    /* 昨日と同じ動きは続けない（連日でもよい部位は除く） */
     if(!gearReady(c.ex, c)) return false;                                           /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
-    if(ex.p.some(m => (recentPrim[m] || 0) >= RECOVER_PRIMARY
-                   || (yesterday[m] || 0) >= recoverLimit(m))) return false;       /* 回復待ちの部位が主役（中1日をはさんで2日） */
+    if(ex.p.some(m => rest[m])) return false;                                       /* 回復の途中・筋肉痛の部位が主役 */
     if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m))) return false;   /* 1日の上限（補助で使う部位も含む） */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
@@ -286,7 +288,9 @@ function replanToday(opt){
   /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく） */
   const added = fresh.filter(x => !keep.some(k => k.ex === x.ex));
   const plan = keep.filter(k => !k.skip).concat(added).concat(keep.filter(k => k.skip));
-  if(plan.length){ s.plan = plan; s.planAt = s.planEdit = stampNow(); }   /* 組み直しは意図した変更（同期で自動のメニューに負けない） */
+  /* 組み直しは意図した変更（同期で自動のメニューに負けない）。空でも保存する（保存しないと、同期で
+     ほかの端末の今日のメニューが戻ってきてしまう） */
+  s.plan = plan; s.planAt = s.planEdit = stampNow();
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
   openEx = null; editEx = null;

@@ -23,8 +23,10 @@ function sanitizeState(obj){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || !s || typeof s !== "object") return;
     var x = { date: typeof s.date === "string" ? s.date : day, entries: [] };
     ["note", "routine"].forEach(function(k){ if(typeof s[k] === "string") x[k] = s[k]; });
-    ["noteAt", "planAt", "planEdit", "updatedAt"].forEach(function(k){ var n = num(s[k]); if(n !== null) x[k] = n; });
+    ["noteAt", "planAt", "planEdit", "soreAt", "updatedAt"].forEach(function(k){ var n = num(s[k]); if(n !== null) x[k] = n; });
     if(Array.isArray(s.del)) x.del = s.del.filter(function(v){ return typeof v === "string"; });
+    /* その日「筋肉痛」と選んだ部位（部位のキーだけ） */
+    if(Array.isArray(s.sore)) x.sore = s.sore.filter(function(v){ return typeof v === "string" && /^[a-z]{2,20}$/.test(v); }).slice(0, 20);
     if(s.deload === true) x.deload = true;
 
     /* 記録: 種目ごとのセット */

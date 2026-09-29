@@ -10,8 +10,10 @@ function restFor(item){
 /* ---- 今日のメニューを決める ----
    回復の間隔と、1日・1週間にかける負荷から組む。数字は一般的な目安で、研究間のばらつきも個人差も大きいので絶対視しない。
    数え方は「からだ」タブと同じ有効セット（主に効く部位は1セット=1.0、補助的に使う部位は0.5）。
-   ・間隔: 主役（主働筋）として3セット以上やった部位は、中1日をはさんで2日は主役にしない（本人の要望）。
-          昨日しっかり使った部位（有効セットが3以上。回復の早い腹直筋・腹斜筋は10、ふくらはぎ・前腕は6）も今日は主役にしない
+   ・間隔: 主役（主働筋）として3セット以上やった部位は、部位ごとの日数（RECOVER_GAP）だけ空けてから主役にする
+          （脚・尻は中3日、胸・背中・肩は中2日、腕・ふくらはぎは中1日、腹筋・前腕は連日でもよい）。
+          その日に主役で6セット以上やったときは1日延ばす。昨日しっかり使った部位（補助も含めた有効セットが3以上。
+          腹直筋・腹斜筋は10、ふくらはぎ・前腕は6）も今日は主役にしない。今日「筋肉痛」と選んだ部位も主役にしない
    ・1日の負荷: 大きい部位（脚・尻・胸・背中）は8セット、ほかの部位は6セットまで。1回は16セット・6種目・50分くらいまで
    ・1週間の量: 直近7日で各部位10セットを目標に、目標までの不足を2乗で数えて、価値の大きい種目から1つずつ入れる。
                目標から遠い部位ほど価値が急に上がるので、大きい部位ばかりで埋まって小さい部位が0セットのまま、にはならない。
@@ -55,8 +57,13 @@ const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, shoulders:0.9,
    部位の不足だけで比べると、主役の部位が多い種目（サイドランジ）や補助の多い種目（プルオーバー）が
    いつも勝ってしまい、スクワットやロウが出なくなるため。書いていない動きは1 */
 const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9};
-/* 主役として使った部位を休ませる日数と、そのあいだの主役のセット数の目安（これ以上なら回復の途中） */
-const RECOVER_DAYS = 2, RECOVER_PRIMARY = 3;
+/* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
+   （0=連日でもよい、1=中1日、2=中2日、3=中3日）。その日に主役で6セット以上やったときは1日延ばす。
+   大きい脚・尻の筋は回復が遅く、腹筋・前腕のような部位は連日でもよい（本人の要望と文献の目安） */
+const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, shoulders:2, traps:1, erectors:2,
+                     biceps:1, triceps:1, forearms:0, abs:0, obliques:0, calves:1, adductors:2};
+const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
+function recoverGap(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
 /* 部位 m が主役（主働筋）だったセット数（fromDaysAgo〜toDaysAgo 日前） */
 function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   let n = 0;
@@ -67,9 +74,32 @@ function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   });
   return n;
 }
-/* 部位 m が回復の途中か: 中1日をはさんで2日のうちに主役で3セット以上、または昨日しっかり使った */
-function recovering(m){
-  return primaryLoadBetween(m, 1, RECOVER_DAYS) >= RECOVER_PRIMARY || muscleLoadBetween(m, 1, 1) >= recoverLimit(m);
+/* 部位 m が回復の途中か: 部位ごとの日数（RECOVER_GAP）のうちに主役で3セット以上、
+   量が多かった日（主役で6セット以上）はもう1日、または昨日しっかり使った（補助も含めた有効セット） */
+function recovering(m){ return recoverDaysLeft(m) > 0; }
+/* 「中3日: 大腿四頭筋・大殿筋…／…／連日でもよい: 腹直筋…」（提案タブの説明用。表から作るので値を変えても食い違わない） */
+function recoverGapText(){
+  const gaps = Array.from(new Set(Object.keys(MUSCLES).map(recoverGap))).sort((a, b) => b - a);
+  return gaps.map(g => (g ? "中" + g + "日: " : "連日でもよい: ")
+    + Object.keys(MUSCLES).filter(m => recoverGap(m) === g).map(m => MUSCLES[m]).join("・")).join("／")
+    + "（その日に6セット以上やったら1日延ばす）";
+}
+/* 今日「筋肉痛」と選んだ部位（その日だけ。今日のメニューでは主役にしない） */
+function soreToday(){
+  const s = state.sessions[TODAY];
+  return (s && Array.isArray(s.sore) ? s.sore : []).filter(m => MUSCLES[m]);
+}
+/* 部位 m を次に主役にできる日（今日から数えて何日後か。0=今日から）。今のまま記録が増えなければ */
+function recoverDaysLeft(m){
+  const g = recoverGap(m);
+  let left = 0;
+  for(let ago = 1; ago <= g + 1; ago++){
+    const n = primaryLoadBetween(m, ago, ago);
+    const need = n >= RECOVER_HEAVY ? g + 2 : (n >= RECOVER_PRIMARY ? g + 1 : 0);
+    left = Math.max(left, need - ago);
+  }
+  if(muscleLoadBetween(m, 1, 1) >= recoverLimit(m)) left = Math.max(left, 1);
+  return left;
 }
 function patternOf(id){ return PATTERN[id] || PATTERN[baseOf(id)] || id; }
 function recoverLimit(m){ return RECOVER_SETS[m] || 3; }
@@ -113,8 +143,9 @@ function stepItem(item, dir){
                     || ((b.ex === item.ex) - (a.ex === item.ex)));
   return cands.length ? cands[0] : null;
 }
-/* 回復の途中の主働筋（なければ null）。種目を選ぶシートの印と「今日の調整」の回復優先で使う（メニュー作りと同じ決まり） */
+/* 回復の途中か、今日筋肉痛と選んだ主働筋（なければ null）。種目を選ぶシートの印と「今日の調整」の回復優先で使う
+   （メニュー作りと同じ決まり） */
 function tiredMuscle(exId){
-  const ex = EXMAP[exId];
-  return ex.p.find(recovering) || null;
+  const ex = EXMAP[exId], sore = soreToday();
+  return ex.p.find(m => sore.includes(m)) || ex.p.find(recovering) || null;
 }

@@ -290,6 +290,13 @@ function syncMergeSession(a, b){
     if(planWinner.planAt !== undefined) merged.planAt = planWinner.planAt;
     if(planWinner.planEdit !== undefined) merged.planEdit = planWinner.planEdit;
   }
+  /* その日「筋肉痛」と選んだ部位: 後から選んだ方（soreAt）。空にした（全部外した）ことも伝える */
+  if(a.sore !== undefined || b.sore !== undefined){
+    var soreWinner = (b.soreAt || 0) > (a.soreAt || 0) ? b : a;
+    if(soreWinner.sore === undefined) soreWinner = soreWinner === a ? b : a;
+    merged.sore = soreWinner.sore;
+    if(soreWinner.soreAt !== undefined) merged.soreAt = soreWinner.soreAt;
+  }
   var routine = a.routine || b.routine;
   if(routine !== undefined) merged.routine = routine;
   var updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
