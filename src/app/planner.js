@@ -143,19 +143,38 @@ function buildPlan(){
   };
   /* 1セット増やしたときの価値（足りない部位ほど大きい） */
   const oneMore = x => { const add = exLoad(x.ex, 1); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
-  /* 入れた種目のセットを、価値の大きいものから1セットずつ増やす（4セットまで）。部位の大小は問わない */
-  const addSets = minGain => {
+  /* 入れた種目のセットを1つ増やせるか（種目ごとの上限・1日の上限・1回の量） */
+  const canAddSet = x => {
+    const n = x.sets || 3, add = exLoad(x.ex, 1);
+    if(x.seed || n >= setCapFor(x)) return false;
+    if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m)) || sets + 1 > LIM.sets) return false;
+    return minutes + mins(Object.assign({}, x, {sets: n + 1})) - mins(x) <= LIM.minutes;
+  };
+  const addOneSet = x => {
+    const n = x.sets || 3, add = exLoad(x.ex, 1);
+    Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
+    sets += 1; minutes += mins(Object.assign({}, x, {sets: n + 1})) - mins(x); x.sets = n + 1;
+  };
+  /* 1回ぶんを、1セットあたりの価値の大きい順に1つずつ積む: 新しい種目を足す（3セット）か、入れた種目のセットを
+     1つ増やすか。不足の大きい部位の種目はその日のうちにセットが増えるので、出る日が少ない脚も1回で多めにやれる */
+  const grow = (minGain, minPerSet) => {
     for(;;){
-      const it = plan.filter(x => {
-        const n = x.sets || 3, add = exLoad(x.ex, 1);
-        if(x.seed || n >= 4 || oneMore(x) < minGain) return false;
-        if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m)) || sets + 1 > LIM.sets) return false;
-        return minutes + mins(Object.assign({}, x, {sets: n + 1})) - mins(x) <= LIM.minutes;
-      }).sort((p, q) => oneMore(q) - oneMore(p))[0];
-      if(!it) return;
-      const n = it.sets || 3, add = exLoad(it.ex, 1);
-      Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
-      sets += 1; minutes += mins(Object.assign({}, it, {sets: n + 1})) - mins(it); it.sets = n + 1;
+      let best = null;
+      catalog().forEach(row => {
+        /* 新しい種目は3セットで比べる（既定が4セットの種目が、4セット目のぶん平均で不利にならないように）。
+           4セット目からは「セットを増やす」側で積む */
+        const c = (row.sets || 3) > 3 ? Object.assign({}, row, {sets: 3}) : row;
+        if(!allowed(c) || !candidate(c) || gain(c) < minGain) return;
+        const per = score(c) / (c.sets || 3);
+        if(per >= minPerSet && (!best || per > best.per)) best = {per, c};
+      });
+      if(!planShort) plan.forEach(x => {
+        if(!canAddSet(x)) return;
+        const per = oneMore(x);
+        if(per >= minPerSet && (!best || per > best.per)) best = {per, x};
+      });
+      if(!best) return;
+      if(best.c) take(best.c); else addOneSet(best.x);
     }
   };
   /* 残す種目（おまかせ追加・組み直し）を入れる。記録済みのセットは上で数えたので、残りのセットの分だけ足す */
@@ -180,10 +199,8 @@ function buildPlan(){
   }else{
     /* 組み直し: 残す種目を先に入れる */
     (planKeep || []).forEach(keepIn);
-    fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
-    if(!planShort) addSets(0.5);             /* 2. 時間が残れば、足りない部位の種目のセットを4まで増やす */
-    fill(1, LIM.exercises);                  /* 3. まだ入るなら、もう1種目 */
-    fill(0.2, Math.min(3, LIM.exercises));   /* 4. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    grow(1, GROW_MIN_PER_SET);               /* 1. 週の目標から遠い部位の種目・セットを、1セットあたりの価値の大きい順に */
+    fill(0.2, Math.min(3, LIM.exercises));   /* 2. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
@@ -295,8 +312,10 @@ function replanToday(opt){
   if(typeof syncNow === "function") syncNow();                   /* 同期: メニューを組み直したとき */
   openEx = null; editEx = null;
   const newKey = plan.filter(it => !it.skip).map(itemKey).join(",");
+  const soreNames = soreToday().map(m => MUSCLES[m]).join("・");
   todayMsg = !plan.filter(it => !it.skip).length ? "今日入れられる種目がありません。部位の回復と1日・1週間の上限のためです。"
            : opt && opt.short ? "20分で終わるメニューにしました（" + plan.filter(it => !it.skip).length + "種目）"
+           : opt && opt.sore ? (soreNames ? soreNames + "を避けて組み直しました" : "筋肉痛の部位を外して組み直しました")
            : newKey === oldKey ? "今の記録で組み直しました。変わりはありません"
            : "今の記録で組み直しました";
   render();

@@ -82,7 +82,7 @@ function openSoreSheet(){
       const s = session(TODAY);
       s.sore = order.filter(m => sel.has(m));      /* 空でも残す（全部外したことも同期で伝える） */
       s.soreAt = stampNow();
-      replanToday();                                /* 保存・同期・描き直しもここで */
+      replanToday({sore: true});                    /* 保存・同期・描き直しもここで */
     };
     sheetInner.querySelector("[data-close]").onclick = () => sheet.classList.remove("on");
   };
