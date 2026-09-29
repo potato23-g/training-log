@@ -62,20 +62,16 @@ function todayAdvice(item, sug){
       text: "ダンベルが登録されていません。今日は飛ばすか、素の組み方に戻してください。"};
   }
 
-  /* 2. 主働筋を昨日しっかり使っている（回復優先） */
+  /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位（自分で足した種目など、メニュー作りを通らずに入ったとき） */
   const tired = tiredMuscle(id);
   if(tired){
-    return {level:"recover", warn:true, short:"回復優先",
-      text: MUSCLES[tired] + "を昨日 " + (Math.round(muscleLoadBetween(tired, 1, 1)*10)/10) + " セット使っています。今日はセット数を1つ減らすか、きつさ7くらいで止めると回復が進みます。"};
+    const sore = soreToday().includes(tired), left = recoverDaysLeft(tired);
+    return {level:"recover", warn:true, short: sore ? "筋肉痛" : "回復優先",
+      text: sore ? MUSCLES[tired] + "は今日、筋肉痛と選んでいます。重さを軽くするか、今日は外してください。"
+                 : MUSCLES[tired] + "はまだ回復の途中です（次に主役にできるのは " + fmtDate(addDays(TODAY, Math.max(1, left))) + " から）。重さを軽くするか、今日は外してください。"};
   }
 
-  /* 3. セットの合間に持ち方を変えた */
-  if(sug.mid && sug.change === "up") return {level:"harder", short:"一段重く",
-    text: "さっきのセットは余裕があって回数も伸びたので、次は一段重い" + optText(sug.opt) + "にしています。重すぎたら重量の − で戻せます。"};
-  if(sug.mid && sug.change === "down") return {level:"easier", warn:true, short:"一段軽く",
-    text: "さっきのセットは限界で回数が届かなかったので、次は一段軽い" + optText(sug.opt) + "にしています。"};
-
-  /* 4. 前回からの伸ばし方の結果（その日の1セット目の前だけ） */
+  /* 3. 前回からの伸ばし方の結果（その日の1セット目の前だけ） */
   const n = (entryFor(TODAY, id, false) || {sets:[]}).sets.length;
   const p = sug.prog || progressFor(item);
   if(!n){

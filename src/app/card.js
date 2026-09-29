@@ -1,5 +1,4 @@
 let editEx = null;                         /* 規定セットを終えた種目のうち「修正」を開いているもの */
-let rpeSel = {};                           /* 種目ごとに選んだきつさ（記録するまでの一時的なもの。記録したら空に戻す） */
 /* 記録した日数（説明文を最初のうちだけ出すため） */
 function recordedDays(){
   return Object.keys(state.sessions).filter(d => (state.sessions[d].entries || []).some(e => e.sets.length)).length;
@@ -16,14 +15,13 @@ function exRow(item){
   const e = entryFor(TODAY, id, false);
   const sets = e ? e.sets : [];
   const n = sets.length;
-  const target = item.sets || ex.sets || 3;
+  const target = SETS_PER_EXERCISE;          /* セット数は3で固定（本人の要望） */
   const sideTag = item.side ? '<span class="side">左右</span>' : "";
   const name = esc(itemName(item));
   const setLines = sets.map((st,i)=>`
       <div class="setline">
         <span class="i num">${i+1}</span>
         <span class="val num">${esc(setTextFor(item, st))}</span>
-        ${st.rpe?`<span class="rpe">きつさ ${esc(st.rpe)}</span>`:""}
         <button class="del" data-act="delset" data-ex="${id}" data-i="${i}" aria-label="このセットを消す">消す</button>
       </div>`).join("");
 
@@ -60,8 +58,6 @@ function exRow(item){
           <input type="number" id="w_${id}" value="${wShown(item, sug.w)}" step="0.5" inputmode="decimal">
           <button data-act="step" data-t="w" data-ex="${id}" data-d="1" aria-label="重く">＋</button>
         </div></div>` : "";
-    const rpeNow = rpeSel[id] || 0;
-    const chip = (v, label) => `<button data-act="rpe" data-ex="${id}" data-v="${v}" class="${rpeNow === v ? "on" : ""}${v === 6 ? " lo" : ""}" aria-pressed="${rpeNow === v}">${label}</button>`;
     /* その日まだ1セットも記録していないうちに開いた種目には、ウォームアップの一言を添える */
     const firstOfDay = !n && !(session(TODAY).entries || []).some(x => x.sets.length);
     const warm = firstOfDay ? warmupText(item, sug) : "";
@@ -82,9 +78,6 @@ function exRow(item){
             <input type="number" id="r_${id}" value="${sug.r}" inputmode="numeric">
             <button data-act="step" data-t="r" data-ex="${id}" data-d="1" aria-label="増やす">＋</button>
           </div></div>
-        <div class="fld rpefld"><label>きつさ（入れると、次の回の目標が決まります）</label>
-          <div class="rpechips">${chip(6, "6以下")}${chip(7, "7")}${chip(8, "8")}${chip(9, "9")}${chip(10, "10")}</div>
-          <input type="hidden" id="e_${id}" value="${rpeNow || ""}"></div>
         <div class="recrow"><button class="addbtn" data-act="addset" data-ex="${id}">記録</button></div>
       </div>
       ${setLines}
@@ -95,7 +88,7 @@ function exRow(item){
       ${last ? `<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${esc(last.sets.map(x=>setTextFor(item, x)).join(" / "))}</b></p>` : ""}
       ${!n ? stepButtons(item) : ""}
       ${!n ? `<div class="cardtools"><button data-act="later" data-ex="${id}">後に回す</button><button data-act="skip" data-ex="${id}">今日は外す</button></div>` : ""}
-      ${recordedDays() < 3 ? `<p class="lastline">きつさは 8〜9 が狙いです。10は限界、7以下は軽すぎます。「記録」を押すと休憩のカウントダウンが始まり、次のセットに入っていい時間になると音で知らせます。</p>` : ""}
+      ${recordedDays() < 3 ? `<p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットに入っていい時間になると音で知らせます。</p>` : ""}
       <div class="rowbtns">
         <button data-act="goref" data-ex="${id}">解説を見る</button>
       </div>

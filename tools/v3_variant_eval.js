@@ -1,5 +1,5 @@
 /* 1. 楽／大変のやり方が別の組み方として候補に入り、やさしく／難しくの段が増えているか
-   2. セットの合間に、回数だけでなくダンベルの増減も提案するか */
+   2. 2セット目からは、前のセットの重さ・回数をそのまま入力欄に出すか（きつさの入力は 2026-09-29 にやめた） */
 (async () => {
   const out = {};
   T.reset([{kg: 5, n: 2}, {kg: 10, n: 2}]);
@@ -37,7 +37,7 @@
                    count: now.length, note: (now.find(it => (it.label || "") === (up.label || "")) || {}).note || ""};
   }
 
-  /* ---- 2. セット間のダンベル提案 ---- */
+  /* ---- 2. 2セット目の入力欄 ---- */
   T.reset([{kg: 5, n: 2}, {kg: 10, n: 2}]);
   await T.wait(60);
   const id = "rdl";                              /* 合計で重さを決める種目（刻みが細かい） */
@@ -51,23 +51,24 @@
   out.rep = rr;
   out.opts = opts.map(o => o.total);
 
-  const trial = (prevR, rpe, w) => {
+  const first1 = suggestNext(item, null);
+  out.firstSet = {w: first1.w, r: first1.r, target: first1.target, src: first1.src};
+  const trial = (prevR, w) => {
     const e = entryFor(TODAY, id, true);
-    e.sets = [{id: "x", at: 1, r: prevR, rpe: rpe, w: w}];
-    const sug = suggestNext(item, e, null);
+    e.sets = [{id: "x", at: 1, r: prevR, w: w, target: first1.target}];
+    const sug = suggestNext(item, e);
     e.sets = [];
-    return {w: sug.w, r: sug.r, change: sug.change || null, why: sug.why};
+    return {w: sug.w, r: sug.r, target: sug.target, src: sug.src, same: sug.w === w && sug.r === prevR};
   };
   const mid = opts[Math.min(1, opts.length - 1)].total;
-  out.easySet = trial(rr.hi + 1, 5, mid);      /* 余裕たっぷり・回数も伸びた → 重く */
-  out.hardSet = trial(rr.lo - 2, 10, mid);     /* 限界で回数届かず → 軽く */
-  out.normalSet = trial(rr.hi - 2, 8, mid);    /* 狙いどおり → 据え置き */
-  out.topSet = trial(rr.hi + 1, 5, opts[opts.length - 1].total);   /* 一番重い使い方 → 上げようがない */
+  out.afterMoreReps = trial(rr.hi + 1, mid);                         /* 目標より多くできた */
+  out.afterFewerReps = trial(rr.lo - 2, mid);                        /* 目標に届かなかった */
+  out.afterHeaviest = trial(rr.hi + 1, opts[opts.length - 1].total); /* 一番重い使い方に替えた */
 
-  /* 「今日の調整」の文がセット間向けになっているか */
+  /* セットの合間は「今日の調整」の一言を出さない（1セット目の前だけ） */
   const e2 = entryFor(TODAY, id, true);
-  e2.sets = [{id: "y", at: 1, r: rr.hi + 1, rpe: 5, w: mid}];
-  const sug2 = suggestNext(item, e2, null);
+  e2.sets = [{id: "y", at: 1, r: rr.hi + 1, w: mid, target: first1.target}];
+  const sug2 = suggestNext(item, e2);
   const adv = todayAdvice(item, sug2);
   out.advice = adv ? {short: adv.short, text: adv.text} : null;
   e2.sets = [];

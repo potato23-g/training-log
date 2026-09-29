@@ -21,9 +21,6 @@ let suppressDraftCapture = null;
 function clearInputDrafts(){
   Object.keys(inputDrafts).forEach(k => delete inputDrafts[k]);
   noteDraft = null;
-  /* きつさも「まだ記録していない入力」のひとつ。card.js の rpeSel はこのファイルより後に
-     読み込まれるが、実際に呼ばれるのは全部読み終わってからなので参照して問題ない */
-  if(typeof rpeSel !== "undefined") Object.keys(rpeSel).forEach(k => delete rpeSel[k]);
 }
 /* 描き直す直前の #view から、開いている種目の入力欄とメモの値を拾っておく。
    触っていない（提案値のままの）入力は下書きに残さない。そうしないと、やさしく／難しくで

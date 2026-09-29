@@ -463,7 +463,7 @@ def main():
     run_browser("v3_partial_eval.js", "v3_partial_eval.js",
                 judge_empty_arrays("repeatedNextDay", "dupPatterns", "recoverOnPlan", "emptyDays"), timeout=90)
     run_browser("v3_stable_eval.js", "v3_stable_eval.js",
-                judge_all_true("settled8", "settled6", "settled96", "harderWhenEasy", "easierWhenHard", "sameTwice"),
+                judge_all_true("settledSteady", "hitAboveMiss", "hitNeverBelowMiss", "sameTwice", "allThreeSets"),
                 timeout=90)
     run_browser("v3_swap_add_eval.js", "v3_swap_add_eval.js", judge_swap_add, needs_common=True)
     run_browser("v3_ui_fix_eval.js", "v3_ui_fix_eval.js", judge_smoke, needs_common=True)

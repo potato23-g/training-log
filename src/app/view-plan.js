@@ -69,12 +69,12 @@ function deloadCard(){
   if(!d) return "";
   if(d.active) return `<div class="card">
       <h4>軽い週（${esc(fmtDate(d.until))}まで）</h4>
-      <p style="margin:0 0 6px;font-size:14px">セット数を半分にして、目標の回数は据え置いています。疲れを抜いてから、また伸ばしていきます。</p>
+      <p style="margin:0 0 6px;font-size:14px">1回の種目を3つまでにして、目標の回数は据え置いています。疲れを抜いてから、また伸ばしていきます。</p>
       <div class="rowbtns"><button data-act="deloadoff">軽い週をやめる</button></div>
     </div>`;
   return `<div class="card">
       <h4>今週は軽い週にしませんか</h4>
-      <p style="margin:0 0 6px;font-size:14px">${d.patterns.map(p => esc(PATTERN_NAME[p] || p)).join("・")}で、目標に届かない回が続いているか、同じ目標なのにきつさが上がってきています。7日間だけセット数を半分にすると、疲れが抜けてまた伸びやすくなります。</p>
+      <p style="margin:0 0 6px;font-size:14px">${d.patterns.map(p => esc(PATTERN_NAME[p] || p)).join("・")}で、目標に届かない回が続いています。7日間だけ1回の種目を3つまでにすると、疲れが抜けてまた伸びやすくなります。</p>
       <div class="rowbtns"><button data-act="deloadon">今週を軽い週にする</button></div>
     </div>`;
 }
@@ -110,7 +110,7 @@ function viewPlan(){
     ${balanceCards}
     <div class="card">
       <h4>この提案の仕組み</h4>
-      <p style="margin:0;font-size:14px">前回の同じ組み方で、全部のセットが目標に届き、きつさの平均が9以下なら、次は1回（秒の種目は5秒）増やします。回数の幅の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方に進みます。2回続けて届かないときは1回減らします。</p>
+      <p style="margin:0;font-size:14px">前回の同じ組み方で、全部のセットが目標に届いたら、次は1回（秒の種目は5秒）増やします。回数の幅の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方に進みます。2回続けて届かないときは1回減らします。</p>
       <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選びます。主役にした部位は部位ごとに日数を空け、今日「筋肉痛の部位」で選んだ部位は主役にしません。</p>
       <p class="lastline">${esc(recoverGapText())}</p>
     </div>`;

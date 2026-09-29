@@ -119,7 +119,7 @@ function switchTab(t){
 ACTIONS.gotab = el => switchTab(el.dataset.tab);
 
 function step(t, id, d){
-  const map = {w:"w_", r:"r_", e:"e_"};
+  const map = {w:"w_", r:"r_"};
   const inp = document.getElementById(map[t]+id);
   if(!inp) return;
   let val = parseFloat(inp.value||"0");
@@ -143,7 +143,6 @@ function step(t, id, d){
     }
     val = Math.max(0, val + d*0.5);
   }
-  else if(t==="e") val = Math.min(10, Math.max(1, val + d));
   else{
     /* C5: 秒の種目は5秒刻み（伸ばし方の増減と合わせる）。回数は1刻みのまま */
     const st = progStep(EXMAP[itemOf(id).ex].kind);
@@ -151,39 +150,26 @@ function step(t, id, d){
   }
   inp.value = (t==="w") ? String(val) : String(Math.round(val));
 }
-/* きつさのボタン。選び直すと取り消し。入力欄は描き直さない（打ち替えた回数・重さを消さないため） */
-ACTIONS.rpe = el=>{
-  const id = el.dataset.ex, v = +el.dataset.v;
-  rpeSel[id] = rpeSel[id] === v ? 0 : v;
-  const hid = document.getElementById("e_" + id);
-  if(hid) hid.value = rpeSel[id] || "";
-  (el.parentNode ? el.parentNode.querySelectorAll("button") : []).forEach(b => {
-    const on = +b.dataset.v === rpeSel[id];
-    b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on));
-  });
-};
-
 const lastAddAt = {};                      /* 「記録」の二重押しを防ぐ */
 function addSet(id){
   const ex = EXMAP[id];
-  const rIn = document.getElementById("r_"+id), eIn = document.getElementById("e_"+id);
+  const rIn = document.getElementById("r_"+id);
   if(!rIn) return;
   if(Date.now() - (lastAddAt[id] || 0) < 800) return;
   const item = itemOf(id);
-  const rRaw = parseFloat(rIn.value || ""), rpeRaw = eIn && eIn.value !== "" ? parseFloat(eIn.value) : 0;
+  const rRaw = parseFloat(rIn.value || "");
   const wIn = document.getElementById("w_"+id);
   const wRaw = wIn ? parseFloat(wIn.value || "") : NaN;
   /* 入れた値を確かめる。おかしければ記録せずにボタンの下で知らせる */
   const maxR = ex.kind === "t" ? 600 : 200;
   let bad = "";
   if(isNaN(rRaw) || rRaw < 1 || rRaw > maxR || Math.round(rRaw) !== rRaw) bad = (ex.kind === "t" ? "秒数" : "回数") + "は1〜" + maxR + "の整数で入れてください";
-  else if(isNaN(rpeRaw) || rpeRaw < 0 || rpeRaw > 10) bad = "きつさは1〜10で選んでください";
   else if(wIn && (isNaN(wRaw) || wRaw < 0 || wRaw > 300)) bad = "重量は0〜300kgの数で入れてください";
   if(bad){ todayMsg = bad; render(); return; }
   /* 前日の画面のまま押された場合は、前日に記録せず今日のメニューに切り替える（入れた数字は知らせに残す） */
   if(rollDay()){
     todayMsg = "日付が変わったので、今日のメニューに切り替えました。入力した「" + itemName(item) + " "
-      + (wIn ? wRaw + "kg × " : "") + rRaw + (ex.kind === "t" ? "秒" : "回") + (rpeRaw ? "・きつさ" + rpeRaw : "") + "」は記録していません。続けるときは今日のメニューで記録してください";
+      + (wIn ? wRaw + "kg × " : "") + rRaw + (ex.kind === "t" ? "秒" : "回") + "」は記録していません。続けるときは今日のメニューで記録してください";
     render(); setStatus(shownMsg); return;
   }
   if(isDoneToday(id)){ render(); return; }          /* 規定のセット数を終えた種目は、修正で消すまで記録できない */
@@ -192,7 +178,6 @@ function addSet(id){
   const e0 = entryFor(TODAY, id, false);
   const sugNow = suggestNext(item, e0);
   const st = {id:newSetId(), at:Date.now(), r:rRaw};
-  if(rpeRaw) st.rpe = Math.round(rpeRaw);
   if(wIn) st.w = wStored(item, wRaw);
   st.label = item.label || "";                      /* どの組み方でやったか（次の回の目標を組み方ごとに出すため） */
   st.target = sugNow.target;                        /* この日の目標（届いたかどうかを次の回に使う） */
@@ -200,7 +185,6 @@ function addSet(id){
   fixPlan(s);
   const e = entryFor(TODAY, id, true);
   e.sets.push(st);
-  rpeSel[id] = 0;
   delete inputDrafts[id];                            /* 記録したので、この種目の下書きは消す（C7） */
   suppressDraftCapture = id;                          /* このあとの render() が、消したそばから古い値を拾い直さないように */
   const ok = persistSession(TODAY);

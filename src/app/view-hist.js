@@ -252,7 +252,6 @@ function addSetFormHTML(date, groups){
     <div class="entry" style="margin-top:10px">
       ${ex.kind==="w" ? `<div class="fld"><label>重さ kg</label><input type="number" id="haddw" step="0.5" min="0" inputmode="decimal"></div>` : ""}
       <div class="fld"><label>${ex.kind==="t"?"秒":"回数"}</label><input type="number" id="haddr" min="1" inputmode="numeric"></div>
-      <div class="fld"><label>きつさ 1-10（任意）</label><input type="number" id="hadde" min="1" max="10" inputmode="numeric"></div>
     </div>
     <p class="lastline" id="haddmsg" style="min-height:16px"></p>
     <div class="rowbtns"><button id="haddgo">この内容で追加</button><button id="haddcancel">やめる</button></div>
@@ -303,7 +302,7 @@ function renderDaySheet(date){
       const [exId, label] = splitKey(exSel.value);
       const ex = EXMAP[exId];
       const msgEl = sheetInner.querySelector("#haddmsg");
-      const rIn = sheetInner.querySelector("#haddr"), wIn = sheetInner.querySelector("#haddw"), eIn = sheetInner.querySelector("#hadde");
+      const rIn = sheetInner.querySelector("#haddr"), wIn = sheetInner.querySelector("#haddw");
       const r = Math.round(parseFloat((rIn && rIn.value) || ""));
       if(!r || r < 1){ msgEl.textContent = (ex.kind==="t"?"秒数":"回数") + "を入れてください"; return; }
       let w;
@@ -313,8 +312,6 @@ function renderDaySheet(date){
       }
       const st = {id:newSetId(), at:noonAt(date), r};
       if(ex.kind === "w") st.w = w;
-      const epv = eIn ? parseFloat(eIn.value) : NaN;
-      if(!isNaN(epv) && epv >= 1 && epv <= 10) st.rpe = Math.round(epv);
       /* label は組み方を選ばなかったときも "" を明示して入れる。無いままだと setLabel() が
          その日の plan から拾ってしまい、たまたま別の組み方に化けることがある */
       st.label = label || "";

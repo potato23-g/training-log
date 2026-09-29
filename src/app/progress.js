@@ -1,17 +1,15 @@
 /* ============================================================
    伸ばし方（ダブルプログレッション）と軽い週
-   ・前回の同じ組み方で、全部のセットが目標に届き、きつさの平均が9以下 → 目標を1回（秒の種目は5秒）増やす
+   ・前回の同じ組み方で、全部のセットが目標に届いた → 目標を1回（秒の種目は5秒）増やす
    ・目標が回数の幅（解説の「10〜15回」）の上限を超えるなら一段上へ:
        持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方へ（回数は幅の下限から）
-   ・2回続けて目標に届かないか、きつさ10で届かなかったら目標を1回減らす。幅の下限を割るなら一段下へ
-   ・きつさを入れなかった回は判断に使わない（目標は据え置き）
-   ・軽い週（ディロード）の記録は判断に使わない。軽い週のあいだは目標を据え置き、セット数を半分にする
+   ・2回続けて目標に届かなかったら目標を1回減らす。幅の下限を割るなら一段下へ
+   ・きつさ（RPE）は使わない（2026-09-29 本人の要望で入力をやめた。重さ・回数は本人が調整し、目標はその入力欄の初めの値）
+   ・軽い週（ディロード）の記録は判断に使わない。軽い週のあいだは目標を据え置き、種目を少なめにする（セット数は3で固定）
    記録（その日の組み方と目標）から毎回計算し直すので、別に覚えておく状態は無い（2台で同期しても食い違わない）。
-   セットの合間の調整（adjust / setWeightPlan）は suggest.js
+   次のセットの入力欄に入れる数字は suggest.js
    ============================================================ */
 const PROG = {
-  okRpe: 9,              /* 前回のきつさ平均がこれ以下なら伸ばす */
-  hardRpe: 10,           /* このきつさで目標に届かなければ、1回で下げる */
   failTimes: 2,          /* 目標に届かないのがこの回数続いたら下げる */
   jumpRatio: 1.6,        /* 重い持ち方へ上げてよい上がり幅（今の1.6倍以下か、+3kg以下） */
   jumpKg: 3,
@@ -73,21 +71,21 @@ function patternHistory(pattern){
       let item = catalogRow(e.ex, label);
       if(!item){ label = ""; item = catalogRow(e.ex, "") || catalogItem(e.ex); }
       const inPlan = (s.plan || []).find(x => x && x.ex === e.ex);
-      out.push({date: d, ex: e.ex, label, item, sets: e.sets, planned: (inPlan && inPlan.sets) || item.sets || 3});
+      /* セット数は3で固定（2026-09-29）。それより前の版が保存した4〜5セットの行（古い版の端末から同期されたものも）は3として見る */
+      const planned = Math.min(SETS_PER_EXERCISE, (inPlan && inPlan.sets) || item.sets || SETS_PER_EXERCISE);
+      out.push({date: d, ex: e.ex, label, item, sets: e.sets, planned});
     });
   }
   return (progMemo.hist[pattern] = out);
 }
-/* 1回ぶんの出来: 目標・全部届いたか・きつさの平均・その回の重さ */
+/* 1回ぶんの出来: 目標・全部届いたか・その回の重さ */
 function evalSession(h){
   const kind = EXMAP[h.ex].kind, sets = h.sets, last = sets[sets.length - 1];
   const w = last.w;                                            /* 最後のセットの重さを、その回の重さとする */
   const work = w !== undefined ? sets.filter(s => Math.abs((s.w || 0) - w) < 0.01) : sets;
   const target = typeof last.target === "number" ? last.target : sets[0].r;   /* 目標を書いていない古い記録は1セット目の回数 */
   const allHit = sets.length >= h.planned && work.every(s => (s.r || 0) >= (typeof s.target === "number" ? s.target : target));
-  const rpes = work.map(s => s.rpe || 0).filter(x => x > 0);
-  const rpe = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
-  return {target, allHit, rpe, w, kind};
+  return {target, allHit, w, kind};
 }
 
 /* ---- 今日のその組み方の目標 ----
@@ -126,8 +124,8 @@ function progressFor(item){
     if(!res.opt) res.opt = defaultOptionFor(item);
   }else{
     const h = mine[0], ev = evalSession(h);
-    res.last = {date: h.date, target: ev.target, sets: h.sets, rpe: ev.rpe};
-    res.src = "前回の目標 " + ev.target + u + "・きつさ平均 " + (ev.rpe === null ? "—" : Math.round(ev.rpe * 10) / 10);
+    res.last = {date: h.date, target: ev.target, sets: h.sets};
+    res.src = "前回の目標 " + ev.target + u;
     let cur = opts.length ? optByW(ev.w) : null;
     if(opts.length && !cur){
       /* 前回の重さが今の登録では作れない（ダンベルの登録を変えた） */
@@ -138,11 +136,8 @@ function progressFor(item){
     res.target = ev.target;
     if(deloadOn(TODAY)){
       res.change = "deload";
-      res.why = "軽い週です。目標は前回と同じにして、セット数を半分にしています";
-    }else if(ev.rpe === null){
-      res.change = "hold";
-      res.why = "前回はきつさが入っていないので、同じ目標で続けます";
-    }else if(ev.allHit && ev.rpe <= PROG.okRpe){
+      res.why = "軽い週です。目標は前回と同じにして、種目を少なめにしています";
+    }else if(ev.allHit){
       const nt = ev.target + step;
       if(nt <= rr.hi){
         res.target = nt; res.change = "up";
@@ -170,12 +165,11 @@ function progressFor(item){
       /* 届かなかった回が続いているか */
       let misses = 0;
       for(const x of mine){ if(evalSession(x).allHit) break; misses++; }
-      const down = misses >= PROG.failTimes || (!ev.allHit && ev.rpe >= PROG.hardRpe);
-      if(down){
+      if(misses >= PROG.failTimes){
         const nt = ev.target - step;
         if(nt >= rr.lo){
           res.target = nt; res.change = "down";
-          res.why = (misses >= PROG.failTimes ? misses + "回続けて" : "限界で") + "目標に届かなかったので、" + step + u + "減らします";
+          res.why = misses + "回続けて目標に届かなかったので、" + step + u + "減らします";
         }else{
           const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
           const prv = pv ? null : stepItem(item, -1);
@@ -187,13 +181,12 @@ function progressFor(item){
             res.why = u + "数の下限でも届かなかったので、次は一段やさしい「" + itemName(prv) + "」にします";
           }else{
             res.target = rr.lo; res.change = "hold";
-            res.why = u + "数の下限で続けます。きつすぎたらセット数を減らしてください";
+            res.why = u + "数の下限で続けます";
           }
         }
       }else{
         res.change = "hold";
-        res.why = ev.allHit ? "前回はきつさが" + Math.round(ev.rpe * 10) / 10 + "と高めだったので、同じ目標でもう一度"
-                            : "前回は目標に届かなかったセットがあるので、同じ目標でもう一度";
+        res.why = "前回は目標に届かなかったセットがあるので、同じ目標でもう一度";
       }
     }
   }
@@ -214,7 +207,7 @@ function patternNext(pattern){
 }
 
 /* ---- 軽い週を勧めるか ----
-   直近3週間で、2つ以上の動きに疲れのしるし（2回続けて目標に届かない／同じ目標なのにきつさが1以上上がった）があれば勧める。
+   直近3週間で、2つ以上の動きに疲れのしるし（2回続けて目標に届かない）があれば勧める。
    軽い週の最中と、前の軽い週から4週間たたないうちは勧めない */
 function deloadAdvice(){
   const now = deloadNow();
@@ -228,11 +221,7 @@ function deloadAdvice(){
     const same = hist.filter(h => itemKey(h.item) === itemKey(hist[0].item));
     if(same.length < 2) return;
     const e0 = evalSession(same[0]), e1 = evalSession(same[1]);
-    if(!e0.allHit && !e1.allHit){ tired.push(pat); return; }
-    if(same.length >= 3){
-      const e2 = evalSession(same[2]);
-      if(e0.rpe !== null && e2.rpe !== null && e0.rpe - e2.rpe >= 1 && e0.target <= e2.target) tired.push(pat);
-    }
+    if(!e0.allHit && !e1.allHit) tired.push(pat);
   });
   return tired.length >= 2 ? {suggest: true, patterns: tired} : null;
 }

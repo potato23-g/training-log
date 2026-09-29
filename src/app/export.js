@@ -29,6 +29,7 @@ async function exportCSV(){
 }
 function showText(){
   const lines = [];
+  let anyRpe = false;          /* きつさは 2026-09-29 に入力をやめた。前に記録した分があるときだけ説明を出す */
   sortedDates().slice().reverse().forEach(d=>{
     const s = state.sessions[d];
     const es = (s.entries||[]).filter(e=>e.sets.length);
@@ -36,6 +37,7 @@ function showText(){
     lines.push(fmtDate(d));
     es.forEach(e=>{
       const ex = EXMAP[e.ex];
+      if(e.sets.some(st=>st.rpe)) anyRpe = true;
       lines.push("  " + (ex?ex.name:e.ex) + "  " + e.sets.map(st=>setText(st, ex?ex.kind:"b") + (st.rpe?`(${st.rpe})`:"")).join(" / "));
     });
     if(s.note) lines.push("  メモ: " + s.note);
@@ -43,7 +45,7 @@ function showText(){
   });
   const txt = lines.join("\n") || "記録がありません";
   sheetInner.innerHTML = `<h4>コピーして共有</h4>
-    <p class="lastline" style="margin-top:0">括弧内はきつさの自己評価です。</p>
+    ${anyRpe ? `<p class="lastline" style="margin-top:0">括弧内はきつさの自己評価です。</p>` : ""}
     <textarea style="min-height:280px" readonly>${txt.replace(/</g,"&lt;")}</textarea>
     <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
   const t = sheetInner.querySelector("textarea");

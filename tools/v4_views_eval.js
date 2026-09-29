@@ -248,14 +248,14 @@ setTimeout(async () => {
     session(d7).plan = [{ ex: "row", label: "ワンハンドロウ（下で2秒止める）" }];
     let exSel = qs("#haddex", sheetInner);
     if (exSel) { exSel.value = "row|"; exSel.dispatchEvent(new Event("change")); }
-    const wIn = qs("#haddw", sheetInner), rIn = qs("#haddr", sheetInner), eIn = qs("#hadde", sheetInner);
+    const wIn = qs("#haddw", sheetInner), rIn = qs("#haddr", sheetInner);
+    r.hist.noRpeField = !qs("#hadde", sheetInner);                        /* きつさの入力は 2026-09-29 にやめた */
     if (wIn) wIn.value = "14";
     if (rIn) rIn.value = "9";
-    if (eIn) eIn.value = "8";
     goBtn = qs("#haddgo", sheetInner);
     if (goBtn) goBtn.click();
     const rowEntry = entryFor(d7, "row", false);
-    const addedRowSet = rowEntry ? rowEntry.sets.find(s => s.w === 14 && s.r === 9 && s.rpe === 8) : null;
+    const addedRowSet = rowEntry ? rowEntry.sets.find(s => s.w === 14 && s.r === 9 && s.rpe === undefined) : null;
     r.hist.addedSet = !!addedRowSet;
     r.hist.addedSetLabelIsPlain = !!addedRowSet && addedRowSet.label === "";
     r.hist.setsAfterAdd = qsa(".setline", sheetInner).length;               /* 期待 setsAfterUndo+1（取り消し後+新規1） */
@@ -426,6 +426,7 @@ setTimeout(async () => {
     check("hist.emptyValidationBlocked", r.hist.emptyValidationBlocked);
     check("hist.addedSet", r.hist.addedSet);
     check("hist.addedSetLabelIsPlain", r.hist.addedSetLabelIsPlain);
+    check("hist.noRpeField", r.hist.noRpeField);
     check("hist.setsAfterAdd", r.hist.setsAfterAdd === r.hist.setsAfterUndo + 1);
     check("hist.noteSaved", r.hist.noteSaved);
     check("hist.closedOk", r.hist.closedOk);

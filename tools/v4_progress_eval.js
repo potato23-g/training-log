@@ -11,8 +11,8 @@
   let sim = base;
   const goTo = k => { sim = k; todayKey = () => sim; TODAY = sim; planMemo = null; resetProg(); openEx = null; };
   const fresh = () => { state.sessions = {}; state.gear = {items: [{kg: 5, n: 2}], updatedAt: 1}; catalogMemo = null; planMemo = null; resetProg(); };
-  /* その日のメニューを、目標どおり・きつさ rpe で全部記録する */
-  const doDay = (rpe, hitFn) => {
+  /* その日のメニューを全部記録する（hitFn が無ければ、全部のセットを目標どおり） */
+  const doDay = hitFn => {
     const s = session(TODAY);
     fixPlan(s);
     const items = activeItems();
@@ -22,7 +22,7 @@
         const e = entryFor(TODAY, it.ex, false);
         const sug = suggestNext(it, e);
         const r = hitFn ? hitFn(it, sug, k) : sug.target;
-        const st = {id: newSetId(), at: k, r, rpe, label: it.label || "", target: sug.target};
+        const st = {id: newSetId(), at: k, r, label: it.label || "", target: sug.target};
         if(sug.opt) st.w = sug.w;
         entryFor(TODAY, it.ex, true).sets.push(st);
       }
@@ -40,13 +40,13 @@
   const nextNull = pats.filter(p => patternNext(p) !== null);
   ok(nextNull.length === 0, "B2: 記録が無いのに今日の組み方が決まっている動きがある: " + nextNull.join(","));
 
-  /* ---- 2. 目標どおり・きつさ8で続けると、目標が1回ずつ上がり、上限で段が上がる（A2/F1） ---- */
+  /* ---- 2. 目標どおりに続けると、目標が1回ずつ上がり、上限で段が上がる（A2/F1） ---- */
   fresh();
   const trace = {};
   let day = shift(base, -60);
   for(let i = 0; i < 24; i++){
     goTo(day);
-    const names = doDay(8);
+    const names = doDay();
     names.forEach(nm => {});
     activeItems().forEach(it => {
       const key = patternOf(it.ex);
@@ -73,7 +73,7 @@
   day = shift(base, -20);
   for(let i = 0; i < 3; i++){
     goTo(day);
-    doDay(9, (it, sug, k) => k === 2 ? Math.max(1, sug.target - 3) : sug.target);   /* 3セット目が届かない */
+    doDay((it, sug, k) => k === 2 ? Math.max(1, sug.target - 3) : sug.target);   /* 3セット目が届かない */
     day = shift(day, 3);
   }
   goTo(day);
@@ -84,16 +84,25 @@
        "F1: 2回続けて届かないのに下げない: " + p.change + " / " + p.why);
   }
 
-  /* ---- 4. きつさを入れなかった回は据え置き ---- */
+  /* ---- 4. きつさの入力は無い（2026-09-29 にやめた）。出来は回数だけで見る:
+     全部のセットが目標に届けば次は上げ、1回だけ届かなかったなら据え置き ---- */
+  const doneItems = d => (state.sessions[d].entries || []).filter(e => e.sets.length)
+    .map(e => catalogRow(e.ex, setLabel(d, e.ex, e.sets[e.sets.length - 1])) || catalogItem(e.ex));
+  const UPS = ["up", "heavier", "harder", "top"];
   fresh();
-  goTo(shift(base, -3)); doDay(0);
+  goTo(shift(base, -3)); doDay();
   goTo(base);
-  const it0 = activeItems()[0];
-  if(it0){ const p = progressFor(it0); ok(p.change === "hold" || p.change === "switched" || p.change === "first", "F1: きつさ無しで目標が動いた: " + p.change); }
+  const done4 = doneItems(shift(base, -3)), notUp = done4.map(progressFor).filter(p => !UPS.includes(p.change));
+  ok(done4.length > 0 && notUp.length === 0, "F1: 全部のセットが目標に届いたのに次の目標が上がらない: " + notUp.map(p => p.change + " / " + p.why).join("、"));
+  fresh();
+  goTo(shift(base, -3)); doDay((it, sug, k) => k === 2 ? Math.max(1, sug.target - 2) : sug.target);
+  goTo(base);
+  const done4b = doneItems(shift(base, -3)), notHold = done4b.map(progressFor).filter(p => p.change !== "hold");
+  ok(done4b.length > 0 && notHold.length === 0, "F1: 1回届かなかっただけで目標が変わった: " + notHold.map(p => p.change).join("、"));
 
   /* ---- 5. 組み直しは何度押しても同じ（B18） ---- */
   fresh();
-  goTo(shift(base, -4)); doDay(8);
+  goTo(shift(base, -4)); doDay();
   goTo(base);
   const m0 = todayItems().map(itemKey).join(",");
   replanToday();
@@ -125,16 +134,17 @@
     ok(todayItems().some(it => it.ex === extraEx.ex), "B5: 手で足した種目が組み直しで消えた");
   }
 
-  /* ---- 7. 軽い週（F5）: セット数が半分・目標は据え置き ---- */
+  /* ---- 7. 軽い週（F5）: 種目は3つまで・セット数は3のまま・目標は据え置き ---- */
   fresh();
-  goTo(shift(base, -3)); doDay(8);
+  goTo(shift(base, -3)); doDay();
   goTo(base);
-  const before = activeItems().map(it => it.sets || 3);
+  const before = activeItems().length;
   setDeload(true);
   replanToday();
-  const after = activeItems().map(it => it.sets || 3);
-  ok(after.every(n => n <= 2), "F5: 軽い週なのにセット数が半分になっていない: " + before.join(",") + " → " + after.join(","));
-  const pd = progressFor(activeItems()[0]);
+  const act7 = activeItems();
+  ok(act7.length > 0 && act7.length <= 3, "F5: 軽い週なのに種目が3つまでになっていない: " + before + " → " + act7.length);
+  ok(act7.every(it => it.sets === 3), "F5: 軽い週でセット数が3から変わった: " + act7.map(it => it.sets).join(","));
+  const pd = act7.length ? progressFor(act7[0]) : {change: "deload"};
   ok(pd.change === "deload" || pd.change === "first" || pd.change === "switched", "F5: 軽い週なのに目標が動いた: " + pd.change);
   setDeload(false);
 
@@ -187,13 +197,19 @@
   const pOld = progressFor(gobRow);
   ok(pOld.target >= pOld.lo && pOld.target <= pOld.hi,
      "B7: 目標なしの古い記録（18回）から、解説の幅の外の目標 " + pOld.target + " が出た（幅 " + pOld.lo + "〜" + pOld.hi + "）");
-  ok(/幅（/.test(pOld.why), "B7: 幅に収めたことを理由に書いていない: " + pOld.why);
-  /* 更新前に保存した今日のメニューの行（今は無い組み方の名前・動きのID）は、今の素の組み方で出す。セット数と印は残す */
+  /* 幅の下に外れた古い記録（5回）は、目標を幅の下限に収めて、そう理由に書く
+     （18回のほうは全部届いた扱いで一段難しい組み方へ進むので、幅に収める場面にならない） */
+  fresh();
+  entryFor(oldDay, "goblet", true).sets.push(...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 5, w: 10})));
+  resetProg();
+  const pLow = progressFor(gobRow);
+  ok(pLow.target === pLow.lo && /幅（/.test(pLow.why), "B7: 幅の外の古い記録（5回）から、幅に収めたことを理由に書いていない: " + pLow.target + " / " + pLow.why);
+  /* 更新前に保存した今日のメニューの行（今は無い組み方の名前・動きのID）は、今の素の組み方で出す。印は残し、セット数は3（2026-09-29 から固定） */
   session(TODAY).plan = [{ex: "goblet", label: "ゴブレットスクワット（深くしゃがむ）", lv: 1, sets: 2, r: 14, mo: "goblet_deep",
                           tag: "深くしゃがむ", note: "古い説明", manual: true}];
   planMemo = null; resetProg();
   const stale = todayItems().find(i => i.ex === "goblet") || {};
-  ok((stale.label || "") === "" && !stale.mo && stale.sets === 2 && stale.manual === true && stale.note === gobRow.note,
+  ok((stale.label || "") === "" && !stale.mo && stale.sets === 3 && stale.manual === true && stale.note === gobRow.note,
      "A4: 保存済みの古い組み方の行が今の素の組み方で出ていない: " + JSON.stringify(stale));
   ok(/data-dia="goblet"/.test(diaHTML("goblet", false, stale, null)), "A4: 保存済みの古い組み方の行で図が出ない");
 
@@ -205,10 +221,10 @@
   const gobletRow = catalogItem("goblet");
   const adjOldDay = shift(TODAY, -3);
   entryFor(adjOldDay, "goblet", true).sets.push(
-    ...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 15, rpe: 8, target: 15, w: 10, label: ""})));
+    ...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 15, target: 15, w: 10, label: ""})));
   resetProg();
   const pAdj = progressFor(gobletRow);
-  ok(pAdj.change === "heavier", "G1: 可変式のみで前回きつさ8・全部届いたのに一段重くしない: " + pAdj.change + " / " + pAdj.why);
+  ok(pAdj.change === "heavier", "G1: 可変式のみで前回全部のセットが目標に届いたのに一段重くしない: " + pAdj.change + " / " + pAdj.why);
   ok(!!pAdj.opt && Math.abs(pAdj.opt.total - 12) < 0.01, "G1: 一段重くした先が合計12kgでない: " + (pAdj.opt && pAdj.opt.total));
   ok(pAdj.target === pAdj.lo, "G1: 一段重くした直後の回数が幅の下限でない: " + pAdj.target + " / lo=" + pAdj.lo);
   ok(!!pAdj.opt && pAdj.opt.n === 2 && !pAdj.opt.mixed, "G1/C12: goblet が同じ合計でも両肩(2つ)を選ばない: " + JSON.stringify(pAdj.opt));
@@ -273,7 +289,7 @@
   const crunchHardLabel = (VARIANT_ROWS.find(v => v.ex === "crunch" && v.needsDb) || {}).label || "";
   ok(!!crunchHardLabel, "C19: crunch の needsDb 組み方(hard)が VARIANT_ROWS に見つからない");
   entryFor(crunchOldDay, "crunch", true).sets.push(
-    ...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 20, rpe: 8, target: 20, label: crunchHardLabel || ""})));
+    ...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 20, target: 20, label: crunchHardLabel || ""})));
   state.gear = {items: [], updatedAt: 1};
   planMemo = null; resetProg();
   const noDbPlan2 = buildPlan();
@@ -281,7 +297,7 @@
      "C19: 過去に胸に重りを抱える組み方をしていても、ダンベル無しでは今日のメニューに出さない: " + noDbPlan2.filter(it => it.needsDb).map(itemName).join("、"));
 
   /* ---- 16. C7: 日付が変わったら、入力欄の下書きは残らない ---- */
-  fresh(); goTo(shift(base, -2)); doDay(8);
+  fresh(); goTo(shift(base, -2)); doDay();
   goTo(base);
   tab = "today"; selMuscle = null; editEx = null;
   session(TODAY).plan = [{ex: "curl", sets: 3, r: 12}];
@@ -301,7 +317,7 @@
   const c20Check = (label, fn) => {
     fresh();
     const oldDay = shift(base, -1);
-    goTo(oldDay); doDay(8);
+    goTo(oldDay); doDay();
     const exId = activeItems()[0].ex;
     const before = JSON.stringify(session(oldDay).plan);
     todayKey = () => base;                   /* 実際の時計は進んだが、画面はまだ前日のまま */
@@ -322,7 +338,7 @@
   todayKey = realTodayKey; goTo(realTodayKey());
   const putSets = (agoDays, ex, n) => {
     const d = shift(TODAY, -agoDays), e = entryFor(d, ex, true);
-    for(let k = 0; k < n; k++) e.sets.push({id: newSetId(), at: k, r: 10, rpe: 8, label: ""});
+    for(let k = 0; k < n; k++) e.sets.push({id: newSetId(), at: k, r: 10, label: ""});
   };
   const primHas = (plan, m) => plan.some(p => EXMAP[p.ex].p.includes(m));
   const gq = recoverGap("quads");
@@ -354,6 +370,34 @@
   replanToday();
   ok(Array.isArray(session(TODAY).plan) && session(TODAY).plan.filter(p => !p.skip).length === 0 && session(TODAY).planEdit > 0,
      "組み直し: 空になったメニューが保存されていない");
+
+  /* ---- 20. セット数は3で固定。2セット目からは前のセットの重さ・回数をそのまま入れる（2026-09-29） ---- */
+  todayKey = realTodayKey; goTo(realTodayKey());
+  fresh(); planMemo = null; resetProg();
+  const p20 = buildPlan();
+  ok(p20.length > 0 && p20.every(it => it.sets === 3), "3セット: セット数が3でない種目がある: " + p20.map(it => itemName(it) + "×" + it.sets).join("、"));
+  const it20 = p20.find(it => EXMAP[it.ex].kind === "w" && itemOptions(it).length > 1) || p20[0];
+  if(it20){
+    const e20 = {ex: it20.ex, sets: []}, kind20 = EXMAP[it20.ex].kind;
+    const s20a = suggestNext(it20, e20);
+    const other = s20a.opt ? (itemOptions(it20).find(o => Math.abs(o.total - s20a.w) > 0.01) || s20a.opt) : null;
+    const prevR = s20a.target - (kind20 === "t" ? 10 : 2);
+    e20.sets.push({id: newSetId(), at: 1, r: prevR, w: other ? other.total : undefined, target: s20a.target, label: it20.label || ""});
+    const s20b = suggestNext(it20, e20);
+    ok(s20b.r === clampR(kind20, prevR) && s20b.target === s20a.target && (!other || Math.abs(s20b.w - other.total) < 0.01),
+       "2セット目: 前のセットの数字がそのまま入らない: " + itemName(it20) + " " + JSON.stringify({prevR, prevW: other && other.total, r: s20b.r, w: s20b.w, target: s20b.target}));
+    ok(/前のセットと同じ数字/.test(s20b.src) && s20b.src.indexOf("目標は" + s20a.target) === 0, "2セット目: 目標と入力欄の出どころの説明が違う: " + s20b.src);
+  }
+
+  /* ---- 21. 前の版で保存したメニューの行が5セット（grow の名残・古い版の端末から同期）でも、3セット全部届けば上げる ---- */
+  todayKey = realTodayKey; goTo(realTodayKey());
+  fresh();
+  const d21 = shift(TODAY, -3), row21 = catalogRow("pushup", "") || catalogItem("pushup"), t21 = midTarget(row21);
+  session(d21).plan = [{ex: "pushup", sets: 5, r: t21}];
+  entryFor(d21, "pushup", true).sets.push(...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: t21, target: t21, label: ""})));
+  resetProg();
+  const p21 = progressFor(row21);
+  ok(UPS.includes(p21.change), "3セット: 保存済みの行が5セットでも、3セット全部届いたのに上げない: " + p21.change + " / " + p21.why);
 
   todayKey = realTodayKey; goTo(realTodayKey());
   fresh(); render();

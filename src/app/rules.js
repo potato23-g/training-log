@@ -15,10 +15,9 @@ function restFor(item){
           その日に主役で6セット以上やったときは1日延ばす。昨日しっかり使った部位（補助も含めた有効セットが3以上。
           腹直筋・腹斜筋は10、ふくらはぎ・前腕は6）も今日は主役にしない。今日「筋肉痛」と選んだ部位も主役にしない
    ・1日の負荷: 大きい部位（脚・尻・胸・背中）は8セット、ほかの部位は6セットまで。1回は16セット・6種目・50分くらいまで
-   ・1週間の量: 直近7日で各部位10セットを目標に、目標までの不足を2乗で数えて価値を決める。1回ぶんは
-               「新しい種目を足す（3セット）」と「入れた種目のセットを1つ増やす」を1セットあたりの価値で比べ、大きい方から積む。
-               目標から遠い部位ほど価値が急に上がるので、大きい部位ばかりで埋まって小さい部位が0セットのまま、にはならず、
-               出る日が少ない脚は1回で多めになる（1種目4セットまで。回復に中3日以上かかる部位の種目は5セットまで）。
+   ・1週間の量: 直近7日で各部位10セットを目標に、目標までの不足を2乗で数えて価値を決め、価値の大きい種目から入れる。
+               目標から遠い部位ほど価値が急に上がるので、大きい部位ばかりで埋まって小さい部位が0セットのまま、にはならない。
+               セット数はどの種目も3で固定（本人の要望。重さ・回数は本人が調整する）。
                部位の重み（PLAN_WEIGHT）は大きい部位を少しだけ重くしてある。目標に届いた部位も、16セットまでは少しだけ価値を残す
    これまでの決まりもそのまま守る:
    ・同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日1つ
@@ -44,7 +43,7 @@ const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット） */
 function dayMax(m){ return BIG_MUSCLES.includes(m) ? 8 : 6; }
-const SESSION_MAX = {sets:16, exercises:6, minutes:50};
+const SESSION_MAX = {sets:15, exercises:5, minutes:50};     /* 1種目3セットで5種目まで */
 /* 足りないときに優先する度合い（大きい部位ほど高い） */
 const PRIORITY = {quads:1, glutes:1, hams:1, chest:1, lats:1, shoulders:0.8,
                   triceps:0.5, biceps:0.5, calves:0.5, abs:0.4, obliques:0.4, traps:0.4,
@@ -69,11 +68,8 @@ const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, 
 const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, shoulders:1, traps:1, erectors:2,
                      biceps:1, triceps:1, forearms:0, abs:0, obliques:0, calves:0, adductors:2};
 const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
-/* 1種目のセット数の上限。回復に中3日以上かかる部位（脚・尻）は出る日が少ないので、1回で少し多めにやれるようにする */
-const SET_CAP = {normal: 4, long: 5, longGap: 3};
-function setCapFor(item){ return EXMAP[item.ex].p.some(m => recoverGap(m) >= SET_CAP.longGap) ? SET_CAP.long : SET_CAP.normal; }
-/* メニューに積むのをやめる、1セットあたりの価値の下限（これより足しても週の目標にほとんど効かない） */
-let GROW_MIN_PER_SET = 0.25;
+/* 1種目のセット数。本人の要望で3に固定（2026-09-29。重さ・回数は本人が調整する） */
+const SETS_PER_EXERCISE = 3;
 function recoverGap(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
 /* 部位 m が主役（主働筋）だったセット数（fromDaysAgo〜toDaysAgo 日前） */
 function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
