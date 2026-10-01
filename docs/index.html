@@ -5119,7 +5119,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-01 23:05";
+const BUILD_VERSION = "2026-10-01 23:11";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -7935,7 +7935,7 @@ function trendCards(dates){
     (s.entries||[]).forEach(e=>{
       const ex = EXMAP[e.ex]; if(!ex) return;
       e.sets.forEach(st=>{
-        const label = setLabel(d, e.ex, st);
+        const label = trendLabel(e.ex, setLabel(d, e.ex, st));
         const key = e.ex + "|" + label;
         (map[key] = map[key] || {ex:e.ex, label, rows:[]}).rows.push({d, st});
       });
@@ -8037,13 +8037,23 @@ function sparkSVG(points){
 /* 自己ベストの判定。同じ ex・組み方の中で、date・set より前の記録とだけ比べる。
    重さの種目: 「同じ重さ以上で最多回数」か「最重量」。回数・秒の種目: 最多。
    更新したときだけ「自己ベスト: …」を返す（比べる前の記録が無いときは、まだ「更新」ではないので出さない） */
+/* 推移・自己ベストで使うやり方の名前。今の種目表に無い名前（2026-09-27 の A4 で変えた名前など）は、
+   伸ばし方の数え方（patternHistory）と同じく基本のやり方として数える。
+   数えないと、名前を変える前の記録が古い名前の別のカードに分かれ、今のカードの推移に入らなかった（2026-10-01） */
+const trendLabelMemo = {};
+function trendLabel(exId, label){
+  if(!label) return "";
+  const k = exId + "|" + label;
+  if(!(k in trendLabelMemo)) trendLabelMemo[k] = catalogRow(exId, label) ? label : "";
+  return trendLabelMemo[k];
+}
 function historySetsFor(exId, label){
   const out = [];
   sortedDates().slice().reverse().forEach(d=>{
     const s = state.sessions[d];
     (s.entries||[]).forEach(e=>{
       if(e.ex !== exId) return;
-      e.sets.forEach(st=>{ if(setLabel(d, exId, st) === (label||"")) out.push({d, st}); });
+      e.sets.forEach(st=>{ if(trendLabel(exId, setLabel(d, exId, st)) === (label||"")) out.push({d, st}); });
     });
   });
   return out;
