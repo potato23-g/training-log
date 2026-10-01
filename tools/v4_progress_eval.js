@@ -463,6 +463,21 @@
   });
   ok(!dShort, "軽い週: 目標より少ないだけで回数は減っていないのに勧める: " + JSON.stringify(dShort));
 
+  /* ---- 23. 推移: 今は無いやり方の名前（09-27 に変えた名前）で記録したセットは、基本のやり方のカードに入る（2026-10-01） ---- */
+  todayKey = realTodayKey; goTo(realTodayKey());
+  fresh();
+  const oldLabel = "ゴブレットスクワット（深くしゃがむ）";
+  ok(!catalogRow("goblet", oldLabel), "推移: 古いやり方の名前が今も種目表にある（この検査の前提が崩れた）");
+  const put23 = (ago, label, r) => {
+    const e = entryFor(shift(TODAY, -ago), "goblet", true);
+    [0, 1, 2].forEach(k => e.sets.push({id: newSetId(), at: k, r, w: 10, label}));
+  };
+  put23(9, oldLabel, 12); put23(6, oldLabel, 13); put23(3, "", 13);
+  resetProg();
+  const cards23 = trendCards(sortedDates()).match(/<h4>[^<]*<\/h4>/g) || [];
+  ok(cards23.length === 1 && !/深くしゃがむ/.test(cards23.join("")), "推移: 古いやり方の名前の記録が別のカードに分かれる: " + cards23.join(" "));
+  ok(historySetsFor("goblet", "").length === 9, "推移: 基本のやり方の記録に、古い名前で記録したセットが入らない: " + historySetsFor("goblet", "").length);
+
   todayKey = realTodayKey; goTo(realTodayKey());
   fresh(); render();
   window.__result = out; window.__ready = true;
