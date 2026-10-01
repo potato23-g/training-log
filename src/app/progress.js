@@ -125,9 +125,9 @@ function progressFor(item){
       if(up) res.target = rr.lo;
       res.change = up ? "stepped-up" : dn ? "stepped-down" : "switched";
       res.src = "前回は「" + itemName(prev.item) + "」";
-      res.why = up ? "一段難しい組み方の1回目です。" + u + "数は幅の下限（" + rr.lo + "）から"
-              : dn ? "一段やさしい組み方です。" + res.target + u + "から"
-              : "この組み方の1回目です";
+      res.why = up ? "一段難しいやり方の1回目です。" + u + "数は範囲の下限（" + rr.lo + u + "）から始めます"
+              : dn ? "一段やさしいやり方です。" + res.target + u + "から始めます"
+              : "このやり方の1回目です";
       if(prev.ex === id) res.opt = optByW(evalSession(prev).w);   /* 同じ種目の別の組み方なら、前回と同じ重さ */
     }else{
       res.change = "first"; res.src = "初回";
@@ -148,28 +148,28 @@ function progressFor(item){
     res.target = ev.target;
     if(deloadOn(TODAY)){
       res.change = "deload";
-      res.why = "軽い週です。目標は前回と同じにして、種目を少なめにしています";
+      res.why = "軽めの週です。目標は前回と同じにして、種目を少なめにしています";
     }else if(ev.allHit){
       const nt = ev.target + step;
       if(nt <= rr.hi){
         res.target = nt; res.change = "up";
-        res.why = "前回は全部のセットで目標に届いたので、" + step + u + "増やします（" + rr.hi + u + "に届いたら次の段へ）";
+        res.why = "前回は全部のセットで目標に届いたので、" + step + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
       }else{
         /* 幅の上限に届いた → 一段上へ */
         const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
         if(nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg)){
           res.opt = nx; res.target = rr.lo; res.change = "heavier";
-          res.why = u + "数の上限（" + rr.hi + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から";
+          res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から始めます";
         }else{
           const nxt = stepItem(item, 1);
           if(nxt){
             res.next = nxt; res.change = "harder"; res.target = rr.hi;
-            res.why = u + "数の上限（" + rr.hi + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";
+            res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";
           }else{
             res.target = rr.hi; res.change = "top";
             const hs = houseOf(id);
-            res.why = "今の道具では、この動きの一番上の段です。" + u + "数は上限のまま続けます"
-                    + (hs.up ? "。次の一手は「" + gearText(hs.up) + "」" : "");
+            res.why = "今の道具では、この動きの一番上の段階です。" + u + "数は上限のまま続けます"
+                    + (hs.up ? "。さらに負荷を上げるなら「" + gearText(hs.up) + "」" : "");
           }
         }
       }
@@ -182,12 +182,12 @@ function progressFor(item){
         res.change = "rebase";
         res.target = Math.max(lo, Math.min(rr.hi, ev.minR));
         res.why = "前回はダンベルを" + (ev.w > pe.w ? "重く" : "軽く") + "したので、その重さで"
-                + (ev.minR >= lo ? res.target + u + "から始めます" : u + "数の幅の下限（" + lo + u + "）から始めます");
+                + (ev.minR >= lo ? res.target + u + "から始めます" : u + "数の範囲の下限（" + lo + u + "）から始めます");
       }else if(pe && ev.maxR < lo && pe.maxR < lo){
         /* 同じ重さで2回続けて幅の下限より少なかった → 一段軽く・やさしく */
         const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
         const prv = pv ? null : stepItem(item, -1);
-        const head = "同じ重さで2回続けて" + u + "数の幅の下限（" + lo + u + "）より少なかったので、";
+        const head = "同じ重さで2回続けて" + u + "数の範囲の下限（" + lo + u + "）より少なかったので、";
         if(pv){
           res.opt = pv; res.target = midTarget(item); res.change = "lighter";
           res.why = head + "ダンベルを一段軽くします";
@@ -196,7 +196,7 @@ function progressFor(item){
           res.why = head + "次は一段やさしい「" + itemName(prv) + "」にします";
         }else{
           res.target = lo; res.change = "hold";
-          res.why = u + "数の幅の下限（" + lo + u + "）を目標に続けます";
+          res.why = u + "数の範囲の下限（" + lo + u + "）を目標に続けます";
         }
       }else{
         /* 同じ重さで少なかった: 前回の最高の回数を次の目標にする（前回の目標より上げない） */
@@ -208,7 +208,7 @@ function progressFor(item){
         }else{
           res.change = "match";
           res.why = "前回は最高" + best + u + "だったので、" + (best >= lo ? "目標を" + nt + u + "にします"
-                                                                   : u + "数の幅の下限（" + lo + u + "）を目標にします");
+                                                                   : u + "数の範囲の下限（" + lo + u + "）を目標にします");
         }
       }
     }
@@ -217,7 +217,7 @@ function progressFor(item){
      幅の外のことがあるので、幅に収めてそう添える */
   const t0 = Math.round(res.target);
   res.target = Math.max(1, Math.min(rr.hi, Math.max(rr.lo, t0)));
-  if(res.target !== t0) res.why += "。解説の" + u + "数の幅（" + rr.lo + "〜" + rr.hi + "）に合わせて" + res.target + u + "にします";
+  if(res.target !== t0) res.why += "。解説にある" + u + "数の範囲（" + rr.lo + "〜" + rr.hi + u + "）に合わせて" + res.target + u + "にします";
   if(res.opt) res.w = res.opt.total;
   return (progMemo.items[key] = res);
 }

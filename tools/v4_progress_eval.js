@@ -233,7 +233,7 @@
   entryFor(oldDay, "goblet", true).sets.push(...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 5, w: 10})));
   resetProg();
   const pLow = progressFor(gobRow);
-  ok(pLow.target === pLow.lo && /幅（/.test(pLow.why), "B7: 幅の外の古い記録（5回）から、幅に収めたことを理由に書いていない: " + pLow.target + " / " + pLow.why);
+  ok(pLow.target === pLow.lo && /範囲（/.test(pLow.why), "B7: 幅の外の古い記録（5回）から、幅に収めたことを理由に書いていない: " + pLow.target + " / " + pLow.why);
   /* 更新前に保存した今日のメニューの行（今は無い組み方の名前・動きのID）は、今の素の組み方で出す。印は残し、セット数は3（2026-09-29 から固定） */
   session(TODAY).plan = [{ex: "goblet", label: "ゴブレットスクワット（深くしゃがむ）", lv: 1, sets: 2, r: 14, mo: "goblet_deep",
                           tag: "深くしゃがむ", note: "古い説明", manual: true}];
@@ -444,7 +444,7 @@
   if(da && da.suggest){
     tab = "today"; openEx = null; render();
     const v22 = document.getElementById("view").innerText;
-    ok(/今週を軽い週/.test(v22) && !/半分|しるし/.test(v22), "軽い週: 今日タブの勧める文が古い: " + (v22.match(/[^\n]*軽い週[^\n]*/) || [""])[0]);
+    ok(/今週を軽めの週/.test(v22) && !/半分|しるし/.test(v22), "軽い週: 今日タブの勧める文が古い: " + (v22.match(/[^\n]*軽めの週[^\n]*/) || [""])[0]);
   }
   const dHeavy = deloadFor(() => {
     put22(9, "row", [12, 12, 12], 10); put22(6, "row", [9, 9, 8], 12);   put22(3, "row", [8, 8, 8], 12);

@@ -88,7 +88,7 @@ function exRow(item){
       ${last ? `<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${esc(last.sets.map(x=>setTextFor(item, x)).join(" / "))}</b></p>` : ""}
       ${!n ? stepButtons(item) : ""}
       ${!n ? `<div class="cardtools"><button data-act="later" data-ex="${id}">後に回す</button><button data-act="skip" data-ex="${id}">今日は外す</button></div>` : ""}
-      ${recordedDays() < 3 ? `<p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットに入っていい時間になると音で知らせます。</p>` : ""}
+      ${recordedDays() < 3 ? `<p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットを始められる時間になると、音で知らせます。</p>` : ""}
       <div class="rowbtns">
         <button data-act="goref" data-ex="${id}">解説を見る</button>
       </div>

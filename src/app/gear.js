@@ -497,7 +497,7 @@ function settingsCard(){
       <button data-act="pref" data-k="wake" class="tg ${wake?"on":""}">${wake?"オン":"オフ"}</button></div>
     <div class="rowbtns"><button data-act="testalert">今の設定で鳴らしてみる</button></div>
     <p class="lastline">${sure
-      ? "休憩の長さぶんの音声を流しておき、終わりに合図が入るようにしています。画面を消していても鳴るようにしていますが、端末によっては止められることがあります。"
+      ? "休憩のあいだ無音の音声を流し、終わりに合図を鳴らします。画面を消していても鳴りますが、端末によっては止まることがあります。"
       : "音楽と一緒に使えます。鳴るのはアプリを開いて画面がついている間だけで、iPhoneはマナーモード中だと鳴りません。画面から離れている間に休憩が終わったら、戻ったときに知らせます。"}</p>
   </div>`;
 }

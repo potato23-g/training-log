@@ -59,7 +59,7 @@ function todayAdvice(item, sug){
   }
   if(item.needsDb && !inventory().length){
     return {level:"skip", warn:true, short:"ダンベルなし",
-      text: "ダンベルが登録されていません。今日は飛ばすか、素の組み方に戻してください。"};
+      text: "ダンベルが登録されていません。今日は飛ばすか、基本のやり方に戻してください。"};
   }
 
   /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位（自分で足した種目など、メニュー作りを通らずに入ったとき） */
@@ -67,8 +67,8 @@ function todayAdvice(item, sug){
   if(tired){
     const sore = soreToday().includes(tired), left = recoverDaysLeft(tired);
     return {level:"recover", warn:true, short: sore ? "筋肉痛" : "回復優先",
-      text: sore ? MUSCLES[tired] + "は今日、筋肉痛と選んでいます。重さを軽くするか、今日は外してください。"
-                 : MUSCLES[tired] + "はまだ回復の途中です（次に主役にできるのは " + fmtDate(addDays(TODAY, Math.max(1, left))) + " から）。重さを軽くするか、今日は外してください。"};
+      text: sore ? MUSCLES[tired] + "は今日「筋肉痛の部位」に選んでいます。重さを軽くするか、今日は外してください。"
+                 : MUSCLES[tired] + "はまだ回復の途中です（次にメインで鍛えられるのは" + fmtDate(addDays(TODAY, Math.max(1, left))) + "から）。重さを軽くするか、今日は外してください。"};
   }
 
   /* 3. 前回からの伸ばし方の結果（その日の1セット目の前だけ） */
@@ -79,10 +79,10 @@ function todayAdvice(item, sug){
       text: "前回の " + kgText(p.snap) + " は、今登録しているダンベルでは作れません。今日は" + optText(p.opt) + "にしています。"};
     if(p.change === "heavier") return {level:"harder", short:"一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
     if(p.change === "lighter") return {level:"easier", warn:true, short:"一段軽く", text: p.why + "。"};
-    if(p.change === "stepped-up") return {level:"harder", short:"段を上げた", text: p.why + "。"};
-    if(p.change === "stepped-down") return {level:"easier", short:"段を下げた", text: p.why + "。"};
-    if(p.change === "harder") return {level:"harder", short:"次は上の段", text: p.why + "。"};
-    if(p.change === "easier") return {level:"easier", warn:true, short:"次は下の段", text: p.why + "。"};
+    if(p.change === "stepped-up") return {level:"harder", short:"段階を上げた", text: p.why + "。"};
+    if(p.change === "stepped-down") return {level:"easier", short:"段階を下げた", text: p.why + "。"};
+    if(p.change === "harder") return {level:"harder", short:"次は上の段階", text: p.why + "。"};
+    if(p.change === "easier") return {level:"easier", warn:true, short:"次は下の段階", text: p.why + "。"};
     /* 一番上の段・軽い週は毎回のことなので、見出しの札にはしない（カードの中の一言だけ） */
     if(p.change === "top") return {level:"top", short:"", text: p.why + "。"};
     if(p.change === "deload") return {level:"deload", short:"", text: p.why + "。"};

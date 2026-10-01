@@ -164,7 +164,7 @@ function addSet(id){
   const maxR = ex.kind === "t" ? 600 : 200;
   let bad = "";
   if(isNaN(rRaw) || rRaw < 1 || rRaw > maxR || Math.round(rRaw) !== rRaw) bad = (ex.kind === "t" ? "秒数" : "回数") + "は1〜" + maxR + "の整数で入れてください";
-  else if(wIn && (isNaN(wRaw) || wRaw < 0 || wRaw > 300)) bad = "重量は0〜300kgの数で入れてください";
+  else if(wIn && (isNaN(wRaw) || wRaw < 0 || wRaw > 300)) bad = "重量は0〜300kgの範囲で入れてください";
   if(bad){ todayMsg = bad; render(); return; }
   /* 前日の画面のまま押された場合は、前日に記録せず今日のメニューに切り替える（入れた数字は知らせに残す） */
   if(rollDay()){
@@ -334,7 +334,7 @@ function stepButtons(item){
   const down = stepItem(item, -1), up = stepItem(item, 1);
   if(!down && !up) return "";
   const btn = (it, label) => `<button data-act="stepto" data-from="${item.ex}" data-ex="${it.ex}" data-label="${esc(it.label || "")}">${label}　${esc(itemName(it))}</button>`;
-  return `<p class="lastline" style="margin-bottom:4px">きつすぎる・軽すぎるときは、同じ動きのまま段を変えられます。</p>
+  return `<p class="lastline" style="margin-bottom:4px">きつすぎる・軽すぎるときは、同じ動きのまま段階を変えられます。</p>
     <div class="rowbtns">${down ? btn(down, "やさしく") : ""}${up ? btn(up, "難しく") : ""}</div>`;
 }
 

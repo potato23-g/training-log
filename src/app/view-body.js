@@ -21,9 +21,9 @@ function viewBody(){
       <h4>${MUSCLES[selMuscle]}</h4>
       <p class="lastline" style="margin-top:0">直近${bodyDays}日で <b>${(load[selMuscle]||0).toFixed(1)}</b> 有効セット</p>
       <p class="lastline" style="margin-top:2px">回復の目安: ${recoverGap(selMuscle) ? "中" + recoverGap(selMuscle) + "日" : "連日でもよい"}。${
-        soreToday().includes(selMuscle) ? "今日は筋肉痛と選んでいます"
-        : recoverDaysLeft(selMuscle) ? "次に主役にできるのは " + fmtDate(addDays(TODAY, recoverDaysLeft(selMuscle))) + " から"
-        : "今日から主役にできます"}</p>
+        soreToday().includes(selMuscle) ? "今日は「筋肉痛の部位」に選んでいます"
+        : recoverDaysLeft(selMuscle) ? "次にメインで鍛えられるのは" + fmtDate(addDays(TODAY, recoverDaysLeft(selMuscle))) + "から"
+        : "今日からメインで鍛えられます"}</p>
       ${hits.length ? `<ul class="plain">${hits.map(h=>`<li>${fmtDate(h.d)}　${h.name}　${h.n}セット（${h.role}）</li>`).join("")}</ul>`
         : `<p style="font-size:14px;margin:6px 0 0">この期間、この部位を使う種目はありません。</p>`}
       ${exercisesForMuscle(selMuscle)}

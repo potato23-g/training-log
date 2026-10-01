@@ -68,7 +68,7 @@ function openSoreSheet(){
   const order = Object.keys(MUSCLES).sort((a, b) => (PRIORITY[b] || 0) - (PRIORITY[a] || 0));
   const draw = () => {
     sheetInner.innerHTML = `<h4>筋肉痛の部位</h4>
-      <p class="lastline" style="margin-top:0">選んだ部位は、今日のメニューで主役にしません（今日だけ）。</p>
+      <p class="lastline" style="margin-top:0">選んだ部位をメインで鍛える種目は、今日のメニューから外します（今日だけ）。</p>
       <div class="sorechips">${order.map(m => `<button class="sorechip${sel.has(m) ? " on" : ""}" data-m="${m}" aria-pressed="${sel.has(m)}">${MUSCLES[m]}</button>`).join("")}</div>
       <div class="rowbtns"><button data-apply="1">この部位を避けて組み直す</button><button data-close="1">閉じる</button></div>`;
     sheetInner.querySelectorAll("[data-m]").forEach(b => b.onclick = () => {

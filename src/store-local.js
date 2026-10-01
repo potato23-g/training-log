@@ -77,7 +77,7 @@ function saveLocal(){
     setStatus("この端末に保存しています（最終保存 " + lastSaved + "）");
     return true;
   }catch(e){
-    const msg = "保存できませんでした。ブラウザの保存領域がいっぱいか、履歴の保存が止められています";
+    const msg = "保存できませんでした。ブラウザの保存領域がいっぱいか、ブラウザの設定で保存が止められています";
     setStatus(msg);
     if(typeof onStoreFail === "function") onStoreFail(msg);
     return false;
@@ -284,7 +284,7 @@ function storeButtons(){
       <button data-act="restore">バックアップから復元</button>
       <button data-act="restorepaste">貼り付けて復元</button>
     </div>
-    <p class="lastline">共有を設定していない場合、記録はこの端末の中だけにあります。機種変更やブラウザの掃除で消えるので、ときどきバックアップを保存してください。</p>`;
+    <p class="lastline">共有を設定していない場合、記録はこの端末の中だけにあります。機種変更やブラウザのデータ消去で消えるので、ときどきバックアップを保存してください。</p>`;
 }
 /* 端末の控えとバックアップのカード */
 function backupCard(){

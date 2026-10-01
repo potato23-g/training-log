@@ -26,7 +26,7 @@ function viewHist(){
     <h3 class="sec">種目ごとの推移</h3>
     <p class="lastline" style="margin-top:0">線は日ごとの一番よいセット。重いほど、同じ重さなら回数が多いほど上。<span style="color:var(--muscle)">●</span>は自己ベストの日</p>
     ${trendCards(dates)}
-    <h3 class="sec">セッション</h3>
+    <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
     <div class="card overflowx">
       <table class="hist"><thead><tr><th>日付</th><th style="text-align:right">セット</th></tr></thead><tbody>${table}</tbody></table>
@@ -34,7 +34,7 @@ function viewHist(){
     ${addDayRow}
     <h3 class="sec">書き出し</h3>
     <div class="card">
-      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。</p>
+      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストをコピーして共有できます。</p>
       <div class="rowbtns">
         <button data-act="csv">CSVで保存</button>
         <button data-act="txt">テキストで表示</button>
@@ -150,7 +150,7 @@ function sparkSVG(points){
     const cx = x(i).toFixed(1), cy = y(p.v).toFixed(1);
     return `<circle cx="${cx}" cy="${cy}" r="${p.pr?3.6:2.2}" class="${p.pr?"prdot":"trenddot"}"><title>${esc(fmtDate(p.d))}　${esc(p.text || String(p.v))}${p.pr ? "　自己ベスト" : ""}</title></circle>`;
   }).join("");
-  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="段と回数の推移">
+  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="重さと回数の推移">
     <polyline points="${line}" class="trendpath"/>${dots}
   </svg>`;
 }
@@ -284,7 +284,7 @@ function renderDaySheet(date){
     ${histAdding ? addSetFormHTML(date, groups) : `<div class="rowbtns"><button id="haddopen">セットを追加</button></div>`}
     <div class="card">
       <h4>メモ</h4>
-      <textarea id="hnote" placeholder="睡眠、体調、気づいたこと。">${esc(noteVal)}</textarea>
+      <textarea id="hnote" placeholder="睡眠・体調・気づいたことなど">${esc(noteVal)}</textarea>
     </div>
     <div class="rowbtns"><button id="hclose">閉じる</button></div>`;
 

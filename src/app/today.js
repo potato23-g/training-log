@@ -73,26 +73,26 @@ function viewToday(){
       <h2>${esc(itemName(next))}</h2>${inner}
       ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
       <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
-      ${dl && dl.active ? `<p class="sub">軽い週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
+      ${dl && dl.active ? `<p class="sub">軽めの週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
       ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">回復の途中の部位と、今週の量が足りている部位が多いため、今日は種目を少なめにしています。</p>` : ""}</div>`;
   }
 
   const undo = undoDel && Date.now() < undoDel.until
     ? `<div class="flash">「${esc(undoDel.name)}」のセットを消しました。<div class="rowbtns"><button data-act="undodel">取り消す</button></div></div>` : "";
   const deloadAsk = dl && dl.suggest
-    ? `<div class="flash">同じ重さで回数が続けて減っている動きがあります。今週を軽い週（1回3種目まで）にすると、疲れが抜けて、また伸びやすくなります。
-        <div class="rowbtns"><button data-act="deloadon">今週を軽い週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
+    ? `<div class="flash">同じ重さで回数が続けて減っている動きがあります。今週を軽めの週（1回3種目まで）にすると、疲れが抜けて、また伸びやすくなります。
+        <div class="rowbtns"><button data-act="deloadon">今週を軽めの週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
   const rows = items.map(it=>exRow(it)).join("");
   const skippedLine = skipped.length
     ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
   const sore = soreToday();
-  const soreLine = sore.length ? `<p class="skipped">筋肉痛: ${sore.map(m => MUSCLES[m]).join("・")}（今日は主役にしません）</p>` : "";
+  const soreLine = sore.length ? `<p class="skipped">筋肉痛: ${sore.map(m => MUSCLES[m]).join("・")}（今日はメインで鍛えません）</p>` : "";
   return storeBanners() + deloadAsk + hero + undo + rows + skippedLine + soreLine + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
     <div class="card">
-      <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${esc(s.note||"")}</textarea>
+      <textarea id="note" placeholder="睡眠・体調・気づいたことなど">${esc(s.note||"")}</textarea>
     </div>
     ${typeof backupReminder === "function" ? backupReminder() : ""}
     <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${esc(BUILD_VERSION)}</p>`;

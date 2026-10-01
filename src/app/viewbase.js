@@ -264,7 +264,7 @@ function diaHTML(id, compact, item, opt){
   if(!m) return `<div class="dia">${tail}</div>`;
   const shot = figShot(mo, dbn);
   const fignote = item && item.baseFig
-    ? `<p class="dianote">図は基本のやり方です。この組み方では${esc(item.note || "")}</p>` : "";
+    ? `<p class="dianote">図は基本のやり方です。このやり方では${esc(item.note || "")}</p>` : "";
   return `<div class="dia" data-dia="${mo}" data-db="${dbn || ""}">
     <div class="figslot">
       ${shot ? `<img class="figstill" src="${shot}" alt="${itemNameOf(id)}の姿勢">`
