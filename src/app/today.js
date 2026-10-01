@@ -73,14 +73,14 @@ function viewToday(){
       <h2>${esc(itemName(next))}</h2>${inner}
       ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
       <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
-      ${dl && dl.active ? `<p class="sub">軽い週（${esc(fmtDate(dl.until))}まで）: セット数を半分にしています。</p>` : ""}
+      ${dl && dl.active ? `<p class="sub">軽い週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
       ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">回復の途中の部位と、今週の量が足りている部位が多いため、今日は種目を少なめにしています。</p>` : ""}</div>`;
   }
 
   const undo = undoDel && Date.now() < undoDel.until
     ? `<div class="flash">「${esc(undoDel.name)}」のセットを消しました。<div class="rowbtns"><button data-act="undodel">取り消す</button></div></div>` : "";
   const deloadAsk = dl && dl.suggest
-    ? `<div class="flash">疲れのしるしが出ています。今週は軽い週（セット数を半分）にすると、また伸びやすくなります。
+    ? `<div class="flash">同じ重さで回数が続けて減っている動きがあります。今週を軽い週（1回3種目まで）にすると、疲れが抜けて、また伸びやすくなります。
         <div class="rowbtns"><button data-act="deloadon">今週を軽い週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
   const rows = items.map(it=>exRow(it)).join("");
   const skippedLine = skipped.length

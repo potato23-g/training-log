@@ -3,14 +3,18 @@
    ・前回の同じ組み方で、全部のセットが目標に届いた → 目標を1回（秒の種目は5秒）増やす
    ・目標が回数の幅（解説の「10〜15回」）の上限を超えるなら一段上へ:
        持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方へ（回数は幅の下限から）
-   ・2回続けて目標に届かなかったら目標を1回減らす。幅の下限を割るなら一段下へ
-   ・きつさ（RPE）は使わない（2026-09-29 本人の要望で入力をやめた。重さ・回数は本人が調整し、目標はその入力欄の初めの値）
+   ・目標より少ない回は「届かなかった」とは限らない（重いダンベルに替えた・多すぎて抑えた。2026-10-01 本人の指摘）ので、
+     疲れとは見ず、実際にやった回数に合わせる:
+       重さを変えた回は、その重さでどのセットもできた回数から始め直す。
+       同じ重さで少なかった回は、前回の最高の回数を次の目標にする（前回の目標より上げない）。
+       同じ重さで2回続けて回数の幅の下限より少なかったときだけ、一段軽く（やさしく）する
+   ・軽い週を勧めるのは、同じ組み方・同じ重さで1セットあたりの回数が2回続けて減った動きが2つ以上あるとき
+   ・きつさ（RPE）は使わない（2026-09-29 本人の要望で入力をやめた。重さ・回数は本人が調整する）
    ・軽い週（ディロード）の記録は判断に使わない。軽い週のあいだは目標を据え置き、種目を少なめにする（セット数は3で固定）
    記録（その日の組み方と目標）から毎回計算し直すので、別に覚えておく状態は無い（2台で同期しても食い違わない）。
    次のセットの入力欄に入れる数字は suggest.js
    ============================================================ */
 const PROG = {
-  failTimes: 2,          /* 目標に届かないのがこの回数続いたら下げる */
   jumpRatio: 1.6,        /* 重い持ち方へ上げてよい上がり幅（今の1.6倍以下か、+3kg以下） */
   jumpKg: 3,
   deloadDays: 7,         /* 軽い週の長さ */
@@ -78,21 +82,29 @@ function patternHistory(pattern){
   }
   return (progMemo.hist[pattern] = out);
 }
-/* 1回ぶんの出来: 目標・全部届いたか・その回の重さ */
+/* 1回ぶんの出来: 目標・全部届いたか・その回の重さ・その重さでやったセットの回数（最少・最高・1セットあたり） */
 function evalSession(h){
   const kind = EXMAP[h.ex].kind, sets = h.sets, last = sets[sets.length - 1];
   const w = last.w;                                            /* 最後のセットの重さを、その回の重さとする */
   const work = w !== undefined ? sets.filter(s => Math.abs((s.w || 0) - w) < 0.01) : sets;
   const target = typeof last.target === "number" ? last.target : sets[0].r;   /* 目標を書いていない古い記録は1セット目の回数 */
   const allHit = sets.length >= h.planned && work.every(s => (s.r || 0) >= (typeof s.target === "number" ? s.target : target));
-  return {target, allHit, w, kind};
+  const reps = work.map(s => s.r || 0);
+  return {target, allHit, w, kind, minR: Math.min(...reps), maxR: Math.max(...reps),
+          meanR: reps.reduce((a, b) => a + b, 0) / reps.length};
+}
+/* 2回の重さが同じか（重さを使わない種目どうしは同じとみなす） */
+function sameWeight(a, b){
+  if(a.w === undefined || b.w === undefined) return a.w === b.w;
+  return Math.abs(a.w - b.w) < 0.01;
 }
 
 /* ---- 今日のその組み方の目標 ----
    {target, opt, w, change, why, src, next, lo, hi, last}
    change: first（はじめて）/ stepped-up・stepped-down・switched（段を移って1回目）/ up（1回増やす）/
            heavier（重くする）/ harder（次は一段難しい組み方へ）/ top（今の道具で一番上）/
-           hold（据え置き）/ down（1回減らす）/ lighter（軽くする）/ easier（次は一段やさしい組み方へ）/ deload（軽い週） */
+           hold（据え置き）/ match（前回の最高の回数に合わせる）/ rebase（重さを変えたので、その重さで始め直す）/
+           lighter（軽くする）/ easier（次は一段やさしい組み方へ）/ deload（軽い週） */
 function progressFor(item){
   const key = itemKey(item);
   if(progMemo.items[key]) return progMemo.items[key];
@@ -162,31 +174,42 @@ function progressFor(item){
         }
       }
     }else{
-      /* 届かなかった回が続いているか */
-      let misses = 0;
-      for(const x of mine){ if(evalSession(x).allHit) break; misses++; }
-      if(misses >= PROG.failTimes){
-        const nt = ev.target - step;
-        if(nt >= rr.lo){
-          res.target = nt; res.change = "down";
-          res.why = misses + "回続けて目標に届かなかったので、" + step + u + "減らします";
+      /* 目標より少なかった。届かなかったとは限らない（重いダンベルに替えた・多すぎて抑えた）ので、
+         疲れとは見ず、実際にやった回数に合わせる */
+      const pe = mine[1] ? evalSession(mine[1]) : null, lo = rr.lo;
+      if(pe && !sameWeight(ev, pe)){
+        /* 重さを変えた回: その重さでどのセットもできた回数から始め直す（幅の下限より少なければ下限から） */
+        res.change = "rebase";
+        res.target = Math.max(lo, Math.min(rr.hi, ev.minR));
+        res.why = "前回はダンベルを" + (ev.w > pe.w ? "重く" : "軽く") + "したので、その重さで"
+                + (ev.minR >= lo ? res.target + u + "から始めます" : u + "数の幅の下限（" + lo + u + "）から始めます");
+      }else if(pe && ev.maxR < lo && pe.maxR < lo){
+        /* 同じ重さで2回続けて幅の下限より少なかった → 一段軽く・やさしく */
+        const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
+        const prv = pv ? null : stepItem(item, -1);
+        const head = "同じ重さで2回続けて" + u + "数の幅の下限（" + lo + u + "）より少なかったので、";
+        if(pv){
+          res.opt = pv; res.target = midTarget(item); res.change = "lighter";
+          res.why = head + "ダンベルを一段軽くします";
+        }else if(prv){
+          res.next = prv; res.change = "easier"; res.target = lo;
+          res.why = head + "次は一段やさしい「" + itemName(prv) + "」にします";
         }else{
-          const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
-          const prv = pv ? null : stepItem(item, -1);
-          if(pv){
-            res.opt = pv; res.target = midTarget(item); res.change = "lighter";
-            res.why = u + "数の下限でも届かなかったので、ダンベルを一段軽くします";
-          }else if(prv){
-            res.next = prv; res.change = "easier"; res.target = rr.lo;
-            res.why = u + "数の下限でも届かなかったので、次は一段やさしい「" + itemName(prv) + "」にします";
-          }else{
-            res.target = rr.lo; res.change = "hold";
-            res.why = u + "数の下限で続けます";
-          }
+          res.target = lo; res.change = "hold";
+          res.why = u + "数の幅の下限（" + lo + u + "）を目標に続けます";
         }
       }else{
-        res.change = "hold";
-        res.why = "前回は目標に届かなかったセットがあるので、同じ目標でもう一度";
+        /* 同じ重さで少なかった: 前回の最高の回数を次の目標にする（前回の目標より上げない） */
+        const best = Math.min(ev.target, ev.maxR), nt = Math.max(lo, best);
+        res.target = nt;
+        if(nt >= ev.target){
+          res.change = "hold";
+          res.why = "前回は目標より少ないセットがあったので、同じ目標にしています";
+        }else{
+          res.change = "match";
+          res.why = "前回は最高" + best + u + "だったので、" + (best >= lo ? "目標を" + nt + u + "にします"
+                                                                   : u + "数の幅の下限（" + lo + u + "）を目標にします");
+        }
       }
     }
   }
@@ -207,7 +230,8 @@ function patternNext(pattern){
 }
 
 /* ---- 軽い週を勧めるか ----
-   直近3週間で、2つ以上の動きに疲れのしるし（2回続けて目標に届かない）があれば勧める。
+   直近3週間で、同じ組み方・同じ重さで1セットあたりの回数が2回続けて減った動きが2つ以上あれば勧める。
+   目標より少ないだけ・重さを変えた・回数を抑えて同じ数で続けた、は疲れとは見ない（2026-10-01 本人の指摘）。
    軽い週の最中と、前の軽い週から4週間たたないうちは勧めない */
 function deloadAdvice(){
   const now = deloadNow();
@@ -218,10 +242,10 @@ function deloadAdvice(){
   PATTERN_ORDER.forEach(pat => {
     const hist = patternHistory(pat).filter(h => daysBetween(h.date, TODAY) <= 21);
     if(!hist.length) return;
-    const same = hist.filter(h => itemKey(h.item) === itemKey(hist[0].item));
-    if(same.length < 2) return;
-    const e0 = evalSession(same[0]), e1 = evalSession(same[1]);
-    if(!e0.allHit && !e1.allHit) tired.push(pat);
+    const same = hist.filter(h => itemKey(h.item) === itemKey(hist[0].item)).slice(0, 3).map(evalSession);
+    if(same.length < 3) return;
+    const [a, b, c] = same;                    /* a が一番新しい */
+    if(sameWeight(a, b) && sameWeight(b, c) && a.meanR < b.meanR && b.meanR < c.meanR) tired.push(pat);
   });
   return tired.length >= 2 ? {suggest: true, patterns: tired} : null;
 }

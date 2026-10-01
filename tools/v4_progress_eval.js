@@ -68,21 +68,51 @@
        "F1: 同じ組み方で目標が2回以上跳んだ");
   }
 
-  /* ---- 3. 届かない回が2回続くと目標を下げる ---- */
-  fresh();
-  day = shift(base, -20);
-  for(let i = 0; i < 3; i++){
-    goTo(day);
-    doDay((it, sug, k) => k === 2 ? Math.max(1, sug.target - 3) : sug.target);   /* 3セット目が届かない */
-    day = shift(day, 3);
-  }
-  goTo(day);
-  const gob = activeItems().find(it => patternOf(it.ex) === "squat");
-  if(gob){
-    const p = progressFor(gob);
-    ok(p.change === "down" || p.change === "lighter" || p.change === "easier" || p.change === "stepped-down",
-       "F1: 2回続けて届かないのに下げない: " + p.change + " / " + p.why);
-  }
+  /* ---- 3. 目標より少なかった回は、届かなかったとは限らない（2026-10-01 本人の指摘）。実際の回数に合わせる ----
+     a) 同じ重さで最後のセットだけ少ない → 同じ目標
+     b) 同じ重さで全部のセットを少なく抑えた → 前回の最高の回数を目標に
+     c) 重いダンベルに替えて回数が減った → その重さで始め直す（「届かなかった」扱いにしない）
+     d) 同じ重さで2回続けて回数の幅の下限より少ない → 一段軽く（やさしく） */
+  const ADJ = {items: [{adj: true, min: 2, max: 24, step: 2, n: 2}], updatedAt: 1};
+  const rowIt = catalogRow("row", "") || catalogItem("row");
+  /* ワンハンドロウを、その日の目標で記録する。repsOf(sug) がセットごとの回数、wOf(sug) が重さ（無ければ提案どおり） */
+  const putRow = (d, repsOf, wOf) => {
+    goTo(d);
+    const e = entryFor(TODAY, "row", true), sug = suggestNext(rowIt, e);
+    const w = wOf ? wOf(sug) : sug.w;
+    repsOf(sug).forEach((r, k) => e.sets.push({id: newSetId(), at: k, r, w, label: "", target: sug.target}));
+    resetProg();
+    return sug;
+  };
+  const rowAt = d => { goTo(d); return progressFor(rowIt); };
+  const same3 = f => sug => [f(sug), f(sug), f(sug)];
+  const s3 = [shift(base, -12), shift(base, -9), shift(base, -6), shift(base, -3)];
+  fresh(); state.gear = ADJ; planMemo = null; resetProg();
+  putRow(s3[0], same3(x => x.target));                                   /* 目標どおり → 次は+1 */
+  putRow(s3[1], x => [x.target, x.target, x.target - 2]);                 /* 最後のセットだけ少ない */
+  const pa = rowAt(s3[2]);
+  ok(pa.change === "hold", "3a: 同じ重さで最後のセットだけ少なかったのに、同じ目標にしない: " + pa.change + " / " + pa.why);
+  fresh(); state.gear = ADJ; planMemo = null; resetProg();
+  putRow(s3[0], same3(x => x.target));
+  const sb1 = putRow(s3[1], same3(x => x.target - 2));                   /* 全部のセットを2回少なく抑えた */
+  const pb = rowAt(s3[2]);
+  ok(pb.change === "match" && pb.target === Math.max(pb.lo, sb1.target - 2),
+     "3b: 少なく抑えた回数に目標を合わせない: " + pb.change + " " + pb.target + " / " + pb.why);
+  fresh(); state.gear = ADJ; planMemo = null; resetProg();
+  putRow(s3[0], same3(x => x.target));
+  const sc1 = putRow(s3[1], same3(x => x.target - 3), x => x.w + 2);     /* 2kg重くして回数が減った */
+  const pc = rowAt(s3[2]);
+  ok(pc.change === "rebase" && Math.abs((pc.w || 0) - (sc1.w + 2)) < 0.01,
+     "3c: 重くして回数が減った回を、その重さで始め直さない: " + pc.change + " " + pc.w + " / " + pc.why);
+  ok(!/届/.test(pc.why), "3c: 重くした回を「届かなかった」と書いている: " + pc.why);
+  fresh(); state.gear = ADJ; planMemo = null; resetProg();
+  const lo3 = repRange("row", rowIt).lo;
+  putRow(s3[0], same3(x => x.target));
+  putRow(s3[1], same3(() => lo3 - 2));
+  putRow(s3[2], same3(() => lo3 - 2));
+  const pd3 = rowAt(s3[3]);
+  ok(pd3.change === "lighter" || pd3.change === "easier",
+     "3d: 同じ重さで2回続けて回数の幅の下限より少ないのに、一段下げない: " + pd3.change + " / " + pd3.why);
 
   /* ---- 4. きつさの入力は無い（2026-09-29 にやめた）。出来は回数だけで見る:
      全部のセットが目標に届けば次は上げ、1回だけ届かなかったなら据え置き ---- */
@@ -398,6 +428,40 @@
   resetProg();
   const p21 = progressFor(row21);
   ok(UPS.includes(p21.change), "3セット: 保存済みの行が5セットでも、3セット全部届いたのに上げない: " + p21.change + " / " + p21.why);
+
+  /* ---- 22. 軽い週を勧めるのは、同じ重さで1セットあたりの回数が2回続けて減った動きが2つ以上あるときだけ（2026-10-01） ---- */
+  todayKey = realTodayKey; goTo(realTodayKey());
+  const put22 = (ago, ex, reps, w) => {
+    const e = entryFor(shift(TODAY, -ago), ex, true);
+    reps.forEach((r, k) => e.sets.push({id: newSetId(), at: k, r, w, label: "", target: 12}));
+  };
+  const deloadFor = fill => { fresh(); state.gear = ADJ; fill(); planMemo = null; resetProg(); return deloadAdvice(); };
+  const da = deloadFor(() => {
+    put22(9, "row", [12, 12, 12], 10); put22(6, "row", [11, 11, 11], 10); put22(3, "row", [10, 10, 10], 10);
+    put22(9, "ohp", [12, 12, 12], 8);  put22(6, "ohp", [11, 11, 10], 8);  put22(3, "ohp", [10, 9, 9], 8);
+  });
+  ok(!!da && da.suggest && da.patterns.length >= 2, "軽い週: 同じ重さで回数が2回続けて減った動きが2つあるのに勧めない: " + JSON.stringify(da));
+  if(da && da.suggest){
+    tab = "today"; openEx = null; render();
+    const v22 = document.getElementById("view").innerText;
+    ok(/今週を軽い週/.test(v22) && !/半分|しるし/.test(v22), "軽い週: 今日タブの勧める文が古い: " + (v22.match(/[^\n]*軽い週[^\n]*/) || [""])[0]);
+  }
+  const dHeavy = deloadFor(() => {
+    put22(9, "row", [12, 12, 12], 10); put22(6, "row", [9, 9, 8], 12);   put22(3, "row", [8, 8, 8], 12);
+    put22(9, "ohp", [12, 12, 12], 8);  put22(6, "ohp", [9, 8, 8], 10);   put22(3, "ohp", [8, 8, 7], 10);
+  });
+  ok(!dHeavy, "軽い週: 重いダンベルに替えて回数が減っただけなのに勧める: " + JSON.stringify(dHeavy));
+  const dCap = deloadFor(() => {
+    put22(9, "row", [12, 12, 12], 10); put22(6, "row", [10, 10, 10], 10); put22(3, "row", [10, 10, 10], 10);
+    put22(9, "ohp", [12, 12, 12], 8);  put22(6, "ohp", [10, 10, 10], 8);  put22(3, "ohp", [10, 10, 10], 8);
+  });
+  ok(!dCap, "軽い週: 回数を抑えて同じ数で続けただけなのに勧める: " + JSON.stringify(dCap));
+  const dShort = deloadFor(() => {
+    /* 目標（12）より少ないが、回数は減っていない */
+    put22(9, "row", [10, 10, 9], 10);  put22(6, "row", [10, 10, 9], 10);  put22(3, "row", [10, 10, 10], 10);
+    put22(9, "ohp", [9, 9, 8], 8);     put22(6, "ohp", [9, 9, 8], 8);     put22(3, "ohp", [9, 9, 9], 8);
+  });
+  ok(!dShort, "軽い週: 目標より少ないだけで回数は減っていないのに勧める: " + JSON.stringify(dShort));
 
   todayKey = realTodayKey; goTo(realTodayKey());
   fresh(); render();

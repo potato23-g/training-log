@@ -85,8 +85,10 @@ function trendCards(dates){
   }).join("");
 }
 /* 日ごとの一番よいセット（直近20点、折れ線のY値）。「段と回数」で上下する:
-   重さの種目は、使った重さを軽い順に段0・1・2…とし、段の中は回数の幅（下限〜上限）で
-   0〜0.9 だけ上げる。重さを上げた日は回数が下限に戻っても、前の段の上限より上に描かれる。
+   重さの種目は、使った重さを軽い順に段0・1・2…とし、段の中は回数で 0〜0.9 だけ上げる。
+   回数は、この線に出す日の最少〜最多で割り当てる（解説の回数の幅で切っていたときは、重いダンベルに替えて
+   幅の下限を割った日や上限を超えた日の伸びが線に出なかった: 2026-10-01 本人の指摘）。
+   重さを上げた日は回数が減っても、前の段より上に描かれる。
    回数・秒の種目は、その日の最多の数。
    pr はその日、この種目・組み方のどれかのセットがそのとき時点の自己ベストだったか */
 function dailyMaxPoints(rows, exId, label, kind){
@@ -95,17 +97,18 @@ function dailyMaxPoints(rows, exId, label, kind){
   rows.forEach(r=>{ (byDate[r.d] = byDate[r.d] || []).push(r.st); });
   const dates = Object.keys(byDate).sort().slice(-20);
   const bests = dates.map(d => bestSet(byDate[d], kind));
-  let rungOf = null, rr = null;
+  let rungOf = null, rLo = 0, rHi = 0;
   if(kind === "w"){
     const ws = [...new Set(bests.map(st => st.w || 0))].sort((a,b)=>a-b);
     rungOf = w => ws.indexOf(w || 0);
-    rr = repRange(exId, catalogRow(exId, label) || EXMAP[exId]);
+    const rs = bests.map(st => st.r || 0);
+    rLo = Math.min(...rs); rHi = Math.max(...rs);
   }
   return dates.map((d, i)=>{
     const st = bests[i], r = st.r || 0;
     const pr = byDate[d].some(x => !!prMessage(exId, label, x, d));
     if(kind !== "w") return {d, v:r, pr, text:r + (kind === "t" ? "秒" : "回")};
-    const frac = Math.max(0, Math.min(0.9, (r - rr.lo) / Math.max(1, rr.hi - rr.lo + 1)));
+    const frac = rHi > rLo ? 0.9 * (r - rLo) / (rHi - rLo) : 0.45;
     return {d, v:rungOf(st.w) + frac, pr, text:kgFor(item, st.w || 0) + "×" + r + "回"};
   });
 }
