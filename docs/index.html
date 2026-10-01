@@ -2975,7 +2975,7 @@ const EX = [
       "浅い。深さが足りないと5kgではほぼ刺激にならない。"
     ],
     up:[
-      "しゃがむ深さを限界まで広げる",
+      "限界まで深くしゃがむ",
       "下ろす動作に3秒かける",
       "一番下で1秒静止してから立つ",
       "片脚（ブルガリアン）に切り替える"
@@ -3014,7 +3014,7 @@ const EX = [
       "前脚の位置が近すぎて膝が前に出すぎる。バランスが取れないときは足幅を見直す。",
       "後ろ脚で押している。後ろ脚は支えるだけ。"
     ],
-    up:["深さを広げる","ダンベルを両手に持つ","下ろす動作をゆっくりにする"]
+    up:["より深く沈む","ダンベルを両手に持つ","下ろす動作をゆっくりにする"]
   },
   {
     id:"hipthrust", name:"ヒップスラスト", kind:"w", w:5, r:15, sets:3, level:2,
@@ -3544,7 +3544,7 @@ crunch:{
  hard:"ダンベルを胸に抱える、一番上で2秒静止",
  reps:"2〜3セット × 10〜20回"},
 sideplank:{
- why:"体を横に曲げない・ひねらせない力を鍛える。腹斜筋を安全に使える数少ない種目。",
+ why:"体が横に曲がったり、ねじれたりしないように支える力を鍛える。腹斜筋を安全に使える数少ない種目。",
  setup:"横向きで肘を肩の真下に。足は重ねるか前後にずらす。腰を持ち上げて一直線にする。",
  breath:"止めない。",
  tempo:"静止。",
@@ -3684,7 +3684,7 @@ sidebend:{
  hard:"一番下で2秒止める",
  reps:"左右それぞれ3セット × 12〜20回"},
 sidelunge:{
- why:"横へ開く動きは内ももを直接使える数少ない種目。前後の動きだけでは鍛えにくい部分を補える。",
+ why:"横へ開く動きで、内ももを直接使える数少ない種目。前後の動きだけでは鍛えにくい部分を補える。",
  setup:"足を肩幅の2倍、つま先はやや外向き。ダンベルを縦にして胸の前で両手で支える。",
  breath:"沈むときに吸い、戻るときに吐く。",
  tempo:"沈む2〜3秒 → 戻る1秒。",
@@ -3700,11 +3700,11 @@ slidecurl:{
  tempo:"伸ばす2秒、引き寄せる2秒。",
  rom:"膝が伸びきる直前まで。尻が下がったらそこが今日の限界。",
  feel:"もも裏の付け根から膝の裏。腰が痛むなら尻が下がっている。",
- easy:"かかとを滑らせる距離を浅くする（膝が浅く曲がったところで引き寄せに戻る）",
+ easy:"かかとを滑らせる距離を短くする（膝が少し曲がったところで引き寄せに戻る）",
  hard:"片脚で行う",
  reps:"3セット × 10〜15回"},
 pullover:{
- why:"腕を頭の上まで伸ばす動きは、ロウでは使い切れない広背筋の上部まで伸ばせる。胸・体幹も一緒に働く。",
+ why:"腕を頭の上まで伸ばす動きで、ロウでは使い切れない広背筋の上部まで伸ばせる。胸・体幹も一緒に働く。",
  setup:"床に仰向けになり、膝を立てる。ダンベルを縦にして、プレートの片側を両手でまとめて下から支え、胸の真上に伸ばす。肘は軽く曲げたまま最後まで角度を変えない。",
  breath:"下ろしながら吸い、引き上げながら吐く。",
  tempo:"下ろす3秒、頭の後ろで止める、引き上げる2秒。",
@@ -3898,7 +3898,7 @@ function saveLocal(){
     setStatus("この端末に保存しています（最終保存 " + lastSaved + "）");
     return true;
   }catch(e){
-    const msg = "保存できませんでした。ブラウザの保存領域がいっぱいか、履歴の保存が止められています";
+    const msg = "保存できませんでした。ブラウザの保存領域がいっぱいか、ブラウザの設定で保存が止められています";
     setStatus(msg);
     if(typeof onStoreFail === "function") onStoreFail(msg);
     return false;
@@ -4105,7 +4105,7 @@ function storeButtons(){
       <button data-act="restore">バックアップから復元</button>
       <button data-act="restorepaste">貼り付けて復元</button>
     </div>
-    <p class="lastline">共有を設定していない場合、記録はこの端末の中だけにあります。機種変更やブラウザの掃除で消えるので、ときどきバックアップを保存してください。</p>`;
+    <p class="lastline">共有を設定していない場合、記録はこの端末の中だけにあります。機種変更やブラウザのデータ消去で消えるので、ときどきバックアップを保存してください。</p>`;
 }
 /* 端末の控えとバックアップのカード */
 function backupCard(){
@@ -5119,7 +5119,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-01 22:58";
+const BUILD_VERSION = "2026-10-01 23:05";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -5758,7 +5758,7 @@ function diaHTML(id, compact, item, opt){
   if(!m) return `<div class="dia">${tail}</div>`;
   const shot = figShot(mo, dbn);
   const fignote = item && item.baseFig
-    ? `<p class="dianote">図は基本のやり方です。この組み方では${esc(item.note || "")}</p>` : "";
+    ? `<p class="dianote">図は基本のやり方です。このやり方では${esc(item.note || "")}</p>` : "";
   return `<div class="dia" data-dia="${mo}" data-db="${dbn || ""}">
     <div class="figslot">
       ${shot ? `<img class="figstill" src="${shot}" alt="${itemNameOf(id)}の姿勢">`
@@ -5882,7 +5882,7 @@ function restFor(item){
           （脚・尻・ハムストリングは中3日、胸・背中は中2日、肩・腕は中1日、腹筋・前腕・ふくらはぎは連日でもよい）。
           その日に主役で6セット以上やったときは1日延ばす。昨日しっかり使った部位（補助も含めた有効セットが3以上。
           腹直筋・腹斜筋は10、ふくらはぎ・前腕は6）も今日は主役にしない。今日「筋肉痛」と選んだ部位も主役にしない
-   ・1日の負荷: 大きい部位（脚・尻・胸・背中）は8セット、ほかの部位は6セットまで。1回は16セット・6種目・50分くらいまで
+   ・1日の負荷: 大きい部位（脚・尻・胸・背中）は8セット、ほかの部位は6セットまで。1回は15セット・5種目・50分くらいまで
    ・1週間の量: 直近7日で各部位10セットを目標に、目標までの不足を2乗で数えて価値を決め、価値の大きい種目から入れる。
                目標から遠い部位ほど価値が急に上がるので、大きい部位ばかりで埋まって小さい部位が0セットのまま、にはならない。
                セット数はどの種目も3で固定（本人の要望。重さ・回数は本人が調整する）。
@@ -5957,7 +5957,7 @@ function recoverGapText(){
   const gaps = Array.from(new Set(Object.keys(MUSCLES).map(recoverGap))).sort((a, b) => b - a);
   return gaps.map(g => (g ? "中" + g + "日: " : "連日でもよい: ")
     + Object.keys(MUSCLES).filter(m => recoverGap(m) === g).map(m => MUSCLES[m]).join("・")).join("／")
-    + "（その日に6セット以上やったら1日延ばす）";
+    + "（1日に6セット以上やった部位は、空ける日を1日増やします）";
 }
 /* 今日「筋肉痛」と選んだ部位（その日だけ。今日のメニューでは主役にしない） */
 function soreToday(){
@@ -6082,7 +6082,7 @@ const VARIANT_TEXT = {
   deadbug:    {hard: ["ダンベルを持って行う", "両手に1つずつダンベルを持ち、いつもどおり対角の腕と脚を伸ばす。腰が浮くなら片手だけで持つ。", {needsDb:true}],
                easy: ["腕か脚だけ動かす",  "腕だけ、または脚だけを動かす。"]},
   slidecurl:  {hard: ["片脚で行う",       "片脚を浮かせたまま、反対のかかとだけを滑らせて伸ばし、引き寄せる。浮かせた脚は伸ばしたままでよい。"],
-               easy: ["浅く行う",         "かかとを浅めまで滑らせ、膝が浅く曲がったところで引き寄せに戻る。"]},
+               easy: ["浅く行う",         "かかとを滑らせる距離を短くし、膝が少し曲がったところで引き寄せに戻る。"]},
   pullover:   {hard: ["頭の後ろで2秒止める", "腕を頭の後ろまで下ろした位置で2秒止めてから引き上げる。"],
                easy: ["浅めに下ろす",      "胸の真上から少し後ろまでで止め、可動域を狭くする。"]},
   twist:      {hard: ["ダンベルを持って行う", "ダンベルを両手でまとめて持ち、いつもどおり体幹をひねる。", {needsDb:true}],
@@ -6366,7 +6366,7 @@ function restText(){
   const names = ms => ms.map(m => MUSCLES[m]).join("・");
   return (tired.length ? names(tired) + "は、回復の途中です。" : "")
        + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
-       + "今日は休むほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から足せます。";
+       + "今日は休んだほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から足せます。";
 }
 /* 保存したメニューの行を、今の種目表の中身で出す。行は保存した時点の写しなので、版が変わって
    組み方の名前・回数・動きが変わっても（2026-09 の A4・B7）古いまま残っている。
@@ -6559,26 +6559,26 @@ function viewToday(){
       <h2>${esc(itemName(next))}</h2>${inner}
       ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
       <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
-      ${dl && dl.active ? `<p class="sub">軽い週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
+      ${dl && dl.active ? `<p class="sub">軽めの週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
       ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">回復の途中の部位と、今週の量が足りている部位が多いため、今日は種目を少なめにしています。</p>` : ""}</div>`;
   }
 
   const undo = undoDel && Date.now() < undoDel.until
     ? `<div class="flash">「${esc(undoDel.name)}」のセットを消しました。<div class="rowbtns"><button data-act="undodel">取り消す</button></div></div>` : "";
   const deloadAsk = dl && dl.suggest
-    ? `<div class="flash">同じ重さで回数が続けて減っている動きがあります。今週を軽い週（1回3種目まで）にすると、疲れが抜けて、また伸びやすくなります。
-        <div class="rowbtns"><button data-act="deloadon">今週を軽い週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
+    ? `<div class="flash">同じ重さで回数が続けて減っている動きがあります。今週を軽めの週（1回3種目まで）にすると、疲れが抜けて、また伸びやすくなります。
+        <div class="rowbtns"><button data-act="deloadon">今週を軽めの週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
   const rows = items.map(it=>exRow(it)).join("");
   const skippedLine = skipped.length
     ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
   const sore = soreToday();
-  const soreLine = sore.length ? `<p class="skipped">筋肉痛: ${sore.map(m => MUSCLES[m]).join("・")}（今日は主役にしません）</p>` : "";
+  const soreLine = sore.length ? `<p class="skipped">筋肉痛: ${sore.map(m => MUSCLES[m]).join("・")}（今日はメインで鍛えません）</p>` : "";
   return storeBanners() + deloadAsk + hero + undo + rows + skippedLine + soreLine + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
     <div class="card">
-      <textarea id="note" placeholder="睡眠、体調、気づいたこと。一行でいい。">${esc(s.note||"")}</textarea>
+      <textarea id="note" placeholder="睡眠・体調・気づいたことなど">${esc(s.note||"")}</textarea>
     </div>
     ${typeof backupReminder === "function" ? backupReminder() : ""}
     <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${esc(BUILD_VERSION)}</p>`;
@@ -7082,7 +7082,7 @@ function settingsCard(){
       <button data-act="pref" data-k="wake" class="tg ${wake?"on":""}">${wake?"オン":"オフ"}</button></div>
     <div class="rowbtns"><button data-act="testalert">今の設定で鳴らしてみる</button></div>
     <p class="lastline">${sure
-      ? "休憩の長さぶんの音声を流しておき、終わりに合図が入るようにしています。画面を消していても鳴るようにしていますが、端末によっては止められることがあります。"
+      ? "休憩のあいだ無音の音声を流し、終わりに合図を鳴らします。画面を消していても鳴りますが、端末によっては止まることがあります。"
       : "音楽と一緒に使えます。鳴るのはアプリを開いて画面がついている間だけで、iPhoneはマナーモード中だと鳴りません。画面から離れている間に休憩が終わったら、戻ったときに知らせます。"}</p>
   </div>`;
 }
@@ -7213,9 +7213,9 @@ function progressFor(item){
       if(up) res.target = rr.lo;
       res.change = up ? "stepped-up" : dn ? "stepped-down" : "switched";
       res.src = "前回は「" + itemName(prev.item) + "」";
-      res.why = up ? "一段難しい組み方の1回目です。" + u + "数は幅の下限（" + rr.lo + "）から"
-              : dn ? "一段やさしい組み方です。" + res.target + u + "から"
-              : "この組み方の1回目です";
+      res.why = up ? "一段難しいやり方の1回目です。" + u + "数は範囲の下限（" + rr.lo + u + "）から始めます"
+              : dn ? "一段やさしいやり方です。" + res.target + u + "から始めます"
+              : "このやり方の1回目です";
       if(prev.ex === id) res.opt = optByW(evalSession(prev).w);   /* 同じ種目の別の組み方なら、前回と同じ重さ */
     }else{
       res.change = "first"; res.src = "初回";
@@ -7236,28 +7236,28 @@ function progressFor(item){
     res.target = ev.target;
     if(deloadOn(TODAY)){
       res.change = "deload";
-      res.why = "軽い週です。目標は前回と同じにして、種目を少なめにしています";
+      res.why = "軽めの週です。目標は前回と同じにして、種目を少なめにしています";
     }else if(ev.allHit){
       const nt = ev.target + step;
       if(nt <= rr.hi){
         res.target = nt; res.change = "up";
-        res.why = "前回は全部のセットで目標に届いたので、" + step + u + "増やします（" + rr.hi + u + "に届いたら次の段へ）";
+        res.why = "前回は全部のセットで目標に届いたので、" + step + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
       }else{
         /* 幅の上限に届いた → 一段上へ */
         const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
         if(nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg)){
           res.opt = nx; res.target = rr.lo; res.change = "heavier";
-          res.why = u + "数の上限（" + rr.hi + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から";
+          res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から始めます";
         }else{
           const nxt = stepItem(item, 1);
           if(nxt){
             res.next = nxt; res.change = "harder"; res.target = rr.hi;
-            res.why = u + "数の上限（" + rr.hi + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";
+            res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";
           }else{
             res.target = rr.hi; res.change = "top";
             const hs = houseOf(id);
-            res.why = "今の道具では、この動きの一番上の段です。" + u + "数は上限のまま続けます"
-                    + (hs.up ? "。次の一手は「" + gearText(hs.up) + "」" : "");
+            res.why = "今の道具では、この動きの一番上の段階です。" + u + "数は上限のまま続けます"
+                    + (hs.up ? "。さらに負荷を上げるなら「" + gearText(hs.up) + "」" : "");
           }
         }
       }
@@ -7270,12 +7270,12 @@ function progressFor(item){
         res.change = "rebase";
         res.target = Math.max(lo, Math.min(rr.hi, ev.minR));
         res.why = "前回はダンベルを" + (ev.w > pe.w ? "重く" : "軽く") + "したので、その重さで"
-                + (ev.minR >= lo ? res.target + u + "から始めます" : u + "数の幅の下限（" + lo + u + "）から始めます");
+                + (ev.minR >= lo ? res.target + u + "から始めます" : u + "数の範囲の下限（" + lo + u + "）から始めます");
       }else if(pe && ev.maxR < lo && pe.maxR < lo){
         /* 同じ重さで2回続けて幅の下限より少なかった → 一段軽く・やさしく */
         const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
         const prv = pv ? null : stepItem(item, -1);
-        const head = "同じ重さで2回続けて" + u + "数の幅の下限（" + lo + u + "）より少なかったので、";
+        const head = "同じ重さで2回続けて" + u + "数の範囲の下限（" + lo + u + "）より少なかったので、";
         if(pv){
           res.opt = pv; res.target = midTarget(item); res.change = "lighter";
           res.why = head + "ダンベルを一段軽くします";
@@ -7284,7 +7284,7 @@ function progressFor(item){
           res.why = head + "次は一段やさしい「" + itemName(prv) + "」にします";
         }else{
           res.target = lo; res.change = "hold";
-          res.why = u + "数の幅の下限（" + lo + u + "）を目標に続けます";
+          res.why = u + "数の範囲の下限（" + lo + u + "）を目標に続けます";
         }
       }else{
         /* 同じ重さで少なかった: 前回の最高の回数を次の目標にする（前回の目標より上げない） */
@@ -7296,7 +7296,7 @@ function progressFor(item){
         }else{
           res.change = "match";
           res.why = "前回は最高" + best + u + "だったので、" + (best >= lo ? "目標を" + nt + u + "にします"
-                                                                   : u + "数の幅の下限（" + lo + u + "）を目標にします");
+                                                                   : u + "数の範囲の下限（" + lo + u + "）を目標にします");
         }
       }
     }
@@ -7305,7 +7305,7 @@ function progressFor(item){
      幅の外のことがあるので、幅に収めてそう添える */
   const t0 = Math.round(res.target);
   res.target = Math.max(1, Math.min(rr.hi, Math.max(rr.lo, t0)));
-  if(res.target !== t0) res.why += "。解説の" + u + "数の幅（" + rr.lo + "〜" + rr.hi + "）に合わせて" + res.target + u + "にします";
+  if(res.target !== t0) res.why += "。解説にある" + u + "数の範囲（" + rr.lo + "〜" + rr.hi + u + "）に合わせて" + res.target + u + "にします";
   if(res.opt) res.w = res.opt.total;
   return (progMemo.items[key] = res);
 }
@@ -7433,7 +7433,7 @@ function todayAdvice(item, sug){
   }
   if(item.needsDb && !inventory().length){
     return {level:"skip", warn:true, short:"ダンベルなし",
-      text: "ダンベルが登録されていません。今日は飛ばすか、素の組み方に戻してください。"};
+      text: "ダンベルが登録されていません。今日は飛ばすか、基本のやり方に戻してください。"};
   }
 
   /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位（自分で足した種目など、メニュー作りを通らずに入ったとき） */
@@ -7441,8 +7441,8 @@ function todayAdvice(item, sug){
   if(tired){
     const sore = soreToday().includes(tired), left = recoverDaysLeft(tired);
     return {level:"recover", warn:true, short: sore ? "筋肉痛" : "回復優先",
-      text: sore ? MUSCLES[tired] + "は今日、筋肉痛と選んでいます。重さを軽くするか、今日は外してください。"
-                 : MUSCLES[tired] + "はまだ回復の途中です（次に主役にできるのは " + fmtDate(addDays(TODAY, Math.max(1, left))) + " から）。重さを軽くするか、今日は外してください。"};
+      text: sore ? MUSCLES[tired] + "は今日「筋肉痛の部位」に選んでいます。重さを軽くするか、今日は外してください。"
+                 : MUSCLES[tired] + "はまだ回復の途中です（次にメインで鍛えられるのは" + fmtDate(addDays(TODAY, Math.max(1, left))) + "から）。重さを軽くするか、今日は外してください。"};
   }
 
   /* 3. 前回からの伸ばし方の結果（その日の1セット目の前だけ） */
@@ -7453,10 +7453,10 @@ function todayAdvice(item, sug){
       text: "前回の " + kgText(p.snap) + " は、今登録しているダンベルでは作れません。今日は" + optText(p.opt) + "にしています。"};
     if(p.change === "heavier") return {level:"harder", short:"一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
     if(p.change === "lighter") return {level:"easier", warn:true, short:"一段軽く", text: p.why + "。"};
-    if(p.change === "stepped-up") return {level:"harder", short:"段を上げた", text: p.why + "。"};
-    if(p.change === "stepped-down") return {level:"easier", short:"段を下げた", text: p.why + "。"};
-    if(p.change === "harder") return {level:"harder", short:"次は上の段", text: p.why + "。"};
-    if(p.change === "easier") return {level:"easier", warn:true, short:"次は下の段", text: p.why + "。"};
+    if(p.change === "stepped-up") return {level:"harder", short:"段階を上げた", text: p.why + "。"};
+    if(p.change === "stepped-down") return {level:"easier", short:"段階を下げた", text: p.why + "。"};
+    if(p.change === "harder") return {level:"harder", short:"次は上の段階", text: p.why + "。"};
+    if(p.change === "easier") return {level:"easier", warn:true, short:"次は下の段階", text: p.why + "。"};
     /* 一番上の段・軽い週は毎回のことなので、見出しの札にはしない（カードの中の一言だけ） */
     if(p.change === "top") return {level:"top", short:"", text: p.why + "。"};
     if(p.change === "deload") return {level:"deload", short:"", text: p.why + "。"};
@@ -7553,7 +7553,7 @@ function exRow(item){
       ${last ? `<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${esc(last.sets.map(x=>setTextFor(item, x)).join(" / "))}</b></p>` : ""}
       ${!n ? stepButtons(item) : ""}
       ${!n ? `<div class="cardtools"><button data-act="later" data-ex="${id}">後に回す</button><button data-act="skip" data-ex="${id}">今日は外す</button></div>` : ""}
-      ${recordedDays() < 3 ? `<p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットに入っていい時間になると音で知らせます。</p>` : ""}
+      ${recordedDays() < 3 ? `<p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットを始められる時間になると、音で知らせます。</p>` : ""}
       <div class="rowbtns">
         <button data-act="goref" data-ex="${id}">解説を見る</button>
       </div>
@@ -7663,9 +7663,9 @@ function viewBody(){
       <h4>${MUSCLES[selMuscle]}</h4>
       <p class="lastline" style="margin-top:0">直近${bodyDays}日で <b>${(load[selMuscle]||0).toFixed(1)}</b> 有効セット</p>
       <p class="lastline" style="margin-top:2px">回復の目安: ${recoverGap(selMuscle) ? "中" + recoverGap(selMuscle) + "日" : "連日でもよい"}。${
-        soreToday().includes(selMuscle) ? "今日は筋肉痛と選んでいます"
-        : recoverDaysLeft(selMuscle) ? "次に主役にできるのは " + fmtDate(addDays(TODAY, recoverDaysLeft(selMuscle))) + " から"
-        : "今日から主役にできます"}</p>
+        soreToday().includes(selMuscle) ? "今日は「筋肉痛の部位」に選んでいます"
+        : recoverDaysLeft(selMuscle) ? "次にメインで鍛えられるのは" + fmtDate(addDays(TODAY, recoverDaysLeft(selMuscle))) + "から"
+        : "今日からメインで鍛えられます"}</p>
       ${hits.length ? `<ul class="plain">${hits.map(h=>`<li>${fmtDate(h.d)}　${h.name}　${h.n}セット（${h.role}）</li>`).join("")}</ul>`
         : `<p style="font-size:14px;margin:6px 0 0">この期間、この部位を使う種目はありません。</p>`}
       ${exercisesForMuscle(selMuscle)}
@@ -7761,7 +7761,7 @@ ACTIONS.selmuscle = el => { selMuscle = el.dataset.m; render(); };
 
 /* ============================================================
    提案（ルールベース。外部通信なし。state.sessions の実績だけで判断する）
-   ・動きごとの今の段と、次の段まであと何回か（伸ばし方 progress.js と同じ決まり）
+   ・動きごとの今の段階と、次の段階まであと何回か（伸ばし方 progress.js と同じ決まり）
    ・同じ重さで回数が続けて減っている動きが2つ以上あれば「軽い週」を勧める
    ・大きな部位が長く抜けていないか
    ============================================================ */
@@ -7777,10 +7777,11 @@ function exerciseHistory(exId){
 }
 /* 動きの呼び名 */
 const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"股関節を折る", hpush:"胸で押す", fly:"胸を開く",
-  pull:"引く", vpush:"上へ押す", bridge:"尻を持ち上げる", carry:"持って歩く", shrug:"肩をすくめる", raise:"腕を上げる",
-  curl:"肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹"};
+  pull:"引く", vpush:"上へ押す", bridge:"お尻を持ち上げる", carry:"持って歩く", shrug:"肩をすくめる", raise:"腕を上げる",
+  curl:"肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹",
+  legcurl:"膝を曲げる", pullover:"頭の上から引く", twist:"ひねる"};
 
-/* 動きごとの今の段（記録のある動きだけ） */
+/* 動きごとの今の段階（記録のある動きだけ） */
 function ladderRows(){
   const out = [];
   PATTERN_ORDER.forEach(pat => {
@@ -7788,10 +7789,10 @@ function ladderRows(){
     if(!K) return;
     const p = progressFor(K), u = unitOf(EXMAP[K.ex].kind);
     const hs = houseOf(K.ex);
-    const tip = hs.up ? "。次の一手は「" + gearText(hs.up) + "」" : "";
+    const tip = hs.up ? "。さらに負荷を上げるなら「" + gearText(hs.up) + "」" : "";
     let next;
     if(p.change === "top"){
-      next = "今の道具では、この動きの一番上の段で、回数も上限です" + tip;
+      next = "今の道具では、この動きの一番上の段階で、回数も上限です" + tip;
     }else{
       const opts = itemOptions(K), i = p.opt ? optionIndex(opts, p.opt) : -1, nx = i >= 0 ? opts[i + 1] : null;
       const heavier = nx && (nx.key <= p.opt.key * PROG.jumpRatio || nx.key - p.opt.key <= PROG.jumpKg);
@@ -7799,7 +7800,7 @@ function ladderRows(){
       const left = Math.max(0, Math.round((p.hi - p.target) / p.step)) + 1;   /* 今日を含めて、上限の回に届くまでの回数 */
       next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを一段重く（" + nx.text + "）"
            : up ? "あと" + left + "回のトレーニングで「" + itemName(up) + "」へ"
-           : "あと" + left + "回のトレーニングで" + u + "数の上限（" + p.hi + "）。今の道具では、この先の段はありません";
+           : "あと" + left + "回のトレーニングで" + u + "数が範囲の上限（" + p.hi + u + "）に届きます。今の道具では、この先の段階はありません";
     }
     out.push({pat, item: K, p, u, next});
   });
@@ -7818,7 +7819,7 @@ function balanceSuggestions(){
       out.push({kind:"balance", muscle:m,
         title: MUSCLES[m] + "：直近30日でほぼ使えていません",
         body: cands.length ? "候補: " + cands.join("、") : "",
-        why: "有効セット数 " + v.toFixed(1) + "（体の中で大きい筋肉なので、抜けると効果の範囲が狭くなります）"});
+        why: "有効セット数 " + v.toFixed(1) + "（大きい筋肉なので、優先して入れたい部位です）"});
     }
   });
   return out;
@@ -7829,14 +7830,14 @@ function deloadCard(){
   const d = deloadAdvice();
   if(!d) return "";
   if(d.active) return `<div class="card">
-      <h4>軽い週（${esc(fmtDate(d.until))}まで）</h4>
+      <h4>軽めの週（${esc(fmtDate(d.until))}まで）</h4>
       <p style="margin:0 0 6px;font-size:14px">1回の種目を3つまでにして、目標の回数は据え置いています。疲れを抜いてから、また伸ばしていきます。</p>
-      <div class="rowbtns"><button data-act="deloadoff">軽い週をやめる</button></div>
+      <div class="rowbtns"><button data-act="deloadoff">軽めの週をやめる</button></div>
     </div>`;
   return `<div class="card">
-      <h4>今週は軽い週にしませんか</h4>
+      <h4>今週は軽めの週にしませんか</h4>
       <p style="margin:0 0 6px;font-size:14px">${d.patterns.map(p => "「" + esc(PATTERN_NAME[p] || p) + "」").join("")}の動きで、同じ重さでの回数が2回続けて減っています。7日間だけ1回の種目を3つまでにすると、疲れが抜けて、また伸びやすくなります。</p>
-      <div class="rowbtns"><button data-act="deloadon">今週を軽い週にする</button></div>
+      <div class="rowbtns"><button data-act="deloadon">今週を軽めの週にする</button></div>
     </div>`;
 }
 
@@ -7844,13 +7845,13 @@ function deloadCard(){
 function viewPlan(){
   const total = sortedDates().filter(d=>(state.sessions[d].entries||[]).some(e=>e.sets.length)).length;
   if(total < 1){
-    return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段と、次の段までの回数がここに出ます。</div>`;
+    return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段階と、次の段階までの回数がここに出ます。</div>`;
   }
   const rows = ladderRows();
   const ladder = rows.length ? `<div class="card">${rows.map(r => `
       <div class="ladder">
         <p class="lk">${esc(PATTERN_NAME[r.pat] || r.pat)}</p>
-        <p class="ln"><b>${esc(itemName(r.item))}</b>　次の目標 ${r.p.target}${r.u}（幅 ${r.p.lo}〜${r.p.hi}${r.u}）</p>
+        <p class="ln"><b>${esc(itemName(r.item))}</b>　次の目標 ${r.p.target}${r.u}（範囲 ${r.p.lo}〜${r.p.hi}${r.u}）</p>
         <p class="lastline" style="margin-top:0">${esc(r.next)}</p>
       </div>`).join("")}
     </div>` : "";
@@ -7865,15 +7866,15 @@ function viewPlan(){
 
   return `
     ${deloadCard()}
-    <h3 class="sec">動きごとの今の段</h3>
+    <h3 class="sec">動きごとの今の段階</h3>
     ${ladder}
     <h3 class="sec">部位のバランス</h3>
     ${balanceCards}
     <div class="card">
       <h4>この提案の仕組み</h4>
-      <p style="margin:0;font-size:14px">前回の同じ組み方で、全部のセットが目標に届いたら、次は1回（秒の種目は5秒）増やします。回数の幅の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しい組み方に進みます。</p>
-      <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の幅の下限より少ないときだけ、一段軽く（やさしく）します。</p>
-      <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選びます。主役にした部位は部位ごとに日数を空け、今日「筋肉痛の部位」で選んだ部位は主役にしません。</p>
+      <p style="margin:0;font-size:14px">前回の同じやり方で、全部のセットが目標に届いたら、次は1回（秒の種目は5秒）増やします。回数が範囲の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しいやり方に進みます。</p>
+      <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
+      <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選びます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。</p>
       <p class="lastline">${esc(recoverGapText())}</p>
     </div>`;
 }
@@ -7905,7 +7906,7 @@ function viewHist(){
     <h3 class="sec">種目ごとの推移</h3>
     <p class="lastline" style="margin-top:0">線は日ごとの一番よいセット。重いほど、同じ重さなら回数が多いほど上。<span style="color:var(--muscle)">●</span>は自己ベストの日</p>
     ${trendCards(dates)}
-    <h3 class="sec">セッション</h3>
+    <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
     <div class="card overflowx">
       <table class="hist"><thead><tr><th>日付</th><th style="text-align:right">セット</th></tr></thead><tbody>${table}</tbody></table>
@@ -7913,7 +7914,7 @@ function viewHist(){
     ${addDayRow}
     <h3 class="sec">書き出し</h3>
     <div class="card">
-      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストを貼り付けて共有できます。</p>
+      <p class="lastline" style="margin-top:0">CSVで保存するか、テキストをコピーして共有できます。</p>
       <div class="rowbtns">
         <button data-act="csv">CSVで保存</button>
         <button data-act="txt">テキストで表示</button>
@@ -8029,7 +8030,7 @@ function sparkSVG(points){
     const cx = x(i).toFixed(1), cy = y(p.v).toFixed(1);
     return `<circle cx="${cx}" cy="${cy}" r="${p.pr?3.6:2.2}" class="${p.pr?"prdot":"trenddot"}"><title>${esc(fmtDate(p.d))}　${esc(p.text || String(p.v))}${p.pr ? "　自己ベスト" : ""}</title></circle>`;
   }).join("");
-  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="段と回数の推移">
+  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="重さと回数の推移">
     <polyline points="${line}" class="trendpath"/>${dots}
   </svg>`;
 }
@@ -8163,7 +8164,7 @@ function renderDaySheet(date){
     ${histAdding ? addSetFormHTML(date, groups) : `<div class="rowbtns"><button id="haddopen">セットを追加</button></div>`}
     <div class="card">
       <h4>メモ</h4>
-      <textarea id="hnote" placeholder="睡眠、体調、気づいたこと。">${esc(noteVal)}</textarea>
+      <textarea id="hnote" placeholder="睡眠・体調・気づいたことなど">${esc(noteVal)}</textarea>
     </div>
     <div class="rowbtns"><button id="hclose">閉じる</button></div>`;
 
@@ -8443,7 +8444,7 @@ function addSet(id){
   const maxR = ex.kind === "t" ? 600 : 200;
   let bad = "";
   if(isNaN(rRaw) || rRaw < 1 || rRaw > maxR || Math.round(rRaw) !== rRaw) bad = (ex.kind === "t" ? "秒数" : "回数") + "は1〜" + maxR + "の整数で入れてください";
-  else if(wIn && (isNaN(wRaw) || wRaw < 0 || wRaw > 300)) bad = "重量は0〜300kgの数で入れてください";
+  else if(wIn && (isNaN(wRaw) || wRaw < 0 || wRaw > 300)) bad = "重量は0〜300kgの範囲で入れてください";
   if(bad){ todayMsg = bad; render(); return; }
   /* 前日の画面のまま押された場合は、前日に記録せず今日のメニューに切り替える（入れた数字は知らせに残す） */
   if(rollDay()){
@@ -8613,7 +8614,7 @@ function stepButtons(item){
   const down = stepItem(item, -1), up = stepItem(item, 1);
   if(!down && !up) return "";
   const btn = (it, label) => `<button data-act="stepto" data-from="${item.ex}" data-ex="${it.ex}" data-label="${esc(it.label || "")}">${label}　${esc(itemName(it))}</button>`;
-  return `<p class="lastline" style="margin-bottom:4px">きつすぎる・軽すぎるときは、同じ動きのまま段を変えられます。</p>
+  return `<p class="lastline" style="margin-bottom:4px">きつすぎる・軽すぎるときは、同じ動きのまま段階を変えられます。</p>
     <div class="rowbtns">${down ? btn(down, "やさしく") : ""}${up ? btn(up, "難しく") : ""}</div>`;
 }
 
@@ -8726,7 +8727,7 @@ function openSoreSheet(){
   const order = Object.keys(MUSCLES).sort((a, b) => (PRIORITY[b] || 0) - (PRIORITY[a] || 0));
   const draw = () => {
     sheetInner.innerHTML = `<h4>筋肉痛の部位</h4>
-      <p class="lastline" style="margin-top:0">選んだ部位は、今日のメニューで主役にしません（今日だけ）。</p>
+      <p class="lastline" style="margin-top:0">選んだ部位をメインで鍛える種目は、今日のメニューから外します（今日だけ）。</p>
       <div class="sorechips">${order.map(m => `<button class="sorechip${sel.has(m) ? " on" : ""}" data-m="${m}" aria-pressed="${sel.has(m)}">${MUSCLES[m]}</button>`).join("")}</div>
       <div class="rowbtns"><button data-apply="1">この部位を避けて組み直す</button><button data-close="1">閉じる</button></div>`;
     sheetInner.querySelectorAll("[data-m]").forEach(b => b.onclick = () => {
