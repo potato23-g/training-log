@@ -75,7 +75,10 @@ body{
   -webkit-text-size-adjust:100%;
 }
 .num{font-family:"Archivo",system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-button{font:inherit;color:inherit;cursor:pointer}
+/* touch-action:manipulation … スマホで続けて2回タップしたときに「ダブルタップで拡大」と解釈されて、
+   2回目のタップがボタンに届かないのを防ぐ（つまんで拡大・スクロールはそのまま使える） */
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+input,select,textarea,a,[data-act]{touch-action:manipulation}
 :focus-visible{outline:2px solid var(--muscle);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
 
@@ -258,7 +261,6 @@ textarea{min-height:64px;resize:vertical}
   border-left:2px solid var(--muscle);padding:9px 11px;margin-top:12px;border-radius:0 3px 3px 0}
 .target .tl{font-size:11px;color:var(--ink-3)}
 .target .tv{font-size:19px;font-weight:700}
-.target .tw{font-size:11.5px;color:var(--ink-2);flex-basis:100%}
 .setrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .setrow:last-of-type{border-bottom:none}
 .setrow small{display:block;font-size:11px;color:var(--ink-3)}
@@ -5175,7 +5177,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-02 18:29";
+const BUILD_VERSION = "2026-10-02 22:46";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -5962,8 +5964,9 @@ function restFor(item){
    数え方は「からだ」タブと同じ有効セット（主に効く部位は1セット=1.0、補助的に使う部位は0.5）。
    ・間隔: 主役（主働筋）として3セット以上やった部位は、部位ごとの日数（RECOVER_GAP）だけ空けてから主役にする
           （脚・尻・ハムストリングは中3日、胸・背中は中2日、肩・腕は中1日、腹筋・前腕・ふくらはぎは連日でもよい）。
-          その日に主役で6セット以上やったときは1日延ばす。昨日しっかり使った部位（補助も含めた有効セットが3以上。
-          腹直筋・腹斜筋は10、ふくらはぎ・前腕は6）も今日は主役にしない。今日「筋肉痛」と選んだ部位も主役にしない
+          その日に主役で6セット以上やったときは1日延ばす。今日「筋肉痛」と選んだ部位も主役にしない。
+          少しやっただけ（主役で1〜2セット・補助で使っただけ）の部位は、回復の対象にしない（2026-10-02 本人の要望。
+          それまでは、補助も含めた有効セットが昨日3以上なら1日休ませていた）
    ・1日の負荷: 大きい部位（脚・尻・胸・背中）は8セット、ほかの部位は6セットまで。1回は15セット・5種目・50分くらいまで
    ・1週間の量: 直近7日で各部位10セットを目標に、目標までの不足を2乗で数えて価値を決め、価値の大きい種目から入れる。
                目標から遠い部位ほど価値が急に上がるので、大きい部位ばかりで埋まって小さい部位が0セットのまま、にはならない。
@@ -5971,7 +5974,7 @@ function restFor(item){
                部位の重み（PLAN_WEIGHT）は大きい部位を少しだけ重くしてある。目標に届いた部位も、16セットまでは少しだけ価値を残す
    これまでの決まりもそのまま守る:
    ・同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日1つ
-   ・昨日（暦の昨日）やった動きは、今日は出さない
+   ・昨日（暦の昨日）3セット以上やった動きは、今日は出さない
    ・ダンベルが要る種目は、持っているダンベルで作れるものだけ
    ・動きごとに、今日やる組み方は伸ばし方（progress.js）で決まる。気分では入れ替えない
    A〜Dの各メニュー（ROUTINES）は、種目ごとのセット数・回数・メモの出どころとしてだけ使う。
@@ -5987,8 +5990,6 @@ const PATTERN = {
 };
 /* メニューに並べる順（大きい動きを先に、体幹は最後に） */
 const PATTERN_ORDER = ["squat","lunge","hinge","legcurl","hpush","fly","pull","pullover","vpush","bridge","carry","shrug","raise","curl","ext","calf","abs","side","twist"];
-/* 昨日この有効セット数以上使った部位は、今日は主役にしない。体幹・ふくらはぎ・前腕は回復が早い */
-const RECOVER_SETS = {abs:10, obliques:10, calves:6, forearms:6};
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット） */
@@ -6032,14 +6033,14 @@ function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   return n;
 }
 /* 部位 m が回復の途中か: 部位ごとの日数（RECOVER_GAP）のうちに主役で3セット以上、
-   量が多かった日（主役で6セット以上）はもう1日、または昨日しっかり使った（補助も含めた有効セット） */
+   量が多かった日（主役で6セット以上）はもう1日。補助で使っただけの日・主役で1〜2セットだけの日は数えない */
 function recovering(m){ return recoverDaysLeft(m) > 0; }
 /* 「中3日: 大腿四頭筋・大殿筋…／…／連日でもよい: 腹直筋…」（提案タブの説明用。表から作るので値を変えても食い違わない） */
 function recoverGapText(){
   const gaps = Array.from(new Set(Object.keys(MUSCLES).map(recoverGap))).sort((a, b) => b - a);
   return gaps.map(g => (g ? "中" + g + "日: " : "連日でもよい: ")
     + Object.keys(MUSCLES).filter(m => recoverGap(m) === g).map(m => MUSCLES[m]).join("・")).join("／")
-    + "（1日に6セット以上やった部位は、空ける日を1日増やします）";
+    + "（空けるのは、その部位をメインで3セット以上やったとき。1日に6セット以上なら、空ける日を1日増やします）";
 }
 /* 今日「筋肉痛」と選んだ部位（その日だけ。今日のメニューでは主役にしない） */
 function soreToday(){
@@ -6055,11 +6056,9 @@ function recoverDaysLeft(m){
     const need = n >= RECOVER_HEAVY ? g + 2 : (n >= RECOVER_PRIMARY ? g + 1 : 0);
     left = Math.max(left, need - ago);
   }
-  if(muscleLoadBetween(m, 1, 1) >= recoverLimit(m)) left = Math.max(left, 1);
   return left;
 }
 function patternOf(id){ return PATTERN[id] || PATTERN[baseOf(id)] || id; }
-function recoverLimit(m){ return RECOVER_SETS[m] || 3; }
 /* 種目の難しさ（1=やさしい, 2=標準, 3=難しい）。書いていなければ標準。
    同じ種目でも片脚でやる組み方は、1段難しいものとして扱う */
 function levelOf(id){ return (EXMAP[id] || {}).level || (EXMAP[baseOf(id)] || {}).level || 2; }
@@ -7676,13 +7675,14 @@ function exRow(item){
     const warm = firstOfDay ? warmupText(item, sug) : "";
     const last = p && p.last;
     const hold = holdOf(id) ? gearLine(id, sug) : "";
+    /* 「記録」ボタンより上には、セットごとに長さの変わるものを置かない（目標の理由・ウォームアップはボタンの下）。
+       上に置くと、1セット目のあとでそれらが消えたり短くなったりしてボタンが上にずれ、同じ場所をもう一度押したときに
+       別のところを押してしまう（2回続けて記録を押しても2回目が入らない、の原因の1つ: 2026-10-02） */
     body = `<div class="exbody"><div class="exmain">
       <div class="target">
         <span class="tl">${n ? "次のセット" : "今日の目標"}</span>
         <span class="tv num">${esc(sugText(item, sug))}</span>
-        <span class="tw">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</span>
       </div>
-      ${warm ? `<p class="warmup">ウォームアップ: ${esc(warm)}</p>` : ""}
       <div class="entry">
         ${wfld}
         <div class="fld"><label>${ex.kind==="t"?"秒":"回数"}</label>
@@ -7693,6 +7693,8 @@ function exRow(item){
           </div></div>
         <div class="recrow"><button class="addbtn" data-act="addset" data-ex="${id}">記録</button></div>
       </div>
+      <p class="lastline">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
+      ${warm ? `<p class="warmup">ウォームアップ: ${esc(warm)}</p>` : ""}
       ${setLines}
       ${adv ? `<p class="lastline"><b>今日の調整</b>　${esc(adv.text)}</p>` : ""}
       ${adv && adv.alt && !n ? `<div class="rowbtns"><button data-act="swapto" data-from="${id}" data-ex="${adv.alt}">${esc(EXMAP[adv.alt].name)}に替える</button></div>` : ""}
@@ -8658,6 +8660,13 @@ function addSet(id){
   const btn1 = y0 === null ? null : document.querySelector(sel);
   if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
   startRest(restFor(item), label);
+  /* 休憩の帯（画面の下に出る）が「記録」ボタンに重なるときは、ボタンが帯のすぐ上に見えるところまで画面を送る
+     （重なったままだと、次に押したときに帯のボタンを押してしまう） */
+  const bar = document.getElementById("timer"), btn2 = document.querySelector(sel);
+  if(bar && btn2 && bar.classList.contains("on")){
+    const over = btn2.getBoundingClientRect().bottom + 10 - bar.getBoundingClientRect().top;
+    if(over > 0) window.scrollBy(0, over);
+  }
 }
 function delSet(id, i){
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
