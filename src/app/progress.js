@@ -131,7 +131,7 @@ function progressFor(item){
       if(prev.ex === id) res.opt = optByW(evalSession(prev).w);   /* 同じ種目の別の組み方なら、前回と同じ重さ */
     }else{
       res.change = "first"; res.src = "初回";
-      res.why = "初回はフォームを優先します。余力を2〜3回残して終えてください";
+      res.why = "フォームを優先し、余力を2〜3回残して終えてください";   /* 画面では「初回　→　…」と続けて出る */
     }
     if(!res.opt) res.opt = defaultOptionFor(item);
   }else{

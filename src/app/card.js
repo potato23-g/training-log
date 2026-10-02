@@ -63,6 +63,9 @@ function exRow(item){
     const warm = firstOfDay ? warmupText(item, sug) : "";
     const last = p && p.last;
     const hold = holdOf(id) ? gearLine(id, sug) : "";
+    /* 「今日の調整」が目標の理由（sug.why）と同じ文で始まるときは、理由は「記録」の下の1行にもう出ているので、続きだけを出す
+       （同じ文がカードに2回並ぶのを避ける） */
+    const advText = !adv ? "" : (sug.why && adv.text.indexOf(sug.why) === 0 ? adv.text.slice(sug.why.length).replace(/^。/, "") : adv.text);
     /* 「記録」ボタンより上には、セットごとに長さの変わるものを置かない（目標の理由・ウォームアップはボタンの下）。
        上に置くと、1セット目のあとでそれらが消えたり短くなったりしてボタンが上にずれ、同じ場所をもう一度押したときに
        別のところを押してしまう（2回続けて記録を押しても2回目が入らない、の原因の1つ: 2026-10-02） */
@@ -84,7 +87,7 @@ function exRow(item){
       <p class="lastline">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
       ${warm ? `<p class="warmup">ウォームアップ: ${esc(warm)}</p>` : ""}
       ${setLines}
-      ${adv ? `<p class="lastline"><b>今日の調整</b>　${esc(adv.text)}</p>` : ""}
+      ${advText ? `<p class="lastline"><b>今日の調整</b>　${esc(advText)}</p>` : ""}
       ${adv && adv.alt && !n ? `<div class="rowbtns"><button data-act="swapto" data-from="${id}" data-ex="${adv.alt}">${esc(EXMAP[adv.alt].name)}に替える</button></div>` : ""}
       ${hold ? `<p class="lastline"><b>使うダンベル</b>　<span id="wh_${id}">${esc(hold)}</span></p>` : ""}
       ${noteFor(item, sug.opt) ? `<p class="lastline">${esc(noteFor(item, sug.opt))}</p>` : ""}
