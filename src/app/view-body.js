@@ -20,10 +20,7 @@ function viewBody(){
     detail = `<div class="card">
       <h4>${MUSCLES[selMuscle]}</h4>
       <p class="lastline" style="margin-top:0">直近${bodyDays}日で <b>${(load[selMuscle]||0).toFixed(1)}</b> 有効セット</p>
-      <p class="lastline" style="margin-top:2px">回復の目安: ${recoverGap(selMuscle) ? "中" + recoverGap(selMuscle) + "日" : "連日でもよい"}。${
-        soreToday().includes(selMuscle) ? "今日は「筋肉痛の部位」に選んでいます"
-        : recoverDaysLeft(selMuscle) ? "次にメインで鍛えられるのは" + fmtDate(addDays(TODAY, recoverDaysLeft(selMuscle))) + "から"
-        : "今日からメインで鍛えられます"}</p>
+      <p class="lastline" style="margin-top:2px">回復の目安: ${recoverGap(selMuscle) ? "中" + recoverGap(selMuscle) + "日" : "連日でもよい"}。${muscleRestText(selMuscle)}</p>
       ${hits.length ? `<ul class="plain">${hits.map(h=>`<li>${fmtDate(h.d)}　${h.name}　${h.n}セット（${h.role}）</li>`).join("")}</ul>`
         : `<p style="font-size:14px;margin:6px 0 0">この期間、この部位を使う種目はありません。</p>`}
       ${exercisesForMuscle(selMuscle)}
@@ -57,17 +54,24 @@ function viewBody(){
     </div>`;
   return `<div class="splitcols"><div>${fig}</div><div>${side}${note}</div></div>`;
 }
+/* 選んだ部位の今の様子（筋肉痛・回復まであと何日か）。種目カードや種目を選ぶシートと同じ数え方（recoverDaysLeft） */
+function muscleRestText(m){
+  const left = recoverDaysLeft(m);
+  const sore = soreToday().includes(m) ? "今日は「筋肉痛の部位」に選んでいます" : "";
+  const rec = left ? "回復まであと" + left + "日（" + recoverFrom(left) + "メインで鍛えられます）" : "";
+  return sore || rec ? [sore, rec].filter(Boolean).join("。") : "今日からメインで鍛えられます";
+}
 /* この部位に効く種目の一覧（主に効く／補助で使う）。押すと種目タブの解説が開き、
-   今日のメニューにまだ無ければその場で足せる */
+   今日のメニューにまだ無ければその場で追加できる */
 function exByRow(e){
-  /* 「今日は外した」種目（skip:true）は、今日のメニューには実質無いのと同じ。印を付けて
-     足すボタンを隠すと戻せなくなるので、外した種目は「まだ無い」側として扱う
-     （addToProgramToday はskipを消して戻す作りなので、そのまま押せば戻る） */
-  const inPlan = todayItems().some(it=>it.ex===e.id && !it.skip);
+  /* 今日のメニューでの扱いは menuState() で判定する（種目を選ぶシート・種目タブと同じ）。
+     「今日は外した」種目は、印を付けてボタンを隠すと戻せなくなるので「戻す」ボタンを出す
+     （addToProgramToday は skip を消して戻す） */
+  const st = menuState(e.id);
   const noGear = holdOf(e.id) && !gearOptions(e.id).length;
-  const right = inPlan ? `<span class="exbytag plan">今日のメニューにある</span>`
+  const right = st === "in" ? `<span class="exbytag plan">今日のメニューにある</span>`
     : noGear ? `<span class="exbytag warn">ダンベルが必要</span>`
-    : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">今日のメニューに足す</button>`;
+    : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">${st === "skipped" ? "今日のメニューに戻す" : "今日のメニューに追加"}</button>`;
   return `<div class="exbyrow">
     <button class="exbyname" data-act="goref" data-ex="${e.id}">${esc(e.name)}</button>
     ${right}

@@ -18,36 +18,40 @@ const PATTERN_HEAD = {
   twist:"ひねる（ツイスト）"
 };
 
-/* 種目に付ける小さな印（今日のメニュー・昨日の動き・回復中） */
+/* 種目に付ける小さな印（今日のメニューでの扱い・昨日の動き・筋肉痛・回復まであと何日・ダンベル）。
+   今日のメニューでの扱いは menuState()、回復は exRest() で、ほかの画面と同じ判定を使う */
 function pickerTags(id){
   let out = "";
-  if(todayItems().some(it=>it.ex===id)) out += `<span class="pktag plan">今日のメニューにある</span>`;
+  const st = menuState(id);
+  if(st === "in") out += `<span class="pktag plan">今日のメニューにある</span>`;
+  else if(st === "skipped") out += `<span class="pktag">今日は外した</span>`;
   if(patternsYesterday().has(patternOf(id))) out += `<span class="pktag">昨日やった動き</span>`;
-  const tired = tiredMuscle(id);
-  if(tired) out += `<span class="pktag warn">${soreToday().includes(tired) ? "筋肉痛" : "回復中"}</span>`;
+  const rest = exRest(id);
+  if(rest && rest.sore.length) out += `<span class="pktag warn">筋肉痛</span>`;
+  if(rest && rest.left) out += `<span class="pktag warn">${recoverTag(rest.left)}</span>`;
+  if(holdOf(id) && !gearOptions(id).length) out += `<span class="pktag warn">ダンベルが必要</span>`;
   return out;
 }
-/* 種目の下に並べる組み方（catalog() の中で同じ ex・label ありの行） */
-function pickerVariants(id){
-  const rows = catalog().filter(c=>c.ex===id && c.label);
-  if(!rows.length) return "";
-  return `<div class="pickvariants">` + rows.map(v=>{
-    const m = /[（(]([^）)]+)[）)]\s*$/.exec(v.label);
-    const short = m ? m[1] : v.label;
-    return `<button class="pickvariant" data-pick="${esc(id)}" data-label="${esc(v.label)}">${esc(short)}${v.note?`<span>${esc(v.note)}</span>`:""}</button>`;
-  }).join("") + `</div>`;
+/* その行の難しさ。種目そのものの難しさ（EX.level）に、基本のやり方との段階の差を足して出す */
+function pickLevelText(row){
+  const lv = (EXMAP[row.ex].level || 2) + itemLevel(row) - itemLevel(catalogItem(row.ex));
+  return lv <= 1 ? "やさしい" : (lv >= 3 ? "難しい" : "標準");
 }
 
+/* 種目ごとに1行だけ出す（やり方の小さいボタンは出さない: 2026-10-02 本人の要望）。
+   押すと入るのは pickRowFor() のやり方（前回の続き。初めてなら基本）で、名前と難しさもそのやり方のものを出す。
+   入れたあとの持ち替えは、種目カードの「やさしく／難しく」で行う */
 function openPicker(){
-  const lvText = {1:"やさしい", 2:"標準", 3:"難しい"};
   const groups = {};
   EX.forEach(e=>{ const p = patternOf(e.id); (groups[p] = groups[p] || []).push(e); });
   const body = PATTERN_ORDER.filter(p=>groups[p] && groups[p].length).map(p=>{
-    const items = groups[p].map(e=>`
+    const items = groups[p].map(e=>{
+      const row = pickRowFor(e.id);
+      return `
       <div class="pickgroup">
-        <button class="pickmain" data-pick="${esc(e.id)}">${esc(e.name)}${pickerTags(e.id)}<span>${e.p.map(m=>MUSCLES[m]).join("・")}　${lvText[e.level || 2]}</span></button>
-        ${pickerVariants(e.id)}
-      </div>`).join("");
+        <button class="pickmain" data-pick="${esc(e.id)}" data-label="${esc(row.label || "")}">${esc(itemName(row))}${pickerTags(e.id)}<span>${e.p.map(m=>MUSCLES[m]).join("・")}　${pickLevelText(row)}</span></button>
+      </div>`;
+    }).join("");
     return `<h4 class="pickhead">${esc(PATTERN_HEAD[p] || p)}</h4><div class="picklist">${items}</div>`;
   }).join("");
 

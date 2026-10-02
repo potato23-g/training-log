@@ -25,7 +25,7 @@ function viewEx(){
       <h4>目安</h4>
       <p style="margin:0 0 6px;font-size:14px">${kindLabel}　${d.reps||""}</p>
       ${holdOf(refEx)?`<p class="lastline" style="margin-top:0"><b>使うダンベル</b>　${gearLine(refEx, refSug)}</p>`:""}
-      <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">今日のメニューに追加</button></div>
+      <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">${{in: "今日のメニューで開く", skipped: "今日のメニューに戻す"}[menuState(ex.id)] || "今日のメニューに追加"}</button></div>
     </div>`;
 
   const right = `

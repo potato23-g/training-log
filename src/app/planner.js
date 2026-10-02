@@ -189,12 +189,18 @@ function buildPlan(){
 /* 今日のメニューが空の日（休み）に出す説明 */
 function restText(){
   const big = ["quads","glutes","hams","chest","lats","shoulders"];
-  const tired = big.filter(recovering);
-  const enough = big.filter(m => !tired.includes(m) && muscleLoadBetween(m, 1, 6) >= WEEK_TARGET);
+  const tired = recoveringList(big);
+  const enough = big.filter(m => !tired.some(x => x.m === m) && muscleLoadBetween(m, 1, 6) >= WEEK_TARGET);
   const names = ms => ms.map(m => MUSCLES[m]).join("・");
-  return (tired.length ? names(tired) + "は、回復の途中です。" : "")
+  return (tired.length ? recoverDaysText(tired) + "で回復します。" : "")
        + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
-       + "今日は休んだほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から足せます。";
+       + "今日は休んだほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から追加できます。";
+}
+/* 今日の種目が少ないときの一言（回復の途中の部位は、あと何日かも添える） */
+function fewItemsText(){
+  const rec = recoveringList();
+  return (rec.length ? "回復の途中の部位（" + recoverDaysText(rec) + "）や、" : "")
+       + "今週の量が足りている部位が多いため、今日は種目を少なめにしています。";
 }
 /* 保存したメニューの行を、今の種目表の中身で出す。行は保存した時点の写しなので、版が変わって
    組み方の名前・回数・動きが変わっても（2026-09 の A4・B7）古いまま残っている。
@@ -222,6 +228,25 @@ function todayItems(){
 /* 今日やる種目（外したものを除く） */
 function activeItems(){ return todayItems().filter(it => !it.skip); }
 function itemOf(id){ return todayItems().find(i=>i.ex===id) || catalogItem(id); }
+/* 今日のメニューでのその種目の扱い。"in"=今日やる / "skipped"=今日は外した / ""=入っていない。
+   「今日のメニューにある」などを画面に出すところは、どこもこれで判定する
+   （種目を選ぶシートだけが外した種目も「ある」と出していた: 2026-10-02 本人の指摘） */
+function menuState(exId){
+  const it = todayItems().find(i => i.ex === exId);
+  return !it ? "" : (it.skip ? "skipped" : "in");
+}
+/* 種目を選んで追加するときに入るやり方。今日のメニューにあれば（外したものも）そのやり方、
+   前にやった種目ならそのやり方の続き（伸ばし方が同じ種目の次の段階へ進めるなら、その先）、初めてなら基本のやり方。
+   種目を選ぶシートの名前と難しさも、この行から作る（出ている内容と入る内容が食い違わないように） */
+function pickRowFor(exId){
+  const cur = todayItems().find(i => i.ex === exId);
+  if(cur) return cur;
+  const h = patternHistory(patternOf(exId)).find(x => x.ex === exId);
+  if(!h) return catalogItem(exId);
+  const p = progressFor(h.item);
+  const row = (p.change === "harder" || p.change === "easier") && p.next && p.next.ex === exId ? p.next : h.item;
+  return gearReady(row.ex, row) ? row : catalogItem(exId);
+}
 /* 記録を始めた時点のメニューを、その日の分として保存する */
 function fixPlan(s){
   if(s.plan && s.plan.length) return;

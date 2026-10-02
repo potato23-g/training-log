@@ -16,13 +16,6 @@
   padding:0 4px;margin-left:6px;vertical-align:1px;color:var(--ink-2);font-weight:600}
 .picklist .pktag.plan{color:var(--done);border-color:var(--done)}
 .picklist .pktag.warn{color:var(--muscle);border-color:var(--muscle)}
-.pickvariants{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px 4px}
-/* .picklist button{...} が基本スタイルにあり、.pickvariant 単体（クラス1つ）より強いので、
-   .picklist を付けて上書きする（.pktag と同じ理由） */
-.picklist .pickvariant{min-height:44px;display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;
-  background:var(--panel-2);border:1px solid var(--rule);border-radius:8px;padding:5px 12px;
-  font-size:12.5px;font-weight:600;color:var(--ink-2);text-align:left;max-width:100%}
-.pickvariant span{display:block;font-weight:400;font-size:11px;color:var(--ink-3);margin-top:1px}
 
 /* ---- からだ: 部位ごとの横棒（U8） ---- */
 .mbars{display:flex;flex-direction:column;gap:1px;margin-top:6px}

@@ -1,7 +1,7 @@
 /* ---------- 履歴 ---------- */
 function viewHist(){
   const dates = sortedDates().filter(d=> (state.sessions[d].entries||[]).some(e=>e.sets.length));
-  const addDayRow = `<div class="rowbtns"><button data-act="addpastday">記録していない日を足す</button></div>`;
+  const addDayRow = `<div class="rowbtns"><button data-act="addpastday">記録していない日を追加</button></div>`;
   /* 記録がない端末でも、共有の接続とバックアップからの復元はできる（右上の ⚙ の設定のシート） */
   if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、右上の ⚙ の「スマホとPCで記録を共有」か「バックアップから復元」から取り込めます。</div>
     ${addDayRow}`;
@@ -394,9 +394,9 @@ function histUndoDelete(){
   render();
   renderDaySheet(date);
 }
-/* 記録していない日を足す（今日以前の日付だけ選べる） */
+/* 記録していない日を追加（今日以前の日付だけ選べる） */
 function openAddDaySheet(){
-  sheetInner.innerHTML = `<h4>記録していない日を足す</h4>
+  sheetInner.innerHTML = `<h4>記録していない日を追加</h4>
     <p class="lastline" style="margin-top:0">日付を選ぶと、その日の記録シートが開きます。</p>
     <div class="fld"><label>日付</label><input type="date" id="adddate" max="${TODAY}" value="${TODAY}"></div>
     <div class="rowbtns"><button id="haddayGo">この日を開く</button><button id="haddayClose">閉じる</button></div>`;

@@ -62,13 +62,14 @@ function todayAdvice(item, sug){
       text: "ダンベルが登録されていません。今日は飛ばすか、基本のやり方に戻してください。"};
   }
 
-  /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位（自分で足した種目など、メニュー作りを通らずに入ったとき） */
-  const tired = tiredMuscle(id);
-  if(tired){
-    const sore = soreToday().includes(tired), left = recoverDaysLeft(tired);
-    return {level:"recover", warn:true, short: sore ? "筋肉痛" : "回復優先",
-      text: sore ? MUSCLES[tired] + "は今日「筋肉痛の部位」に選んでいます。重さを軽くするか、今日は外してください。"
-                 : MUSCLES[tired] + "はまだ回復の途中です（次にメインで鍛えられるのは" + fmtDate(addDays(TODAY, Math.max(1, left))) + "から）。重さを軽くするか、今日は外してください。"};
+  /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位（自分で足した種目など、メニュー作りを通らずに入ったとき）。
+        種目を選ぶシートの印と同じ exRest() から作る（あと何日かも同じ数になる） */
+  const rest = exRest(id);
+  if(rest){
+    const soreText = rest.sore.length ? rest.sore.map(m => MUSCLES[m]).join("・") + "は今日「筋肉痛の部位」に選んでいます。" : "";
+    const recText = rest.left ? MUSCLES[rest.muscle] + "はまだ回復の途中です（あと" + rest.left + "日。" + recoverFrom(rest.left) + "メインで鍛えられます）。" : "";
+    return {level:"recover", warn:true, short: rest.sore.length ? "筋肉痛" : recoverTag(rest.left),
+      text: soreText + recText + "重さを軽くするか、今日は外してください。"};
   }
 
   /* 3. 前回からの伸ばし方の結果（その日の1セット目の前だけ） */

@@ -74,7 +74,7 @@ function viewToday(){
       ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
       <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
       ${dl && dl.active ? `<p class="sub">軽めの週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
-      ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">回復の途中の部位と、今週の量が足りている部位が多いため、今日は種目を少なめにしています。</p>` : ""}</div>`;
+      ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">${esc(fewItemsText())}</p>` : ""}</div>`;
   }
 
   const undo = undoDel && Date.now() < undoDel.until

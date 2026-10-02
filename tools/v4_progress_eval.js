@@ -390,7 +390,7 @@
   session(TODAY).sore = [soreM]; session(TODAY).soreAt = stampNow();
   planMemo = null; resetProg();
   ok(!primHas(buildPlan(), soreM), "筋肉痛: 筋肉痛と選んだ部位（" + MUSCLES[soreM] + "）が主役の種目が今日のメニューに出る");
-  ok(!!tiredMuscle(before19[0]), "筋肉痛: 種目を選ぶシートで、筋肉痛の部位の種目に印が付かない");
+  ok(!!exRest(before19[0]) && exRest(before19[0]).sore.includes(soreM), "筋肉痛: 種目を選ぶシートで、筋肉痛の部位の種目に印が付かない");
   replanToday();
   const s19 = session(TODAY);
   ok(Array.isArray(s19.plan) && !primHas(s19.plan.filter(p => !p.skip), soreM) && s19.planEdit > 0,

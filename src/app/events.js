@@ -238,8 +238,10 @@ ACTIONS.undodel = ()=>{
   if(typeof syncNow === "function") syncNow();                   /* 同期: 修正したとき */
   render();
 };
-/* 種目を選んで今日のメニューに足す（組み方も選べる）。足した種目は今日のメニューに入り、
-   組み直しても残る（manual）。すでにあって外していたら戻す */
+/* 種目を選んで今日のメニューに追加する。追加した種目は今日のメニューに入り、組み直しても残る（manual）。
+   すでにあって外していたら戻す。やり方（label）を指定しないときは pickRowFor() のやり方
+   （今日のメニューにあればそのまま・前にやった種目ならその続き・初めてなら基本）。
+   指定なしを「基本のやり方」と読むと、種目タブ・からだタブから押しただけで、メニューにあるやり方が基本に戻ってしまう */
 function addToProgramToday(id, label){
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   if(isDoneToday(id)){
@@ -249,8 +251,9 @@ function addToProgramToday(id, label){
     return;
   }
   const s = session(TODAY);
-  const row = (label && catalogRow(id, label)) || catalogItem(id);
   fixPlan(s);
+  const row = Object.assign({}, (label && catalogRow(id, label)) || pickRowFor(id));
+  ["skip", "extra", "seed"].forEach(k => delete row[k]);
   if(!s.plan) s.plan = [];
   const cur = s.plan.find(x => x.ex === id);
   const e = entryFor(TODAY, id, false);
@@ -358,7 +361,7 @@ function addAutoToday(){
   let picked = attempt(false), over = false;
   if(!picked){ picked = attempt(true); over = !!picked; }
   if(!picked){
-    todayMsg = "今日足せる種目がありません。回復を待っている部位ばかりか、今週の量が上限に届いています。それでも足すときは「種目を選んで追加」から選んでください。";
+    todayMsg = "今日追加できる種目がありません。回復の途中の部位ばかりか、今週の量が上限に届いています。それでも追加するときは「種目を選んで追加」から選んでください。";
     render();
     setStatus(shownMsg);
     return;
@@ -369,7 +372,7 @@ function addAutoToday(){
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = picked.ex; editEx = null;
-  todayMsg = "「" + itemName(picked) + "」を足しました（" + EXMAP[picked.ex].p.map(m => MUSCLES[m]).join("・") + "の今週の量が足りていません）"
+  todayMsg = "「" + itemName(picked) + "」を追加しました（" + EXMAP[picked.ex].p.map(m => MUSCLES[m]).join("・") + "の今週の量が足りていません）"
     + (over ? "。1回の目安（" + SESSION_MAX.exercises + "種目・" + SESSION_MAX.sets + "セット・" + SESSION_MAX.minutes + "分）は超えます" : "");
   render();
   /* 足した種目は一覧の最後に付くので、その位置まで動かして見えるようにする */

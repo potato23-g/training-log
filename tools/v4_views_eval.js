@@ -34,6 +34,7 @@ setTimeout(async () => {
     mkSet(keyDaysAgo(3), "goblet", 8, { w: 12, label: "ゴブレットスクワット（一番下で3秒止める）" });
     mkSet(keyDaysAgo(3), "plank", 30);
     mkSet(keyDaysAgo(2), "plank", 45);
+    mkSet(keyDaysAgo(3), "lateral", 15, { w: 5, label: "サイドレイズ（上で2秒止める）" });   /* 3日前: サイドレイズを「上で2秒止める」で */
     mkSet(keyDaysAgo(1), "row", 12, { w: 10 });                     /* 昨日: row 1セットだけ（動きの印のみ） */
     mkSet(keyDaysAgo(1), "hipthrust", 15, { w: 10 });               /* 昨日: hipthrust 3セット（回復中の印も） */
     mkSet(keyDaysAgo(1), "hipthrust", 15, { w: 10 });
@@ -57,17 +58,50 @@ setTimeout(async () => {
     r.picker.rowHasWarnTag = !!rowBtn && rowBtn.innerHTML.indexOf("pktag warn") >= 0;      /* 期待 false（1セットだけなので回復中ではない） */
     r.picker.hipHasWarnTag = !!hipBtn && hipBtn.innerHTML.indexOf("pktag warn") >= 0;      /* 期待 true（3セット） */
 
-    const variantBtn = qs('.pickvariant[data-pick="goblet"]', sheetInner);
-    r.picker.variantFound = !!variantBtn;
-    r.picker.variantLabel = variantBtn ? variantBtn.dataset.label : "";
-    if (variantBtn) variantBtn.click();
-    r.picker.afterVariantClick = {
+    /* 回復の途中の種目には「あと何日」も出す。種目カードの印も同じ数（どちらも exRest から作る）。
+       大殿筋は中3日で、昨日3セットやったので、あと3日 */
+    r.picker.hipTagHasDays = !!hipBtn && /回復中・あと3日/.test(hipBtn.textContent);
+    r.picker.hipAdviceSameDays = ((todayAdvice(catalogItem("hipthrust")) || {}).short || "") === "回復中・あと3日";
+
+    /* やり方の小さいボタン（オプション）は出さない。種目を押すと前回のやり方の続きが入り、
+       シートの名前もその入るやり方になっている（2026-10-02 本人の要望） */
+    r.picker.noVariantButtons = qsa(".pickvariant", sheetInner).length === 0;
+    const latBtn = qs('.pickmain[data-pick="lateral"]', sheetInner);
+    r.picker.latShowsVariant = !!latBtn && latBtn.textContent.indexOf("サイドレイズ（上で2秒止める）") >= 0;
+    if (latBtn) latBtn.click();
+    r.picker.afterPick = {
       sheetClosed: !sheet.classList.contains("on"),
       tabIsToday: tab === "today",
-      openExIsGoblet: openEx === "goblet",
-      /* 記録の箱はセットを記録したときに作られる。選んだ時点では今日のメニューに組み方ごと入るだけ */
-      planHasVariant: (session(TODAY).plan || []).some(x => x.ex === "goblet" && (x.label || "") === r.picker.variantLabel && x.manual)
+      openExIsLateral: openEx === "lateral",
+      /* 記録の箱はセットを記録したときに作られる。選んだ時点では今日のメニューにやり方ごと入るだけ */
+      planHasVariant: (session(TODAY).plan || []).some(x => x.ex === "lateral" && (x.label || "") === "サイドレイズ（上で2秒止める）" && x.manual)
     };
+
+    /* 「今日のメニューにある」の表示が、種目を選ぶシート・からだタブ・種目タブで同じになる
+       （2026-10-02: 外した種目が、シートでは「今日のメニューにある」と出ていた） */
+    const menuDisagree = () => {
+      openPicker();
+      const act = new Set(activeItems().map(it => it.ex)), skp = new Set(todayItems().filter(it => it.skip).map(it => it.ex));
+      const out = [];
+      EX.forEach(e => {
+        const b = qs('.pickmain[data-pick="' + e.id + '"]', sheetInner), html = b ? b.innerHTML : "";
+        const pickIn = html.indexOf("今日のメニューにある") >= 0, pickSkip = html.indexOf("今日は外した") >= 0;
+        const bodyIn = exByRow(e).indexOf("今日のメニューにある") >= 0;
+        if(pickIn !== act.has(e.id) || pickSkip !== skp.has(e.id) || bodyIn !== act.has(e.id)) out.push(e.id);
+      });
+      sheet.classList.remove("on");
+      return out;
+    };
+    r.menu = { activeDisagree: menuDisagree() };
+    ACTIONS.skip({dataset: {ex: "goblet"}});
+    r.menu.gobletSkipped = todayItems().some(it => it.ex === "goblet" && it.skip);
+    r.menu.skippedDisagree = menuDisagree();
+    refEx = "goblet";
+    r.menu.exTabSaysRestore = viewEx().indexOf("今日のメニューに戻す") >= 0;
+    ACTIONS.unskip({dataset: {ex: "goblet"}});
+    r.menu.exTabSaysOpen = viewEx().indexOf("今日のメニューで開く") >= 0;
+    refEx = "calf";
+    r.menu.exTabSaysAdd = viewEx().indexOf("今日のメニューに追加") >= 0;
 
     openPicker();
     qs('[data-close="1"]', sheetInner).click();
@@ -371,11 +405,20 @@ setTimeout(async () => {
     check("picker.rowHasYesterdayTag", r.picker.rowHasYesterdayTag);
     check("picker.rowHasWarnTag===false", r.picker.rowHasWarnTag === false);
     check("picker.hipHasWarnTag", r.picker.hipHasWarnTag);
-    check("picker.variantFound", r.picker.variantFound);
-    check("picker.afterVariantClick.sheetClosed", r.picker.afterVariantClick.sheetClosed);
-    check("picker.afterVariantClick.tabIsToday", r.picker.afterVariantClick.tabIsToday);
-    check("picker.afterVariantClick.openExIsGoblet", r.picker.afterVariantClick.openExIsGoblet);
-    check("picker.afterVariantClick.planHasVariant", r.picker.afterVariantClick.planHasVariant);
+    check("picker.hipTagHasDays", r.picker.hipTagHasDays);
+    check("picker.hipAdviceSameDays", r.picker.hipAdviceSameDays);
+    check("picker.noVariantButtons", r.picker.noVariantButtons);
+    check("picker.latShowsVariant", r.picker.latShowsVariant);
+    check("picker.afterPick.sheetClosed", r.picker.afterPick.sheetClosed);
+    check("picker.afterPick.tabIsToday", r.picker.afterPick.tabIsToday);
+    check("picker.afterPick.openExIsLateral", r.picker.afterPick.openExIsLateral);
+    check("picker.afterPick.planHasVariant", r.picker.afterPick.planHasVariant);
+    check("menu.activeDisagree", r.menu.activeDisagree.length === 0);
+    check("menu.gobletSkipped", r.menu.gobletSkipped);
+    check("menu.skippedDisagree", r.menu.skippedDisagree.length === 0);
+    check("menu.exTabSaysRestore", r.menu.exTabSaysRestore);
+    check("menu.exTabSaysOpen", r.menu.exTabSaysOpen);
+    check("menu.exTabSaysAdd", r.menu.exTabSaysAdd);
     check("picker.closeBtnWorks", r.picker.closeBtnWorks);
     check("picker.escWorks", r.picker.escWorks);
     check("body.count===expectedCount", r.body.count === r.body.expectedCount);

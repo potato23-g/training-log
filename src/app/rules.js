@@ -150,9 +150,30 @@ function stepItem(item, dir){
                     || ((b.ex === item.ex) - (a.ex === item.ex)));
   return cands.length ? cands[0] : null;
 }
-/* 回復の途中か、今日筋肉痛と選んだ主働筋（なければ null）。種目を選ぶシートの印と「今日の調整」の回復優先で使う
-   （メニュー作りと同じ決まり） */
-function tiredMuscle(exId){
-  const ex = EXMAP[exId], sore = soreToday();
-  return ex.p.find(m => sore.includes(m)) || ex.p.find(recovering) || null;
+/* その種目の主働筋のうち、今日メインで鍛えないほうがよい部位の様子（どれも無ければ null。メニュー作りと同じ決まり）。
+   種目を選ぶシートの印と、種目カードの「今日の調整」で同じものを使う（画面ごとに言うことが食い違わないように）。
+   sore: 今日「筋肉痛の部位」に選んだ主働筋
+   left: 回復まであと何日か。主働筋のうち一番長いもの（メニュー作りは主働筋が全部回復するまでその種目を出さないので、
+         最初に見つかった部位ではなく一番長い部位で数える）。muscle はその部位 */
+function exRest(exId){
+  const ex = EXMAP[exId], picked = soreToday();
+  const sore = ex.p.filter(m => picked.includes(m));
+  let muscle = null, left = 0;
+  ex.p.forEach(m => { const d = recoverDaysLeft(m); if(d > left){ left = d; muscle = m; } });
+  return sore.length || left ? {sore, muscle, left} : null;
+}
+/* 「回復中・あと2日」（印に使う短い書き方） */
+function recoverTag(left){ return "回復中・あと" + left + "日"; }
+/* 「明日から」「10月4日(日)から」（left 日後からメインで鍛えられる） */
+function recoverFrom(left){ return left === 1 ? "明日から" : fmtDate(addDays(TODAY, left)) + "から"; }
+/* 回復の途中の部位（体の中で大きい部位から）。[{m, left}]。only があれば、その部位の中だけ */
+function recoveringList(only){
+  return Object.keys(MUSCLES).filter(m => !only || only.includes(m))
+    .map(m => ({m, left: recoverDaysLeft(m)})).filter(x => x.left > 0)
+    .sort((a, b) => (PRIORITY[b.m] || 0) - (PRIORITY[a.m] || 0));
+}
+/* 「大腿四頭筋・大殿筋はあと2日、胸はあと1日」 */
+function recoverDaysText(list){
+  const days = Array.from(new Set(list.map(x => x.left))).sort((a, b) => b - a);
+  return days.map(d => list.filter(x => x.left === d).map(x => MUSCLES[x.m]).join("・") + "はあと" + d + "日").join("、");
 }
