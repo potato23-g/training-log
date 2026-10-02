@@ -330,7 +330,33 @@ function figThemeChanged(){
   if(FIG) FIG.setTheme(figDark() ? "dark" : "light");
 }
 
+/* ---------- 押している最中は描き直さない ----------
+   ボタンを押してから離すまでのあいだに画面を描き直すと、押したボタンが別の要素に入れ替わり、click が届かない
+   （「記録」を押したのに入らないことがある、の原因だった: 2026-10-02）。描き直しは利用者の操作と関係なく走ることがある:
+   同期が終わった／入力欄からフォーカスが外れて、待たせていた同期の描き直しが動いた（ボタンを押した瞬間に起きる）／
+   取り消しの帯が消える時刻になった、など。押しているあいだに来た描き直しは覚えておき、click の処理が済んでから行う。
+   click の中で呼ばれた render() は、その場で描く。入力欄・選択欄を押したときは見張らない（そこから click は起きない） */
+let pressHeld = false, renderWaiting = false, pressTimer = null;
+function pressDone(){
+  pressHeld = false;
+  if(pressTimer){ clearTimeout(pressTimer); pressTimer = null; }
+  if(renderWaiting){ renderWaiting = false; render(); }
+}
+function pressWatch(ms){
+  if(pressTimer) clearTimeout(pressTimer);
+  pressTimer = setTimeout(pressDone, ms);
+}
+document.addEventListener("pointerdown", e => {
+  const t = e.target;
+  if(t && t.closest && t.closest("input, select, textarea")) return;
+  pressHeld = true; pressWatch(5000);          /* 離した合図が来なくても、5秒で見張りを解く */
+}, true);
+document.addEventListener("pointerup", () => { if(pressHeld) pressWatch(400); }, true);     /* click が来なければ 0.4 秒後に解く */
+document.addEventListener("pointercancel", () => { if(pressHeld) pressWatch(0); }, true);
+document.addEventListener("click", () => { pressHeld = false; pressWatch(0); }, true);      /* ボタンの処理より先に解く */
+
 function render(){
+  if(pressHeld){ renderWaiting = true; return; }
   const resumeId = playingId;                /* 再生中の動きがあれば、描き直した後に再開する（C7） */
   if(draftDay === TODAY) captureDrafts();     /* 描き直す前に、今の入力欄・メモの値を拾っておく（C7） */
   suppressDraftCapture = null;                /* 一回限りの印は、使うか使わないかに関わらずここで戻す */

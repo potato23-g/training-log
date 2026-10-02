@@ -482,6 +482,33 @@ def main():
     run_bun("content_check.js", "content_check.js", judge_trailing_count("合わない項目"))
 
     print("\n== 通しの検査（別プロセス） ==")
+    # 本物のマウス操作で「記録」を押す（押している最中の描き直しで click が消えないか・続けて押せるか）
+    try:
+        p = run_watched([PY, os.path.join(TOOLS, "v6_press_e2e.py")], 150, cwd=TOOLS)
+        m = re.search(r"(\d+) passed, (\d+) failed", p.stdout)
+        if m:
+            ok, detail = (m.group(2) == "0"), m.group(0)
+        else:
+            ok, detail = False, "終了コード %d\n%s" % (p.returncode, (p.stdout[-800:] + p.stderr[-800:]))
+        report("v6_press_e2e.py", ok, detail)
+    except Exception as e:
+        report("v6_press_e2e.py", False, "実行できない: " + str(e))
+    finally:
+        _free_port(9481)
+    # 画面に戻ったときの同期・古いメニューのまま記録したとき（偽GitHub を自分で立てる。本物の GitHub には触れない）
+    try:
+        p = run_watched([PY, os.path.join(TOOLS, "v6_sync_return_e2e.py")], 200, cwd=TOOLS)
+        m = re.search(r"(\d+) passed, (\d+) failed", p.stdout)
+        if m:
+            ok, detail = (m.group(2) == "0"), m.group(0)
+        else:
+            ok, detail = False, "終了コード %d\n%s" % (p.returncode, (p.stdout[-800:] + p.stderr[-800:]))
+        report("v6_sync_return_e2e.py", ok, detail)
+    except Exception as e:
+        report("v6_sync_return_e2e.py", False, "実行できない: " + str(e))
+    finally:
+        _free_port(8851)
+        _free_port(9482)
     # v4_update_e2e.py は内部で `build.py site` を呼び、docs/ を書き換える。前後で控えて書き戻す
     docs_snap = _snapshot_docs()
     try:

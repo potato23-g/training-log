@@ -54,7 +54,9 @@ setTimeout(async () => {
     const rowBtn = qs('.pickmain[data-pick="row"]', sheetInner);
     const hipBtn = qs('.pickmain[data-pick="hipthrust"]', sheetInner);
     r.picker.gobletHasPlanTag = !!gobletBtn && gobletBtn.innerHTML.indexOf("pktag plan") >= 0;
+    /* 昨日1セットだけの動きには「昨日やった動き」を付けない（少しやっただけ: 2026-10-02）。3セットやった動きには付く */
     r.picker.rowHasYesterdayTag = !!rowBtn && rowBtn.innerHTML.indexOf("昨日やった動き") >= 0;
+    r.picker.hipHasYesterdayTag = !!hipBtn && hipBtn.innerHTML.indexOf("昨日やった動き") >= 0;
     r.picker.rowHasWarnTag = !!rowBtn && rowBtn.innerHTML.indexOf("pktag warn") >= 0;      /* 期待 false（1セットだけなので回復中ではない） */
     r.picker.hipHasWarnTag = !!hipBtn && hipBtn.innerHTML.indexOf("pktag warn") >= 0;      /* 期待 true（3セット） */
 
@@ -402,7 +404,8 @@ setTimeout(async () => {
     check("picker.headingCount>0", r.picker.headingCount > 0);
     check("picker.hasSquatHead", r.picker.hasSquatHead);
     check("picker.gobletHasPlanTag", r.picker.gobletHasPlanTag);
-    check("picker.rowHasYesterdayTag", r.picker.rowHasYesterdayTag);
+    check("picker.rowHasYesterdayTag===false", r.picker.rowHasYesterdayTag === false);
+    check("picker.hipHasYesterdayTag", r.picker.hipHasYesterdayTag);
     check("picker.rowHasWarnTag===false", r.picker.rowHasWarnTag === false);
     check("picker.hipHasWarnTag", r.picker.hipHasWarnTag);
     check("picker.hipTagHasDays", r.picker.hipTagHasDays);

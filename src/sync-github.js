@@ -39,7 +39,16 @@ var SYNC_MONTH_FILE_RE = /^(\d{4}-\d{2})\.json$/;
 var SYNC_DEL_PRUNE_DAYS = 180;
 
 /* メモ・ダンベル設定の変更から同期までの待ち時間（入力中に何度も送らないため）。テストから縮めて使う */
-var SYNC_TUNE = { debounce: 4000 };
+var SYNC_TUNE = {
+  debounce: 4000,
+  /* 画面に戻ったときの同期: 前の同期が終わってからこの時間は何もしない（戻った合図は続けて何度か来るので、通信は1回にする。
+     長くすると、PC で変えた直後にスマホを見たときなどに古いままになる） */
+  returnGap: 5000,
+  /* 開いたまま置いてあった画面を触ったときの同期: 前の同期からこの時間たっていたら行う（画面が出たままの PC 向け） */
+  idleGap: 60000,
+  /* 1回の通信を待つ長さ。これを過ぎたら打ち切って、通信できなかった扱いにする */
+  fetchTimeout: 20000
+};
 
 var syncStatusText = "";
 var syncRunning = false;
@@ -47,6 +56,7 @@ var syncRerunRequested = false;
 var syncDebounceTimer = null;
 var syncRenderPending = false;
 var syncBlocked = "";
+var syncLastEndAt = 0;          /* 最後に同期が終わった時刻（この画面を開いてから） */
 
 /* ============================================================
    設定の保存（localStorage["trainlog.sync.v1"] = {repo, token}）
@@ -251,7 +261,9 @@ function syncMergeSession(a, b){
       var xi = String(x.id), yi = String(y.id);
       return xi < yi ? -1 : (xi > yi ? 1 : 0);
     });
-    if(sets.length > 0 || ea) entries.push({ ex: ex, sets: sets });
+    /* セットが1つも無い箱は残さない。以前は local(a) 側にあるときだけ残していたので、合流の結果が
+       端末によって違い（片方は残す・片方は落とす）、同期のたびに送り合っていた */
+    if(sets.length > 0) entries.push({ ex: ex, sets: sets });
   });
   entries.sort(function(x, y){
     var ax = x.sets.length ? (x.sets[0].at === undefined ? 0 : x.sets[0].at) : Infinity;
@@ -260,8 +272,10 @@ function syncMergeSession(a, b){
     return x.ex < y.ex ? -1 : (x.ex > y.ex ? 1 : 0);
   });
 
+  /* 同点のときは中身で決める（local かどうかで決めると、端末によって結果が違ってしまう） */
+  var tie = function(field){ return (stableKey(b[field]) || "") > (stableKey(a[field]) || "") ? b : a; };
   var noteAtA = a.noteAt || 0, noteAtB = b.noteAt || 0;
-  var noteWinner = noteAtB > noteAtA ? b : a;
+  var noteWinner = noteAtB > noteAtA ? b : (noteAtA > noteAtB ? a : tie("note"));
 
   /* 今日のメニュー: 利用者が意図して変えた（組み直し・追加・外すなど。planEdit）メニューがあれば、
      最後に変えた方を残す。どちらも自動で決めただけなら、先に決めた方を残す（B16。2台が別々に
@@ -272,11 +286,11 @@ function syncMergeSession(a, b){
   if(hasPlanA && hasPlanB){
     var editA = a.planEdit || 0, editB = b.planEdit || 0;
     if(editA || editB){
-      planWinner = editB > editA ? b : a;
+      planWinner = editB > editA ? b : (editA > editB ? a : tie("plan"));
     }else{
       var planAtA = a.planAt === undefined ? Infinity : a.planAt;
       var planAtB = b.planAt === undefined ? Infinity : b.planAt;
-      planWinner = planAtB < planAtA ? b : a;
+      planWinner = planAtB < planAtA ? b : (planAtA < planAtB ? a : tie("plan"));
     }
   }else if(hasPlanA){ planWinner = a; }
   else if(hasPlanB){ planWinner = b; }
@@ -286,13 +300,31 @@ function syncMergeSession(a, b){
   if(a.note !== undefined || b.note !== undefined) merged.note = noteWinner.note;
   if(noteWinner.noteAt !== undefined) merged.noteAt = noteWinner.noteAt;
   if(planWinner){
-    merged.plan = planWinner.plan;
+    /* 記録のある種目は、残したメニューに必ず入れる。別の端末が古いメニューのまま記録したとき
+       （画面を開いたままだった・通信できないところで記録した、など）、その種目は残したメニューに無い。
+       記録は消さないので、メニューの末尾に足して「メニューに無い記録」を作らない（2026-10-02 本人の指摘）。
+       足す行は種目と、記録したときのやり方だけ（どちらのメニューが負けたかに左右されない形にする）。
+       記録があるのに「外した」印が付いている行は、印を取る。どちらのメニューを残すかは変えない */
+    var plan = (planWinner.plan || []).slice(), at = {};
+    plan.forEach(function(x, i){ if(x && x.ex !== undefined && at[x.ex] === undefined) at[x.ex] = i; });
+    entries.forEach(function(e){
+      var i = at[e.ex];
+      if(i !== undefined){
+        if(plan[i].skip){ var row = syncCloneDeep(plan[i]); delete row.skip; plan[i] = row; }
+        return;
+      }
+      var add = { ex: e.ex }, lab = e.sets[e.sets.length - 1].label;
+      if(typeof lab === "string" && lab) add.label = lab;
+      at[e.ex] = plan.length;
+      plan.push(add);
+    });
+    merged.plan = plan;
     if(planWinner.planAt !== undefined) merged.planAt = planWinner.planAt;
     if(planWinner.planEdit !== undefined) merged.planEdit = planWinner.planEdit;
   }
   /* その日「筋肉痛」と選んだ部位: 後から選んだ方（soreAt）。空にした（全部外した）ことも伝える */
   if(a.sore !== undefined || b.sore !== undefined){
-    var soreWinner = (b.soreAt || 0) > (a.soreAt || 0) ? b : a;
+    var soreWinner = (b.soreAt || 0) > (a.soreAt || 0) ? b : ((a.soreAt || 0) > (b.soreAt || 0) ? a : tie("sore"));
     if(soreWinner.sore === undefined) soreWinner = soreWinner === a ? b : a;
     merged.sore = soreWinner.sore;
     if(soreWinner.soreAt !== undefined) merged.soreAt = soreWinner.soreAt;
@@ -306,13 +338,14 @@ function syncMergeSession(a, b){
 }
 
 /* gear は丸ごと勝ち負け（中身の形は問わない。updatedAt だけ見る）。
-   両者とも updatedAt が無い/同じなら local(a) を残す。 */
+   両者とも updatedAt が無い/同じなら、中身で決める（local かどうかで決めると、端末によって結果が違ってしまう）。 */
 function syncMergeGear(a, b){
   var atA = (a && a.updatedAt) || 0;
   var atB = (b && b.updatedAt) || 0;
   if(atB > atA) return b;
-  if(a) return a;
-  return b;
+  if(atA > atB || !b) return a;
+  if(!a) return b;
+  return (stableKey(b) || "") > (stableKey(a) || "") ? b : a;
 }
 
 /* ============================================================
@@ -370,10 +403,27 @@ function syncHeaders(token, extra){
   return h;
 }
 
+/* 時間切れ付きの fetch。通信が返ってこないまま止まると（電波の切り替わり・画面を閉じている間など）、
+   同期が「実行中」のまま終わらず、そのあとの同期も始まらなくなる。SYNC_TUNE.fetchTimeout で打ち切り、
+   通信できなかった扱いにして、次の機会にまた同期できるようにする */
+function syncFetch(url, opts){
+  var o = opts || {}, ctl = null, timer = null;
+  try{
+    if(typeof AbortController === "function"){
+      ctl = new AbortController();
+      o = Object.assign({}, o, { signal: ctl.signal });
+    }
+  }catch(e){ ctl = null; }
+  if(!ctl) return fetch(url, o);
+  timer = setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, SYNC_TUNE.fetchTimeout);
+  return fetch(url, o).then(function(res){ clearTimeout(timer); return res; },
+                            function(err){ clearTimeout(timer); throw err; });
+}
+
 async function syncCheckRepo(repo, token){
   var res;
   try{
-    res = await fetch(syncApiBase() + "/repos/" + repo, { headers: syncHeaders(token), cache: "no-store" });
+    res = await syncFetch(syncApiBase() + "/repos/" + repo, { headers: syncHeaders(token), cache: "no-store" });
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 401) throw syncMakeError("auth");
   if(res.status === 404) throw syncMakeError("repo404");
@@ -390,7 +440,7 @@ async function syncListDir(cfg){
   var url = syncContentsUrl(cfg.repo, SYNC_DIR);
   var res;
   try{
-    res = await fetch(url, { headers: syncHeaders(cfg.token), cache: "no-store" });
+    res = await syncFetch(url, { headers: syncHeaders(cfg.token), cache: "no-store" });
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 404) return [];
   if(res.status === 401) throw syncMakeError("auth");
@@ -407,7 +457,7 @@ async function syncGetFile(cfg, path){
   var url = syncContentsUrl(cfg.repo, path);
   var res;
   try{
-    res = await fetch(url, { headers: syncHeaders(cfg.token), cache: "no-store" });
+    res = await syncFetch(url, { headers: syncHeaders(cfg.token), cache: "no-store" });
   }catch(e){ throw syncMakeError("network", e); }
   if(res.status === 404) return { parsed: null, sha: null };
   if(res.status === 401) throw syncMakeError("auth");
@@ -420,7 +470,7 @@ async function syncGetFile(cfg, path){
   if(!data.content || data.encoding === "none"){
     var raw;
     try{
-      raw = await fetch(url, { headers: syncHeaders(cfg.token, { "Accept": "application/vnd.github.raw+json" }), cache: "no-store" });
+      raw = await syncFetch(url, { headers: syncHeaders(cfg.token, { "Accept": "application/vnd.github.raw+json" }), cache: "no-store" });
     }catch(e){ throw syncMakeError("network", e); }
     if(!raw.ok) throw syncMakeError("network");
     text = await raw.text();
@@ -474,7 +524,7 @@ async function syncPushFile(cfg, path, payloadObj, sha){
   var res;
   var sentAt = Date.now();
   try{
-    res = await fetch(url, {
+    res = await syncFetch(url, {
       method: "PUT",
       headers: syncHeaders(cfg.token, { "Content-Type": "application/json" }),
       cache: "no-store",
@@ -507,15 +557,15 @@ function syncUpdateStatusEl(text){
 }
 
 /* 編集中の入力を巻き戻さないための安全な再描画。
-   #view 内の INPUT/TEXTAREA/SELECT にフォーカスがあれば、focusout まで待つ。 */
+   INPUT/TEXTAREA/SELECT にフォーカスがあれば、focusout まで待つ。画面（#view）の中だけでなく、
+   設定のシートの入力欄（リポジトリ名・鍵・ダンベル）も見る（描き直すと設定のシートも作り直すため）。
+   focusout のあとの render() は、ボタンを押している最中なら画面側（viewbase.js）が click のあとまで待たせる */
 function syncIsEditableFocus(){
   try{
     var el = document.activeElement;
     if(!el) return false;
     var tag = (el.tagName || "").toUpperCase();
-    if(tag !== "INPUT" && tag !== "TEXTAREA" && tag !== "SELECT") return false;
-    var view = document.getElementById("view");
-    return !!(view && view.contains && view.contains(el));
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
   }catch(e){ return false; }
 }
 function syncSafeRender(){
@@ -523,17 +573,12 @@ function syncSafeRender(){
     if(!syncRenderPending){
       syncRenderPending = true;
       try{
-        var view = document.getElementById("view");
-        if(view && view.addEventListener){
-          var handler = function(){
-            view.removeEventListener("focusout", handler);
-            syncRenderPending = false;
-            render();
-          };
-          view.addEventListener("focusout", handler);
-        }else{
+        var handler = function(){
+          document.removeEventListener("focusout", handler, true);
           syncRenderPending = false;
-        }
+          render();
+        };
+        document.addEventListener("focusout", handler, true);
       }catch(e){ syncRenderPending = false; }
     }
     return;
@@ -686,6 +731,8 @@ async function syncMaybeMigrate(cfg, listing, meta){
 
 async function syncAttempt(cfg){
   var meta = syncLoadMeta(cfg);
+  /* 今日のメニューを覚えておき、取り込んだあとで変わっていたら画面側に知らせる（planner.js の todayMenuKey / todayMenuSynced） */
+  var menuBefore = typeof todayMenuKey === "function" ? todayMenuKey() : null;
   var listing = await syncListDir(cfg);
 
   /* 判定は syncMaybeMigrate を呼ぶ前に確定させる。syncMaybeMigrate は meta.migrated を書き換えない
@@ -705,6 +752,7 @@ async function syncAttempt(cfg){
     /* 途中のファイルで失敗しても、それまでに取り込んだ分は画面に出す（保存は syncPart 内で済んでいる） */
     if(anyLocalChange){
       saveLocal();
+      if(menuBefore !== null && typeof todayMenuSynced === "function"){ try{ todayMenuSynced(menuBefore); }catch(e){} }
       syncSafeRender();
     }
   }
@@ -756,6 +804,7 @@ async function syncNow(){
     await syncRunOnce(cfg);
   }finally{
     syncRunning = false;
+    syncLastEndAt = Date.now();
     if(syncRerunRequested){
       syncRerunRequested = false;
       syncNow();
@@ -783,15 +832,29 @@ function syncFlushPending(){
   }
 }
 
-/* 同期するのは次のときだけ（本人の指定）:
-     起動したとき（ここ）/ セットを記録・修正で消したとき（画面側から syncNow）/
+/* 画面に戻ったとき（ほかのアプリやタブから戻った・端末のロックを解いた）の同期。
+   スマホのアプリは開いたままになるので、起動したときの同期だけだと、ほかの端末で変えたメニューや記録が入らず、
+   古いメニューのまま記録してしまう（2026-10-02 本人の指摘。スマホ→PC・PC→スマホのどちらでも起きる）。
+   前の同期が終わってから gap のあいだは何もしない */
+function syncOnReturn(gap){
+  try{ if(document.hidden) return; }catch(e){}
+  if(Date.now() - syncLastEndAt < (gap === undefined ? SYNC_TUNE.returnGap : gap)) return;
+  syncNow();
+}
+
+/* 同期するとき:
+     起動したとき（ここ）/ 画面に戻ったとき・長く置いた画面を最初に触ったとき（syncOnReturn。2026-10-02 に追加）/
+     セットを記録・修正で消したとき、メニューを変えたとき（画面側から syncNow）/
      メモ・ダンベル設定を変えたとき（画面側から syncSchedule）。
    画面を離れるときは、入力待ちの同期が残っていれば取りこぼさないようその場で送る。 */
 async function syncInit(){
   try{
-    document.addEventListener("visibilitychange", function(){ if(document.hidden) syncFlushPending(); });
+    document.addEventListener("visibilitychange", function(){ if(document.hidden) syncFlushPending(); else syncOnReturn(); });
   }catch(e){}
   try{ window.addEventListener("pagehide", function(){ syncFlushPending(); }); }catch(e){}
+  try{ window.addEventListener("pageshow", function(ev){ if(ev && ev.persisted) syncOnReturn(); }); }catch(e){}
+  try{ window.addEventListener("focus", function(){ syncOnReturn(); }); }catch(e){}
+  try{ document.addEventListener("pointerdown", function(){ syncOnReturn(SYNC_TUNE.idleGap); }, true); }catch(e){}
   var cfg = syncLoadConfig();
   if(!cfg) return;
   /* 起動したときに、リポジトリがまだ非公開かを確かめる。公開になっていたら、この起動のあいだは同期しない */
@@ -872,7 +935,7 @@ function syncEsc(s){
 
 /* GitHub の作成画面を、名前・公開範囲・権限を入れた状態で開くリンク（GitHub公式のURLパラメータ） */
 var SYNC_REPO_NAME = "training-log-data";
-var SYNC_WHEN = "同期するのは、アプリを開いたとき、セットを記録・修正したとき、メモやダンベルの登録を変えたときです。";
+var SYNC_WHEN = "同期するのは、アプリを開いたとき・画面に戻ったとき、セットを記録・修正したとき、メニューやメモ、ダンベルの登録を変えたときです。";
 function syncNewRepoUrl(){
   return "https://github.com/new?name=" + SYNC_REPO_NAME + "&visibility=private";
 }

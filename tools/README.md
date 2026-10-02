@@ -38,8 +38,8 @@ v4_update_e2e.py が固定で使う 8871/9479番ポートも念のため空け�
 | `v3_fig_eval.js`＊ | 図のダンベル本数が実際に使う本数と合っているか | `__result.mismatch` が空 |
 | `v3_logic_eval.js` | 今日のメニュー決定・部位の負荷上限・持っているダンベルで作れない重さの案内がないか | `dupPatterns`/`recoverOnPlan`/`recoverViolations`/`dayCapViolations`/`sessionCapViolations`/`weekCapViolations`/`unowned`/`optionErrors`/`sweep` が全て空。記録やダンベルを入れ替えるたびに `planMemo` と `progMemo`（`resetProg()`）を空にする（空にしないと前の場面の結果が返り、作れない重さの誤検出が出る） |
 | `v3_newex_eval.js`＊ | 追加した種目に図・解説・持ち方・日用品案内・カタログ登録が揃っているか | `missing`/`noFigure`/`noDetail`/`noHold`/`noHouse`/`noMotion`/`noPattern`/`notInCatalog`/`badLevel`/`exWithoutLevel` が全て空 |
-| `v3_partial_eval.js` | 途中までの日も「手を付けた」扱いになり、翌日は別の動きになるか | `repeatedNextDay`/`dupPatterns`/`recoverOnPlan`/`emptyDays` が全て空 |
-| `v3_stable_eval.js` | 種目の選び方が気分で入れ替わらないか（軽すぎ→難しく、限界続き→やさしく、据え置き） | `settled8`/`settled6`/`settled96`/`harderWhenEasy`/`easierWhenHard`/`sameTwice` が全て true |
+| `v3_partial_eval.js` | 3セットやった動きは翌日出ない・1〜2セットだけの動きは「昨日やった動き」に数えない（2026-10-02） | `repeatedNextDay`/`dupPatterns`/`recoverOnPlan`/`emptyDays` が全て空 |
+| `v3_stable_eval.js` | 種目の選び方が気分で入れ替わらないか・目標に届き続けると届かないときより上の段階にいるか・セット数は3 | `settledSteady`/`hitAboveMiss`/`hitNeverBelowMiss`/`sameTwice`/`allThreeSets` が全て true |
 | `v3_swap_add_eval.js`＊ | 段の持ち替え・おまかせ追加・種目を選んで追加 | `afterSwap.swappedIn`/`.oldGone`/`.samePattern`・`noSwapAfterRecord`・`pickerHasShrug` が true、`auto.dupPattern`/`repeated.dupPattern` が false |
 | `v3_ui_fix_eval.js`＊ | 規定セット後のロック→修正→削除→再記録の流れ | 実行が完了すること（目視用の詳細値も `__result` に出る） |
 | `v3_variant_eval.js` | 楽/大変の組み方候補・段の広がり・セット間のダンベル増減提案 | 実行が完了すること（値は目視で確認） |
@@ -72,6 +72,8 @@ v4_update_e2e.py が固定で使う 8871/9479番ポートも念のため空け�
 
 ## 通しの検査（Python、別プロセス）
 
+- `v6_press_e2e.py` — `python tools/v6_press_e2e.py`。本物のマウス操作（CDP の Input.dispatchMouseEvent）で「記録」を押す。押している最中の描き直しで click が消えないか・同じ場所を続けて押せるか・二重押しは1回だけか・設定のシートの入力が同期の描き直しで消えないか。JS から `el.click()` を呼ぶ検査では見つけられない不具合のため（2026-10-02）
+- `v6_sync_return_e2e.py` — `python tools/v6_sync_return_e2e.py`。偽GitHub（`mock_github.py`）を自分で立て、`v6_sync_return_eval.js` を動かす。画面に戻ったときの同期で、ほかの端末が変えたメニューが記録の前に入るか・古いメニューのまま記録した種目が取り込んだメニューに入るか（メニューに無い記録を作らない）・合流後に送り直さないか
 - `v4_update_e2e.py` — `python tools/v4_update_e2e.py`。`build.py site` を自動実行し（`docs/` が書き換わる）、ヘッドレスEdgeで旧版→新版の切り替え・オフライン起動を確認。終了コード0で合格
 
 ## 作業用の道具（検査ではない）

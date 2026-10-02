@@ -65,6 +65,7 @@ function makeDevice(apiBase){
     btoa: (s) => btoa(s),
     atob: (s) => atob(s),
     crypto,
+    AbortController,
     fetch(){ return fetch.apply(null, arguments); },
     localStorage,
     document: doc,
@@ -108,6 +109,7 @@ function makeTab(apiBase, sharedLS){
     btoa: (s) => btoa(s),
     atob: (s) => atob(s),
     crypto,
+    AbortController,
     fetch(){ return fetch.apply(null, arguments); },
     localStorage,
     document: doc,
@@ -208,8 +210,9 @@ function runUnitTests(){
   {
     const withDel = { sessions: { "2026-01-02": { date: "2026-01-02", entries: [{ ex: "bench", sets: [{ id: "x1", at: 1, w: 20, r: 8, rpe: 8 }] }], del: ["x1"] } } };
     const withoutDel = { sessions: { "2026-01-02": { date: "2026-01-02", entries: [{ ex: "bench", sets: [{ id: "x1", at: 1, w: 20, r: 8, rpe: 8 }] }] } } };
-    ok(M.mergeState(withDel, withoutDel).sessions["2026-01-02"].entries[0].sets.length === 0, "merge: 削除したセットは相手側から復活しない(local側が削除)");
-    ok(M.mergeState(withoutDel, withDel).sessions["2026-01-02"].entries[0].sets.length === 0, "merge: 削除したセットは相手側から復活しない(remote側が削除)");
+    /* セットが無くなった箱そのものも残さない（空の箱を片側だけ残すと、端末ごとに結果が違って送り合う） */
+    ok(M.mergeState(withDel, withoutDel).sessions["2026-01-02"].entries.length === 0, "merge: 削除したセットは相手側から復活しない(local側が削除)");
+    ok(M.mergeState(withoutDel, withDel).sessions["2026-01-02"].entries.length === 0, "merge: 削除したセットは相手側から復活しない(remote側が削除)");
   }
 
   {
@@ -218,7 +221,8 @@ function runUnitTests(){
     const m = M.mergeState(a, b).sessions["2026-01-03"];
     ok(m.note === "B" && m.noteAt === 200, "merge: note は noteAt が大きい方");
     const bTie = { sessions: { "2026-01-03": { date: "2026-01-03", entries: [], note: "B", noteAt: 100 } } };
-    ok(M.mergeState(a, bTie).sessions["2026-01-03"].note === "A", "merge: noteAt 同点なら local(a)");
+    ok(M.mergeState(a, bTie).sessions["2026-01-03"].note === M.mergeState(bTie, a).sessions["2026-01-03"].note,
+       "merge: noteAt 同点のときは、どちらの端末で合流しても同じメモになる");
   }
 
   {
@@ -279,7 +283,58 @@ function runUnitTests(){
     ok(M.mergeState(a, b).sessions["2026-01-06"].entries.length === 0, "merge: remote側だけにある空エントリは落ちる");
     const a2 = { sessions: { "2026-01-06b": { date: "2026-01-06b", entries: [{ ex: "curl", sets: [] }] } } };
     const b2 = { sessions: { "2026-01-06b": { date: "2026-01-06b", entries: [] } } };
-    ok(M.mergeState(a2, b2).sessions["2026-01-06b"].entries.length === 1, "merge: local側にある空エントリは残る");
+    ok(M.mergeState(a2, b2).sessions["2026-01-06b"].entries.length === 0, "merge: local側にある空エントリも落ちる（片側だけ残すと端末ごとに結果が違う）");
+  }
+
+  {
+    /* 記録のある種目は、残したメニューに必ず入る。別の端末が古いメニューのまま記録しても「メニューに無い記録」を作らない
+       （2026-10-02 本人の指摘。スマホ→PC・PC→スマホのどちらでも同じ結果になること） */
+    const d = "2026-01-07";
+    const set = (id, at, label) => ({ id, at, r: 10, w: 5, label: label || "" });
+    const names = s => s.plan.map(x => x.ex).join(",");
+    /* PC: 組み直して d,e,f（planEdit 900）。スマホ: 古いメニュー a,b,c のまま a を1セット記録 */
+    const pc = { sessions: { [d]: { date: d, entries: [], plan: [{ ex: "d" }, { ex: "e" }, { ex: "f" }], planAt: 900, planEdit: 900 } } };
+    const phone = { sessions: { [d]: { date: d, entries: [{ ex: "a", sets: [set("p1", 1000, "A（止める）")] }],
+                                      plan: [{ ex: "a", label: "A（止める）" }, { ex: "b" }, { ex: "c" }], planAt: 100 } } };
+    const m1 = M.mergeState(phone, pc).sessions[d], m2 = M.mergeState(pc, phone).sessions[d];
+    ok(names(m1) === "d,e,f,a", "merge: 古いメニューで記録した種目は、残したメニューの末尾に入る: " + names(m1));
+    ok(m1.plan[3].label === "A（止める）" && m1.planEdit === 900, "merge: 足した行は記録したときのやり方。どちらのメニューを残すかは変えない");
+    ok(M.stableKey(m1) === M.stableKey(m2), "merge: 古いメニューで記録したときの結果は、どちらの端末で合流しても同じ（スマホ→PC）");
+    /* 逆向き: スマホが組み直し、PC が古いメニューのまま記録 */
+    const phone2 = { sessions: { [d]: { date: d, entries: [], plan: [{ ex: "x" }], planAt: 950, planEdit: 950 } } };
+    const pc2 = { sessions: { [d]: { date: d, entries: [{ ex: "y", sets: [set("q1", 1100)] }], plan: [{ ex: "y" }, { ex: "z" }], planAt: 50 } } };
+    const r1 = M.mergeState(pc2, phone2).sessions[d], r2 = M.mergeState(phone2, pc2).sessions[d];
+    ok(names(r1) === "x,y" && M.stableKey(r1) === M.stableKey(r2), "merge: PC が古いメニューで記録した場合も同じ（PC→スマホ）: " + names(r1));
+    /* 合流した結果をもう一度合流しても変わらない（送り合いにならない） */
+    ok(M.stableKey(M.mergeState({ sessions: { [d]: m1 } }, pc).sessions[d]) === M.stableKey(m1)
+       && M.stableKey(M.mergeState(phone, { sessions: { [d]: m1 } }).sessions[d]) === M.stableKey(m1),
+       "merge: 合流した結果を、元のどちらともう一度合流しても変わらない");
+    /* 記録があるのに「外した」印が付いている行は、印を取る */
+    const skipper = { sessions: { [d]: { date: d, entries: [], plan: [{ ex: "a", skip: true }, { ex: "b" }], planAt: 990, planEdit: 990 } } };
+    const ms = M.mergeState(skipper, phone).sessions[d];
+    ok(ms.plan[0].ex === "a" && !ms.plan[0].skip && names(ms) === "a,b", "merge: 記録のある種目に付いていた「外した」印は取る");
+    /* 記録の無いときは、残したメニューをそのまま使う（何も足さない） */
+    const quiet = { sessions: { [d]: { date: d, entries: [], plan: [{ ex: "a" }, { ex: "b" }], planAt: 100 } } };
+    ok(names(M.mergeState(quiet, pc).sessions[d]) === "d,e,f", "merge: 記録が無ければメニューには何も足さない");
+  }
+
+  {
+    /* 合流の結果は、どちらを local と呼ぶかで変わらない（変わると、同期のたびに2台が送り合う） */
+    const d = "2026-01-08";
+    const pairs = [
+      [{ date: d, entries: [{ ex: "curl", sets: [] }], plan: [{ ex: "curl" }], planAt: 5 }, { date: d, entries: [], plan: [{ ex: "curl" }], planAt: 5 }],
+      [{ date: d, entries: [], plan: [{ ex: "a" }], planAt: 7 }, { date: d, entries: [], plan: [{ ex: "b" }], planAt: 7 }],
+      [{ date: d, entries: [], plan: [{ ex: "a" }], planAt: 7, planEdit: 9 }, { date: d, entries: [], plan: [{ ex: "b" }], planAt: 8, planEdit: 9 }],
+      [{ date: d, entries: [], note: "A", noteAt: 3 }, { date: d, entries: [], note: "B", noteAt: 3 }],
+      [{ date: d, entries: [], sore: ["quads"], soreAt: 4 }, { date: d, entries: [], sore: ["chest"], soreAt: 4 }],
+      [{ date: d, entries: [], note: "片方だけ" }, { date: d, entries: [] }]
+    ];
+    const key = (x, y) => M.stableKey(M.mergeState({ sessions: { [d]: x } }, { sessions: { [d]: y } }).sessions[d]);
+    const bad = pairs.filter(([x, y]) => key(x, y) !== key(y, x));
+    ok(bad.length === 0, "merge: 同点・空の箱があっても、どちらの端末で合流しても同じ結果（食い違い " + bad.length + " 件）");
+    ok(M.mergeState({ sessions: { [d]: pairs[5][0] } }, { sessions: { [d]: pairs[5][1] } }).sessions[d].note === "片方だけ", "merge: 片方にしか無いメモは残る");
+    const g1 = { sessions: {}, gear: { items: [{ kg: 5, n: 2 }], updatedAt: 10 } }, g2 = { sessions: {}, gear: { items: [{ kg: 9, n: 1 }], updatedAt: 10 } };
+    ok(M.stableKey(M.mergeState(g1, g2).gear) === M.stableKey(M.mergeState(g2, g1).gear), "merge: gear も同点なら、どちらの端末で合流しても同じ");
   }
 
   {
@@ -976,6 +1031,116 @@ async function testNoResendOnOrderOnly(port){
 /* ============================================================
    実行
    ============================================================ */
+/* ============================================================
+   画面に戻ったときの同期・古いメニューのまま記録したとき（2026-10-02 本人の指摘。両方向）
+   ============================================================ */
+async function testReturnSync(port){
+  console.log("\n-- 画面に戻ったときの同期・古いメニューのまま記録したとき --");
+  const token = "tok-ret";
+  const mock = startMock(port, token);
+  await waitReady(mock.base);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  /* 端末の中の変数は vm.runInContext で読み書きする（D.ctx.変数 の形だと、数値や真偽値は中の値と食い違う） */
+  const inDev = (D, code) => vm.runInContext(code, D.ctx);
+  /* その端末の同期が全部終わるまで待つ（syncInit や戻ったときの同期は、呼んだ側が待てない） */
+  const idle = async D => { for(let i = 0; i < 200; i++){ await sleep(25); if(!inDev(D, "syncRunning || syncRerunRequested")) return; } };
+  try{
+    const PC = makeDevice(mock.base), PH = makeDevice(mock.base);
+    const day = "2026-06-10", month = "2026-06";
+    const plan = D => (D.ctx.state.sessions[day].plan || []).map(x => x.ex).join(",");
+    const set = (id, at) => ({ id, at, r: 10, w: 5, label: "" });
+    /* 朝: スマホが先に今日のメニュー a,b,c を決めて同期。PC もそれを受け取る */
+    PH.ctx.state.sessions[day] = { date: day, entries: [], plan: [{ ex: "a" }, { ex: "b" }, { ex: "c" }], planAt: 100, updatedAt: 100 };
+    await PH.ctx.syncConnect("acme/ret", token);
+    await PC.ctx.syncConnect("acme/ret", token);
+    await PH.ctx.syncInit(); await idle(PH);            /* 画面に戻ったときの見張りを付ける（起動） */
+    await PC.ctx.syncInit(); await idle(PC);
+    ok(plan(PC) === "a,b,c", "前提: PC は朝のメニューを受け取っている");
+
+    /* PC で組み直す → d,e,f。スマホは開いたまま（裏にある） */
+    const sp = PC.ctx.state.sessions[day];
+    sp.plan = [{ ex: "d" }, { ex: "e" }, { ex: "f" }]; sp.planAt = sp.planEdit = 900; sp.updatedAt = 900;
+    await PC.ctx.syncNow();
+    ok(plan(PH) === "a,b,c", "前提: スマホはまだ古いメニューのまま");
+
+    /* スマホの画面に戻る → 同期して、記録する前に新しいメニューになる */
+    inDev(PH, "syncLastEndAt = 0");                       /* 前の同期から時間がたった体 */
+    PH.doc.hidden = false; PH.doc.emit("visibilitychange");
+    await idle(PH);
+    ok(plan(PH) === "d,e,f", "スマホ: 画面に戻ると同期して、PC で組み直したメニューになる: " + plan(PH));
+
+    /* 同期したばかりなら、戻っても通信しない（ロックを解くたびに通信を重ねない） */
+    await mockLogReset(mock.base);
+    PH.doc.emit("visibilitychange"); PH.ctx.window.emit("focus");
+    await sleep(300);
+    ok((await mockLog(mock.base)).length === 0, "同期したばかりのときは、戻っても通信しない");
+    /* 画面を離れるとき（hidden）には、戻ったときの同期をしない */
+    inDev(PH, "syncLastEndAt = 0"); PH.doc.hidden = true; PH.doc.emit("visibilitychange");
+    await sleep(200);
+    ok((await mockLog(mock.base)).length === 0, "画面を離れるときには、戻ったときの同期をしない");
+    PH.doc.hidden = false;
+
+    /* 逆向き: スマホで組み直す → g,h。PC は開いたまま → ウィンドウに戻る（focus）と取り込む */
+    const sh = PH.ctx.state.sessions[day];
+    sh.plan = [{ ex: "g" }, { ex: "h" }]; sh.planAt = sh.planEdit = 1200; sh.updatedAt = 1200;
+    await PH.ctx.syncNow();
+    ok(plan(PC) === "d,e,f", "前提: PC はまだ古いメニューのまま");
+    inDev(PC, "syncLastEndAt = 0"); PC.ctx.window.emit("focus");
+    await idle(PC);
+    ok(plan(PC) === "g,h", "PC: ウィンドウに戻ると同期して、スマホで組み直したメニューになる（逆向き）: " + plan(PC));
+
+    /* 長く置いた画面を最初に触ったとき（pointerdown）にも同期する。置いた時間が短ければしない */
+    sh.plan = [{ ex: "i" }]; sh.planAt = sh.planEdit = 1500; sh.updatedAt = 1500;
+    await PH.ctx.syncNow();
+    inDev(PC, "syncLastEndAt = Date.now() - 20000"); PC.doc.emit("pointerdown");
+    await sleep(250);
+    ok(plan(PC) === "g,h", "置いた時間が短いうちは、触っただけでは同期しない");
+    inDev(PC, "syncLastEndAt = Date.now() - SYNC_TUNE.idleGap - 1000"); PC.doc.emit("pointerdown");
+    await idle(PC);
+    ok(plan(PC) === "i", "長く置いた画面を最初に触ると同期する: " + plan(PC));
+
+    /* 戻ったときの同期が間に合わず、古いメニューのまま記録した場合: 記録した種目は残したメニューに入る（両方の端末で同じ） */
+    const sp2 = PC.ctx.state.sessions[day];
+    sp2.plan = [{ ex: "j" }, { ex: "k" }]; sp2.planAt = sp2.planEdit = 2000; sp2.updatedAt = 2000;
+    await PC.ctx.syncNow();
+    const sh2 = PH.ctx.state.sessions[day];                /* スマホはまだ i のまま。i を1セット記録する */
+    sh2.entries = [{ ex: "i", sets: [set("stale1", 2100)] }]; sh2.updatedAt = 2100;
+    await PH.ctx.syncNow();
+    await PC.ctx.syncNow();
+    ok(plan(PH) === "j,k,i" && plan(PC) === "j,k,i", "古いメニューのまま記録した種目は、両方の端末でメニューに入る: " + plan(PH) + " / " + plan(PC));
+    /* そのあと何も変えずに同期し直しても、送り合わない */
+    await mockLogReset(mock.base);
+    await PH.ctx.syncNow(); await PC.ctx.syncNow(); await PH.ctx.syncNow();
+    const puts = (await mockLog(mock.base)).filter(e => e.method === "PUT").length;
+    ok(puts === 0, "合流が済んだあとは、同期し直しても書き込みが起きない（PUT " + puts + " 件）");
+  } finally {
+    mock.proc.kill();
+  }
+}
+
+/* 通信が返ってこないまま止まっても、時間で打ち切って同期を終える（終わらないと、次の同期も始まらない） */
+async function testFetchTimeout(){
+  console.log("\n-- 通信が返ってこないとき --");
+  const D = makeDevice("http://127.0.0.1:1");
+  D.ctx.syncSaveConfig({ repo: "acme/hang", token: "t" });
+  D.ctx.state.sessions["2026-07-07"] = { date: "2026-07-07", entries: [{ ex: "row", sets: [{ id: "h1", at: 1, r: 10, w: 5 }] }], updatedAt: 1 };
+  /* 応答を返さない fetch（打ち切りの合図が来たときだけ失敗する）。端末の中で差し替える */
+  vm.runInContext(`SYNC_TUNE.fetchTimeout = 150;
+    var hungCalls = 0;
+    fetch = function(u, o){ hungCalls++; return new Promise(function(res, rej){
+      if(o && o.signal) o.signal.addEventListener("abort", function(){ rej(new Error("aborted")); }); }); };`, D.ctx);
+  const t0 = Date.now();
+  await D.ctx.syncNow();
+  const took = Date.now() - t0;
+  ok(took < 3000 && vm.runInContext("syncRunning", D.ctx) === false, "通信が返ってこなくても、時間で打ち切って同期を終える（" + took + "ms）");
+  ok(/通信できませんでした/.test(vm.runInContext("syncStatusText", D.ctx)), "打ち切ったときは、通信できなかったと知らせる");
+  /* 終わっているので、次の同期をまた始められる */
+  const before = vm.runInContext("hungCalls", D.ctx);
+  await D.ctx.syncNow();
+  ok(vm.runInContext("hungCalls", D.ctx) > before, "打ち切ったあと、次の同期を始められる");
+  ok(D.ctx.state.sessions["2026-07-07"].entries[0].sets.length === 1, "通信できなくても、この端末の記録は残る");
+}
+
 async function main(){
   try{
     runUnitTests();
@@ -997,6 +1162,8 @@ async function main(){
     testDelPruning();
     testEntriesOrderStable();
     await testNoResendOnOrderOnly(8832);
+    await testReturnSync(8833);
+    await testFetchTimeout();
   }catch(e){
     failed++;
     console.log("FAIL - 予期しない例外で停止: " + (e && e.stack || e));

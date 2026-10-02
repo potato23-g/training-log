@@ -235,6 +235,20 @@ function menuState(exId){
   const it = todayItems().find(i => i.ex === exId);
   return !it ? "" : (it.skip ? "skipped" : "in");
 }
+/* 今日やる種目の並び（同期の前後で比べて、ほかの端末の変更で今日のメニューが変わったかを見る） */
+function todayMenuKey(){
+  planMemo = null;
+  if(typeof resetProg === "function") resetProg();
+  return activeItems().map(itemKey).join(",");
+}
+/* 同期でほかの端末の変更を取り込んだあとに呼ばれる（sync-github.js の syncAttempt）。
+   今日のメニューが変わっていたら、今日タブの上でしばらく知らせる（気づかずに古いつもりで進めないように） */
+let menuSyncedUntil = 0;
+function todayMenuSynced(before){
+  if(todayMenuKey() === before) return;
+  menuSyncedUntil = Date.now() + 20000;
+  setTimeout(() => { if(tab === "today") render(); }, 20200);
+}
 /* 種目を選んで追加するときに入るやり方。今日のメニューにあれば（外したものも）そのやり方、
    前にやった種目ならそのやり方の続き（伸ばし方が同じ種目の次の段階へ進めるなら、その先）、初めてなら基本のやり方。
    種目を選ぶシートの名前と難しさも、この行から作る（出ている内容と入る内容が食い違わないように） */
@@ -268,7 +282,7 @@ function replanToday(opt){
     const x = Object.assign({}, it); delete x.extra; return x;
   });
   const keptEx = new Set(keep.map(it => it.ex));
-  s.entries = (s.entries || []).filter(e => e.sets.length || keptEx.has(e.ex));
+  s.entries = (s.entries || []).filter(e => e.sets.length);          /* セットの無い箱は残さない */
   const oldKey = before.filter(it => !it.skip).map(itemKey).join(",");
   delete s.plan; delete s.planAt;
   planMemo = null; resetProg();

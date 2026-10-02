@@ -150,16 +150,20 @@ function step(t, id, d){
   }
   inp.value = (t==="w") ? String(val) : String(Math.round(val));
 }
-const lastAddAt = {};                      /* 「記録」の二重押しを防ぐ */
+/* 「記録」の二重押し（指の弾みで同じ数字が2回入る）を防ぐ。種目ごとに、最後に記録した時刻と数字 {t, r, w}。
+   同じ数字で 0.4 秒以内の2回目だけを捨てる。以前は 0.8 秒以内の2回目を数字に関係なく捨てていて、
+   続けて記録したときの2回目が入らないことがあった（2026-10-02 本人の指摘） */
+const lastAddAt = {};
 function addSet(id){
   const ex = EXMAP[id];
   const rIn = document.getElementById("r_"+id);
   if(!rIn) return;
-  if(Date.now() - (lastAddAt[id] || 0) < 800) return;
   const item = itemOf(id);
   const rRaw = parseFloat(rIn.value || "");
   const wIn = document.getElementById("w_"+id);
   const wRaw = wIn ? parseFloat(wIn.value || "") : NaN;
+  const la = lastAddAt[id];
+  if(la && Date.now() - la.t < 400 && la.r === rRaw && (wIn ? la.w === wRaw : la.w === undefined)) return;
   /* 入れた値を確かめる。おかしければ記録せずにボタンの下で知らせる */
   const maxR = ex.kind === "t" ? 600 : 200;
   let bad = "";
@@ -173,7 +177,7 @@ function addSet(id){
     render(); setStatus(shownMsg); return;
   }
   if(isDoneToday(id)){ render(); return; }          /* 規定のセット数を終えた種目は、修正で消すまで記録できない */
-  lastAddAt[id] = Date.now();
+  lastAddAt[id] = {t: Date.now(), r: rRaw, w: wIn ? wRaw : undefined};
   unlockAudio();
   const e0 = entryFor(TODAY, id, false);
   const sugNow = suggestNext(item, e0);
@@ -203,7 +207,14 @@ function addSet(id){
   }else{
     label = itemName(item) + "  " + sugText(item, suggestNext(item, e));
   }
+  /* 続けて「記録」を押せるように、描き直したあとも「記録」ボタンが画面の同じ位置に残るよう合わせる。
+     1セット目のあとはウォームアップの行が消え、目標の説明も短くなって、ボタンが上にずれる。
+     合わせないと、同じ場所をもう一度押したときに別のところ（セットの行など）を押してしまう（2026-10-02） */
+  const sel = '[data-act="addset"][data-ex="' + id + '"]';
+  const btn0 = document.querySelector(sel), y0 = btn0 ? btn0.getBoundingClientRect().top : null;
   render();
+  const btn1 = y0 === null ? null : document.querySelector(sel);
+  if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
   startRest(restFor(item), label);
 }
 function delSet(id, i){
@@ -214,10 +225,9 @@ function delSet(id, i){
   const wasDone = isDoneToday(id);
   const gone = e.sets.splice(i,1)[0];
   if(gone && gone.id) s.del = (s.del || []).concat(gone.id);        /* 別の端末から復活しないように、消した印を残す */
-  const inPlan = todayItems().some(x => x.ex === id && !x.extra);
-  if(!e.sets.length && !inPlan){
-    s.entries = s.entries.filter(x => x !== e);
-  }
+  /* セットが無くなった箱は残さない（空の箱が残ると、同期の合流の結果が端末ごとに違ってしまう。
+     取り消すときは entryFor が作り直す） */
+  if(!e.sets.length) s.entries = s.entries.filter(x => x !== e);
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();                   /* 同期: 修正で消したとき */
   /* 5秒間「取り消す」を出す */

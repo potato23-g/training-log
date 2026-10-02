@@ -117,22 +117,22 @@ function itemLevel(it){
   const ex = EXMAP[it.ex] || {};
   return Math.max(0, Math.min(5, levelOf(it.ex) + (it.side && !ex.side ? 1 : 0) + (it.lv || 0)));
 }
-/* 昨日1セットでも手を付けた種目 */
-function touchedYesterday(){
-  const out = new Set();
+/* 昨日しっかりやった動き（その動きの種目を合わせて RECOVER_PRIMARY セット以上）。同じ動きは2日続けない。
+   種目ではなく動きで見る（種目だけで見ると、同じ動きの中で別の種目に入れ替わってしまう）。
+   1〜2セットだけ手を付けた動きは数えない（少しやっただけなら回復などを考えなくてよい: 2026-10-02 本人の要望。
+   部位の回復の日数 recoverDaysLeft も、主役で RECOVER_PRIMARY セット以上やった日だけを数えている） */
+function patternsYesterday(){
+  const n = {};
   for(const d of sortedDates()){
     if(d >= TODAY) continue;
     if(Math.round((asDate(TODAY) - asDate(d)) / 86400000) !== 1) continue;   /* 今日から見た昨日 */
-    (state.sessions[d].entries || []).forEach(e => { if(e.sets.length) out.add(e.ex); });
+    (state.sessions[d].entries || []).forEach(e => {
+      if(!EXMAP[e.ex]) return;
+      const p = patternOf(e.ex);
+      n[p] = (n[p] || 0) + e.sets.length;
+    });
   }
-  return out;
-}
-/* 昨日やった動き。同じ動きは2日続けない。
-   （種目ではなく動きで見る。種目だけで見ると、同じ動きの中で別の種目に入れ替わってしまう） */
-function patternsYesterday(){
-  const out = new Set();
-  touchedYesterday().forEach(id => out.add(patternOf(id)));
-  return out;
+  return new Set(Object.keys(n).filter(p => n[p] >= RECOVER_PRIMARY));
 }
 /* 同じ動きの中で、1段やさしい（dir=-1）／1段難しい（dir=+1）組み方。無ければ null。
    負荷を合わせるための持ち替え先なので、同じ段のもの（＝名前が違うだけ）は出さない */

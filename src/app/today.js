@@ -40,6 +40,11 @@ ACTIONS.dismissfail = () => { storeFailMsg = ""; render(); };
 function viewToday(){
   const all = todayItems(), items = all.filter(it => !it.skip), skipped = all.filter(it => it.skip);
   const s = session(TODAY);
+  /* 開いていた種目がメニューから無くなったら（同期でメニューが替わった、など）閉じる */
+  if(openEx && !items.some(it => it.ex === openEx)) openEx = null;
+  if(editEx && !items.some(it => it.ex === editEx)) editEx = null;
+  const menuNote = Date.now() < menuSyncedUntil
+    ? `<div class="flash">ほかの端末の変更を取り込み、今日のメニューが変わりました。</div>` : "";
   const msg = todayMsg; todayMsg = "";          /* 一度出したら消す */
   if(msg) shownMsg = msg;
 
@@ -74,7 +79,7 @@ function viewToday(){
       ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
       <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
       ${dl && dl.active ? `<p class="sub">軽めの週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
-      ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">${esc(fewItemsText())}</p>` : ""}</div>`;
+      ${items.filter(i => !i.extra).length < 3 && !skipped.length ? `<p class="sub">${esc(fewItemsText())}</p>` : ""}</div>`;
   }
 
   const undo = undoDel && Date.now() < undoDel.until
@@ -87,7 +92,7 @@ function viewToday(){
     ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
   const sore = soreToday();
   const soreLine = sore.length ? `<p class="skipped">筋肉痛: ${sore.map(m => MUSCLES[m]).join("・")}（今日はメインで鍛えません）</p>` : "";
-  return storeBanners() + deloadAsk + hero + undo + rows + skippedLine + soreLine + `
+  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + skippedLine + soreLine + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>

@@ -1,5 +1,6 @@
 /* 同期のタイミング確認（偽GitHub: tools/mock_github.py 8799 e2e-token）
-   同期するのは「起動・メモ変更・ダンベル設定変更・記録・修正」だけで、それ以外では通信しないこと。
+   同期するのは「起動・画面に戻ったとき（前の同期から時間がたっているとき。2026-10-02 に追加）・メニューの変更・
+   メモ変更・ダンベル設定変更・記録・修正」で、それ以外では通信しないこと。
    window.__phase = "setup"（接続情報だけ入れる）/ "run"（同じプロファイルで起動して確かめる） */
 (async () => {
   const r = {};
@@ -29,12 +30,25 @@
   const idle = async ms => { calls = []; await wait(ms); return calls.slice(); };
 
   /* 同期しないはずの操作 */
-  document.dispatchEvent(new Event("visibilitychange"));            /* 画面に戻る */
+  document.dispatchEvent(new Event("visibilitychange"));            /* 同期したばかりで画面に戻る */
+  window.dispatchEvent(new Event("focus"));
   window.dispatchEvent(new Event("online"));                        /* 通信が戻る */
   tab = "today"; render();
   const items = todayItems();
-  addToProgramToday("farmer");                                       /* 種目を追加 */
-  r.noSync = await idle(5500);
+  r.noSync = await idle(3000);
+
+  /* 画面に戻ったとき（前の同期から時間がたっている）→ 同期する（2026-10-02 に追加） */
+  syncLastEndAt = 0;
+  calls = [];
+  document.dispatchEvent(new Event("visibilitychange"));
+  await wait(1500);
+  r.returnAfter = calls.slice();
+
+  /* メニューを変えた（種目を追加）→ すぐ同期 */
+  calls = [];
+  addToProgramToday("farmer");
+  await wait(1500);
+  r.planEditAfter = calls.slice();
 
   /* メモの変更 → 入力が落ち着いてから同期 */
   calls = [];

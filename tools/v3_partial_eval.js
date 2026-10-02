@@ -1,5 +1,7 @@
-/* 途中までしかやらなかった日（1〜2セットだけ等）も「手を付けた」として、翌日は別の種目になるか。
-   毎日、各種目をランダムに 0〜規定セット数だけこなした履歴を21日分つくり、翌日のメニューを確かめる。
+/* 途中までしかやらなかった日の翌日のメニューを確かめる。
+   3セットやった動きは翌日は出ない。1〜2セットだけの動きは「昨日やった動き」に数えない
+   （少しやっただけなら回復などを考えなくてよい: 2026-10-02 本人の要望。それまでは1セットでも数えていた）。
+   毎日、各種目をランダムに 0〜規定セット数だけこなした履歴を21日分つくる。
    （2026-09-21から、続けて出さないのは「種目」ではなく「動き」。同じ動きの中で種目が入れ替わらないようにするため） */
 setTimeout(() => {
   const out = {days: [], repeatedNextDay: [], dupPatterns: [], recoverOnPlan: [], emptyDays: [], firstDayPartial: null};
@@ -54,7 +56,7 @@ setTimeout(() => {
     const skipDay = rand() < 0.15;
     plan.forEach(it => {
       const n = skipDay ? 0 : Math.floor(rand() * ((it.sets || 3) + 1));
-      if(n > 0){ doSets(it, n); touched.push(patternOf(it.ex)); }
+      if(n > 0){ doSets(it, n); if(n >= RECOVER_PRIMARY) touched.push(patternOf(it.ex)); }
     });
     if(!touched.length){ delete s.plan; delete s.planAt; }
     out.days.push((skipDay ? "（休み）" : "") + plan.map(it => {
