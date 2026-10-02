@@ -339,13 +339,6 @@ textarea{min-height:64px;resize:vertical}
   padding:0 4px;margin-left:6px;vertical-align:1px;color:var(--ink-2);font-weight:600}
 .picklist .pktag.plan{color:var(--done);border-color:var(--done)}
 .picklist .pktag.warn{color:var(--muscle);border-color:var(--muscle)}
-.pickvariants{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px 4px}
-/* .picklist button{...} が基本スタイルにあり、.pickvariant 単体（クラス1つ）より強いので、
-   .picklist を付けて上書きする（.pktag と同じ理由） */
-.picklist .pickvariant{min-height:44px;display:inline-flex;flex-direction:column;align-items:flex-start;justify-content:center;
-  background:var(--panel-2);border:1px solid var(--rule);border-radius:8px;padding:5px 12px;
-  font-size:12.5px;font-weight:600;color:var(--ink-2);text-align:left;max-width:100%}
-.pickvariant span{display:block;font-weight:400;font-size:11px;color:var(--ink-3);margin-top:1px}
 
 /* ---- からだ: 部位ごとの横棒（U8） ---- */
 .mbars{display:flex;flex-direction:column;gap:1px;margin-top:6px}
@@ -5119,7 +5112,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-01 23:11";
+const BUILD_VERSION = "2026-10-02 17:42";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6018,11 +6011,32 @@ function stepItem(item, dir){
                     || ((b.ex === item.ex) - (a.ex === item.ex)));
   return cands.length ? cands[0] : null;
 }
-/* 回復の途中か、今日筋肉痛と選んだ主働筋（なければ null）。種目を選ぶシートの印と「今日の調整」の回復優先で使う
-   （メニュー作りと同じ決まり） */
-function tiredMuscle(exId){
-  const ex = EXMAP[exId], sore = soreToday();
-  return ex.p.find(m => sore.includes(m)) || ex.p.find(recovering) || null;
+/* その種目の主働筋のうち、今日メインで鍛えないほうがよい部位の様子（どれも無ければ null。メニュー作りと同じ決まり）。
+   種目を選ぶシートの印と、種目カードの「今日の調整」で同じものを使う（画面ごとに言うことが食い違わないように）。
+   sore: 今日「筋肉痛の部位」に選んだ主働筋
+   left: 回復まであと何日か。主働筋のうち一番長いもの（メニュー作りは主働筋が全部回復するまでその種目を出さないので、
+         最初に見つかった部位ではなく一番長い部位で数える）。muscle はその部位 */
+function exRest(exId){
+  const ex = EXMAP[exId], picked = soreToday();
+  const sore = ex.p.filter(m => picked.includes(m));
+  let muscle = null, left = 0;
+  ex.p.forEach(m => { const d = recoverDaysLeft(m); if(d > left){ left = d; muscle = m; } });
+  return sore.length || left ? {sore, muscle, left} : null;
+}
+/* 「回復中・あと2日」（印に使う短い書き方） */
+function recoverTag(left){ return "回復中・あと" + left + "日"; }
+/* 「明日から」「10月4日(日)から」（left 日後からメインで鍛えられる） */
+function recoverFrom(left){ return left === 1 ? "明日から" : fmtDate(addDays(TODAY, left)) + "から"; }
+/* 回復の途中の部位（体の中で大きい部位から）。[{m, left}]。only があれば、その部位の中だけ */
+function recoveringList(only){
+  return Object.keys(MUSCLES).filter(m => !only || only.includes(m))
+    .map(m => ({m, left: recoverDaysLeft(m)})).filter(x => x.left > 0)
+    .sort((a, b) => (PRIORITY[b.m] || 0) - (PRIORITY[a.m] || 0));
+}
+/* 「大腿四頭筋・大殿筋はあと2日、胸はあと1日」 */
+function recoverDaysText(list){
+  const days = Array.from(new Set(list.map(x => x.left))).sort((a, b) => b - a);
+  return days.map(d => list.filter(x => x.left === d).map(x => MUSCLES[x.m]).join("・") + "はあと" + d + "日").join("、");
 }
 /* 楽にする／大変にするやり方。同じ種目の別の組み方として候補に入れる。
    [（　）に出す短い言い方, カードに出す説明] の順。
@@ -6361,12 +6375,18 @@ function buildPlan(){
 /* 今日のメニューが空の日（休み）に出す説明 */
 function restText(){
   const big = ["quads","glutes","hams","chest","lats","shoulders"];
-  const tired = big.filter(recovering);
-  const enough = big.filter(m => !tired.includes(m) && muscleLoadBetween(m, 1, 6) >= WEEK_TARGET);
+  const tired = recoveringList(big);
+  const enough = big.filter(m => !tired.some(x => x.m === m) && muscleLoadBetween(m, 1, 6) >= WEEK_TARGET);
   const names = ms => ms.map(m => MUSCLES[m]).join("・");
-  return (tired.length ? names(tired) + "は、回復の途中です。" : "")
+  return (tired.length ? recoverDaysText(tired) + "で回復します。" : "")
        + (enough.length ? names(enough) + "は、直近7日で目標の" + WEEK_TARGET + "セットに届いています。" : "")
-       + "今日は休んだほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から足せます。";
+       + "今日は休んだほうが伸びます。体を動かしたいときは、下の「おまかせで1種目追加」か「種目を選んで追加」から追加できます。";
+}
+/* 今日の種目が少ないときの一言（回復の途中の部位は、あと何日かも添える） */
+function fewItemsText(){
+  const rec = recoveringList();
+  return (rec.length ? "回復の途中の部位（" + recoverDaysText(rec) + "）や、" : "")
+       + "今週の量が足りている部位が多いため、今日は種目を少なめにしています。";
 }
 /* 保存したメニューの行を、今の種目表の中身で出す。行は保存した時点の写しなので、版が変わって
    組み方の名前・回数・動きが変わっても（2026-09 の A4・B7）古いまま残っている。
@@ -6394,6 +6414,25 @@ function todayItems(){
 /* 今日やる種目（外したものを除く） */
 function activeItems(){ return todayItems().filter(it => !it.skip); }
 function itemOf(id){ return todayItems().find(i=>i.ex===id) || catalogItem(id); }
+/* 今日のメニューでのその種目の扱い。"in"=今日やる / "skipped"=今日は外した / ""=入っていない。
+   「今日のメニューにある」などを画面に出すところは、どこもこれで判定する
+   （種目を選ぶシートだけが外した種目も「ある」と出していた: 2026-10-02 本人の指摘） */
+function menuState(exId){
+  const it = todayItems().find(i => i.ex === exId);
+  return !it ? "" : (it.skip ? "skipped" : "in");
+}
+/* 種目を選んで追加するときに入るやり方。今日のメニューにあれば（外したものも）そのやり方、
+   前にやった種目ならそのやり方の続き（伸ばし方が同じ種目の次の段階へ進めるなら、その先）、初めてなら基本のやり方。
+   種目を選ぶシートの名前と難しさも、この行から作る（出ている内容と入る内容が食い違わないように） */
+function pickRowFor(exId){
+  const cur = todayItems().find(i => i.ex === exId);
+  if(cur) return cur;
+  const h = patternHistory(patternOf(exId)).find(x => x.ex === exId);
+  if(!h) return catalogItem(exId);
+  const p = progressFor(h.item);
+  const row = (p.change === "harder" || p.change === "easier") && p.next && p.next.ex === exId ? p.next : h.item;
+  return gearReady(row.ex, row) ? row : catalogItem(exId);
+}
 /* 記録を始めた時点のメニューを、その日の分として保存する */
 function fixPlan(s){
   if(s.plan && s.plan.length) return;
@@ -6560,7 +6599,7 @@ function viewToday(){
       ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
       <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
       ${dl && dl.active ? `<p class="sub">軽めの週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
-      ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">回復の途中の部位と、今週の量が足りている部位が多いため、今日は種目を少なめにしています。</p>` : ""}</div>`;
+      ${items.filter(i => !i.extra).length < 3 ? `<p class="sub">${esc(fewItemsText())}</p>` : ""}</div>`;
   }
 
   const undo = undoDel && Date.now() < undoDel.until
@@ -7436,13 +7475,14 @@ function todayAdvice(item, sug){
       text: "ダンベルが登録されていません。今日は飛ばすか、基本のやり方に戻してください。"};
   }
 
-  /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位（自分で足した種目など、メニュー作りを通らずに入ったとき） */
-  const tired = tiredMuscle(id);
-  if(tired){
-    const sore = soreToday().includes(tired), left = recoverDaysLeft(tired);
-    return {level:"recover", warn:true, short: sore ? "筋肉痛" : "回復優先",
-      text: sore ? MUSCLES[tired] + "は今日「筋肉痛の部位」に選んでいます。重さを軽くするか、今日は外してください。"
-                 : MUSCLES[tired] + "はまだ回復の途中です（次にメインで鍛えられるのは" + fmtDate(addDays(TODAY, Math.max(1, left))) + "から）。重さを軽くするか、今日は外してください。"};
+  /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位（自分で足した種目など、メニュー作りを通らずに入ったとき）。
+        種目を選ぶシートの印と同じ exRest() から作る（あと何日かも同じ数になる） */
+  const rest = exRest(id);
+  if(rest){
+    const soreText = rest.sore.length ? rest.sore.map(m => MUSCLES[m]).join("・") + "は今日「筋肉痛の部位」に選んでいます。" : "";
+    const recText = rest.left ? MUSCLES[rest.muscle] + "はまだ回復の途中です（あと" + rest.left + "日。" + recoverFrom(rest.left) + "メインで鍛えられます）。" : "";
+    return {level:"recover", warn:true, short: rest.sore.length ? "筋肉痛" : recoverTag(rest.left),
+      text: soreText + recText + "重さを軽くするか、今日は外してください。"};
   }
 
   /* 3. 前回からの伸ばし方の結果（その日の1セット目の前だけ） */
@@ -7595,7 +7635,7 @@ function viewEx(){
       <h4>目安</h4>
       <p style="margin:0 0 6px;font-size:14px">${kindLabel}　${d.reps||""}</p>
       ${holdOf(refEx)?`<p class="lastline" style="margin-top:0"><b>使うダンベル</b>　${gearLine(refEx, refSug)}</p>`:""}
-      <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">今日のメニューに追加</button></div>
+      <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">${{in: "今日のメニューで開く", skipped: "今日のメニューに戻す"}[menuState(ex.id)] || "今日のメニューに追加"}</button></div>
     </div>`;
 
   const right = `
@@ -7662,10 +7702,7 @@ function viewBody(){
     detail = `<div class="card">
       <h4>${MUSCLES[selMuscle]}</h4>
       <p class="lastline" style="margin-top:0">直近${bodyDays}日で <b>${(load[selMuscle]||0).toFixed(1)}</b> 有効セット</p>
-      <p class="lastline" style="margin-top:2px">回復の目安: ${recoverGap(selMuscle) ? "中" + recoverGap(selMuscle) + "日" : "連日でもよい"}。${
-        soreToday().includes(selMuscle) ? "今日は「筋肉痛の部位」に選んでいます"
-        : recoverDaysLeft(selMuscle) ? "次にメインで鍛えられるのは" + fmtDate(addDays(TODAY, recoverDaysLeft(selMuscle))) + "から"
-        : "今日からメインで鍛えられます"}</p>
+      <p class="lastline" style="margin-top:2px">回復の目安: ${recoverGap(selMuscle) ? "中" + recoverGap(selMuscle) + "日" : "連日でもよい"}。${muscleRestText(selMuscle)}</p>
       ${hits.length ? `<ul class="plain">${hits.map(h=>`<li>${fmtDate(h.d)}　${h.name}　${h.n}セット（${h.role}）</li>`).join("")}</ul>`
         : `<p style="font-size:14px;margin:6px 0 0">この期間、この部位を使う種目はありません。</p>`}
       ${exercisesForMuscle(selMuscle)}
@@ -7700,17 +7737,24 @@ function viewBody(){
     </div>`;
   return `<div class="splitcols"><div>${fig}</div><div>${side}${note}</div></div>`;
 }
+/* 選んだ部位の今の様子（筋肉痛・回復まであと何日か）。種目カードや種目を選ぶシートと同じ数え方（recoverDaysLeft） */
+function muscleRestText(m){
+  const left = recoverDaysLeft(m);
+  const sore = soreToday().includes(m) ? "今日は「筋肉痛の部位」に選んでいます" : "";
+  const rec = left ? "回復まであと" + left + "日（" + recoverFrom(left) + "メインで鍛えられます）" : "";
+  return sore || rec ? [sore, rec].filter(Boolean).join("。") : "今日からメインで鍛えられます";
+}
 /* この部位に効く種目の一覧（主に効く／補助で使う）。押すと種目タブの解説が開き、
-   今日のメニューにまだ無ければその場で足せる */
+   今日のメニューにまだ無ければその場で追加できる */
 function exByRow(e){
-  /* 「今日は外した」種目（skip:true）は、今日のメニューには実質無いのと同じ。印を付けて
-     足すボタンを隠すと戻せなくなるので、外した種目は「まだ無い」側として扱う
-     （addToProgramToday はskipを消して戻す作りなので、そのまま押せば戻る） */
-  const inPlan = todayItems().some(it=>it.ex===e.id && !it.skip);
+  /* 今日のメニューでの扱いは menuState() で判定する（種目を選ぶシート・種目タブと同じ）。
+     「今日は外した」種目は、印を付けてボタンを隠すと戻せなくなるので「戻す」ボタンを出す
+     （addToProgramToday は skip を消して戻す） */
+  const st = menuState(e.id);
   const noGear = holdOf(e.id) && !gearOptions(e.id).length;
-  const right = inPlan ? `<span class="exbytag plan">今日のメニューにある</span>`
+  const right = st === "in" ? `<span class="exbytag plan">今日のメニューにある</span>`
     : noGear ? `<span class="exbytag warn">ダンベルが必要</span>`
-    : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">今日のメニューに足す</button>`;
+    : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">${st === "skipped" ? "今日のメニューに戻す" : "今日のメニューに追加"}</button>`;
   return `<div class="exbyrow">
     <button class="exbyname" data-act="goref" data-ex="${e.id}">${esc(e.name)}</button>
     ${right}
@@ -7881,7 +7925,7 @@ function viewPlan(){
 /* ---------- 履歴 ---------- */
 function viewHist(){
   const dates = sortedDates().filter(d=> (state.sessions[d].entries||[]).some(e=>e.sets.length));
-  const addDayRow = `<div class="rowbtns"><button data-act="addpastday">記録していない日を足す</button></div>`;
+  const addDayRow = `<div class="rowbtns"><button data-act="addpastday">記録していない日を追加</button></div>`;
   /* 記録がない端末でも、共有の接続とバックアップからの復元はできる（右上の ⚙ の設定のシート） */
   if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、右上の ⚙ の「スマホとPCで記録を共有」か「バックアップから復元」から取り込めます。</div>
     ${addDayRow}`;
@@ -8274,9 +8318,9 @@ function histUndoDelete(){
   render();
   renderDaySheet(date);
 }
-/* 記録していない日を足す（今日以前の日付だけ選べる） */
+/* 記録していない日を追加（今日以前の日付だけ選べる） */
 function openAddDaySheet(){
-  sheetInner.innerHTML = `<h4>記録していない日を足す</h4>
+  sheetInner.innerHTML = `<h4>記録していない日を追加</h4>
     <p class="lastline" style="margin-top:0">日付を選ぶと、その日の記録シートが開きます。</p>
     <div class="fld"><label>日付</label><input type="date" id="adddate" max="${TODAY}" value="${TODAY}"></div>
     <div class="rowbtns"><button id="haddayGo">この日を開く</button><button id="haddayClose">閉じる</button></div>`;
@@ -8528,8 +8572,10 @@ ACTIONS.undodel = ()=>{
   if(typeof syncNow === "function") syncNow();                   /* 同期: 修正したとき */
   render();
 };
-/* 種目を選んで今日のメニューに足す（組み方も選べる）。足した種目は今日のメニューに入り、
-   組み直しても残る（manual）。すでにあって外していたら戻す */
+/* 種目を選んで今日のメニューに追加する。追加した種目は今日のメニューに入り、組み直しても残る（manual）。
+   すでにあって外していたら戻す。やり方（label）を指定しないときは pickRowFor() のやり方
+   （今日のメニューにあればそのまま・前にやった種目ならその続き・初めてなら基本）。
+   指定なしを「基本のやり方」と読むと、種目タブ・からだタブから押しただけで、メニューにあるやり方が基本に戻ってしまう */
 function addToProgramToday(id, label){
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   if(isDoneToday(id)){
@@ -8539,8 +8585,9 @@ function addToProgramToday(id, label){
     return;
   }
   const s = session(TODAY);
-  const row = (label && catalogRow(id, label)) || catalogItem(id);
   fixPlan(s);
+  const row = Object.assign({}, (label && catalogRow(id, label)) || pickRowFor(id));
+  ["skip", "extra", "seed"].forEach(k => delete row[k]);
   if(!s.plan) s.plan = [];
   const cur = s.plan.find(x => x.ex === id);
   const e = entryFor(TODAY, id, false);
@@ -8648,7 +8695,7 @@ function addAutoToday(){
   let picked = attempt(false), over = false;
   if(!picked){ picked = attempt(true); over = !!picked; }
   if(!picked){
-    todayMsg = "今日足せる種目がありません。回復を待っている部位ばかりか、今週の量が上限に届いています。それでも足すときは「種目を選んで追加」から選んでください。";
+    todayMsg = "今日追加できる種目がありません。回復の途中の部位ばかりか、今週の量が上限に届いています。それでも追加するときは「種目を選んで追加」から選んでください。";
     render();
     setStatus(shownMsg);
     return;
@@ -8659,7 +8706,7 @@ function addAutoToday(){
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
   openEx = picked.ex; editEx = null;
-  todayMsg = "「" + itemName(picked) + "」を足しました（" + EXMAP[picked.ex].p.map(m => MUSCLES[m]).join("・") + "の今週の量が足りていません）"
+  todayMsg = "「" + itemName(picked) + "」を追加しました（" + EXMAP[picked.ex].p.map(m => MUSCLES[m]).join("・") + "の今週の量が足りていません）"
     + (over ? "。1回の目安（" + SESSION_MAX.exercises + "種目・" + SESSION_MAX.sets + "セット・" + SESSION_MAX.minutes + "分）は超えます" : "");
   render();
   /* 足した種目は一覧の最後に付くので、その位置まで動かして見えるようにする */
@@ -8687,36 +8734,40 @@ const PATTERN_HEAD = {
   twist:"ひねる（ツイスト）"
 };
 
-/* 種目に付ける小さな印（今日のメニュー・昨日の動き・回復中） */
+/* 種目に付ける小さな印（今日のメニューでの扱い・昨日の動き・筋肉痛・回復まであと何日・ダンベル）。
+   今日のメニューでの扱いは menuState()、回復は exRest() で、ほかの画面と同じ判定を使う */
 function pickerTags(id){
   let out = "";
-  if(todayItems().some(it=>it.ex===id)) out += `<span class="pktag plan">今日のメニューにある</span>`;
+  const st = menuState(id);
+  if(st === "in") out += `<span class="pktag plan">今日のメニューにある</span>`;
+  else if(st === "skipped") out += `<span class="pktag">今日は外した</span>`;
   if(patternsYesterday().has(patternOf(id))) out += `<span class="pktag">昨日やった動き</span>`;
-  const tired = tiredMuscle(id);
-  if(tired) out += `<span class="pktag warn">${soreToday().includes(tired) ? "筋肉痛" : "回復中"}</span>`;
+  const rest = exRest(id);
+  if(rest && rest.sore.length) out += `<span class="pktag warn">筋肉痛</span>`;
+  if(rest && rest.left) out += `<span class="pktag warn">${recoverTag(rest.left)}</span>`;
+  if(holdOf(id) && !gearOptions(id).length) out += `<span class="pktag warn">ダンベルが必要</span>`;
   return out;
 }
-/* 種目の下に並べる組み方（catalog() の中で同じ ex・label ありの行） */
-function pickerVariants(id){
-  const rows = catalog().filter(c=>c.ex===id && c.label);
-  if(!rows.length) return "";
-  return `<div class="pickvariants">` + rows.map(v=>{
-    const m = /[（(]([^）)]+)[）)]\s*$/.exec(v.label);
-    const short = m ? m[1] : v.label;
-    return `<button class="pickvariant" data-pick="${esc(id)}" data-label="${esc(v.label)}">${esc(short)}${v.note?`<span>${esc(v.note)}</span>`:""}</button>`;
-  }).join("") + `</div>`;
+/* その行の難しさ。種目そのものの難しさ（EX.level）に、基本のやり方との段階の差を足して出す */
+function pickLevelText(row){
+  const lv = (EXMAP[row.ex].level || 2) + itemLevel(row) - itemLevel(catalogItem(row.ex));
+  return lv <= 1 ? "やさしい" : (lv >= 3 ? "難しい" : "標準");
 }
 
+/* 種目ごとに1行だけ出す（やり方の小さいボタンは出さない: 2026-10-02 本人の要望）。
+   押すと入るのは pickRowFor() のやり方（前回の続き。初めてなら基本）で、名前と難しさもそのやり方のものを出す。
+   入れたあとの持ち替えは、種目カードの「やさしく／難しく」で行う */
 function openPicker(){
-  const lvText = {1:"やさしい", 2:"標準", 3:"難しい"};
   const groups = {};
   EX.forEach(e=>{ const p = patternOf(e.id); (groups[p] = groups[p] || []).push(e); });
   const body = PATTERN_ORDER.filter(p=>groups[p] && groups[p].length).map(p=>{
-    const items = groups[p].map(e=>`
+    const items = groups[p].map(e=>{
+      const row = pickRowFor(e.id);
+      return `
       <div class="pickgroup">
-        <button class="pickmain" data-pick="${esc(e.id)}">${esc(e.name)}${pickerTags(e.id)}<span>${e.p.map(m=>MUSCLES[m]).join("・")}　${lvText[e.level || 2]}</span></button>
-        ${pickerVariants(e.id)}
-      </div>`).join("");
+        <button class="pickmain" data-pick="${esc(e.id)}" data-label="${esc(row.label || "")}">${esc(itemName(row))}${pickerTags(e.id)}<span>${e.p.map(m=>MUSCLES[m]).join("・")}　${pickLevelText(row)}</span></button>
+      </div>`;
+    }).join("");
     return `<h4 class="pickhead">${esc(PATTERN_HEAD[p] || p)}</h4><div class="picklist">${items}</div>`;
   }).join("");
 
