@@ -12,6 +12,7 @@ JS から el.click() を呼ぶ検査では、押してから離すまでのあ�
   4 0.5秒あけて2回押すと2セット入る（以前は0.8秒以内の2回目を捨てていた）
   5 指の弾みの二重押し（同じ数字で0.4秒以内）は1セットだけ
   6 数字を変えた直後の2回目は、すぐ押しても入る
+  6b ボタンが画面の下のほうにあるとき、記録のあとに出る休憩の帯がボタンを隠さない
   7 設定のシートで入力している最中に同期の描き直しが来ても、入力が消えない
 最後に「N passed, M failed」を出す（check_all.py が読む）。
 """
@@ -39,6 +40,7 @@ SETUP = r"""
   const s = session(TODAY); s.plan = [catalogItem("curl")]; s.planAt = Date.now();
   planMemo = null; resetProg();
   if(typeof closeSettings === "function") closeSettings();
+  if(typeof stopRest === "function") stopRest();
   tab = "today"; openEx = "curl"; render();
   for(const k in lastAddAt) delete lastAddAt[k];
   window.scrollTo(0, 0);
@@ -131,6 +133,17 @@ def main():
         press(cdp, x, y)
         ok(ev(SETS) == 3, "続けて3回押すと3セット入る: " + str(ev(SETS)))
 
+        # 4b ページの一番上（これ以上は上に送れない位置）でも、同じ場所を続けて押せる
+        #    （ボタンより上の行の長さがセットごとに変わると、ここでボタンがずれる）
+        ev(SETUP)
+        x, y = ev(POS)
+        press(cdp, x, y)
+        x1, y1 = ev(POS)
+        ok(ev("window.scrollY") == 0 and abs(y1 - y) <= 2, "ページの一番上でも、記録のあと「記録」ボタンが動かない（ずれ %.1f px）" % (y1 - y))
+        time.sleep(0.3)
+        press(cdp, x, y)
+        ok(ev(SETS) == 2, "ページの一番上でも、同じ場所を2回押すと2セット入る: " + str(ev(SETS)))
+
         # 5 指の弾みの二重押し（同じ数字で0.4秒以内）
         ev(SETUP)
         x, y = ev(BTN)
@@ -149,6 +162,27 @@ def main():
         press(cdp, x, y, hold=0.02, after=0.2)
         gap = ev('(() => { const s = entryFor(TODAY, "curl", false).sets; return s.length > 1 ? s[1].at - s[0].at : -1; })()')
         ok(ev(SETS) == 2 and 0 <= gap < 400, "数字を変えた2回目は、0.4秒以内でも入る: %s セット・間隔 %s ms" % (ev(SETS), gap))
+
+        # 6b 「記録」ボタンが画面の下のほうにあるとき、記録のあとに出る休憩の帯がボタンを隠さない
+        #    （縦の短いスマホでは、種目を開いた位置のままでボタンが画面の下のほうに来る）
+        ev(SETUP)
+        short = int(ev("""document.querySelector('[data-act="addset"][data-ex="curl"]').getBoundingClientRect().bottom""")) + 24
+        cdp.call("Emulation.setDeviceMetricsOverride", width=390, height=short, deviceScaleFactor=1, mobile=False)
+        ev(SETUP)
+        x, y = ev(POS)
+        ok(short - 90 < y < short, "検査の前提: ボタンが画面の下のほうにある（y=%.0f / 高さ %d）" % (y, short))
+        press(cdp, x, y)
+        ok(ev(SETS) == 1, "画面の下のほうにあるボタンでも1セット入る")
+        clear = ev("""(() => { const b = document.querySelector('[data-act="addset"][data-ex="curl"]').getBoundingClientRect(),
+              t = document.getElementById("timer"); return [t.classList.contains("on"), b.bottom <= t.getBoundingClientRect().top]; })()""")
+        ok(clear[0] and clear[1], "記録のあとに出る休憩の帯が「記録」ボタンを隠さない")
+        x, y = ev(POS)
+        hit = ev("""(() => { const e = document.elementFromPoint(%f, %f); return !!(e && e.closest('[data-act="addset"]')); })()""" % (x, y))
+        ok(hit, "帯の上に出たボタンを、そのまま押せる")
+        time.sleep(0.3)
+        press(cdp, x, y)
+        ok(ev(SETS) == 2, "帯が出たあとも、続けて押すと2セット入る: " + str(ev(SETS)))
+        cdp.call("Emulation.setDeviceMetricsOverride", width=390, height=844, deviceScaleFactor=1, mobile=False)
 
         # 7 設定のシートで入力中に同期の描き直しが来ても、入力が消えない
         ev(SETUP)

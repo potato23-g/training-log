@@ -67,7 +67,10 @@ body{
   -webkit-text-size-adjust:100%;
 }
 .num{font-family:"Archivo",system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
-button{font:inherit;color:inherit;cursor:pointer}
+/* touch-action:manipulation … スマホで続けて2回タップしたときに「ダブルタップで拡大」と解釈されて、
+   2回目のタップがボタンに届かないのを防ぐ（つまんで拡大・スクロールはそのまま使える） */
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+input,select,textarea,a,[data-act]{touch-action:manipulation}
 :focus-visible{outline:2px solid var(--muscle);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
 
@@ -250,7 +253,6 @@ textarea{min-height:64px;resize:vertical}
   border-left:2px solid var(--muscle);padding:9px 11px;margin-top:12px;border-radius:0 3px 3px 0}
 .target .tl{font-size:11px;color:var(--ink-3)}
 .target .tv{font-size:19px;font-weight:700}
-.target .tw{font-size:11.5px;color:var(--ink-2);flex-basis:100%}
 .setrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .setrow:last-of-type{border-bottom:none}
 .setrow small{display:block;font-size:11px;color:var(--ink-3)}

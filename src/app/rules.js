@@ -12,8 +12,9 @@ function restFor(item){
    数え方は「からだ」タブと同じ有効セット（主に効く部位は1セット=1.0、補助的に使う部位は0.5）。
    ・間隔: 主役（主働筋）として3セット以上やった部位は、部位ごとの日数（RECOVER_GAP）だけ空けてから主役にする
           （脚・尻・ハムストリングは中3日、胸・背中は中2日、肩・腕は中1日、腹筋・前腕・ふくらはぎは連日でもよい）。
-          その日に主役で6セット以上やったときは1日延ばす。昨日しっかり使った部位（補助も含めた有効セットが3以上。
-          腹直筋・腹斜筋は10、ふくらはぎ・前腕は6）も今日は主役にしない。今日「筋肉痛」と選んだ部位も主役にしない
+          その日に主役で6セット以上やったときは1日延ばす。今日「筋肉痛」と選んだ部位も主役にしない。
+          少しやっただけ（主役で1〜2セット・補助で使っただけ）の部位は、回復の対象にしない（2026-10-02 本人の要望。
+          それまでは、補助も含めた有効セットが昨日3以上なら1日休ませていた）
    ・1日の負荷: 大きい部位（脚・尻・胸・背中）は8セット、ほかの部位は6セットまで。1回は15セット・5種目・50分くらいまで
    ・1週間の量: 直近7日で各部位10セットを目標に、目標までの不足を2乗で数えて価値を決め、価値の大きい種目から入れる。
                目標から遠い部位ほど価値が急に上がるので、大きい部位ばかりで埋まって小さい部位が0セットのまま、にはならない。
@@ -21,7 +22,7 @@ function restFor(item){
                部位の重み（PLAN_WEIGHT）は大きい部位を少しだけ重くしてある。目標に届いた部位も、16セットまでは少しだけ価値を残す
    これまでの決まりもそのまま守る:
    ・同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日1つ
-   ・昨日（暦の昨日）やった動きは、今日は出さない
+   ・昨日（暦の昨日）3セット以上やった動きは、今日は出さない
    ・ダンベルが要る種目は、持っているダンベルで作れるものだけ
    ・動きごとに、今日やる組み方は伸ばし方（progress.js）で決まる。気分では入れ替えない
    A〜Dの各メニュー（ROUTINES）は、種目ごとのセット数・回数・メモの出どころとしてだけ使う。
@@ -37,8 +38,6 @@ const PATTERN = {
 };
 /* メニューに並べる順（大きい動きを先に、体幹は最後に） */
 const PATTERN_ORDER = ["squat","lunge","hinge","legcurl","hpush","fly","pull","pullover","vpush","bridge","carry","shrug","raise","curl","ext","calf","abs","side","twist"];
-/* 昨日この有効セット数以上使った部位は、今日は主役にしない。体幹・ふくらはぎ・前腕は回復が早い */
-const RECOVER_SETS = {abs:10, obliques:10, calves:6, forearms:6};
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット） */
@@ -82,14 +81,14 @@ function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   return n;
 }
 /* 部位 m が回復の途中か: 部位ごとの日数（RECOVER_GAP）のうちに主役で3セット以上、
-   量が多かった日（主役で6セット以上）はもう1日、または昨日しっかり使った（補助も含めた有効セット） */
+   量が多かった日（主役で6セット以上）はもう1日。補助で使っただけの日・主役で1〜2セットだけの日は数えない */
 function recovering(m){ return recoverDaysLeft(m) > 0; }
 /* 「中3日: 大腿四頭筋・大殿筋…／…／連日でもよい: 腹直筋…」（提案タブの説明用。表から作るので値を変えても食い違わない） */
 function recoverGapText(){
   const gaps = Array.from(new Set(Object.keys(MUSCLES).map(recoverGap))).sort((a, b) => b - a);
   return gaps.map(g => (g ? "中" + g + "日: " : "連日でもよい: ")
     + Object.keys(MUSCLES).filter(m => recoverGap(m) === g).map(m => MUSCLES[m]).join("・")).join("／")
-    + "（1日に6セット以上やった部位は、空ける日を1日増やします）";
+    + "（空けるのは、その部位をメインで3セット以上やったとき。1日に6セット以上なら、空ける日を1日増やします）";
 }
 /* 今日「筋肉痛」と選んだ部位（その日だけ。今日のメニューでは主役にしない） */
 function soreToday(){
@@ -105,11 +104,9 @@ function recoverDaysLeft(m){
     const need = n >= RECOVER_HEAVY ? g + 2 : (n >= RECOVER_PRIMARY ? g + 1 : 0);
     left = Math.max(left, need - ago);
   }
-  if(muscleLoadBetween(m, 1, 1) >= recoverLimit(m)) left = Math.max(left, 1);
   return left;
 }
 function patternOf(id){ return PATTERN[id] || PATTERN[baseOf(id)] || id; }
-function recoverLimit(m){ return RECOVER_SETS[m] || 3; }
 /* 種目の難しさ（1=やさしい, 2=標準, 3=難しい）。書いていなければ標準。
    同じ種目でも片脚でやる組み方は、1段難しいものとして扱う */
 function levelOf(id){ return (EXMAP[id] || {}).level || (EXMAP[baseOf(id)] || {}).level || 2; }

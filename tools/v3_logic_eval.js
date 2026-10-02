@@ -25,8 +25,8 @@
     plan.forEach(it => {
       const adv = todayAdvice(it, suggestNext(it, null, lastPerformance(it.ex, TODAY)));
       if(adv && adv.level === "recover") out.recoverOnPlan.push({day, ex: it.ex, text: adv.text});
-      /* 間隔: 主役の部位を昨日しっかり使っていない */
-      EXMAP[it.ex].p.forEach(m => { const y = muscleLoadBetween(m, 1, 1); if(y >= recoverLimit(m)) out.recoverViolations.push({day, ex: it.ex, m, y}); });
+      /* 間隔: 主役の部位が回復の途中でない（主役で3セット以上やった日から、部位ごとの日数を空けている） */
+      EXMAP[it.ex].p.forEach(m => { const left = recoverDaysLeft(m); if(left > 0) out.recoverViolations.push({day, ex: it.ex, m, left}); });
       const add = exLoad(it.ex, it.sets || 3);
       Object.keys(add).forEach(m => dayLoad[m] = (dayLoad[m] || 0) + add[m]);
       setsToday += it.sets || 3;

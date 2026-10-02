@@ -216,6 +216,13 @@ function addSet(id){
   const btn1 = y0 === null ? null : document.querySelector(sel);
   if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
   startRest(restFor(item), label);
+  /* 休憩の帯（画面の下に出る）が「記録」ボタンに重なるときは、ボタンが帯のすぐ上に見えるところまで画面を送る
+     （重なったままだと、次に押したときに帯のボタンを押してしまう） */
+  const bar = document.getElementById("timer"), btn2 = document.querySelector(sel);
+  if(bar && btn2 && bar.classList.contains("on")){
+    const over = btn2.getBoundingClientRect().bottom + 10 - bar.getBoundingClientRect().top;
+    if(over > 0) window.scrollBy(0, over);
+  }
 }
 function delSet(id, i){
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
