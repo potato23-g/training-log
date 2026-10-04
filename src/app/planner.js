@@ -53,6 +53,7 @@ let planRelax = false;                     /* 同上。1回の量の目安（15�
 let planSkip = null;                       /* 今日「外した」動き（組み直しても入れない） */
 let planKeep = null;                       /* 組み直しで残す種目（記録済み・自分で足した種目）。これを入れた状態から組む */
 let planShort = false;                     /* 「20分で組む」とき */
+let planWhy = null;                        /* {} を入れてから buildPlan() を呼ぶと、入らなかった動きごとの理由が入る */
 const SHORT_MAX = {sets:9, exercises:3, minutes:20};
 /* 軽い週は種目を少なめにする（セット数は3で固定なので、種目の数で量を減らす） */
 const DELOAD_MAX = {sets:9, exercises:3, minutes:30};
@@ -96,38 +97,52 @@ function buildPlan(){
     return (PLAN_WEIGHT[m] || 0) * (under + over * 0.15);
   };
   const gain = c => { const add = exLoad(c.ex, c.sets || 3); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
-  const allowed = c => {
-    const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n);
-    if(plan.some(p => patternOf(p.ex) === patternOf(c.ex))) return false;          /* 同じ動きは1日1つ */
-    if(donePattern.has(patternOf(c.ex))) return false;                              /* 今日もうやった動き */
-    if(planSkip && planSkip.has(patternOf(c.ex))) return false;                     /* 今日は外した動き */
-    if(touched.has(patternOf(c.ex)) && !daily(ex)) return false;                    /* 昨日と同じ動きは続けない（連日でもよい部位は除く） */
-    if(!gearReady(c.ex, c)) return false;                                           /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
-    if(ex.p.some(m => rest[m])) return false;                                       /* 回復の途中・筋肉痛の部位が主役 */
-    if(Object.keys(add).some(m => (today[m] || 0) + add[m] > dayMax(m))) return false;   /* 1日の上限（補助で使う部位も含む） */
+  /* その組み方を今日のメニューに入れられない理由（入れられるなら ""）。"rest:glutes" のように、理由と部位を返す */
+  const why = c => {
+    const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n), pat = patternOf(c.ex);
+    if(plan.some(p => patternOf(p.ex) === pat)) return "same";                      /* 同じ動きは1日1つ */
+    if(donePattern.has(pat)) return "done";                                         /* 今日もうやった動き */
+    if(planSkip && planSkip.has(pat)) return "skip";                                /* 今日は外した動き */
+    if(touched.has(pat) && !daily(ex)) return "yesterday";                          /* 昨日と同じ動きは続けない（連日でもよい部位は除く） */
+    const after = PATTERN_AFTER[pat];
+    if(after && !after.some(pt => donePattern.has(pt) || plan.some(p => patternOf(p.ex) === pt))) return "after";   /* 仕上げの動きは、先に組む動きがある日だけ */
+    if(!gearReady(c.ex, c)) return "gear";                                          /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
+    const tired = ex.p.find(m => rest[m]);
+    if(tired) return "rest:" + tired;                                               /* 回復の途中・筋肉痛の部位が主役 */
+    /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕・ふくらはぎ）を補助で使うだけの種目は、その部位の量では外さない。
+       スクワットとランジはどれも腹直筋を補助で使うので、腹筋の種目を多くやった日・週は、大腿四頭筋と内転筋を
+       メインで鍛える種目が1つも入らなかった（2026-10-04 本人の指摘） */
+    const spare = m => recoverGap(m) === 0 && !ex.p.includes(m);
+    const dayOver = Object.keys(add).find(m => !spare(m) && (today[m] || 0) + add[m] > dayMax(m));
+    if(dayOver) return "day:" + dayOver;                                            /* 1日の上限（補助で使う部位も含む。連日でもよい部位を補助で使うだけの分は除く） */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
-    if(Object.keys(add).some(m => (week[m] || 0) + (today[m] || 0) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4))) return false;
-    if(!planRelax && (plan.length >= LIM.exercises || sets + n > LIM.sets)) return false;
-    if(!planRelax && minutes + mins(c) > LIM.minutes) return false;
-    return true;
+    const weekOver = Object.keys(add).find(m => !spare(m) && (week[m] || 0) + (today[m] || 0) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4));
+    if(weekOver) return "week:" + weekOver;
+    if(!planRelax && (plan.length >= LIM.exercises || sets + n > LIM.sets)) return "full";
+    if(!planRelax && minutes + mins(c) > LIM.minutes) return "time";
+    return "";
   };
+  const allowed = c => !why(c);
   /* 動きごとに、今日やる組み方を決めておく（伸ばし方の結果: 前回の組み方か、その次の段）。
      その組み方が今日できるなら、その動きではそれだけを候補にする（気分で入れ替えない）。
-     記録の無い動きは、素の組み方（楽／大変の付かない種目）から選ぶ */
+     記録の無い動きは、始める種目を決めてあればその種目（rules.js の PATTERN_FIRST）、無ければ素の組み方（楽／大変の付かない種目）から選ぶ */
   const nextMemo = {};
-  const nextOf = pat => (pat in nextMemo ? nextMemo[pat] : (nextMemo[pat] = patternNext(pat)));
+  const firstOf = pat => (PATTERN_FIRST[pat] ? catalogItem(PATTERN_FIRST[pat]) : null);
+  const nextOf = pat => (pat in nextMemo ? nextMemo[pat] : (nextMemo[pat] = patternNext(pat) || firstOf(pat)));
   const candidate = c => {
     const K = nextOf(patternOf(c.ex));
     if(!K) return !c.lv;
     if(itemKey(c) === itemKey(K)) return true;
     return !allowed(K);                    /* 決めた組み方が今日できないときだけ、ほかを候補にする */
   };
-  const score = c => {
-    const K = nextOf(patternOf(c.ex)), pref = PATTERN_PREF[patternOf(c.ex)] || 1;
-    if(K && itemKey(c) === itemKey(K)) return gain(c) * pref;
+  /* 同じ動きの中で、どの組み方にするかを比べる値。決めた組み方が無い（今日できない）ときは、段の近いもの
+     （記録の無い動きは標準の段）・素の組み方を先にする。動きどうしを比べるのには使わない */
+  const fit = c => {
+    const K = nextOf(patternOf(c.ex));
+    if(K && itemKey(c) === itemKey(K)) return gain(c);
     const want = K ? itemLevel(K) : 2;
-    return gain(c) * pref / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
+    return gain(c) / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
   };
   const take = c => {
     const it = Object.assign({}, c), add = exLoad(it.ex, it.sets || 3);
@@ -135,10 +150,18 @@ function buildPlan(){
     sets += it.sets || 3; minutes += mins(it);
     plan.push(it);
   };
+  /* 動きごとに一番合う組み方を1つ決めてから、動きどうしを価値（× 動きの係数）で比べる。
+     段の近さで割り引いた値のまま動きどうしを比べると、記録の無い動きのうち、選ぶ種目が標準の段でないもの
+     （ワンハンドロウ・ダンベルカール・サイドレイズ・シュラッグ・ファーマーズウォーク・サイドベンド・プランクなど）は、
+     記録が付くまで価値が半分以下になり、使えていない部位があってもメニューに入らなかった（2026-10-04 本人の指摘） */
   const fill = (minGain, upTo, only) => {
     while(plan.length < upTo){
-      const best = catalog().filter(c => (!only || only(c)) && allowed(c) && candidate(c)).map(c => ({c, g: gain(c), s: score(c)}))
-        .filter(x => x.g >= minGain).sort((a, b) => b.s - a.s)[0];
+      const byPattern = {};
+      catalog().filter(c => (!only || only(c)) && allowed(c) && candidate(c)).forEach(c => {
+        const g = gain(c), pat = patternOf(c.ex), f = fit(c);
+        if(g >= minGain && (!byPattern[pat] || f > byPattern[pat].f)) byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1)};
+      });
+      const best = Object.keys(byPattern).map(p => byPattern[p]).sort((a, b) => b.v - a.v)[0];
       if(!best) return;
       take(best.c);
     }
@@ -181,6 +204,16 @@ function buildPlan(){
     sets -= plan[i].sets || SETS_PER_EXERCISE; minutes -= mins(plan[i]); plan.splice(i, 1);
   }
   plan.forEach(p => delete p.seed);
+  /* 入らなかった動きの理由を残す（頼まれたときだけ）。その動きで今日やる組み方（決めてあればそれ、無ければ素の組み方）で見る */
+  if(planWhy){
+    Array.from(new Set(catalog().map(c => patternOf(c.ex)))).forEach(pat => {
+      if(plan.some(p => patternOf(p.ex) === pat)) return;
+      const K = nextOf(pat);
+      const rows = K ? [K] : catalog().filter(c => patternOf(c.ex) === pat && !c.lv);
+      const reasons = rows.map(why);
+      planWhy[pat] = reasons.includes("") ? "" : reasons[0];
+    });
+  }
 
   if(!planSeed) plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
   planMemo = plan;
@@ -188,7 +221,7 @@ function buildPlan(){
 }
 /* 今日のメニューが空の日（休み）に出す説明 */
 function restText(){
-  const big = ["quads","glutes","hams","chest","lats","shoulders"];
+  const big = ["quads","glutes","hams","chest","lats","frontdelt","sidedelt","reardelt"];
   const tired = recoveringList(big);
   const enough = big.filter(m => !tired.some(x => x.m === m) && muscleLoadBetween(m, 1, 6) >= WEEK_TARGET);
   const names = ms => ms.map(m => MUSCLES[m]).join("・");
@@ -213,10 +246,11 @@ function currentRow(x){
   ["manual", "skip", "extra"].forEach(k => { if(x[k]) out[k] = true; });
   return out;
 }
-/* 今日のメニュー（「外した」種目も skip:true のまま含む。数えるときは除く） */
+/* 今日のメニュー（「外した」種目も skip:true のまま含む。数えるときは除く）。
+   この版に無い種目（後の版で足した種目を、別の端末が同期で持ってきたとき）は出さない。記録のメニューには残す */
 function todayItems(){
   const s = session(TODAY);
-  const items = s.plan && s.plan.length ? s.plan.map(currentRow) : buildPlan().map(x=>Object.assign({}, x));
+  const items = s.plan && s.plan.length ? s.plan.filter(x => x && EXMAP[x.ex]).map(currentRow) : buildPlan().map(x=>Object.assign({}, x));
   (s.entries||[]).forEach(e=>{
     if(!items.some(i=>i.ex===e.ex) && EXMAP[e.ex]){
       /* メニューに無い記録（以前の版で足した種目など）も、同じ組み方で出す */

@@ -78,7 +78,13 @@ const WANT = {
   /* ゴブレットと同じ持ち方 */
   sidelunge: [{ t: 0, hand: 'handR', to: [0, 1, 0], label: '胸の前: 手のひらは上（下から支える）' }],
   /* ダンベルの下側を両手でまとめて支える。頭の後ろまで下ろした位置では手のひらが上を向く */
-  pullover: [{ t: 3.2, hand: 'handR', to: [0, 1, 0], label: '頭の後ろ: 手のひらは上（下から支える）' }]
+  pullover: [{ t: 3.2, hand: 'handR', to: [0, 1, 0], label: '頭の後ろ: 手のひらは上（下から支える）' }],
+  /* ハンマーカール: curlと同じ軌道だが、curlのように回さず縦の握り（ニュートラル）を保つ */
+  hammer: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '下: 手のひらは体の側（ニュートラル・縦の握り）' },
+           { t: 1.3, hand: 'handR', to: [0, 0, -1], label: '上げても握りの向きは変えない（curlと違い回さない）' }],
+  /* リアレイズ: row2と同じ下げた位置（向かい合わせ）から、lateralと同じ下向きまで開く */
+  rear: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '下げた位置: 手のひらは向かい合わせ' },
+         { t: 1.2, hand: 'handR', to: [0, -1, 0], label: '開いた位置（肩の高さ）: 手のひらは下' }]
 };
 
 const ids = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(WANT);

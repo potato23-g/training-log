@@ -223,10 +223,16 @@ function progressFor(item){
 }
 /* その動きで今日やる組み方。前回の組み方か、前回の出来で段を移るならその先。記録が無ければ null */
 function patternNext(pattern){
-  const hist = patternHistory(pattern);
-  if(!hist.length) return null;
+  const all = patternHistory(pattern);
+  if(!all.length) return null;
+  /* 種目を決めてある動き（rules.js の PATTERN_MAIN: ふくらはぎ）は、その種目の記録から続ける。
+     その種目の記録が無ければ（座って行う方だけやっていた）、その種目の基本のやり方から */
+  const main = PATTERN_MAIN[pattern];
+  const hist = main ? all.filter(h => baseOf(h.ex) === main) : all;
+  if(!hist.length) return catalogItem(main);
   const last = hist[0].item, p = progressFor(last);
-  return (p.change === "harder" || p.change === "easier") && p.next ? p.next : last;
+  const next = (p.change === "harder" || p.change === "easier") && p.next ? p.next : last;
+  return main && baseOf(next.ex) !== main ? last : next;
 }
 
 /* ---- 軽い週を勧めるか ----

@@ -20,7 +20,7 @@ function viewBody(){
     detail = `<div class="card">
       <h4>${MUSCLES[selMuscle]}</h4>
       <p class="lastline" style="margin-top:0">直近${bodyDays}日で <b>${(load[selMuscle]||0).toFixed(1)}</b> 有効セット</p>
-      <p class="lastline" style="margin-top:2px">回復の目安: ${recoverGap(selMuscle) ? "中" + recoverGap(selMuscle) + "日" : "連日でもよい"}。${muscleRestText(selMuscle)}</p>
+      <p class="lastline" style="margin-top:2px">回復の目安: ${recoverGapLabel(recoverGap(selMuscle))}。${muscleRestText(selMuscle)}</p>
       ${hits.length ? `<ul class="plain">${hits.map(h=>`<li>${fmtDate(h.d)}　${h.name}　${h.n}セット（${h.role}）</li>`).join("")}</ul>`
         : `<p style="font-size:14px;margin:6px 0 0">この期間、この部位を使う種目はありません。</p>`}
       ${exercisesForMuscle(selMuscle)}
@@ -46,13 +46,33 @@ function viewBody(){
       <h4>使えていない部位</h4>
       ${zero.length ? `<div class="mlist">${zero.map(x=>`<span class="chip">${MUSCLES[x.k]}</span>`).join("")}</div>`
         : `<p style="margin:0;font-size:14px">この期間、主要な部位はひと通り使えています。</p>`}
-    </div>`;
+    </div>
+    ${recoverCard()}`;
   const note = `
     <div class="card">
       <h4>有効セット数とは</h4>
       <p style="margin:0;font-size:14px">主に効く部位は1セットを1.0、補助的に使う部位は0.5として足した数です。重量は含めていません。週あたり各部位10前後が初心者の一般的な目安です（個人差があります）。</p>
     </div>`;
   return `<div class="splitcols"><div>${fig}</div><div>${side}${note}</div></div>`;
+}
+/* 部位ごとの回復の目安を、空ける日数ごとにまとめたカード（本人の要望: 2026-10-04）。
+   日数は rules.js の recoverGroups（提案タブの説明・部位の内訳と同じ表）。今日メインで鍛えない部位には、
+   種目カードや種目を選ぶシートと同じ印（筋肉痛・回復中・あと◯日）を添える */
+function recoverCard(){
+  const sore = soreToday();
+  const chip = m => {
+    const left = recoverDaysLeft(m);
+    const tag = sore.includes(m) ? "筋肉痛" : (left ? recoverTag(left) : "");
+    return `<span class="chip${tag ? " rest" : ""}" data-rec="${m}">${MUSCLES[m]}${tag ? `<i>${tag}</i>` : ""}</span>`;
+  };
+  return `<div class="card" id="recoverCard">
+    <h4>部位ごとの回復の目安</h4>
+    ${recoverGroups().map(g => `<div class="recrow">
+      <span class="recgap">${recoverGapLabel(g.gap)}</span>
+      <div class="mlist">${g.muscles.map(chip).join("")}</div>
+    </div>`).join("")}
+    <p class="lastline">${esc(RECOVER_NOTE)}。</p>
+  </div>`;
 }
 /* 選んだ部位の今の様子（筋肉痛・回復まであと何日か）。種目カードや種目を選ぶシートと同じ数え方（recoverDaysLeft） */
 function muscleRestText(m){

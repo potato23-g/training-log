@@ -106,7 +106,13 @@ const PHYS = {
   sidelunge:{hold:"両足は床につけたまま。ダンベルは胸の前で両手で支える"},
   slidecurl:{hold:"肩と足裏（かかと）は床。腰を浮かせたまま、かかとを滑らせる"},
   pullover:{hold:"背中と足裏は床。ダンベル1つを両手でまとめて持ち、胸の上と頭の後ろの間を動かす"},
-  twist:{hold:"尻と足裏が床。足は浮かせず、床につけたまま体幹をひねる"}
+  twist:{hold:"尻と足裏が床。足は浮かせず、床につけたまま体幹をひねる"},
+  sissy:{hold:"両足のつま先側だけが床（かかとは浮かせる）。片手で柱やドア枠を軽くつかむ"},
+  rear:{hold:"両足は床。上体を倒したまま、ダンベルは両手に1つずつ"},
+  abduct:{hold:"体の横（下側の腰と脚）が床。下の腕は頭の下に置く"},
+  hammer:{hold:"両足は床。肘は体側に固定。ダンベルは両手に1つずつ、縦に持つ"},
+  /* 組み方の動き（VARIANT_MOTION の名前）で書くと、その組み方の図にだけ出る。床に接するものが基本と違う組み方に使う */
+  pushup_deep:{hold:"床に置いたダンベルを握った手と、つま先だけで体を支える"}
 };
 
 /* ---------- 図解（3Dマネキン） ---------- */
@@ -143,6 +149,10 @@ const DIANOTE = {
   slidecurl: "尻が下がったら、そこが今日の可動域の限界。かかとで床を押しながら滑らせる。",
   pullover: "肘の角度は変えない。動かすのは肩だけ。腰が反ったら、可動域の外に出ている合図。",
   twist: "ひねるのは体幹。腰の位置そのものは動かさない。反動を使わず、ひねりきった位置を感じる。",
+  sissy: "膝から肩までを一直線に保ったまま、膝を前に出して沈む。尻が後ろに引けたら、普通のスクワットになっている。",
+  rear: "上体の角度を保ったまま、腕を真横へ開く。肩甲骨を寄せて引くと、背中の運動になる。",
+  abduct: "つま先は正面に向けたまま、脚を体より少し後ろで上げる。つま先が上を向くと太ももの前側に効いてしまう。",
+  hammer: "手首の向きは縦のまま変えない。肘の位置を動かさずに巻き上げる。",
 };
 
 let FIG = null, animRAF = null, playingId = null, playSlot = null, playBtn = null;
@@ -257,7 +267,7 @@ function diaHTML(id, compact, item, opt){
   const dbn = (useDb && figDb && useDb < figDb) ? useDb : null;
   const dbNote = (useDb && figDb && useDb > figDb)
     ? `<p class="dianote">図は1つで持つ形です。今日は「${esc(opt.how)}」で行ってください。</p>` : "";
-  const hold = ((PHYS[id] || PHYS[baseOf(id)] || {}).hold) || "";
+  const hold = ((PHYS[mo] || PHYS[id] || PHYS[baseOf(id)] || {}).hold) || "";
   const note = DIANOTE[id] || DIANOTE[baseOf(id)] || "";
   const tail = (hold ? `<p class="diahold"><b>接地</b>　${hold}</p>` : "")
              + (compact || !note ? "" : `<p class="dianote">${note}</p>`);

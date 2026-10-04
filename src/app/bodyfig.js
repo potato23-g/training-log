@@ -22,8 +22,10 @@ function figFront(){ return `
   <path d="M80,352 L97,352 L97,366 L74,366 Z"/><path d="M120,352 L103,352 L103,366 L126,366 Z"/>
  </g>
  <path class="rg" data-m="traps" d="M80,62 L100,56 L120,62 L113,76 L87,76 Z"/>
- <ellipse class="rg" data-m="shoulders" cx="62" cy="90" rx="16" ry="15"/>
- <ellipse class="rg" data-m="shoulders" cx="138" cy="90" rx="16" ry="15"/>
+ <path class="rg" data-m="sidedelt" d="M62,75 A16,15 0 0,0 62,105 Z"/>
+ <path class="rg" data-m="frontdelt" d="M62,75 A16,15 0 0,1 62,105 Z"/>
+ <path class="rg" data-m="sidedelt" d="M138,75 A16,15 0 0,1 138,105 Z"/>
+ <path class="rg" data-m="frontdelt" d="M138,75 A16,15 0 0,0 138,105 Z"/>
  <rect class="rg" data-m="chest" x="77" y="74" width="22" height="36" rx="9"/>
  <rect class="rg" data-m="chest" x="101" y="74" width="22" height="36" rx="9"/>
  <ellipse class="rg" data-m="biceps" cx="53" cy="124" rx="11" ry="25"/>
@@ -48,8 +50,10 @@ function figBack(){ return `
   <path d="M80,352 L97,352 L97,366 L74,366 Z"/><path d="M120,352 L103,352 L103,366 L126,366 Z"/>
  </g>
  <path class="rg" data-m="traps" d="M100,50 L127,66 L117,106 L100,114 L83,106 L73,66 Z"/>
- <ellipse class="rg" data-m="shoulders" cx="60" cy="90" rx="15" ry="14"/>
- <ellipse class="rg" data-m="shoulders" cx="140" cy="90" rx="15" ry="14"/>
+ <path class="rg" data-m="sidedelt" d="M60,76 A15,14 0 0,0 60,104 Z"/>
+ <path class="rg" data-m="reardelt" d="M60,76 A15,14 0 0,1 60,104 Z"/>
+ <path class="rg" data-m="sidedelt" d="M140,76 A15,14 0 0,1 140,104 Z"/>
+ <path class="rg" data-m="reardelt" d="M140,76 A15,14 0 0,0 140,104 Z"/>
  <path class="rg" data-m="lats" d="M79,100 C69,118 72,144 83,166 L98,152 L98,104 Z"/>
  <path class="rg" data-m="lats" d="M121,100 C131,118 128,144 117,166 L102,152 L102,104 Z"/>
  <rect class="rg" data-m="erectors" x="93" y="112" width="14" height="58" rx="6"/>
@@ -57,6 +61,8 @@ function figBack(){ return `
  <ellipse class="rg" data-m="triceps" cx="147" cy="124" rx="11" ry="25"/>
  <ellipse class="rg" data-m="forearms" cx="46" cy="174" rx="9.5" ry="27"/>
  <ellipse class="rg" data-m="forearms" cx="154" cy="174" rx="9.5" ry="27"/>
+ <path class="rg" data-m="gmed" d="M76,197 C70,184 72,171 85,167 L91,167 L91,172 C84,174 79,181 77,191 Z"/>
+ <path class="rg" data-m="gmed" d="M124,197 C130,184 128,171 115,167 L109,167 L109,172 C116,174 121,181 123,191 Z"/>
  <path class="rg" data-m="glutes" d="M100,172 L100,213 C91,219 79,212 77,197 C76,182 86,170 100,172 Z"/>
  <path class="rg" data-m="glutes" d="M100,172 L100,213 C109,219 121,212 123,197 C124,182 114,170 100,172 Z"/>
  <rect class="rg" data-m="hams" x="77" y="213" width="22" height="68" rx="10"/>

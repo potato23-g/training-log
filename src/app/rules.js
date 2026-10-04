@@ -32,30 +32,47 @@ const PATTERN = {
   pushup:"hpush", floorpress:"hpush", ohp:"vpush", lateral:"raise", row:"pull", farmer:"carry",
   curl:"curl", triext:"ext", plank:"abs", deadbug:"abs", crunch:"abs", sideplank:"side",
   sumo:"squat", splitfloor:"squat", bridge:"bridge", pushupknee:"hpush", fly:"fly",
-  skull:"ext", front:"raise", shrug:"shrug", row2:"pull",
+  skull:"ext", front:"fraise", shrug:"shrug", row2:"pull",
   calfseat:"calf", sidebend:"side", sidelunge:"lunge",
-  slidecurl:"legcurl", pullover:"pullover", twist:"twist"
+  slidecurl:"legcurl", pullover:"pullover", twist:"twist",
+  /* 2026-10-03: フロントレイズは肩の前・サイドレイズは肩の横で狙う部位が違うので、別の動きにした
+     （同じ動きのままだと、前回やった方だけが続けて出て、もう一方が出なくなる）。
+     ハンマーカールはカールと同じ「肘を曲げる」動き。自動では入れ替えない（種目を選ぶシートで選ぶと、次からそれが続く） */
+  sissy:"kneeext", rear:"rear", abduct:"abduct", hammer:"curl"
 };
 /* メニューに並べる順（大きい動きを先に、体幹は最後に） */
-const PATTERN_ORDER = ["squat","lunge","hinge","legcurl","hpush","fly","pull","pullover","vpush","bridge","carry","shrug","raise","curl","ext","calf","abs","side","twist"];
+const PATTERN_ORDER = ["squat","lunge","kneeext","hinge","legcurl","hpush","fly","pull","pullover","vpush","bridge","abduct","carry","shrug",
+                       "raise","fraise","rear","curl","ext","calf","abs","side","twist"];
+/* 動きの中で、メニュー作りが選ぶ種目を決めてある動き。前回ほかの種目をやっていても、この種目（とその楽／大変のやり方）で続ける。
+   ふくらはぎは立って段差で行う方を基本にする: 座って行う方は腓腹筋がほとんど太らず、ヒラメ筋の太り方も
+   立って行う方と同じくらいだった（Kinoshita 2023 doi:10.3389/fphys.2023.1272106）。座って行う方は種目を選ぶシートからは選べる */
+const PATTERN_MAIN = {calf:"calf"};
+/* 記録の無い動きを、どの種目から始めるか。ハンマーカールはダンベルカールの握り違いなので、メニュー作りからは選ばない
+   （自分で選んでやった次の回からは、その記録から続ける） */
+const PATTERN_FIRST = {curl:"curl", calf:"calf"};
+/* 仕上げに足す動き: 書いてある動きを先に組んだ日だけ入れる。シシースクワット（膝を伸ばす）は大腿四頭筋だけを使うので、
+   別の日に入れると大殿筋の回復の日とずれて、スクワット・ランジ（大腿四頭筋と大殿筋の両方を使う）が入る日がなくなる */
+const PATTERN_AFTER = {kneeext:["squat", "lunge"]};
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット） */
 function dayMax(m){ return BIG_MUSCLES.includes(m) ? 8 : 6; }
 const SESSION_MAX = {sets:15, exercises:5, minutes:50};     /* 1種目3セットで5種目まで */
 /* 足りないときに優先する度合い（大きい部位ほど高い） */
-const PRIORITY = {quads:1, glutes:1, hams:1, chest:1, lats:1, shoulders:0.8,
-                  triceps:0.5, biceps:0.5, calves:0.5, abs:0.4, obliques:0.4, traps:0.4,
+const PRIORITY = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.8, sidedelt:0.8, reardelt:0.8,
+                  triceps:0.5, biceps:0.5, calves:0.5, gmed:0.5, abs:0.4, obliques:0.4, traps:0.4,
                   erectors:0.2, forearms:0.2, adductors:0.2};
 /* メニューを選ぶときの部位の重み。不足を2乗で数えるので、差は小さめにしてある（PRIORITY は「からだ」タブの並び順用） */
-/* 腹直筋・脊柱起立筋・前腕・内転筋はほかの種目の補助で十分に使われるので軽くしてある */
-const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, shoulders:0.9,
-                     triceps:0.8, biceps:0.8, calves:0.9, abs:0.5, obliques:0.8, traps:0.6,
+/* 腹直筋・脊柱起立筋・前腕・内転筋・肩の前はほかの種目の補助で十分に使われるので軽くしてある
+   （肩の前は腕立て伏せ・フロアプレス・フライでも使う） */
+const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.3, sidedelt:0.9, reardelt:0.8,
+                     triceps:0.8, biceps:0.8, calves:0.9, gmed:0.5, abs:0.5, obliques:0.8, traps:0.6,
                      erectors:0.3, forearms:0.3, adductors:0.15};
 /* 同じくらいの価値なら、定番の動き（スクワット・ヒンジ・ロウ・プレス）を少し先にする係数。
    部位の不足だけで比べると、主役の部位が多い種目（サイドランジ）や補助の多い種目（プルオーバー）が
    いつも勝ってしまい、スクワットやロウが出なくなるため。書いていない動きは1 */
-const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9};
+const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9,
+                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85};
 /* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
    （0=連日でもよい、1=中1日=48時間、2=中2日=72時間、3=中3日=96時間）。その日に主役で6セット以上やったときは1日延ばす。
    文献の目安（2026-09-29 に調べたもの）: 下肢の大きい筋は中2日が最小で、量が多い・下ろす動作が強いと1日（ハムストリングは
@@ -64,8 +81,8 @@ const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, 
    頻度の研究: Schoenfeld 2019 J Sports Sci PMID30558493）。腹筋・前腕・ふくらはぎは連日でもよいとされる
    （部位ごとの研究は少なく根拠は弱い。ACSM の指針 Garber 2011 PMID21694556 などから）。
    脚・尻・ハムストリングは、本人の実感（中2日ではまだ早い）に合わせて文献の「量が多い日」の側の中3日にしてある */
-const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, shoulders:1, traps:1, erectors:2,
-                     biceps:1, triceps:1, forearms:0, abs:0, obliques:0, calves:0, adductors:2};
+const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, frontdelt:1, sidedelt:1, reardelt:1, traps:1, erectors:2,
+                     biceps:1, triceps:1, forearms:0, abs:0, obliques:0, calves:0, adductors:2, gmed:1};
 const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
 /* 1種目のセット数。本人の要望で3に固定（2026-09-29。重さ・回数は本人が調整する） */
 const SETS_PER_EXERCISE = 3;
@@ -83,17 +100,29 @@ function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
 /* 部位 m が回復の途中か: 部位ごとの日数（RECOVER_GAP）のうちに主役で3セット以上、
    量が多かった日（主役で6セット以上）はもう1日。補助で使っただけの日・主役で1〜2セットだけの日は数えない */
 function recovering(m){ return recoverDaysLeft(m) > 0; }
-/* 「中3日: 大腿四頭筋・大殿筋…／…／連日でもよい: 腹直筋…」（提案タブの説明用。表から作るので値を変えても食い違わない） */
-function recoverGapText(){
+/* 部位を、空ける日数ごとにまとめる（日数の多い順）。[{gap, muscles}]。
+   からだタブの「部位ごとの回復の目安」と提案タブの説明は、どちらもここから作る（表の値を変えても食い違わない） */
+function recoverGroups(){
   const gaps = Array.from(new Set(Object.keys(MUSCLES).map(recoverGap))).sort((a, b) => b - a);
-  return gaps.map(g => (g ? "中" + g + "日: " : "連日でもよい: ")
-    + Object.keys(MUSCLES).filter(m => recoverGap(m) === g).map(m => MUSCLES[m]).join("・")).join("／")
-    + "（空けるのは、その部位をメインで3セット以上やったとき。1日に6セット以上なら、空ける日を1日増やします）";
+  return gaps.map(g => ({gap: g, muscles: Object.keys(MUSCLES).filter(m => recoverGap(m) === g)}));
+}
+/* 「中3日」「連日でもよい」 */
+function recoverGapLabel(g){ return g ? "中" + g + "日" : "連日でもよい"; }
+const RECOVER_NOTE = "空けるのは、その部位をメインで" + RECOVER_PRIMARY + "セット以上やったとき。1日に" + RECOVER_HEAVY + "セット以上なら、空ける日を1日増やします";
+/* 「中3日: 大腿四頭筋・大殿筋…／…／連日でもよい: 腹直筋…」（提案タブの説明用） */
+function recoverGapText(){
+  return recoverGroups().map(g => recoverGapLabel(g.gap) + ": " + g.muscles.map(m => MUSCLES[m]).join("・")).join("／")
+    + "（" + RECOVER_NOTE + "）";
 }
 /* 今日「筋肉痛」と選んだ部位（その日だけ。今日のメニューでは主役にしない） */
 function soreToday(){
   const s = state.sessions[TODAY];
-  return (s && Array.isArray(s.sore) ? s.sore : []).filter(m => MUSCLES[m]);
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  const out = [];
+  (s && Array.isArray(s.sore) ? s.sore : []).forEach(m => (own(MUSCLE_OLD, m) ? MUSCLE_OLD[m] : [m]).forEach(k => {
+    if(own(MUSCLES, k) && !out.includes(k)) out.push(k);              /* 以前の版の「肩」は、前・横・後ろの3つとして読む */
+  }));
+  return out;
 }
 /* 部位 m を次に主役にできる日（今日から数えて何日後か。0=今日から）。今のまま記録が増えなければ */
 function recoverDaysLeft(m){

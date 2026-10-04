@@ -2,7 +2,8 @@
    図が描けているか・解説文が揃っているか・持ち方や日用品の案内が出ているかを確かめる */
 (async () => {
   const NEW = ["sumo", "splitfloor", "bridge", "pushupknee", "fly", "skull", "front", "shrug", "row2",
-               "calfseat", "sidebend", "sidelunge", "slidecurl", "pullover", "twist"];
+               "calfseat", "sidebend", "sidelunge", "slidecurl", "pullover", "twist",
+               "sissy", "rear", "abduct", "hammer"];
   const out = {missing: [], noFigure: [], noDetail: [], noHold: [], noHouse: [], noMotion: [], noPattern: [],
                notInCatalog: [], badLevel: [], samples: {}};
 
@@ -57,6 +58,24 @@
   const line = document.querySelector('[data-ex="fly"]');
   out.flyShown = !!line;
   out.restFly = restFor({ex: "fly", sets: 3});
+
+  /* 後の版で足した種目（この版に無い種目）が、同期で今日のメニューと記録に入ってきても、今日のタブを描けるか。
+     メニューの行と記録は消さずに残す（後の版の端末へ同期で戻すため） */
+  out.unknownBlocked = [];
+  T.reset([{kg: 5, n: 2}]);
+  const su = session(TODAY);
+  su.plan = [{ex: "zzlater", sets: 3, r: 10}, {ex: "goblet", sets: 3, r: 10}];
+  su.planAt = Date.now();
+  su.entries = [{ex: "zzlater", sets: [{id: "zz1", at: Date.now(), r: 10}]}];
+  su.sore = ["zzpart"];
+  persistSession(TODAY);
+  for(const t of ["today", "body", "hist", "plan"]){
+    tab = t; render();
+    await T.wait(60);
+    if(/この画面を表示できませんでした/.test(document.getElementById("view").textContent)) out.unknownBlocked.push(t);
+  }
+  out.unknownKept = session(TODAY).plan.some(p => p.ex === "zzlater") && session(TODAY).entries.some(e => e.ex === "zzlater");
+  if(!out.unknownKept) out.unknownBlocked.push("記録から消えた");
 
   window.__result = out;
   window.__ready = true;

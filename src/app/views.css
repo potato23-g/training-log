@@ -46,6 +46,14 @@
 .exbytag.plan{color:var(--done);border-color:var(--done)}
 .exbytag.warn{color:var(--muscle);border-color:var(--muscle)}
 
+/* ---- からだ: 部位ごとの回復の目安（空ける日数ごとに1行。回復の途中・筋肉痛の部位は色を変えて印を添える） ---- */
+.recrow{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-top:1px solid var(--rule)}
+.recrow:first-of-type{border-top:none;padding-top:2px}
+.recgap{flex:0 0 6.2em;padding-top:4px;font-size:13px;font-weight:600;color:var(--ink)}
+.recrow .mlist{flex:1 1 0;min-width:0;margin-top:0}
+.chip.rest{border-color:var(--muscle);color:var(--muscle)}
+.chip.rest i{font-style:normal;font-size:10.5px;font-weight:600;margin-left:6px}
+
 /* ---- 履歴: セッション行・種目ごとの推移（U9/U10） ---- */
 table.hist tbody tr{cursor:pointer}
 table.hist tbody tr:active td{background:var(--panel-2)}

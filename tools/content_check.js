@@ -59,10 +59,11 @@ function verbStandard(verb, tempo) {
   return m[2] ? parseInt(m[2], 10) : parseInt(m[1], 10);
 }
 
-EX.forEach((e) => {
+/* 大変版は hard と、そのさらに1段上の hard2（腕立て伏せだけ）の両方を見る */
+EX.forEach((e) => ['hard', 'hard2'].forEach((slot) => {
   const v = VARIANT_TEXT[e.id];
-  if (!v || !v.hard) return;
-  const label = v.hard[0];
+  if (!v || !v[slot]) return;
+  const label = v[slot][0];
   const det = DETAIL[e.id] || DETAIL[baseOf(e.id)];
   const tempo = det && det.tempo;
 
@@ -80,7 +81,7 @@ EX.forEach((e) => {
     report(declared >= std + 2,
       `(a) ${e.id}（${label}）… 標準${std}秒に対し${declared}秒（2秒以上長いこと）`);
   }
-});
+}));
 
 /* ============ (c) ROUTINES でラベル無し・side:true の種目 → 組み方の行も side:true ============ */
 function routineWantsSide(id) {
@@ -113,7 +114,7 @@ Object.keys(VARIANT_MOTION).forEach((key) => {
   const i = key.indexOf('|');
   const exId = key.slice(0, i), label = key.slice(i + 1);
   const v = VARIANT_TEXT[exId];
-  const inText = !!(v && ((v.hard && v.hard[0] === label) || (v.easy && v.easy[0] === label)));
+  const inText = !!(v && ['hard', 'hard2', 'easy'].some((slot) => v[slot] && v[slot][0] === label));
   report(inText, `(e) VARIANT_MOTION キー「${key}」… VARIANT_TEXT に対応する組み方がある`);
   const motionId = VARIANT_MOTION[key];
   report(!!(M.motions && M.motions[motionId]), `(e) VARIANT_MOTION「${key}」→「${motionId}」… 動きが登録されている`);

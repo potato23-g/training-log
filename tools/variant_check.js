@@ -146,6 +146,47 @@ const CHECKS = [
     const rMove = rHi - rLo, lMove = lHi - lLo;
     return [rMove > 0.03 && lMove < 0.01,
       `右かかとの動き ${(rMove * 100).toFixed(1)}cm / 左かかとの動き ${(lMove * 100).toFixed(1)}cm`];
+  }],
+
+  /* --- 追加種目（2026-10-04）の組み方 --- */
+  ['sissy_hold', 'sissy', '一番下で2秒止める', (v) => [seg(v, /^一番下で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^一番下で\d+秒止める/)}秒`]],
+  ['sissy_shallow', 'sissy', '浅めに沈む（膝90度の手前で戻る）', (v, b) => {
+    const a = range(v, 'shankR.flex').hi, c = range(b, 'shankR.flex').hi;
+    return [a < c - 15, `一番曲げたときの膝屈曲 ${a.toFixed(0)}°（元は ${c.toFixed(0)}°）`];
+  }],
+  ['rear_hold', 'rear', '上で2秒止める', (v) => [seg(v, /^上で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^上で\d+秒止める/)}秒`]],
+  ['rear_short', 'rear', '肘を深く曲げる', (v, b) => {
+    const a = range(v, 'forearmR.flex').lo, c = range(b, 'forearmR.flex').lo;
+    return [a > c + 20, `肘の曲げ ${a.toFixed(0)}°（元は ${c.toFixed(0)}°）`];
+  }],
+  ['abduct_db', 'abduct', 'ダンベルを太ももに乗せる', (v, b) => {
+    const cyc = M.cycleTime(v);
+    let worst = 0;
+    for (let i = 0; i <= 60; i++) {
+      const fr = M.solveFrame(v, cyc * i / 60);
+      const hip = fr.b.thighL.pos, knee = fr.b.thighL.tip, grip = M.at(fr, 'handL', M.HAND.grip);
+      const d = V.sub(knee, hip), s = Math.max(0, Math.min(1, V.dot(V.sub(grip, hip), d) / V.dot(d, d)));
+      worst = Math.max(worst, V.dist(V.add(hip, V.mul(d, s)), grip));
+    }
+    return [dbCount(v) > dbCount(b) && worst <= 0.20,
+      `ダンベル ${dbCount(v)}個（元は ${dbCount(b)}個） / 握り〜太もも軸の最大距離 ${(worst * 100).toFixed(1)}cm（20cm以下か）`];
+  }],
+  ['abduct_bent', 'abduct', '膝を曲げて行う', (v, b) => {
+    const a = range(v, 'shankL.flex').hi, c = range(b, 'shankL.flex').hi;
+    return [a > c + 40, `上脚の膝屈曲 ${a.toFixed(0)}°（元は ${c.toFixed(0)}°）`];
+  }],
+  ['hammer_hold', 'hammer', '途中で2秒止める', (v) => [seg(v, /^途中で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^途中で\d+秒止める/)}秒`]],
+  ['hammer_one', 'hammer', '肘を手で支える', (v) => [dbCount(v) === 1 && moves(v, 'forearmL.flex') < 5,
+    `ダンベル ${dbCount(v)}個 / 左腕の動き ${moves(v, 'forearmL.flex')}°`]],
+  ['pushup_deep', 'pushup', 'ダンベルを握って行う（胸が手の高さより下に沈む）', (v, b) => {
+    /* 「手の高さより下」は手首の位置だと握りが高くなるだけで自動的に満たされてしまうため、
+       実際に握っている点（pin）・pushup では床につく手のひらの点との差で深さを比べる */
+    const fr = M.solveFrame(v, 3.0), frB = M.solveFrame(b, 3.0);
+    const chest = fr.b.spineT.pos[1] - 0.125, grip = M.at(fr, 'handR', v.hands.R.local)[1];
+    const chestB = frB.b.spineT.pos[1] - 0.125, palmB = M.at(frB, 'handR', M.HAND.palmSurf)[1];
+    const depth = grip - chest, depthB = palmB - chestB;
+    return [dbCount(v) === 2 && dbCount(b) === 0 && depth > depthB + 0.03,
+      `ダンベル ${dbCount(v)}個 / 握りに対する胸の深さ ${(depth * 100).toFixed(1)}cm（元は手のひらに対して ${(depthB * 100).toFixed(1)}cm）`];
   }]
 ];
 

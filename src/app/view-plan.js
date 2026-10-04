@@ -16,7 +16,8 @@ function exerciseHistory(exId){
 }
 /* 動きの呼び名 */
 const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"股関節を折る", hpush:"胸で押す", fly:"胸を開く",
-  pull:"引く", vpush:"上へ押す", bridge:"お尻を持ち上げる", carry:"持って歩く", shrug:"肩をすくめる", raise:"腕を上げる",
+  pull:"引く", vpush:"上へ押す", bridge:"お尻を持ち上げる", carry:"持って歩く", shrug:"肩をすくめる", raise:"腕を横に上げる",
+  fraise:"腕を前に上げる", rear:"腕を後ろへ開く", kneeext:"膝を伸ばす", abduct:"脚を横に上げる",
   curl:"肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹",
   legcurl:"膝を曲げる", pullover:"頭の上から引く", twist:"ひねる"};
 

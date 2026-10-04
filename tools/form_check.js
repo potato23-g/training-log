@@ -505,6 +505,68 @@ const CHECKS = {
       ['体重を片側へ移す', `足幅 ${(stance * 100).toFixed(0)}cm / 腰の移動 ${(shift * 100).toFixed(0)}cm`,
         stance > 0.40 && shift > 0.08]
     ];
+  },
+
+  /* ============ 追加種目（2026-10-04） ============
+     sissy/rear/abduct は一次資料を取っていない新規の動き（出典で確認できず、一般的な動作として換算。
+     notes/form-sources.md の「追加種目（2026-09-21）の扱い」と同じ方針）。判定はアプリの解説文
+     （DETAIL の setup/how/rom）どおりに3Dが動いているかを数値で見るもので、出典の追認ではない。
+     hammer は同文書に既に「ハンマーカール=ダンベルカール」と記載済みの土台（curl）からの派生 */
+  sissy: (m) => {
+    const top = at(m, 0), bottom = at(m, 3.0);
+    const heelTop = M.at(top, 'footR', M.FOOT.heel)[1];
+    const heelBottom = M.at(bottom, 'footR', M.FOOT.heel)[1];
+    const hipTop = ang3(top.b.upperarmR.pos, top.b.thighR.pos, top.b.shankR.pos);
+    const hipBottom = ang3(bottom.b.upperarmR.pos, bottom.b.thighR.pos, bottom.b.shankR.pos);
+    const kneeBottom = M.boneAngles(bottom.pose, 'shankR').flex;
+    return [
+      ['かかとを上げてつま先立ちを保つ', `かかとの高さ 上${(heelTop * 100).toFixed(1)}cm / 下${(heelBottom * 100).toFixed(1)}cm`,
+        heelTop > 0.02 && heelBottom > 0.02],
+      ['股関節は曲げず、肩-腰-膝が一直線のまま沈む', `肩-腰-膝 上${hipTop.toFixed(0)}° / 下${hipBottom.toFixed(0)}°`,
+        hipTop > 165 && hipBottom > 165],
+      ['膝が90度くらいまで曲がる', `膝屈曲 ${kneeBottom.toFixed(0)}°`, kneeBottom > 75 && kneeBottom < 105]
+    ];
+  },
+  rear: (m) => {
+    const bottom = at(m, 0), top = at(m, 1.2);
+    const torso = fromHoriz(dir(top, 'spineT'));
+    const kneeBend = M.boneAngles(bottom.pose, 'shankR').flex;
+    const elbowBottom = M.boneAngles(bottom.pose, 'forearmR').flex;
+    const elbowTop = M.boneAngles(top.pose, 'forearmR').flex;
+    const abd = fromHoriz(dir(top, 'upperarmR'));
+    return [
+      ['股関節から上体を床と平行近くまで倒す', `体幹の傾き ${torso.toFixed(0)}°（0=床と平行）`, Math.abs(torso) < 20],
+      ['膝は軽く曲げる（伸ばしきらない）', `膝屈曲 ${kneeBend.toFixed(0)}°`, kneeBend > 2 && kneeBend < 30],
+      ['肘はわずかに曲げて動作中固定', `肘屈曲 下${elbowBottom.toFixed(0)}° / 上${elbowTop.toFixed(0)}°`, Math.abs(elbowTop - elbowBottom) < 8],
+      ['腕を真横へ肩の高さまで開く（上腕が床と平行）', `上腕の傾き ${abd.toFixed(0)}°（0=平行）`, Math.abs(abd) < 15]
+    ];
+  },
+  abduct: (m) => {
+    const top = at(m, 1.0);
+    const kneeUpper = M.boneAngles(top.pose, 'shankL').flex;
+    const kneeLower = M.boneAngles(top.pose, 'shankR').flex;
+    const liftAbd = M.boneAngles(top.pose, 'thighL').abd;
+    const liftFlex = M.boneAngles(top.pose, 'thighL').flex;
+    return [
+      ['下の腕を頭の下、下の脚は膝を軽く曲げて安定させる', `下脚の膝屈曲 ${kneeLower.toFixed(0)}°`, kneeLower > 20 && kneeLower < 70],
+      ['上の脚は膝を伸ばしたまま上げる', `上脚の膝屈曲 ${kneeUpper.toFixed(0)}°`, kneeUpper < 20],
+      ['上の脚を斜め後ろ上へ30〜40度上げる', `上脚の外転 ${liftAbd.toFixed(0)}°`, liftAbd > 28 && liftAbd < 42],
+      ['上の脚は体よりわずかに後ろ', `上脚の屈曲 ${liftFlex.toFixed(0)}°（負=後ろ）`, liftFlex < 0]
+    ];
+  },
+  hammer: (m) => {
+    const start = at(m, 0), top = findT(m, (fr) => fr.b.handR.pos[1]);
+    const elbowStart = M.boneAngles(start.pose, 'forearmR').flex;
+    const foreTop = fromHoriz(dir(top.fr, 'forearmR'));
+    const elbowDrift = Math.abs(top.fr.b.forearmR.pos[0] - start.b.forearmR.pos[0]);
+    const rotStart = M.boneAngles(start.pose, 'forearmR').rot, rotTop = M.boneAngles(top.fr.pose, 'forearmR').rot;
+    return [
+      ['curlと同じ動き: 下は肘を伸ばしきる', `肘屈曲 ${elbowStart.toFixed(0)}°`, elbowStart < 15],
+      ['curlと同じ動き: 上は前腕が立つところまで', `前腕の傾き ${foreTop.toFixed(0)}°（90=垂直）`, foreTop > 60 && foreTop < 110],
+      ['curlと同じ動き: 肘は前に出ない', `肘の前後移動 ${(elbowDrift * 100).toFixed(0)}cm`, elbowDrift < 0.08],
+      ['curlと違い、縦の握り（中間位）を動作中保つ', `前腕の回旋 下${rotStart.toFixed(0)}° / 上${rotTop.toFixed(0)}°（90=中間位）`,
+        Math.abs(rotStart - 90) < 5 && Math.abs(rotTop - 90) < 5]
+    ];
   }
 };
 

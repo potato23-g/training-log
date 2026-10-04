@@ -40,12 +40,12 @@ document.getElementById("timerStop").onclick = stopRest;
 document.getElementById("timerPlus").onclick = ()=>{
   if(!restIv) return;
   restEnd += 30000;
-  armChime(); drawRest();
+  tapAudio(); armChime(); drawRest();
 };
 /* 30秒縮める（残りが30秒を切っているときは、すぐ終わりにする） */
 document.getElementById("timerMinus").onclick = ()=>{
   if(!restIv) return;
   restEnd = Math.max(Date.now(), restEnd - 30000);
-  armChime(); drawRest(); tickRest();
+  tapAudio(); armChime(); drawRest(); tickRest();
 };
 

@@ -37,7 +37,7 @@ v4_update_e2e.py が固定で使う 8871/9479番ポートも念のため空け�
 | `v3_extra_item_eval.js` | 「種目を追加」がメニューと同じ組み方になるか | `__result.mismatch` が空 |
 | `v3_fig_eval.js`＊ | 図のダンベル本数が実際に使う本数と合っているか | `__result.mismatch` が空 |
 | `v3_logic_eval.js` | 今日のメニュー決定・部位の負荷上限・持っているダンベルで作れない重さの案内がないか | `dupPatterns`/`recoverOnPlan`/`recoverViolations`/`dayCapViolations`/`sessionCapViolations`/`weekCapViolations`/`unowned`/`optionErrors`/`sweep` が全て空。記録やダンベルを入れ替えるたびに `planMemo` と `progMemo`（`resetProg()`）を空にする（空にしないと前の場面の結果が返り、作れない重さの誤検出が出る） |
-| `v3_newex_eval.js`＊ | 追加した種目に図・解説・持ち方・日用品案内・カタログ登録が揃っているか | `missing`/`noFigure`/`noDetail`/`noHold`/`noHouse`/`noMotion`/`noPattern`/`notInCatalog`/`badLevel`/`exWithoutLevel` が全て空 |
+| `v3_newex_eval.js`＊ | 追加した種目に図・解説・持ち方・日用品案内・カタログ登録が揃っているか | `missing`/`noFigure`/`noDetail`/`noHold`/`noHouse`/`noMotion`/`noPattern`/`notInCatalog`/`badLevel`/`exWithoutLevel`/`unknownBlocked`（この版に無い種目が同期で入ってきても各タブを描ける・記録から消さない）が全て空 |
 | `v3_partial_eval.js` | 3セットやった動きは翌日出ない・1〜2セットだけの動きは「昨日やった動き」に数えない（2026-10-02） | `repeatedNextDay`/`dupPatterns`/`recoverOnPlan`/`emptyDays` が全て空 |
 | `v3_stable_eval.js` | 種目の選び方が気分で入れ替わらないか・目標に届き続けると届かないときより上の段階にいるか・セット数は3 | `settledSteady`/`hitAboveMiss`/`hitNeverBelowMiss`/`sameTwice`/`allThreeSets` が全て true |
 | `v3_swap_add_eval.js`＊ | 段の持ち替え・おまかせ追加・種目を選んで追加 | `afterSwap.swappedIn`/`.oldGone`/`.samePattern`・`noSwapAfterRecord`・`pickerHasShrug` が true、`auto.dupPattern`/`repeated.dupPattern` が false |
@@ -45,11 +45,13 @@ v4_update_e2e.py が固定で使う 8871/9479番ポートも念のため空け�
 | `v3_variant_eval.js` | 楽/大変の組み方候補・段の広がり・セット間のダンベル増減提案 | 実行が完了すること（値は目視で確認） |
 | `v3_volume_eval.js` | 頻度別（毎日/週4/週3）のメニュー量・時間の目安 | 実行が完了すること（値は目視で確認） |
 | `v5_balance_eval.js` | 毎日・週4・週3・1日おきで35日分メニューを組み、主役にした部位を部位ごとの回復の日数（rules.js の RECOVER_GAP。量が多い日は1日延ばす）のうちに主役にしていないか・1回の上限内か。部位ごとの週のセット（weekly）と、目標から遠い部位（low）も出す | `recoverViolations`・`capViolations` が空 |
+| `v6_unused_eval.js` | 「使えていない部位」（直近7日で有効セット0）がメニューに入るか。頻度5通り×こなし方（全部／上から3種目だけ）で42日分。記録の無い動きを60日前に1回やったことにして組み直し、それで入るなら「記録が無いだけで外れていた」（2026-10-04: 標準の段の種目が無い動きが、記録が付くまで価値を半分以下に数えられていた） | `missedAllDone`（全部こなしているのに入らない日）・`noRecordOnly` が空。上から3種目だけのときの回数は `partial`（目で見る） |
+| `v6_extra_eval.js` | 自分で腹筋の種目（クランチ・プランク）を毎回足しているときに、使えていない部位の種目が1日・1週間の上限を理由に外れないか。頻度4通りで42日分と、腹筋の種目を先にやってからメニューを組んだ日。理由は planner.js の `planWhy` から取る（2026-10-04: スクワットとランジはどれも腹直筋を補助で使うので、腹直筋の1日・1週間の量が上限を超えると大腿四頭筋と内転筋の種目が1つも入らなかった） | `blocked` が空（回復の途中・種目数がいっぱい以外の理由で外れた日が無い）、`absFirst` が空（スクワットとランジが、連日でもよい部位の1日の上限で外れていない）。`waiting`・`full`・`quadGap`・`absMax` は目で見る |
 | `v3_dayroll_eval.js` | 日付をまたいだら今日のメニューが切り替わるか（既定の操作確認モード） | 実行が完了すること（値は目視で確認） |
 | `v3_update_eval.js` | 更新ボタン：同じ版・取得失敗時・ラベルの戻り | 実行が完了すること（値は目視で確認） |
 | `v3_persist_eval.js` | ダンベル設定と今日のメニューが再読み込み後も残るか | write→read の2段階とも実行が完了すること |
-| `v3_timer_eval.js`＊ | 休憩タイマー（+30秒・追いつき・止める・重ねて始める）と合図の予約・合図のWAV | 各場面の `ok` が true、止めたら合図が残らない、WAV の長さと中身が合う |
-| `v4_views_eval.js` | 種目を選ぶシート・からだ・履歴タブ（日付シート・過去の日を足す・自己ベスト・推移） | 途中で止まらず `__result.failCount` が0 |
+| `v3_timer_eval.js`＊ | 休憩タイマー（+30秒・追いつき・止める・重ねて始める）と合図の予約・合図のWAV・画面から離れて戻ったあとの音声の作り直し | 各場面の `ok` が true、止めたら合図が残らない、WAV の長さが合い、合図は最大の4割以上・合図の前は小さな音だけ |
+| `v4_views_eval.js` | 種目を選ぶシート・からだ（横棒・部位に効く種目・部位ごとの回復の目安）・履歴タブ（日付シート・過去の日を足す・自己ベスト・推移） | 途中で止まらず `__result.failCount` が0 |
 
 ＊ は `v3_ui_common.js` を先に連結して実行する。
 
@@ -73,6 +75,7 @@ v4_update_e2e.py が固定で使う 8871/9479番ポートも念のため空け�
 ## 通しの検査（Python、別プロセス）
 
 - `v6_press_e2e.py` — `python tools/v6_press_e2e.py`。本物のマウス操作（CDP の Input.dispatchMouseEvent）で「記録」を押す。押している最中の描き直しで click が消えないか・同じ場所を続けて押せるか・二重押しは1回だけか・設定のシートの入力が同期の描き直しで消えないか。JS から `el.click()` を呼ぶ検査では見つけられない不具合のため（2026-10-02）
+- `v6_sound_e2e.py` — `python tools/v6_sound_e2e.py`。本物のマウス操作で「記録」を押し、休憩の合図が実際に鳴るかを測る（音声の出口につながる線に測定用の AnalyserNode をつなぐ。検査中の音は出さない）。休憩の終わりに鳴り始めるか・最大0.35以上で、はっきり鳴っている長さが0.4秒以上か・合図の前に小さな音が流れているか・途中で音声が止められても鳴るか・画面から離れて戻ったあとに音声を作り直すか・「マナーモード・画面ロック中も鳴らす」の音声が最後まで再生されるか。`v3_timer_eval.js` は予約したかどうかしか見られないため（2026-10-04）
 - `v6_sync_return_e2e.py` — `python tools/v6_sync_return_e2e.py`。偽GitHub（`mock_github.py`）を自分で立て、`v6_sync_return_eval.js` を動かす。画面に戻ったときの同期で、ほかの端末が変えたメニューが記録の前に入るか・古いメニューのまま記録した種目が取り込んだメニューに入るか（メニューに無い記録を作らない）・合流後に送り直さないか
 - `v4_update_e2e.py` — `python tools/v4_update_e2e.py`。`build.py site` を自動実行し（`docs/` が書き換わる）、ヘッドレスEdgeで旧版→新版の切り替え・オフライン起動を確認。終了コード0で合格
 

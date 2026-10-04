@@ -392,13 +392,17 @@ def judge_timer(dump):
     if dump is None:
         return (False, "__result が取れない")
     g = lambda k: dump.get(k) or {}
+    before, after = g("wav").get("peakBefore") or 0, g("wav").get("peakAfter") or 0
     checks = {
         "webaudio": g("webaudio").get("ok"),
         "plus30": g("plus30").get("ok"),
         "caughtUp": g("caughtUp").get("ok"),
         "stopped": g("stopped").get("nodes") == 0 and not g("stopped").get("visible"),
+        "renewed": g("renewed").get("ok"),
         "overlap": g("overlap").get("running") and g("overlap").get("visible"),
-        "wav": g("wav").get("riff") == "RIFF" and g("wav").get("bytes") == g("wav").get("expect") and (g("wav").get("peakAfter") or 0) > 0,
+        # 合図は最大の4割以上の大きさ。合図の前は、音の出口を起こしておく小さな音だけ（0より大きく、合図の1/50より小さい）
+        "wav": g("wav").get("riff") == "RIFF" and g("wav").get("bytes") == g("wav").get("expect")
+               and after >= 0.4 * 32767 and 0 < before < after / 50,
     }
     bad = [k for k, v in checks.items() if not v]
     return (len(bad) == 0, "%d 件不成立" % len(bad) + (": " + ", ".join(bad) if bad else ""))
@@ -458,7 +462,7 @@ def main():
                 timeout=90)
     run_browser("v3_newex_eval.js", "v3_newex_eval.js",
                 judge_empty_arrays("missing", "noFigure", "noDetail", "noHold", "noHouse", "noMotion",
-                                    "noPattern", "notInCatalog", "badLevel", "exWithoutLevel"),
+                                    "noPattern", "notInCatalog", "badLevel", "exWithoutLevel", "unknownBlocked"),
                 needs_common=True)
     run_browser("v3_partial_eval.js", "v3_partial_eval.js",
                 judge_empty_arrays("repeatedNextDay", "dupPatterns", "recoverOnPlan", "emptyDays"), timeout=90)
@@ -472,6 +476,10 @@ def main():
     # 部位の回復（中1日で同じ部位を主役にしない）と1回の上限。部位ごとの週のセットは __result.weekly に出る
     run_browser("v5_balance_eval.js", "v5_balance_eval.js",
                 judge_empty_arrays("recoverViolations", "capViolations"), timeout=240)
+    run_browser("v6_unused_eval.js", "v6_unused_eval.js",
+                judge_empty_arrays("missedAllDone", "noRecordOnly"), timeout=240)
+    # 自分で腹筋の種目を足しているときに、使えていない部位の種目が1日・1週間の上限を理由に外れないか
+    run_browser("v6_extra_eval.js", "v6_extra_eval.js", judge_empty_arrays("blocked", "absFirst"), timeout=120)
     run_browser("v3_dayroll_eval.js", "v3_dayroll_eval.js", judge_smoke)
     run_browser("v3_update_eval.js", "v3_update_eval.js", judge_smoke, needs_common=True)
     run_browser_2phase("v3_persist_eval.js", "v3_persist_eval.js")
@@ -495,6 +503,19 @@ def main():
         report("v6_press_e2e.py", False, "実行できない: " + str(e))
     finally:
         _free_port(9481)
+    # 本物のマウス操作で「記録」を押し、休憩の合図が実際に鳴るか（大きさ・長さ・鳴る時刻）を測る。音は出さない
+    try:
+        p = run_watched([PY, os.path.join(TOOLS, "v6_sound_e2e.py")], 150, cwd=TOOLS)
+        m = re.search(r"(\d+) passed, (\d+) failed", p.stdout)
+        if m:
+            ok, detail = (m.group(2) == "0"), m.group(0)
+        else:
+            ok, detail = False, "終了コード %d\n%s" % (p.returncode, (p.stdout[-800:] + p.stderr[-800:]))
+        report("v6_sound_e2e.py", ok, detail)
+    except Exception as e:
+        report("v6_sound_e2e.py", False, "実行できない: " + str(e))
+    finally:
+        _free_port(9483)
     # 画面に戻ったときの同期・古いメニューのまま記録したとき（偽GitHub を自分で立てる。本物の GitHub には触れない）
     try:
         p = run_watched([PY, os.path.join(TOOLS, "v6_sync_return_e2e.py")], 200, cwd=TOOLS)

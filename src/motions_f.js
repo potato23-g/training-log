@@ -370,4 +370,87 @@
       'upperarmL.flex': 34, 'upperarmL.abd': -26, 'upperarmL.rot': -4,
       'forearmL.flex': 62, 'forearmL.rot': 150, 'handL.flex': 0
     } });
+  /* ============ 2026-10-04 追加の4種目（sissy/rear/abduct/hammer）の組み方 ============ */
+
+  /* シシースクワット: 一番下で2秒止める */
+  (function () {
+    const m = retime('sissy', 'sissy_hold', /^一番下$/, 2);
+    m.phases.find((p) => p.label === '一番下').label = '一番下で2秒止める';
+  })();
+
+  /* シシースクワット: 浅めに沈み、膝が90度に曲がる手前で戻る */
+  derive('sissy', { id: 'sissy_shallow',
+    keys: { 3.0: { 'pelvis.pitch': -18, 'shankR.flex': 60, 'shankL.flex': 60,
+                    'footR.flex': 10, 'footL.flex': 10, 'toesR.flex': 40, 'toesL.flex': 40 },
+            3.3: { 'pelvis.pitch': -18, 'shankR.flex': 60, 'shankL.flex': 60,
+                    'footR.flex': 10, 'footL.flex': 10, 'toesR.flex': 40, 'toesL.flex': 40 } } });
+
+  /* リアレイズ: 肩の高さで上で2秒止める */
+  insertHold('rear', 'rear_hold', 1.2, 2, '上で2秒止める');
+
+  /* リアレイズ: 肘を深く曲げて腕を短くする（サイドレイズの lateral_short と同じ考え方） */
+  derive('rear', { id: 'rear_short',
+    base: { 'forearmR.flex': 62, 'forearmL.flex': 62 },
+    keys: { 0: { 'forearmR.flex': 62, 'forearmL.flex': 62 }, 1.2: { 'forearmR.flex': 62, 'forearmL.flex': 62 },
+            1.5: { 'forearmR.flex': 62, 'forearmL.flex': 62 }, 4.5: { 'forearmR.flex': 62, 'forearmL.flex': 62 } } });
+
+  /* ヒップアブダクション: 太ももの付け根寄り（太ももの長さの15%・前へ10cm）にダンベルを乗せ、上の手で押さえる。
+     手は IK で太ももの骨（thighL）に付ける（脚がどの角度でも、握りが太ももに乗ったまま動く）。
+     置く場所は腕が届く範囲で決めてある: 肩から腰まで約53cmあり、腕の長さ（約55cm）にほとんど余裕が無い。
+     膝に近づけたり真横に置いたりすると届かず、IK が伸びきって手が太ももから浮く */
+  derive('abduct', { id: 'abduct_db',
+    set: {
+      hands: { L: { at: { bone: 'thighL', local: [0.10, -0.43 * 0.15, -0.17] }, local: HAND.grip,
+                    pitch: 40, yaw: -10, roll: 0, pole: [-1, 0.2, 0.3] } },
+      dumbbells: [{ grip: 'handL', kg: 5, local: HAND.grip }]
+    } });
+
+  /* ヒップアブダクション: 上の脚の膝を曲げて行う（脚全体を曲げたまま上げる） */
+  derive('abduct', { id: 'abduct_bent',
+    base: { 'shankL.flex': 90 },
+    keys: { 0.0: { 'shankL.flex': 90 }, 1.0: { 'shankL.flex': 90 },
+            1.3: { 'shankL.flex': 90 }, 3.3: { 'shankL.flex': 90 } } });
+
+  /* ハンマーカール: 途中で2秒止める（curl_hold と同じ構成） */
+  insertHold('hammer', 'hammer_hold', 0.75, 2, '途中で2秒止める');
+
+  /* ハンマーカール: 右手だけ巻き上げ、左手は右肘に添える（curl_one と同じ構成） */
+  derive('hammer', { id: 'hammer_one',
+    set: { dumbbells: [{ grip: 'handR', kg: 5 }] },
+    base: { 'upperarmL.flex': 26, 'upperarmL.abd': -14, 'upperarmL.rot': 24,
+            'forearmL.flex': 96, 'forearmL.rot': 40, 'handL.flex': 0 },
+    keys: { 0: { 'forearmL.flex': 96 }, 1.3: { 'forearmL.flex': 96 }, 1.6: { 'forearmL.flex': 96 }, 5.1: { 'forearmL.flex': 96 } } });
+
+  /* 腕立て伏せ: 床に置いた2つのダンベルの柄（左右方向。2本が一直線に並ぶ）に手のひらを乗せて行う。
+     手は指が曲がらない1本の棒（長さ15cm）なので、柄を握る代わりに、手のひらを柄の上にかぶせて
+     指先を前下へ PHI 度傾ける（'surface' の法線を前へ倒す）。こうすると手首が床から約13cmの高さに来て、
+     柄は水平のまま床に乗り（ダンベルの中心の高さ5.2cm）、指先は床の上に収まる。
+     ・手のひらの当たる点は手首から8.5cm・手の軸から2cm（local）。柄の中心はそこから柄の半径ぶん外（dumbbells.local）
+     ・手の位置は元の腕立て伏せとほぼ同じ（左右の間隔64cm。元は60cm）。手首が高いぶん肘が深く曲がるので、
+       肘の曲げが目安（145°）に収まるところまで、少しだけ外・足側へ寄せている
+     ・体は元の腕立て伏せと同じ板の姿勢で、つま先を支点に回す。一番下（t=3.0）は元と同じ高さ、
+       上は手首が高いぶんだけ肩を高くしている（肩と手首の高さの差を元と同じ44.9cmにそろえる）
+     ・t=2.25・3.4・3.75 は、つま先の接地がずれないようにするための中継点 */
+  (function () {
+    const PHI = 40 * Math.PI / 180, BAR = 0.016, DB_Y = 0.052, X = 0.10, Z = 0.32;
+    const PALM = [0.020, -0.085, 0], N = [-Math.sin(PHI), -Math.cos(PHI), 0];
+    const hand = s => ({ at: [X + BAR * Math.sin(PHI), DB_Y + BAR * Math.cos(PHI), s * Z], local: PALM,
+                         align: 'surface', normal: N, pins: [PALM], pole: [-1, 0.1, s * 0.8] });
+    const db = [PALM[0] + BAR, PALM[1], 0];
+    const m = derive('pushup', { id: 'pushup_deep',
+      set: {
+        hands: { R: hand(1), L: hand(-1) },
+        dumbbells: [{ grip: 'handR', kg: 5, local: db }, { grip: 'handL', kg: 5, local: db }]
+      } });
+    m.keys = [
+      { t: 0.0, hold: true, d: { 'pelvis.x': -0.418172, 'pelvis.y': 0.435679, 'pelvis.pitch': 74.1512 } },
+      { t: 1.5, d: { 'pelvis.x': -0.401751, 'pelvis.y': 0.396281, 'pelvis.pitch': 76.6870 } },
+      { t: 2.25, d: { 'pelvis.x': -0.365747, 'pelvis.y': 0.284626, 'pelvis.pitch': 83.6605 } },
+      { t: 3.0, hold: true, d: { 'pelvis.x': -0.345, 'pelvis.y': 0.180, 'pelvis.pitch': 90 } },
+      { t: 3.4, d: { 'pelvis.x': -0.364760, 'pelvis.y': 0.280747, 'pelvis.pitch': 83.8982 } },
+      { t: 3.75, d: { 'pelvis.x': -0.400397, 'pelvis.y': 0.392800, 'pelvis.pitch': 76.9089 } },
+      { t: 4.0, hold: true, d: { 'pelvis.x': -0.418172, 'pelvis.y': 0.435679, 'pelvis.pitch': 74.1512 } }
+    ];
+  })();
+
 })(typeof window !== 'undefined' ? window : globalThis);

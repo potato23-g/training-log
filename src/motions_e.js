@@ -404,4 +404,121 @@
     ]
   });
 
+  /* ---------------- シシースクワット ----------------
+     柱を軽くつかむだけ（荷重はかけない）。股関節は曲げず、骨盤・脊柱・大腿を一直線のまま
+     後ろへ傾け、膝だけを曲げて沈む。つま先（母趾球）の1点を anchor で固定し、骨盤の並行移動は
+     そこから自然に決まるようにする（pushupknee と同じ技法。膝で固定する代わりに、つま先で固定する）。 */
+  M.register({
+    id: 'sissy',
+    view: { az: 24, el: 9, dist: 3.1, target: [0, 0.75, 0] },
+    anchor: { bone: 'footR', local: FOOT.ball, at: [0, 0, 0.13] },
+    contacts: [
+      { name: 'toeR', bone: 'footR', local: FOOT.ball, weight: 1 },
+      { name: 'toeL', bone: 'footL', local: FOOT.ball, weight: 1 }
+    ],
+    phases: [
+      { t: 0, label: '沈む 3秒' }, { t: 3.0, label: '一番下' }, { t: 3.3, label: '戻る 2秒' }
+    ],
+    base: {
+      'pelvis.pitch': 0,
+      'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0, 'head.flex': 0,
+      /* 股関節は曲げない（膝から肩まで一直線）。曲げるのは膝と足首だけ */
+      'thighR.flex': 0, 'thighR.abd': 0, 'thighR.rot': 0,
+      'thighL.flex': 0, 'thighL.abd': 0, 'thighL.rot': 0,
+      /* 片手で柱を軽くつかむだけ。もう片方は体側に自然に下げる */
+      'upperarmR.flex': 4, 'upperarmR.abd': 24, 'upperarmR.rot': 0, 'forearmR.flex': 88, 'forearmR.rot': 20, 'handR.flex': 0,
+      'upperarmL.flex': 4, 'upperarmL.abd': 4, 'upperarmL.rot': 0, 'forearmL.flex': 10, 'forearmL.rot': 10, 'handL.flex': 0
+    },
+    /* 足首・足先の角度は、母趾球（anchor で固定）を軸にかかとと足先が実際に床の高さへ来るよう
+       膝の曲げごとに個別に解いた値（tools/pose_fit.js 相当の手作業。足先が床を貫通しない・
+       かかとが浮いたままになるように toesR/L.flex で足首の角度を打ち消している） */
+    keys: [
+      { t: 0.0, hold: true, d: { 'pelvis.pitch': 0, 'shankR.flex': 4, 'shankL.flex': 4,
+                                  'footR.flex': -20, 'footL.flex': -20, 'toesR.flex': 40, 'toesL.flex': 40 } },
+      { t: 3.0, hold: true, d: { 'pelvis.pitch': -30, 'shankR.flex': 90, 'shankL.flex': 90,
+                                  'footR.flex': 40, 'footL.flex': 40, 'toesR.flex': 40, 'toesL.flex': 40 } },
+      { t: 3.3, hold: true, d: { 'pelvis.pitch': -30, 'shankR.flex': 90, 'shankL.flex': 90,
+                                  'footR.flex': 40, 'footL.flex': 40, 'toesR.flex': 40, 'toesL.flex': 40 } },
+      { t: 5.3, hold: true, d: { 'pelvis.pitch': 0, 'shankR.flex': 4, 'shankL.flex': 4,
+                                  'footR.flex': -20, 'footL.flex': -20, 'toesR.flex': 40, 'toesL.flex': 40 } }
+    ]
+  });
+
+  /* ---------------- リアレイズ ----------------
+     股関節を折った姿勢（ベントオーバーロウ・RDLと同じ前傾）を保ったまま、肘の角度を変えずに
+     腕を真横へ開く（外転）。肘を引き上げないので row2 とは違う筋を使う。 */
+  const rearFoot = (z, yaw) => ({ at: [0, 0, z], local: [0, -FOOT.ankleH, 0], yaw: yaw, pitch: 0, pins: [FOOT.heel, FOOT.ball] });
+  M.register({
+    id: 'rear',
+    view: { az: 60, el: 9, dist: 3.4, target: [-0.05, 0.75, 0] },
+    feet: { R: rearFoot(0.12, 5), L: rearFoot(-0.12, -5) },
+    dumbbells: [{ grip: 'handR', kg: 5 }, { grip: 'handL', kg: 5 }],
+    balance: { axes: ['x'] },
+    phases: [
+      { t: 0, label: '横に上げる 1〜2秒' }, { t: 1.2, label: '肩の高さで止める' }, { t: 1.5, label: '下ろす 3秒' }
+    ],
+    base: {
+      'pelvis.y': 0.903, 'pelvis.pitch': 82,
+      'spineL.flex': 0, 'spineT.flex': 1, 'spineC.flex': 2, 'neck.flex': -23,
+      /* 肘はわずかに曲げて固定。前腕の回旋90度＝手のひらが向かい合う中間位 */
+      'upperarmR.flex': 55, 'upperarmL.flex': 55, 'upperarmR.rot': 0, 'upperarmL.rot': 0,
+      'forearmR.flex': 12, 'forearmL.flex': 12, 'forearmR.rot': 90, 'forearmL.rot': 90,
+      'handR.flex': 0, 'handL.flex': 0
+    },
+    keys: [
+      { t: 0.0, hold: true, d: { 'upperarmR.abd': 3, 'upperarmL.abd': 3 } },
+      { t: 1.2, d: { 'upperarmR.abd': 85, 'upperarmL.abd': 85 } },
+      { t: 1.5, hold: true, d: { 'upperarmR.abd': 85, 'upperarmL.abd': 85 } },
+      { t: 4.5, hold: true, d: { 'upperarmR.abd': 3, 'upperarmL.abd': 3 } }
+    ]
+  });
+
+  /* ---------------- ヒップアブダクション ----------------
+     横向きに寝る（pelvis.roll=90で右側を下にする。motions_c.js のサイドプランクと同じ規約）。
+     下側（右）の脚は軽く曲げて安定させる。上側（左）の脚を伸ばしたまま外転で斜め上へ上げる。
+     体全体が床に接しており支点を動かす必要がないので anchor・balance は使わない。 */
+  M.register({
+    id: 'abduct',
+    view: { az: 92, el: 14, dist: 3.0, target: [0, 0.22, 0] },
+    base: {
+      'pelvis.y': 0.22, 'pelvis.roll': 90, 'pelvis.pitch': 0, 'pelvis.x': 0, 'pelvis.z': 0,
+      'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0, 'head.flex': 0,
+      /* 横向きに寝ると、頭の下へ伸ばした下側の腕がそのまま床へ沈む向きになる。
+         pelvis.y を少し上げ、鎖骨（clav.elev、可動域上限30）も上限近くまで使って
+         下側の腕の床貫通を避ける。上側の肩は体の前で床につくだけなので elev は不要 */
+      'clavR.elev': 28, 'clavR.prot': 0, 'clavL.elev': 0, 'clavL.prot': 0,
+      /* 下側（右）の腕は頭の下。上側（左）の腕は体の前で床について安定させる */
+      'upperarmR.flex': 110, 'upperarmR.abd': 0, 'upperarmR.rot': 0, 'forearmR.flex': 90, 'forearmR.rot': 90, 'handR.flex': 0,
+      'upperarmL.flex': 30, 'upperarmL.abd': 20, 'upperarmL.rot': 0, 'forearmL.flex': 40, 'forearmL.rot': 90, 'handL.flex': 0,
+      /* 下側（右）の脚は軽く曲げる */
+      'thighR.flex': 22, 'thighR.abd': 0, 'thighR.rot': 0, 'shankR.flex': 50, 'footR.flex': 4, 'toesR.flex': 0,
+      /* 上側（左）の脚は伸ばして体よりわずかに後ろへ。つま先は正面のまま外転だけで上げる */
+      'thighL.flex': -8, 'thighL.rot': 0, 'shankL.flex': 2, 'footL.flex': 0, 'toesL.flex': 0
+    },
+    phases: [
+      { t: 0, label: '上げる 1秒' }, { t: 1.0, label: '一番上' }, { t: 1.3, label: '下ろす 2秒' }
+    ],
+    keys: [
+      { t: 0.0, hold: true, d: { 'thighL.abd': 0 } },
+      { t: 1.0, hold: true, d: { 'thighL.abd': 35 } },
+      { t: 1.3, hold: true, d: { 'thighL.abd': 35 } },
+      { t: 3.3, hold: true, d: { 'thighL.abd': 0 } }
+    ]
+  });
+
+  /* ---------------- ハンマーカール ----------------
+     ダンベルカールと同じ動き。握りを縦（前腕の回旋90度＝中間位、親指が前）に変える。
+     縦に握るとダンベルが前後に長くなるので、カールの腕の位置のままでは下で太ももに、上で肩に重なる。
+     腕を少し外に開いて体の横で持ち（外転4度）、上は肩に当たる手前（肘138度）で止める */
+  derive('curl', {
+    id: 'hammer',
+    base: { 'forearmR.rot': 90, 'forearmL.rot': 90, 'upperarmR.abd': 4, 'upperarmL.abd': 4 },
+    keys: {
+      0: { 'forearmR.rot': 90, 'forearmL.rot': 90 },
+      1.3: { 'forearmR.rot': 90, 'forearmL.rot': 90, 'forearmR.flex': 138, 'forearmL.flex': 138 },
+      1.6: { 'forearmR.rot': 90, 'forearmL.rot': 90, 'forearmR.flex': 138, 'forearmL.flex': 138 },
+      5.1: { 'forearmR.rot': 90, 'forearmL.rot': 90 }
+    }
+  });
+
 })(typeof window !== 'undefined' ? window : globalThis);

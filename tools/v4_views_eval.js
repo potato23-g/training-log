@@ -139,6 +139,43 @@ setTimeout(async () => {
     r.body.target30Found = document.getElementById("view").innerHTML.indexOf(expected30) >= 0;
     bodyDays = 7; render();
 
+    /* ======== からだタブ「部位ごとの回復の目安」（2026-10-04） ======== */
+    /* どの部位も、空ける日数の表（recoverGap）と同じ見出しの行に1回だけ出る。行は日数の多い順。
+       回復の途中の部位には、種目を選ぶシート・種目カードと同じ印が付く（大殿筋は昨日3セット → 回復中・あと3日）。
+       筋肉痛に選んだ部位は「筋肉痛」 */
+    const recScan = () => {
+      const card = document.getElementById("recoverCard"), seen = {}, wrongRow = [], tags = {}, labels = [];
+      (card ? qsa(".recrow", card) : []).forEach(row => {
+        const label = qs(".recgap", row).textContent;
+        labels.push(label);
+        qsa("[data-rec]", row).forEach(ch => {
+          const m = ch.dataset.rec, i = qs("i", ch);
+          seen[m] = (seen[m] || 0) + 1;
+          if(label !== recoverGapLabel(recoverGap(m))) wrongRow.push(m);
+          tags[m] = i ? i.textContent : "";
+          if(!!i !== ch.classList.contains("rest")) wrongRow.push(m + ":色");
+        });
+      });
+      return {found: !!card, labels, wrongRow, tags, notOnce: Object.keys(MUSCLES).filter(m => seen[m] !== 1)};
+    };
+    selMuscle = null; render();
+    const rec = recScan();
+    const gapOfLabel = t => t === "連日でもよい" ? 0 : parseInt(t.replace("中", ""), 10);
+    r.rec = {
+      cardFound: rec.found, notOnce: rec.notOnce, wrongRow: rec.wrongRow, labels: rec.labels,
+      gapsDescending: rec.labels.length > 1 && rec.labels.every((t, i) => i === 0 || gapOfLabel(rec.labels[i - 1]) > gapOfLabel(t)),
+      glutesTag: rec.tags.glutes,
+      sameAsPicker: rec.tags.glutes === ((todayAdvice(catalogItem("hipthrust")) || {}).short || ""),
+      tagged: Object.keys(rec.tags).filter(m => rec.tags[m]).sort()
+    };
+    r.rec.taggedAreRecovering = JSON.stringify(r.rec.tagged) === JSON.stringify(recoveringList().map(x => x.m).sort());
+    session(TODAY).sore = ["chest"]; planMemo = null; render();
+    r.rec.soreTag = recScan().tags.chest;
+    delete session(TODAY).sore; planMemo = null;
+    selMuscle = "glutes"; render();
+    r.rec.detailHasGap = document.getElementById("view").textContent.indexOf("回復の目安: " + recoverGapLabel(recoverGap("glutes")) + "。回復まであと3日") >= 0;
+    selMuscle = null; render();
+
     /* ======== からだタブ「この部位に効く種目」 ======== */
     const findCard = h4text => qsa(".card").find(c => { const h = qs("h4", c); return h && h.textContent === h4text; });
     const rowByName = (card, name) => card ? qsa(".exbyrow", card).find(row => { const b = qs(".exbyname", row); return b && b.textContent === name; }) : null;
@@ -148,10 +185,11 @@ setTimeout(async () => {
     const heads = exByCard ? qsa(".exbyhead", exByCard).map(h => h.textContent) : [];
     r.exBy.hasPrimaryHead = heads.some(t => t.indexOf("主に効く") >= 0);
     r.exBy.hasSecondaryHead = heads.some(t => t.indexOf("補助") >= 0);
-    /* ヒップスラストは大殿筋が主働筋（主に効く種目）、サイドプランクは補助（s に glutes を含む） */
+    /* ヒップスラストは大殿筋が主働筋（主に効く種目）、スライディングレッグカールは補助（s に glutes を含む。
+       サイドプランクの補助は 2026-10-03 に中殿筋へ移した） */
     const hipRow = rowByName(exByCard, "ヒップスラスト");
     r.exBy.primaryListed = !!hipRow;
-    r.exBy.secondaryListed = !!rowByName(exByCard, "サイドプランク");
+    r.exBy.secondaryListed = !!rowByName(exByCard, "スライディングレッグカール");
     const hipNameBtn = hipRow ? qs(".exbyname", hipRow) : null;
     if(hipNameBtn) hipNameBtn.click();
     r.exBy.opensExTab = tab === "ex" && refEx === "hipthrust";
@@ -431,6 +469,15 @@ setTimeout(async () => {
     check("body.target14Found", r.body.target14Found);
     check("body.target30Found", r.body.target30Found);
     check("body.first5AreBig", r.body.first5AreBig);
+    check("rec.cardFound", r.rec.cardFound);
+    check("rec.notOnce", r.rec.notOnce.length === 0);
+    check("rec.wrongRow", r.rec.wrongRow.length === 0);
+    check("rec.gapsDescending", r.rec.gapsDescending);
+    check("rec.glutesTag", r.rec.glutesTag === "回復中・あと3日");
+    check("rec.sameAsPicker", r.rec.sameAsPicker);
+    check("rec.taggedAreRecovering", r.rec.taggedAreRecovering);
+    check("rec.soreTag", r.rec.soreTag === "筋肉痛");
+    check("rec.detailHasGap", r.rec.detailHasGap);
     check("exBy.cardFound", r.exBy.cardFound);
     check("exBy.hasPrimaryHead", r.exBy.hasPrimaryHead);
     check("exBy.hasSecondaryHead", r.exBy.hasSecondaryHead);

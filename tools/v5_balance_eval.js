@@ -15,7 +15,7 @@ setTimeout(() => {
   };
   const schedules = {daily: d => true, "4/week": d => [0,1,3,4].includes(d % 7), "3/week": d => [0,2,4].includes(d % 7), "1日おき": d => d % 2 === 0};
   const DAYS = 35, FROM = 7;                  /* 1週目は記録が無い状態からの立ち上がりなので数えない */
-  const KEY = ["quads","glutes","hams","chest","lats","shoulders","triceps","biceps","calves","abs","obliques"];
+  const KEY = ["quads","glutes","hams","chest","lats","sidedelt","reardelt","triceps","biceps","calves","gmed","abs","obliques"];
   const out = {recoverViolations: [], capViolations: [], weekly: {}, low: {}, sessions: {}};
 
   for(const [name, on] of Object.entries(schedules)){

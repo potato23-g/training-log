@@ -72,7 +72,7 @@ function onAct(el, ev){
   }
   else if(a==="swapto"){ replaceInPlan(el.dataset.from, el.dataset.ex); }
   else if(a==="asknotify"){ if(PREF.get("notify",false)){ PREF.set("notify",false); render(); } else askNotify(); }
-  else if(a==="testalert"){ testChime(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
+  else if(a==="testalert"){ tapAudio(); testChime(); buzz(); notify("テスト", "この知らせ方で鳴ります"); }
   else if(a==="goref"){ refEx = el.dataset.ex; switchTab("ex"); }
   else if(a==="addex"){ openPicker(); }
   else if(a==="addauto"){ addAutoToday(); }
@@ -178,7 +178,7 @@ function addSet(id){
   }
   if(isDoneToday(id)){ render(); return; }          /* 規定のセット数を終えた種目は、修正で消すまで記録できない */
   lastAddAt[id] = {t: Date.now(), r: rRaw, w: wIn ? wRaw : undefined};
-  unlockAudio();
+  tapAudio();
   const e0 = entryFor(TODAY, id, false);
   const sugNow = suggestNext(item, e0);
   const st = {id:newSetId(), at:Date.now(), r:rRaw};
