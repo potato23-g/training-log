@@ -36,17 +36,18 @@ v4_update_e2e.py が固定で使う 8871/9479番ポートも念のため空け�
 | `v4_progress_eval.js` | 伸ばし方（ダブルプログレッション）・組み直し・外す/戻す・軽い週・記録ボタン・日付の区切り | `__result.fail` が空 |
 | `v3_extra_item_eval.js` | 「種目を追加」がメニューと同じ組み方になるか | `__result.mismatch` が空 |
 | `v3_fig_eval.js`＊ | 図のダンベル本数が実際に使う本数と合っているか | `__result.mismatch` が空 |
-| `v3_logic_eval.js` | 今日のメニュー決定・部位の負荷上限・持っているダンベルで作れない重さの案内がないか | `dupPatterns`/`recoverOnPlan`/`recoverViolations`/`dayCapViolations`/`sessionCapViolations`/`weekCapViolations`/`unowned`/`optionErrors`/`sweep` が全て空。記録やダンベルを入れ替えるたびに `planMemo` と `progMemo`（`resetProg()`）を空にする（空にしないと前の場面の結果が返り、作れない重さの誤検出が出る） |
+| `v3_logic_eval.js` | 今日のメニュー決定・部位の負荷上限（1日の上限は、メインで鍛えた分で見る: 2026-10-05）・持っているダンベルで作れない重さの案内がないか | `dupPatterns`/`recoverOnPlan`/`recoverViolations`/`dayCapViolations`/`sessionCapViolations`/`weekCapViolations`/`unowned`/`optionErrors`/`sweep` が全て空。記録やダンベルを入れ替えるたびに `planMemo` と `progMemo`（`resetProg()`）を空にする（空にしないと前の場面の結果が返り、作れない重さの誤検出が出る） |
 | `v3_newex_eval.js`＊ | 追加した種目に図・解説・持ち方・日用品案内・カタログ登録が揃っているか | `missing`/`noFigure`/`noDetail`/`noHold`/`noHouse`/`noMotion`/`noPattern`/`notInCatalog`/`badLevel`/`exWithoutLevel`/`unknownBlocked`（この版に無い種目が同期で入ってきても各タブを描ける・記録から消さない）が全て空 |
-| `v3_partial_eval.js` | 3セットやった動きは翌日出ない・1〜2セットだけの動きは「昨日やった動き」に数えない（2026-10-02） | `repeatedNextDay`/`dupPatterns`/`recoverOnPlan`/`emptyDays` が全て空 |
+| `v3_partial_eval.js` | 3セットやった動きは翌日出ない・1〜2セットだけの動きは「昨日やった動き」に数えない（2026-10-02） | `repeatedNextDay`/`dupPatterns`/`recoverOnPlan`/`emptyDays` が全て空（回復の途中でも入れた種目は `included` に別に出す） |
 | `v3_stable_eval.js` | 種目の選び方が気分で入れ替わらないか・目標に届き続けると届かないときより上の段階にいるか・セット数は3 | `settledSteady`/`hitAboveMiss`/`hitNeverBelowMiss`/`sameTwice`/`allThreeSets` が全て true |
 | `v3_swap_add_eval.js`＊ | 段の持ち替え・おまかせ追加・種目を選んで追加 | `afterSwap.swappedIn`/`.oldGone`/`.samePattern`・`noSwapAfterRecord`・`pickerHasShrug` が true、`auto.dupPattern`/`repeated.dupPattern` が false |
 | `v3_ui_fix_eval.js`＊ | 規定セット後のロック→修正→削除→再記録の流れ | 実行が完了すること（目視用の詳細値も `__result` に出る） |
 | `v3_variant_eval.js` | 楽/大変の組み方候補・段の広がり・セット間のダンベル増減提案 | 実行が完了すること（値は目視で確認） |
 | `v3_volume_eval.js` | 頻度別（毎日/週4/週3）のメニュー量・時間の目安 | 実行が完了すること（値は目視で確認） |
-| `v5_balance_eval.js` | 毎日・週4・週3・1日おきで35日分メニューを組み、主役にした部位を部位ごとの回復の日数（rules.js の RECOVER_GAP。量が多い日は1日延ばす）のうちに主役にしていないか・1回の上限内か。部位ごとの週のセット（weekly）と、目標から遠い部位（low）も出す | `recoverViolations`・`capViolations` が空 |
+| `v5_balance_eval.js` | 毎日・週4・週3・1日おきで35日分メニューを組み、主役にした部位を部位ごとの回復の日数（rules.js の RECOVER_GAP。量が多い日は1日延ばす）のうちに主役にしていないか・1回の上限（30セット・10種目・90分）内か・毎日やる場合に週の目標（各部位10セット）の9割以上に届くか（脚は7以上。内転筋・脊柱起立筋は見ない）・ハンマーカールが入るか。部位ごとの週のセット（weekly）と1回の種目数・時間（size）は目で見る | `recoverViolations`/`capViolations`/`underTarget`/`noHammer` が全て空 |
 | `v6_unused_eval.js` | 「使えていない部位」（直近7日で有効セット0）がメニューに入るか。頻度5通り×こなし方（全部／上から3種目だけ）で42日分。記録の無い動きを60日前に1回やったことにして組み直し、それで入るなら「記録が無いだけで外れていた」（2026-10-04: 標準の段の種目が無い動きが、記録が付くまで価値を半分以下に数えられていた） | `missedAllDone`（全部こなしているのに入らない日）・`noRecordOnly` が空。上から3種目だけのときの回数は `partial`（目で見る） |
 | `v6_extra_eval.js` | 自分で腹筋の種目（クランチ・プランク）を毎回足しているときに、使えていない部位の種目が1日・1週間の上限を理由に外れないか。頻度4通りで42日分と、腹筋の種目を先にやってからメニューを組んだ日。理由は planner.js の `planWhy` から取る（2026-10-04: スクワットとランジはどれも腹直筋を補助で使うので、腹直筋の1日・1週間の量が上限を超えると大腿四頭筋と内転筋の種目が1つも入らなかった） | `blocked` が空（回復の途中・種目数がいっぱい以外の理由で外れた日が無い）、`absFirst` が空（スクワットとランジが、連日でもよい部位の1日の上限で外れていない）。`waiting`・`full`・`quadGap`・`absMax` は目で見る |
+| `v7_restin_eval.js` | 7日使えていない部位のために、回復の途中の部位を使う種目を入れる決まり（2026-10-05）。入る場面・入らない場面（筋肉痛・ほかの種目がある・使えていない部位が無い・外した）と、入れたことの表示（行の印・種目カードの「今日の調整」・種目の下の1行）が同じ種目に同じ文で出るか。種目を半分だけこなす進め方で頻度4通り×42日分も見る | `fails`/`silent`/`mismatch`/`neverIncluded` が全て空 |
 | `v3_dayroll_eval.js` | 日付をまたいだら今日のメニューが切り替わるか（既定の操作確認モード） | 実行が完了すること（値は目視で確認） |
 | `v3_update_eval.js` | 更新ボタン：同じ版・取得失敗時・ラベルの戻り | 実行が完了すること（値は目視で確認） |
 | `v3_persist_eval.js` | ダンベル設定と今日のメニューが再読み込み後も残るか | write→read の2段階とも実行が完了すること |

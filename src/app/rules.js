@@ -15,9 +15,14 @@ function restFor(item){
           その日に主役で6セット以上やったときは1日延ばす。今日「筋肉痛」と選んだ部位も主役にしない。
           少しやっただけ（主役で1〜2セット・補助で使っただけ）の部位は、回復の対象にしない（2026-10-02 本人の要望。
           それまでは、補助も含めた有効セットが昨日3以上なら1日休ませていた）
-   ・1日の負荷: 大きい部位（脚・尻・胸・背中）は8セット、ほかの部位は6セットまで。1回は15セット・5種目・50分くらいまで
+          7日使えていない部位が、回復の途中の部位も使う種目でしか鍛えられないときだけは、回復の途中でもその種目を入れる
+          （2026-10-05 本人の判断。planner.js の overdue。入れたことは今日タブに出す: restIncluded）
+   ・1日の負荷: 大きい部位（脚・尻・胸・背中）は9セット、ほかの部位は6セットまで（その種目がメインで鍛える部位について見る。
+               補助で使うだけの部位の量では外さない）。1回は30セット・10種目・90分まで（SESSION_MAX）
    ・1週間の量: 直近7日で各部位10セットを目標に、目標までの不足を2乗で数えて価値を決め、価値の大きい種目から入れる。
                目標から遠い部位ほど価値が急に上がるので、大きい部位ばかりで埋まって小さい部位が0セットのまま、にはならない。
+               そのあと、メインで鍛える部位が目標に届いていない種目を、上限の範囲で足す（2026-10-05 本人の要望:
+               種目が増えてもよいので目標に届くように）。届いている部位ばかりの日は種目が少ない。
                セット数はどの種目も3で固定（本人の要望。重さ・回数は本人が調整する）。
                部位の重み（PLAN_WEIGHT）は大きい部位を少しだけ重くしてある。目標に届いた部位も、16セットまでは少しだけ価値を残す
    これまでの決まりもそのまま守る:
@@ -37,27 +42,32 @@ const PATTERN = {
   slidecurl:"legcurl", pullover:"pullover", twist:"twist",
   /* 2026-10-03: フロントレイズは肩の前・サイドレイズは肩の横で狙う部位が違うので、別の動きにした
      （同じ動きのままだと、前回やった方だけが続けて出て、もう一方が出なくなる）。
-     ハンマーカールはカールと同じ「肘を曲げる」動き。自動では入れ替えない（種目を選ぶシートで選ぶと、次からそれが続く） */
-  sissy:"kneeext", rear:"rear", abduct:"abduct", hammer:"curl"
+     ハンマーカールは、ダンベルカールとほぼ同じ「肘を曲げる」動きだが、別の動きとして扱う（2026-10-05 本人の判断:
+     違う種目なら、ほぼ同じ動きでも別のものとして入れてよい）。同じ日に両方が入ることもある */
+  sissy:"kneeext", rear:"rear", abduct:"abduct", hammer:"hammer"
 };
 /* メニューに並べる順（大きい動きを先に、体幹は最後に） */
 const PATTERN_ORDER = ["squat","lunge","kneeext","hinge","legcurl","hpush","fly","pull","pullover","vpush","bridge","abduct","carry","shrug",
-                       "raise","fraise","rear","curl","ext","calf","abs","side","twist"];
+                       "raise","fraise","rear","curl","hammer","ext","calf","abs","side","twist"];
 /* 動きの中で、メニュー作りが選ぶ種目を決めてある動き。前回ほかの種目をやっていても、この種目（とその楽／大変のやり方）で続ける。
    ふくらはぎは立って段差で行う方を基本にする: 座って行う方は腓腹筋がほとんど太らず、ヒラメ筋の太り方も
    立って行う方と同じくらいだった（Kinoshita 2023 doi:10.3389/fphys.2023.1272106）。座って行う方は種目を選ぶシートからは選べる */
 const PATTERN_MAIN = {calf:"calf"};
-/* 記録の無い動きを、どの種目から始めるか。ハンマーカールはダンベルカールの握り違いなので、メニュー作りからは選ばない
-   （自分で選んでやった次の回からは、その記録から続ける） */
-const PATTERN_FIRST = {curl:"curl", calf:"calf"};
+/* 記録の無い動きを、どの種目から始めるか */
+const PATTERN_FIRST = {calf:"calf"};
 /* 仕上げに足す動き: 書いてある動きを先に組んだ日だけ入れる。シシースクワット（膝を伸ばす）は大腿四頭筋だけを使うので、
    別の日に入れると大殿筋の回復の日とずれて、スクワット・ランジ（大腿四頭筋と大殿筋の両方を使う）が入る日がなくなる */
 const PATTERN_AFTER = {kneeext:["squat", "lunge"]};
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
-/* 1日にかける上限（有効セット） */
-function dayMax(m){ return BIG_MUSCLES.includes(m) ? 8 : 6; }
-const SESSION_MAX = {sets:15, exercises:5, minutes:50};     /* 1種目3セットで5種目まで */
+/* 1日にかける上限（有効セット）。大きい部位は3種目ぶん、ほかの部位は2種目ぶん。その種目がメインで鍛える部位について見る
+   （2026-10-05: 大きい部位を8から9へ。8だと、スクワットとルーマニアンデッドリフトで大殿筋が6になった日は、内転筋を
+   メインで鍛えるただ1つの種目のサイドランジが入らなかった） */
+function dayMax(m){ return BIG_MUSCLES.includes(m) ? 9 : 6; }
+/* 1回の量の上限。週の目標に届かせるのに要る種目だけを入れるので、ふだんはこれより少ない（毎日やる人で平均4〜5種目）。
+   上限いっぱいになるのは、週3回のように間が空くとき（2026-10-05 本人の要望: 種目が増えてもよいので目標に届くように。
+   それまでは15セット・5種目・50分で、部位を18に分けてからは、週3回だと胸・広背筋・上腕三頭筋が週6〜7セットに減っていた） */
+const SESSION_MAX = {sets:30, exercises:10, minutes:90};
 /* 足りないときに優先する度合い（大きい部位ほど高い） */
 const PRIORITY = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.8, sidedelt:0.8, reardelt:0.8,
                   triceps:0.5, biceps:0.5, calves:0.5, gmed:0.5, abs:0.4, obliques:0.4, traps:0.4,
@@ -72,7 +82,7 @@ const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.3, 
    部位の不足だけで比べると、主役の部位が多い種目（サイドランジ）や補助の多い種目（プルオーバー）が
    いつも勝ってしまい、スクワットやロウが出なくなるため。書いていない動きは1 */
 const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9,
-                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85};
+                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, hammer:0.8};
 /* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
    （0=連日でもよい、1=中1日=48時間、2=中2日=72時間、3=中3日=96時間）。その日に主役で6セット以上やったときは1日延ばす。
    文献の目安（2026-09-29 に調べたもの）: 下肢の大きい筋は中2日が最小で、量が多い・下ろす動作が強いと1日（ハムストリングは
@@ -90,10 +100,8 @@ function recoverGap(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]
 /* 部位 m が主役（主働筋）だったセット数（fromDaysAgo〜toDaysAgo 日前） */
 function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   let n = 0;
-  sortedDates().forEach(d => {
-    const ago = daysAgo(d);
-    if(ago < fromDaysAgo || ago > toDaysAgo) return;
-    (state.sessions[d].entries || []).forEach(e => { const ex = EXMAP[e.ex]; if(ex && ex.p.includes(m)) n += e.sets.length; });
+  sessionsBetween(fromDaysAgo, toDaysAgo).forEach(s => {
+    (s.entries || []).forEach(e => { const ex = EXMAP[e.ex]; if(ex && ex.p.includes(m)) n += e.sets.length; });
   });
   return n;
 }
@@ -180,13 +188,36 @@ function stepItem(item, dir){
    種目を選ぶシートの印と、種目カードの「今日の調整」で同じものを使う（画面ごとに言うことが食い違わないように）。
    sore: 今日「筋肉痛の部位」に選んだ主働筋
    left: 回復まであと何日か。主働筋のうち一番長いもの（メニュー作りは主働筋が全部回復するまでその種目を出さないので、
-         最初に見つかった部位ではなく一番長い部位で数える）。muscle はその部位 */
+         最初に見つかった部位ではなく一番長い部位で数える）。muscle はその部位
+   resting: 回復の途中の主働筋をすべて。[{m, left}]
+   unused: 主働筋のうち、昨日までの UNUSED_DAYS-1 日に1セットも使えていない部位（補助で使った分も数える。今日を入れて
+         UNUSED_DAYS 日ぶんで、からだタブの「使えていない部位」の7日と同じ窓）。これがあれば、ほかの主働筋が回復中でも
+         メニュー作りはその種目を入れてよい（2026-10-05 本人の判断。筋肉痛と選んだ部位があるときは入れないので空）。
+         今日の記録は数えない: 数えると、その種目を1セットやったところでカードの説明が入れ替わってしまう */
+const UNUSED_DAYS = 7;
 function exRest(exId){
   const ex = EXMAP[exId], picked = soreToday();
   const sore = ex.p.filter(m => picked.includes(m));
   let muscle = null, left = 0;
-  ex.p.forEach(m => { const d = recoverDaysLeft(m); if(d > left){ left = d; muscle = m; } });
-  return sore.length || left ? {sore, muscle, left} : null;
+  const resting = [];
+  ex.p.forEach(m => { const d = recoverDaysLeft(m); if(d > 0) resting.push({m, left: d}); if(d > left){ left = d; muscle = m; } });
+  if(!sore.length && !left) return null;
+  const unused = sore.length ? [] : ex.p.filter(m => muscleLoadBetween(m, 1, UNUSED_DAYS - 1) <= 0);
+  return {sore, muscle, left, resting, unused};
+}
+/* メニュー作りが、回復の途中の部位があるのに入れた種目なら、その様子（exRest の結果）。そうでなければ null。
+   メニュー作りが入れるのは unused のある種目だけ（planner.js の overdue）なので、同じ exRest から決める。
+   自分で足した種目（manual）・メニューに無い記録（extra）は、メニュー作りが入れたものではないので当てはめない。
+   今日タブの種目カード（advice.js の todayAdvice）と、種目の下の1行（today.js）が、どちらもこれを使う */
+function restIncluded(item){
+  if(item.manual || item.extra || item.skip) return null;
+  const r = exRest(item.ex);
+  return r && r.left && r.unused.length ? r : null;
+}
+/* 「大腿四頭筋を7日以上使えていないので、回復の途中の部位（大殿筋はあと2日）があっても入れています。」 */
+function restIncludedText(r){
+  return r.unused.map(m => MUSCLES[m]).join("・") + "を" + UNUSED_DAYS + "日以上使えていないので、回復の途中の部位（"
+       + recoverDaysText(r.resting) + "）があっても入れています。";
 }
 /* 「回復中・あと2日」（印に使う短い書き方） */
 function recoverTag(left){ return "回復中・あと" + left + "日"; }

@@ -92,7 +92,11 @@ function viewToday(){
     ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
   const sore = soreToday();
   const soreLine = sore.length ? `<p class="skipped">筋肉痛: ${sore.map(m => MUSCLES[m]).join("・")}（今日はメインで鍛えません）</p>` : "";
-  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + skippedLine + soreLine + `
+  /* 回復の途中の部位があるのに、メニュー作りが入れた種目（7日使えていない部位のため）。種目カードの「今日の調整」と同じ
+     restIncluded・restIncludedText から出す（カードを開かなくても、入れたことと理由が分かるように: 2026-10-05 本人の要望） */
+  const includedLine = items.map(it => ({it, r: restIncluded(it)})).filter(x => x.r)
+    .map(x => `<p class="skipped">${esc(itemName(x.it))}: ${esc(restIncludedText(x.r))}</p>`).join("");
+  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + includedLine + skippedLine + soreLine + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>

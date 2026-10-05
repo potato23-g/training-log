@@ -4,7 +4,7 @@
    毎日、各種目をランダムに 0〜規定セット数だけこなした履歴を21日分つくる。
    （2026-09-21から、続けて出さないのは「種目」ではなく「動き」。同じ動きの中で種目が入れ替わらないようにするため） */
 setTimeout(() => {
-  const out = {days: [], repeatedNextDay: [], dupPatterns: [], recoverOnPlan: [], emptyDays: [], firstDayPartial: null};
+  const out = {days: [], repeatedNextDay: [], dupPatterns: [], recoverOnPlan: [], emptyDays: [], firstDayPartial: null, included: []};
   const shiftKey = (k, n) => { const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + n);
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
   let seed = 7;
@@ -48,7 +48,9 @@ setTimeout(() => {
       const dailyOk = EXMAP[it.ex].p.every(m => recoverGap(m) === 0);
       if(prevTouched.includes(patternOf(it.ex)) && !dailyOk) out.repeatedNextDay.push({day, ex: it.ex, pat: patternOf(it.ex)});
       const adv = todayAdvice(it, suggestNext(it, null, lastPerformance(it.ex, TODAY)));
-      if(adv && adv.level === "recover") out.recoverOnPlan.push({day, ex: it.ex});
+      /* 7日使えていない部位のために、回復の途中でも入れた種目（画面に理由が出る: rules.js の restIncluded）は別に数える */
+      if(restIncluded(it)) out.included.push({day, ex: it.ex});
+      else if(adv && adv.level === "recover") out.recoverOnPlan.push({day, ex: it.ex});
     });
     /* 途中でやめる: 各種目 0〜規定セット（全部0の日も作る） */
     fixPlan(s);

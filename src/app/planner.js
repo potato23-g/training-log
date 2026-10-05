@@ -49,7 +49,7 @@ function itemMinutes(it){
 let planMemo = null;                       /* 描画1回のあいだだけ使い回す */
 let todayMsg = "";                         /* 今日タブの操作の結果を、押したボタンのすぐ下に1回だけ出す */
 let planSeed = null;                       /* 「おまかせで追加」のとき、今のメニューを入れた状態から考える */
-let planRelax = false;                     /* 同上。1回の量の目安（15セット・5種目・50分）を外して探す */
+let planRelax = false;                     /* 同上。1回の量の目安（rules.js の SESSION_MAX）を外して探す */
 let planSkip = null;                       /* 今日「外した」動き（組み直しても入れない） */
 let planKeep = null;                       /* 組み直しで残す種目（記録済み・自分で足した種目）。これを入れた状態から組む */
 let planShort = false;                     /* 「20分で組む」とき */
@@ -90,6 +90,7 @@ function buildPlan(){
   /* 部位 m に add セット足したときの価値。週の目標までの不足を2乗で数えるので、目標から遠い部位ほど価値が大きい
      （大きい部位ばかりで埋まって、小さい部位が0セットのまま残らないように）。目標を超えて上限までは少しだけ */
   const short = x => Math.max(0, WEEK_TARGET - x);
+  const lack = m => short((week[m] || 0) + (today[m] || 0));      /* 週の目標まであと何セットか（今日入れた分も数える） */
   const worth = (m, add) => {
     const have = (week[m] || 0) + (today[m] || 0);
     const under = (short(have) ** 2 - short(have + add) ** 2) / WEEK_TARGET;
@@ -108,20 +109,44 @@ function buildPlan(){
     if(after && !after.some(pt => donePattern.has(pt) || plan.some(p => patternOf(p.ex) === pt))) return "after";   /* 仕上げの動きは、先に組む動きがある日だけ */
     if(!gearReady(c.ex, c)) return "gear";                                          /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
     const tired = ex.p.find(m => rest[m]);
-    if(tired) return "rest:" + tired;                                               /* 回復の途中・筋肉痛の部位が主役 */
-    /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕・ふくらはぎ）を補助で使うだけの種目は、その部位の量では外さない。
-       スクワットとランジはどれも腹直筋を補助で使うので、腹筋の種目を多くやった日・週は、大腿四頭筋と内転筋を
-       メインで鍛える種目が1つも入らなかった（2026-10-04 本人の指摘） */
-    const spare = m => recoverGap(m) === 0 && !ex.p.includes(m);
-    const dayOver = Object.keys(add).find(m => !spare(m) && (today[m] || 0) + add[m] > dayMax(m));
-    if(dayOver) return "day:" + dayOver;                                            /* 1日の上限（補助で使う部位も含む。連日でもよい部位を補助で使うだけの分は除く） */
-    /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目でついでに使う部位は少し多めまで許す
+    if(tired && !overdue(c.ex)) return "rest:" + tired;                             /* 回復の途中・筋肉痛の部位が主役 */
+    /* 1日・1週間の上限は、その種目がメインで鍛える部位について見る。補助で使うだけの部位の量では外さない
+       （その部位の量そのものには、ほかの種目の補助で使った分も数える）。
+       ・2026-10-04: スクワットとランジはどれも腹直筋を補助で使うので、腹筋の種目を多くやった日・週は、大腿四頭筋と内転筋を
+         メインで鍛える種目が1つも入らなかった（本人の指摘。このときは連日でもよい部位を補助で使う分だけを外した）
+       ・2026-10-05: 僧帽筋でも同じことが起きていた。ロウやファーマーズウォークをやった日はサイドレイズ・リアレイズが入らず、
+         肩の横・後ろが週の目標に届かなかったので、どの部位でも補助で使う分では外さないことにした */
+    const dayOver = ex.p.find(m => (today[m] || 0) + add[m] > dayMax(m));
+    if(dayOver) return "day:" + dayOver;                                            /* 1日の上限 */
+    /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目で一緒にメインで鍛える部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
-    const weekOver = Object.keys(add).find(m => !spare(m) && (week[m] || 0) + (today[m] || 0) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4));
+    const weekOver = ex.p.find(m => (week[m] || 0) + (today[m] || 0) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4));
     if(weekOver) return "week:" + weekOver;
     if(!planRelax && (plan.length >= LIM.exercises || sets + n > LIM.sets)) return "full";
     if(!planRelax && minutes + mins(c) > LIM.minutes) return "time";
     return "";
+  };
+  /* 回復の途中の部位があっても入れる種目（2026-10-05 本人の判断）: 主働筋のうち7日使えていない部位（rules.js の exRest の unused）が
+     あり、その部位をメインで鍛えられる種目が、回復の途中の部位を使うものしか今日は無いとき。
+     例: ルーマニアンデッドリフトやヒップスラストだけをやった数日は大殿筋が回復の途中で、スクワットもランジも入らず、
+     大腿四頭筋が1週間使えないままになる。ハムストリングのように、回復の途中の部位を使わない種目（スライディングレッグカール）が
+     ある部位は、そちらを入れる（1回の量の上限で入らない・今日は外した、のときも、回復の途中の部位を使う種目には替えない）。
+     使えていない部位1つにつき1種目まで（入れた時点で、その部位は「今日使う」になる）。
+     筋肉痛と選んだ部位は入れない（unused が空になる）。回復の途中の部位を使う種目を今日外しているときも、代わりを入れない。
+     入れた種目には、今日タブの行の印・種目カード・種目の下の1行に、入れたことと理由が出る（rules.js の restIncluded） */
+  const starved = {};                      /* 部位 → 回復の途中の部位を使わない種目が、今日は無い（メニューが変わるたびに消す） */
+  const restMemo = {};                     /* exRest は記録だけで決まるので、組んでいるあいだ使い回す */
+  const THERE = ["", "full", "time", "skip"];
+  const declined = m => !!planSkip && catalog().some(k => planSkip.has(patternOf(k.ex)) && EXMAP[k.ex].p.includes(m));
+  const overdue = exId => {
+    const r = exId in restMemo ? restMemo[exId] : (restMemo[exId] = exRest(exId));
+    if(!r || !r.unused.length) return false;
+    if(r.resting.some(x => declined(x.m))) return false;     /* その部位を使う種目を、今日は外している */
+    return r.unused.some(u => {
+      if((today[u] || 0) > 0) return false;                  /* 今日もう使った・使う種目を入れた */
+      if(!(u in starved)) starved[u] = !catalog().some(k => { const e = EXMAP[k.ex]; return e.p.includes(u) && !e.p.some(m => rest[m]) && THERE.includes(why(k)); });
+      return starved[u];
+    });
   };
   const allowed = c => !why(c);
   /* 動きごとに、今日やる組み方を決めておく（伸ばし方の結果: 前回の組み方か、その次の段）。
@@ -149,6 +174,7 @@ function buildPlan(){
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
     sets += it.sets || 3; minutes += mins(it);
     plan.push(it);
+    Object.keys(starved).forEach(k => delete starved[k]);
   };
   /* 動きごとに一番合う組み方を1つ決めてから、動きどうしを価値（× 動きの係数）で比べる。
      段の近さで割り引いた値のまま動きどうしを比べると、記録の無い動きのうち、選ぶ種目が標準の段でないもの
@@ -176,6 +202,7 @@ function buildPlan(){
     sets += rest;
     if(rest) minutes += done ? mins(Object.assign({}, it, {sets: rest})) - 1 : mins(it);   /* 途中の種目は切り替えの1分を数えない */
     plan.push(Object.assign({}, it, {seed: true}));
+    Object.keys(starved).forEach(k => delete starved[k]);
   };
   if(planSeed){
     /* 「おまかせで追加」: 今のメニューを入れた状態から、合う種目を1つだけ足す。
@@ -189,7 +216,10 @@ function buildPlan(){
     /* 組み直し: 残す種目を先に入れる */
     (planKeep || []).forEach(keepIn);
     fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
-    fill(0.2, Math.min(3, LIM.exercises));   /* 2. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    /* 2. メインで鍛える部位が週の目標に届いていない種目は、価値が小さくても入れる（2026-10-05 本人の要望: 種目が増えてもよいので
+          目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
+    fill(0.01, LIM.exercises, c => EXMAP[c.ex].p.some(m => lack(m) > 0));
+    fill(0.2, Math.min(3, LIM.exercises));   /* 3. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。

@@ -57,6 +57,17 @@ function session(date){
   return state.sessions[date];
 }
 function sortedDates(){ return Object.keys(state.sessions).sort().reverse(); }
+/* fromDaysAgo〜toDaysAgo 日前の記録（記録のある日だけ）。記録の全部を見て回らず、その日付の記録だけを引く。
+   メニュー作りは1回に何百回も部位の量を数えるので、記録が増えても遅くならないようにする
+   （日付のキーは YYYY-MM-DD だけ: sanitize.js が限っている。日数は daysAgo と同じく todayKey() から数える） */
+function sessionsBetween(fromDaysAgo, toDaysAgo){
+  const out = [], base = todayKey();
+  for(let ago = fromDaysAgo; ago <= toDaysAgo; ago++){
+    const s = state.sessions[addDays(base, -ago)];
+    if(s) out.push(s);
+  }
+  return out;
+}
 
 function entryFor(date, exId, create){
   const s = session(date);

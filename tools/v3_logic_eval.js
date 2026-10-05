@@ -2,7 +2,7 @@
    window.__result に結果、window.__ready = true で完了 */
 (async () => {
   const out = {days: [], dupPatterns: [], recoverOnPlan: [], recoverViolations: [], dayCapViolations: [], sessionCapViolations: [], weekCapViolations: [],
-               unowned: [], optionErrors: [], sweep: []};
+               unowned: [], optionErrors: [], sweep: [], included: [], dayLoadMax: {}};
   const shiftKey = (k, n) => { const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + n);
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
   /* 記録やダンベルを入れ替えたら、メニューと進め方の控え（planMemo・progMemo）を必ず空にする。
@@ -22,17 +22,26 @@
     if(new Set(pats).size !== pats.length) out.dupPatterns.push({day, pats});
     const dayLoad = {};
     let setsToday = 0;
+    const primDay = {};
     plan.forEach(it => {
       const adv = todayAdvice(it, suggestNext(it, null, lastPerformance(it.ex, TODAY)));
-      if(adv && adv.level === "recover") out.recoverOnPlan.push({day, ex: it.ex, text: adv.text});
+      /* 7日使えていない部位のために、回復の途中でも入れた種目（rules.js の restIncluded。画面に理由が出る）は別に数える。
+         それ以外で、回復の途中の部位を主役にする種目が入っていたら不合格 */
+      const inc = restIncluded(it);
+      if(inc) out.included.push({day, ex: it.ex});
+      if(adv && adv.level === "recover" && !inc) out.recoverOnPlan.push({day, ex: it.ex, text: adv.text});
       /* 間隔: 主役の部位が回復の途中でない（主役で3セット以上やった日から、部位ごとの日数を空けている） */
-      EXMAP[it.ex].p.forEach(m => { const left = recoverDaysLeft(m); if(left > 0) out.recoverViolations.push({day, ex: it.ex, m, left}); });
+      if(!inc) EXMAP[it.ex].p.forEach(m => { const left = recoverDaysLeft(m); if(left > 0) out.recoverViolations.push({day, ex: it.ex, m, left}); });
       const add = exLoad(it.ex, it.sets || 3);
       Object.keys(add).forEach(m => dayLoad[m] = (dayLoad[m] || 0) + add[m]);
+      EXMAP[it.ex].p.forEach(m => primDay[m] = (primDay[m] || 0) + (it.sets || 3));
       setsToday += it.sets || 3;
     });
-    /* 1日の負荷: どの部位も上限（大きい部位8・ほか6）を超えない（補助で使った分も含む） */
-    Object.keys(dayLoad).forEach(m => { if(dayLoad[m] > dayMax(m)) out.dayCapViolations.push({day, m, load: dayLoad[m]}); });
+    /* 1日の負荷: メインで鍛えた分が、どの部位も上限（大きい部位9・ほか6）を超えない。
+       上限は、その種目がメインで鍛える部位について見る決まり（2026-10-05。それまでは補助で使った分まで足した量で見ていた）。
+       補助で使った分まで足した量の最大は dayLoadMax に出す（目で見る） */
+    Object.keys(primDay).forEach(m => { if(primDay[m] > dayMax(m)) out.dayCapViolations.push({day, m, load: primDay[m]}); });
+    Object.keys(dayLoad).forEach(m => { if(dayLoad[m] > (out.dayLoadMax[m] || 0)) out.dayLoadMax[m] = dayLoad[m]; });
     if(setsToday > SESSION_MAX.sets || plan.length > SESSION_MAX.exercises) out.sessionCapViolations.push({day, sets: setsToday, exercises: plan.length});
     /* 週の上限: 保証しているのは各種目の主役（p[0]）の部位だけ。大殿筋・腹直筋・僧帽筋などは補助で使う分が上限を超えることがある */
     plan.forEach(it => { const m = EXMAP[it.ex].p[0], total = muscleLoadBetween(m, 1, 6) + (dayLoad[m] || 0);

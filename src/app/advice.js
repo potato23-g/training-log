@@ -7,10 +7,8 @@
 /* 指定した部位を、fromDaysAgo〜toDaysAgo 日前に何セット使ったか（今日は含めない） */
 function muscleLoadBetween(muscle, fromDaysAgo, toDaysAgo){
   let n = 0;
-  sortedDates().forEach(d=>{
-    const ago = daysAgo(d);
-    if(ago < fromDaysAgo || ago > toDaysAgo) return;
-    (state.sessions[d].entries||[]).forEach(e=>{
+  sessionsBetween(fromDaysAgo, toDaysAgo).forEach(s=>{
+    (s.entries||[]).forEach(e=>{
       const ex = EXMAP[e.ex]; if(!ex) return;
       if(ex.p.includes(muscle)) n += e.sets.length;
       else if((ex.s||[]).includes(muscle)) n += e.sets.length * 0.5;
@@ -62,10 +60,15 @@ function todayAdvice(item, sug){
       text: "ダンベルが登録されていません。今日は飛ばすか、基本のやり方に戻してください。"};
   }
 
-  /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位（自分で足した種目など、メニュー作りを通らずに入ったとき）。
+  /* 2. 主働筋が回復の途中か、今日筋肉痛と選んだ部位。
+        メニュー作りが入れた種目（7日使えていない部位のため: rules.js の restIncluded）には、入れた理由を出す。
+        自分で足した種目など、メニュー作りを通らずに入ったものには、軽くするか外すように出す。
         種目を選ぶシートの印と同じ exRest() から作る（あと何日かも同じ数になる） */
   const rest = exRest(id);
   if(rest){
+    const inc = restIncluded(item);
+    if(inc) return {level:"recover", warn:true, short: recoverTag(inc.left), included:true,
+      text: restIncludedText(inc) + "疲れが残っているときは、重さを軽くしてください。"};
     const soreText = rest.sore.length ? rest.sore.map(m => MUSCLES[m]).join("・") + "は今日「筋肉痛の部位」に選んでいます。" : "";
     const recText = rest.left ? MUSCLES[rest.muscle] + "はまだ回復の途中です（あと" + rest.left + "日。" + recoverFrom(rest.left) + "メインで鍛えられます）。" : "";
     return {level:"recover", warn:true, short: rest.sore.length ? "筋肉痛" : recoverTag(rest.left),
