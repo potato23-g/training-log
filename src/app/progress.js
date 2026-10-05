@@ -253,7 +253,10 @@ function deloadAdvice(){
     const [a, b, c] = same;                    /* a が一番新しい */
     if(sameWeight(a, b) && sameWeight(b, c) && a.meanR < b.meanR && b.meanR < c.meanR) tired.push(pat);
   });
-  return tired.length >= 2 ? {suggest: true, patterns: tired} : null;
+  /* 動きのまとまり（rules.js の PATTERN_GROUP）で数える。同じまとまりの種目（ゴブレットスクワットとワイドスクワットなど）が
+     一緒に落ちているのは、その部位が疲れているだけのことがある */
+  const groups = Array.from(new Set(tired.map(groupOf)));
+  return groups.length >= 2 ? {suggest: true, patterns: groups} : null;
 }
 function setDeload(on){
   if(on){

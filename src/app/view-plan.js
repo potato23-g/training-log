@@ -14,11 +14,11 @@ function exerciseHistory(exId){
   });
   return out;
 }
-/* 動きの呼び名 */
+/* 動きのまとまり（rules.js の PATTERN_GROUP）の呼び名 */
 const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"股関節を折る", hpush:"胸で押す", fly:"胸を開く",
   pull:"引く", vpush:"上へ押す", bridge:"お尻を持ち上げる", carry:"持って歩く", shrug:"肩をすくめる", raise:"腕を横に上げる",
   fraise:"腕を前に上げる", rear:"腕を後ろへ開く", kneeext:"膝を伸ばす", abduct:"脚を横に上げる",
-  curl:"肘を曲げる", hammer:"縦の握りで肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹",
+  curl:"肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹",
   legcurl:"膝を曲げる", pullover:"頭の上から引く", twist:"ひねる"};
 
 /* 動きごとの今の段階（記録のある動きだけ） */
@@ -88,9 +88,12 @@ function viewPlan(){
     return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段階と、次の段階までの回数がここに出ます。</div>`;
   }
   const rows = ladderRows();
-  const ladder = rows.length ? `<div class="card">${rows.map(r => `
+  /* 見出しは動きのまとまりごとに1回（同じまとまりの種目が続くあいだは出さない） */
+  const head = (r, i) => i && groupOf(rows[i - 1].pat) === groupOf(r.pat) ? ""
+    : `<p class="lk">${esc(PATTERN_NAME[groupOf(r.pat)] || "")}</p>`;
+  const ladder = rows.length ? `<div class="card">${rows.map((r, i) => `
       <div class="ladder">
-        <p class="lk">${esc(PATTERN_NAME[r.pat] || r.pat)}</p>
+        ${head(r, i)}
         <p class="ln"><b>${esc(itemName(r.item))}</b>　次の目標 ${r.p.target}${r.u}（範囲 ${r.p.lo}〜${r.p.hi}${r.u}）</p>
         <p class="lastline" style="margin-top:0">${esc(r.next)}</p>
       </div>`).join("")}

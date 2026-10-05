@@ -37,7 +37,7 @@ v4_update_e2e.py が固定で使う 8871/9479番ポートも念のため空け�
 | `v3_extra_item_eval.js` | 「種目を追加」がメニューと同じ組み方になるか | `__result.mismatch` が空 |
 | `v3_fig_eval.js`＊ | 図のダンベル本数が実際に使う本数と合っているか | `__result.mismatch` が空 |
 | `v3_logic_eval.js` | 今日のメニュー決定・部位の負荷上限（1日の上限は、メインで鍛えた分で見る: 2026-10-05）・持っているダンベルで作れない重さの案内がないか | `dupPatterns`/`recoverOnPlan`/`recoverViolations`/`dayCapViolations`/`sessionCapViolations`/`weekCapViolations`/`unowned`/`optionErrors`/`sweep` が全て空。記録やダンベルを入れ替えるたびに `planMemo` と `progMemo`（`resetProg()`）を空にする（空にしないと前の場面の結果が返り、作れない重さの誤検出が出る） |
-| `v3_newex_eval.js`＊ | 追加した種目に図・解説・持ち方・日用品案内・カタログ登録が揃っているか | `missing`/`noFigure`/`noDetail`/`noHold`/`noHouse`/`noMotion`/`noPattern`/`notInCatalog`/`badLevel`/`exWithoutLevel`/`unknownBlocked`（この版に無い種目が同期で入ってきても各タブを描ける・記録から消さない）が全て空 |
+| `v3_newex_eval.js`＊ | 追加した種目に図・解説・持ち方・日用品案内・カタログ登録が揃っているか。どの種目の動きにも、並び（`PATTERN_ORDER`）・まとまりの見出し（`PATTERN_HEAD`）・呼び名（`PATTERN_NAME`）があり、種目を選ぶシートと履歴の種目選びに全部の種目が出るか（2026-10-05: ハンマーカールの見出しが「hammer」と出ていた） | `missing`/`noFigure`/`noDetail`/`noHold`/`noHouse`/`noMotion`/`noPattern`/`notInCatalog`/`badLevel`/`exWithoutLevel`/`unknownBlocked`（この版に無い種目が同期で入ってきても各タブを描ける・記録から消さない）/`patternGaps`/`pickerMissing`/`histMissing`/`badHeads` が全て空 |
 | `v3_partial_eval.js` | 3セットやった動きは翌日出ない・1〜2セットだけの動きは「昨日やった動き」に数えない（2026-10-02） | `repeatedNextDay`/`dupPatterns`/`recoverOnPlan`/`emptyDays` が全て空（回復の途中でも入れた種目は `included` に別に出す） |
 | `v3_stable_eval.js` | 種目の選び方が気分で入れ替わらないか・目標に届き続けると届かないときより上の段階にいるか・セット数は3 | `settledSteady`/`hitAboveMiss`/`hitNeverBelowMiss`/`sameTwice`/`allThreeSets` が全て true |
 | `v3_swap_add_eval.js`＊ | 段の持ち替え・おまかせ追加・種目を選んで追加 | `afterSwap.swappedIn`/`.oldGone`/`.samePattern`・`noSwapAfterRecord`・`pickerHasShrug` が true、`auto.dupPattern`/`repeated.dupPattern` が false |

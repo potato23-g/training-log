@@ -462,7 +462,8 @@ def main():
                 timeout=90)
     run_browser("v3_newex_eval.js", "v3_newex_eval.js",
                 judge_empty_arrays("missing", "noFigure", "noDetail", "noHold", "noHouse", "noMotion",
-                                    "noPattern", "notInCatalog", "badLevel", "exWithoutLevel", "unknownBlocked"),
+                                    "noPattern", "notInCatalog", "badLevel", "exWithoutLevel", "unknownBlocked",
+                                    "patternGaps", "pickerMissing", "histMissing", "badHeads"),
                 needs_common=True)
     run_browser("v3_partial_eval.js", "v3_partial_eval.js",
                 judge_empty_arrays("repeatedNextDay", "dupPatterns", "recoverOnPlan", "emptyDays"), timeout=90)

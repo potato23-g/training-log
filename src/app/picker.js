@@ -7,7 +7,7 @@ document.addEventListener("keydown", (e)=>{
   if(e.key === "Escape" && sheet.classList.contains("on")) sheet.classList.remove("on");
 });
 
-/* 動きの見出し（種目を選ぶシートと、履歴の「セットを追加」の種目選びで共通に使う） */
+/* 動きのまとまり（rules.js の PATTERN_GROUP）の見出し（種目を選ぶシートと、履歴の「セットを追加」の種目選びで共通に使う） */
 const PATTERN_HEAD = {
   squat:"しゃがむ（スクワット系）", lunge:"踏み込む（ランジ系）", hinge:"股関節を折る（ヒンジ系）",
   hpush:"床を押す（腕立て系）", fly:"胸を開閉する（フライ）", pull:"引く（ロウ系）",
@@ -44,8 +44,8 @@ function pickLevelText(row){
    入れたあとの持ち替えは、種目カードの「やさしく／難しく」で行う */
 function openPicker(){
   const groups = {};
-  EX.forEach(e=>{ const p = patternOf(e.id); (groups[p] = groups[p] || []).push(e); });
-  const body = PATTERN_ORDER.filter(p=>groups[p] && groups[p].length).map(p=>{
+  EX.forEach(e=>{ const p = groupOf(patternOf(e.id)); (groups[p] = groups[p] || []).push(e); });
+  const body = groupOrder().filter(p=>groups[p] && groups[p].length).map(p=>{
     const items = groups[p].map(e=>{
       const row = pickRowFor(e.id);
       return `

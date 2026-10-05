@@ -26,29 +26,46 @@ function restFor(item){
                セット数はどの種目も3で固定（本人の要望。重さ・回数は本人が調整する）。
                部位の重み（PLAN_WEIGHT）は大きい部位を少しだけ重くしてある。目標に届いた部位も、16セットまでは少しだけ価値を残す
    これまでの決まりもそのまま守る:
-   ・同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日1つ
+   ・同じ動きの種目は1日1つ。同じ動きにまとめるのは、片方がもう片方のやさしい版・難しい版になっている種目だけ
+     （膝つき腕立て伏せと腕立て伏せ、スプリットスクワットとブルガリアンスクワットなど）。それ以外は、ほぼ同じ動きでも
+     別の動きとして扱い、同じ日に両方が入ることがある（2026-10-05 本人の判断。下の PATTERN）
    ・昨日（暦の昨日）3セット以上やった動きは、今日は出さない
    ・ダンベルが要る種目は、持っているダンベルで作れるものだけ
    ・動きごとに、今日やる組み方は伸ばし方（progress.js）で決まる。気分では入れ替えない
    A〜Dの各メニュー（ROUTINES）は、種目ごとのセット数・回数・メモの出どころとしてだけ使う。
    記録を始めた日は、そのときのメニューを保存して、その日のうちは変えない。 */
+/* 動き: 段階を上げていく単位。同じ動きの種目は1日1つで、メニューには前回の続き（次の段階）だけを入れる。
+   同じ動きにまとめるのは、片方がもう片方のやさしい版・難しい版になっている種目だけ:
+     膝つき腕立て伏せ→腕立て伏せ、スプリットスクワット→ブルガリアンスクワット、ヒップリフト→ヒップスラスト、
+     ルーマニアンデッドリフトの両脚→片脚、カーフレイズ（立って行う方が基本: 下の PATTERN_MAIN）
+   それ以外は、ほぼ同じ動きでも別の動きにする（2026-10-05 本人の判断: 違う種目なら、ほぼ同じ動きでも別のものとして
+   入れてよい）。同じ日に両方が入ることがある:
+     ゴブレットスクワット／ワイドスクワット／スプリットスクワット、腕立て伏せ／フロアプレス、ワンハンドロウ／ベントオーバーロウ、
+     トライセプスエクステンション／フロアトライセプスエクステンション、プランク／デッドバグ／クランチ、
+     サイドプランク／サイドベンド、ダンベルカール／ハンマーカール、サイドレイズ／フロントレイズ
+   それまでは「しゃがむ」「床を押す」のような大きなまとまりごとに1日1つで、まとまりの中では前回やった種目だけが続けて出て、
+   ほかの種目は出なかった */
 const PATTERN = {
-  goblet:"squat", split:"squat", rdl:"hinge", rdl1:"hinge", hipthrust:"bridge", calf:"calf",
-  pushup:"hpush", floorpress:"hpush", ohp:"vpush", lateral:"raise", row:"pull", farmer:"carry",
-  curl:"curl", triext:"ext", plank:"abs", deadbug:"abs", crunch:"abs", sideplank:"side",
-  sumo:"squat", splitfloor:"squat", bridge:"bridge", pushupknee:"hpush", fly:"fly",
-  skull:"ext", front:"fraise", shrug:"shrug", row2:"pull",
-  calfseat:"calf", sidebend:"side", sidelunge:"lunge",
-  slidecurl:"legcurl", pullover:"pullover", twist:"twist",
-  /* 2026-10-03: フロントレイズは肩の前・サイドレイズは肩の横で狙う部位が違うので、別の動きにした
-     （同じ動きのままだと、前回やった方だけが続けて出て、もう一方が出なくなる）。
-     ハンマーカールは、ダンベルカールとほぼ同じ「肘を曲げる」動きだが、別の動きとして扱う（2026-10-05 本人の判断:
-     違う種目なら、ほぼ同じ動きでも別のものとして入れてよい）。同じ日に両方が入ることもある */
-  sissy:"kneeext", rear:"rear", abduct:"abduct", hammer:"hammer"
+  goblet:"squat", sumo:"sumo", splitfloor:"splitsq", split:"splitsq", sidelunge:"lunge", sissy:"kneeext",
+  rdl:"hinge", rdl1:"hinge", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct",
+  pushupknee:"hpush", pushup:"hpush", floorpress:"floorpress", fly:"fly",
+  row:"pull", row2:"row2", pullover:"pullover", ohp:"vpush", farmer:"carry", shrug:"shrug",
+  lateral:"raise", front:"fraise", rear:"rear", curl:"curl", hammer:"hammer", triext:"ext", skull:"skull",
+  calf:"calf", calfseat:"calf", plank:"abs", deadbug:"deadbug", crunch:"crunch",
+  sideplank:"side", sidebend:"sidebend", twist:"twist"
 };
-/* メニューに並べる順（大きい動きを先に、体幹は最後に） */
-const PATTERN_ORDER = ["squat","lunge","kneeext","hinge","legcurl","hpush","fly","pull","pullover","vpush","bridge","abduct","carry","shrug",
-                       "raise","fraise","rear","curl","hammer","ext","calf","abs","side","twist"];
+/* 動きのまとまり: 種目を選ぶシートと履歴の種目選びの見出し（picker.js の PATTERN_HEAD）、提案タブの「動きごとの今の段階」の
+   見出し（view-plan.js の PATTERN_NAME）、軽い週を勧める判定（progress.js の deloadAdvice）に使う。
+   書いていない動きは、その動きだけのまとまり。メニュー作りには使わない */
+const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", floorpress:"hpush", row2:"pull", hammer:"curl", skull:"ext",
+                       deadbug:"abs", crunch:"abs", sidebend:"side"};
+function groupOf(pat){ return PATTERN_GROUP[pat] || pat; }
+/* メニューに並べる順（大きい動きを先に、体幹は最後に）。同じまとまりの動きは続けて並べる */
+const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","legcurl","hpush","floorpress","fly","pull","row2","pullover",
+                       "vpush","bridge","abduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull",
+                       "calf","abs","deadbug","crunch","side","sidebend","twist"];
+/* まとまりの並び（PATTERN_ORDER に出てくる順） */
+function groupOrder(){ return Array.from(new Set(PATTERN_ORDER.map(groupOf))); }
 /* 動きの中で、メニュー作りが選ぶ種目を決めてある動き。前回ほかの種目をやっていても、この種目（とその楽／大変のやり方）で続ける。
    ふくらはぎは立って段差で行う方を基本にする: 座って行う方は腓腹筋がほとんど太らず、ヒラメ筋の太り方も
    立って行う方と同じくらいだった（Kinoshita 2023 doi:10.3389/fphys.2023.1272106）。座って行う方は種目を選ぶシートからは選べる */
@@ -57,7 +74,7 @@ const PATTERN_MAIN = {calf:"calf"};
 const PATTERN_FIRST = {calf:"calf"};
 /* 仕上げに足す動き: 書いてある動きを先に組んだ日だけ入れる。シシースクワット（膝を伸ばす）は大腿四頭筋だけを使うので、
    別の日に入れると大殿筋の回復の日とずれて、スクワット・ランジ（大腿四頭筋と大殿筋の両方を使う）が入る日がなくなる */
-const PATTERN_AFTER = {kneeext:["squat", "lunge"]};
+const PATTERN_AFTER = {kneeext:["squat", "sumo", "splitsq", "lunge"]};
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット）。大きい部位は3種目ぶん、ほかの部位は2種目ぶん。その種目がメインで鍛える部位について見る
@@ -80,9 +97,12 @@ const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.3, 
                      erectors:0.3, forearms:0.3, adductors:0.15};
 /* 同じくらいの価値なら、定番の動き（スクワット・ヒンジ・ロウ・プレス）を少し先にする係数。
    部位の不足だけで比べると、主役の部位が多い種目（サイドランジ）や補助の多い種目（プルオーバー）が
-   いつも勝ってしまい、スクワットやロウが出なくなるため。書いていない動きは1 */
+   いつも勝ってしまい、スクワットやロウが出なくなるため。書いていない動きは1。
+   使う部位が同じ種目どうし（ワンハンドロウとベントオーバーロウなど）は、価値がまったく同じになるので、
+   定番の方を少し先にしてある */
 const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9,
-                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, hammer:0.8};
+                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, hammer:0.8,
+                      sumo:0.85, splitsq:0.95, row2:0.95, skull:0.95, crunch:0.95, deadbug:0.9, sidebend:0.95};
 /* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
    （0=連日でもよい、1=中1日=48時間、2=中2日=72時間、3=中3日=96時間）。その日に主役で6セット以上やったときは1日延ばす。
    文献の目安（2026-09-29 に調べたもの）: 下肢の大きい筋は中2日が最小で、量が多い・下ろす動作が強いと1日（ハムストリングは

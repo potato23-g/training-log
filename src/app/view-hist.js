@@ -220,14 +220,14 @@ let histUndoTimer = null;
 
 function noonAt(date){ return asDate(date).getTime() + 12*3600*1000; }
 function splitKey(k){ const i = (k||"").indexOf("|"); return i < 0 ? [k||"", ""] : [k.slice(0,i), k.slice(i+1)]; }
-/* 種目選び（catalog() を動きごとにグループ化した <optgroup>） */
+/* 種目選び（catalog() を動きのまとまりごとにグループ化した <optgroup>） */
 function exOptionsHTML(selectedKey){
   const groups = {};
   catalog().forEach(row=>{
-    const p = patternOf(row.ex);
+    const p = groupOf(patternOf(row.ex));
     (groups[p] = groups[p] || []).push(row);
   });
-  return PATTERN_ORDER.filter(p=>groups[p] && groups[p].length).map(p=>{
+  return groupOrder().filter(p=>groups[p] && groups[p].length).map(p=>{
     const opts = groups[p].map(row=>{
       const key = row.ex + "|" + (row.label || "");
       return `<option value="${esc(key)}"${key===selectedKey?" selected":""}>${esc(itemName(row))}</option>`;

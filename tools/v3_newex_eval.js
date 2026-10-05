@@ -1,5 +1,9 @@
 /* 追加した種目が「種目」タブと「今日」タブでちゃんと出るかを見る。
-   図が描けているか・解説文が揃っているか・持ち方や日用品の案内が出ているかを確かめる */
+   図が描けているか・解説文が揃っているか・持ち方や日用品の案内が出ているかを確かめる。
+   あわせて、どの種目の動きにも、並び（PATTERN_ORDER）・まとまりの見出し（PATTERN_HEAD）・呼び名（PATTERN_NAME）があり、
+   種目を選ぶシートと履歴の種目選びに全部の種目が出るかを見る（patternGaps・pickerMissing・histMissing・badHeads が空で合格）。
+   並びに無い動きの種目は、シートにも種目選びにも出なくなる。見出しが無いと、動きの名前（英字）がそのまま出る
+   （2026-10-05 の版で、ハンマーカールの見出しが「hammer」と出ていた） */
 (async () => {
   const NEW = ["sumo", "splitfloor", "bridge", "pushupknee", "fly", "skull", "front", "shrug", "row2",
                "calfseat", "sidebend", "sidelunge", "slidecurl", "pullover", "twist",
@@ -19,6 +23,39 @@
     if(!HOUSE[id]) out.noHouse.push(id);
     if(!catalog().some(c => c.ex === id)) out.notInCatalog.push(id);
   });
+
+  out.patternGaps = [];
+  EX.forEach(e => {
+    const pat = patternOf(e.id), g = groupOf(pat);
+    if(!PATTERN_ORDER.includes(pat)) out.patternGaps.push(e.id + ": 並びに無い（" + pat + "）");
+    if(!PATTERN_HEAD[g]) out.patternGaps.push(e.id + ": 見出しが無い（" + g + "）");
+    if(!PATTERN_NAME[g]) out.patternGaps.push(e.id + ": 呼び名が無い（" + g + "）");
+  });
+  PATTERN_ORDER.forEach(pat => { if(!EX.some(e => patternOf(e.id) === pat)) out.patternGaps.push(pat + ": 種目が無い"); });
+  if(new Set(PATTERN_ORDER).size !== PATTERN_ORDER.length) out.patternGaps.push("並びに同じ動きが2回ある");
+  /* 同じまとまりの動きは、並びの中で続いている（提案タブの見出しを、まとまりごとに1回だけ出すため） */
+  groupOrder().forEach(g => {
+    const idx = PATTERN_ORDER.map((pt, i) => groupOf(pt) === g ? i : -1).filter(i => i >= 0);
+    if(idx[idx.length - 1] - idx[0] !== idx.length - 1) out.patternGaps.push(g + ": 並びの中で離れている");
+  });
+  /* 仕上げに足す動き（PATTERN_AFTER）の「先に組む動き」は、実在する動き */
+  Object.keys(PATTERN_AFTER).forEach(k => PATTERN_AFTER[k].concat([k]).forEach(pt => {
+    if(!PATTERN_ORDER.includes(pt)) out.patternGaps.push("PATTERN_AFTER: 並びに無い（" + pt + "）");
+  }));
+  /* 種目を選ぶシート: 全部の種目が1回ずつ出て、見出しに英字だけのものが無い */
+  const hasJa = t => /[ぁ-んァ-ヶ一-龠]/.test(t);
+  tab = "today"; render(); openPicker();
+  await T.wait(60);
+  const picked = T.qa("[data-pick]").map(b => b.dataset.pick);
+  out.pickerMissing = EX.filter(e => picked.filter(x => x === e.id).length !== 1).map(e => e.id);
+  out.badHeads = T.qa(".pickhead").map(h => h.textContent).filter(t => !hasJa(t));
+  sheet.classList.remove("on");
+  /* 履歴の「セットを追加」の種目選び */
+  const tmp = document.createElement("select");
+  tmp.innerHTML = exOptionsHTML("");
+  const optEx = new Set(Array.from(tmp.querySelectorAll("option")).map(o => o.value.split("|")[0]));
+  out.histMissing = EX.filter(e => !optEx.has(e.id)).map(e => e.id);
+  Array.from(tmp.querySelectorAll("optgroup")).map(g => g.label).filter(t => !hasJa(t)).forEach(t => out.badHeads.push("履歴: " + t));
 
   /* 全種目に level が付いているか */
   out.exWithoutLevel = EX.filter(e => !(e.level >= 1 && e.level <= 3)).map(e => e.id);
