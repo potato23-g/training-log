@@ -254,8 +254,8 @@ textarea{min-height:64px;resize:vertical}
    専用の行で明示的に右寄せする（gear.js の adjRow） */
 .adjdelwrap{width:100%;display:flex;justify-content:space-between;align-items:center;font-size:14px}
 .adjflds .fld{margin-bottom:2px}
-.side{font-size:10px;color:var(--muscle);border:1px solid var(--muscle);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
-.adv{font-size:10px;color:var(--ink-2);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px}
+.side{font-size:10px;color:var(--muscle);border:1px solid var(--muscle);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+.adv{font-size:10px;color:var(--ink-2);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;white-space:nowrap}
 .adv.warn{color:var(--muscle);border-color:var(--muscle)}
 .target{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;background:var(--panel-2);
   border-left:2px solid var(--muscle);padding:9px 11px;margin-top:12px;border-radius:0 3px 3px 0}
@@ -2298,6 +2298,66 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     }
   });
 
+  /* ---------------- ヒップアダクション ----------------
+     横向きに寝て、下の脚を内側（上）へ上げる。内ももの内転筋が主役。
+     ACE の手順どおり、下（右）の脚を前に出して上の脚の前に置き、両脚とも伸ばして足を床に置く。
+     下の脚は膝を伸ばしたまま、床から少しだけ上げる（股関節がこの向きに動く幅は狭い）。
+     上（左）の手は上の腰に置く。骨盤は床に垂直のまま動かさない */
+  M.register({
+    id: 'adduct',
+    /* 足側の斜め前から見る。真正面（az 92）からだと、上げた脚が後ろの脚に重なって上がり方が読み取れない。
+       斜めにしすぎる（az 125）と、カメラに近い足が大きく写って枠からはみ出す */
+    view: { az: 110, el: 16, dist: 3.0, target: [0, 0.2, -0.1] },
+    base: {
+      'pelvis.y': 0.22, 'pelvis.roll': 90, 'pelvis.pitch': 0, 'pelvis.x': 0, 'pelvis.z': 0,
+      'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0, 'head.flex': 0,
+      /* 下側（右）の腕は頭の下に敷く（ヒップアブダクションと同じ） */
+      'clavR.elev': 28, 'clavR.prot': 0, 'clavL.elev': 0, 'clavL.prot': 0,
+      'upperarmR.flex': 110, 'upperarmR.abd': 0, 'upperarmR.rot': 0, 'forearmR.flex': 90, 'forearmR.rot': 90, 'handR.flex': 0,
+      /* 上側（左）の腕は体の横に沿わせ、手を上の腰に置く */
+      'upperarmL.flex': 1.5, 'upperarmL.abd': 25, 'upperarmL.rot': 84.5, 'forearmL.flex': 48, 'forearmL.rot': 4.5, 'handL.flex': -9,
+      /* 下側（右）の脚は前に出して伸ばす。上側（左）の脚はその後ろで伸ばし、足を床に置く */
+      'thighR.flex': 28, 'thighR.rot': 0, 'shankR.flex': 2, 'footR.flex': 0, 'toesR.flex': 0,
+      'thighL.flex': -6, 'thighL.abd': -17, 'thighL.rot': 0, 'shankL.flex': 2, 'footL.flex': 0, 'toesL.flex': 0
+    },
+    phases: [
+      { t: 0, label: '上げる 1秒' }, { t: 1.0, label: '一番上' }, { t: 1.3, label: '下ろす 2秒' }
+    ],
+    keys: [
+      { t: 0.0, hold: true, d: { 'thighR.abd': 5 } },
+      { t: 1.0, hold: true, d: { 'thighR.abd': -3 } },
+      { t: 1.3, hold: true, d: { 'thighR.abd': -3 } },
+      { t: 3.3, hold: true, d: { 'thighR.abd': 5 } }
+    ]
+  });
+
+  /* ---------------- バックエクステンション ----------------
+     うつ伏せで上体を起こす。脊柱起立筋が主役。
+     筋電図の測定（Kim 2015）と同じく、脚は床につけたまま上体だけを起こす。手は耳の横に添える（測定は胸の前で組む）。
+     骨盤は床から動かさず、腰・胸の順に反らす。首は背骨の延長のまま反らさない */
+  M.register({
+    id: 'backext',
+    /* ほぼ真横から見る（腕立て伏せ・プランクと同じ向き）。上体の起き上がりは真横がいちばん読み取りやすい。
+       斜め（az 30）だと、カメラに近い頭が大きく写って枠からはみ出す */
+    view: { az: 10, el: 10, dist: 3.4, target: [0.1, 0.2, 0] },
+    base: {
+      'pelvis.x': 0, 'pelvis.z': 0, 'pelvis.y': 0.115, 'pelvis.pitch': 90,
+      'thighR.flex': 4.4, 'thighR.abd': 4, 'thighR.rot': 0, 'shankR.flex': 11.5, 'footR.flex': -45, 'toesR.flex': 0,
+      'thighL.flex': 4.4, 'thighL.abd': 4, 'thighL.rot': 0, 'shankL.flex': 11.5, 'footL.flex': -45, 'toesL.flex': 0,
+      'upperarmR.flex': 140, 'upperarmR.abd': 77, 'upperarmR.rot': 66, 'forearmR.flex': 139, 'forearmR.rot': 108, 'handR.flex': -4,
+      'upperarmL.flex': 140, 'upperarmL.abd': 77, 'upperarmL.rot': 66, 'forearmL.flex': 139, 'forearmL.rot': 108, 'handL.flex': -4
+    },
+    phases: [
+      { t: 0, label: '上げる 2秒' }, { t: 2.0, label: '一番上' }, { t: 2.3, label: '下ろす 2秒' }
+    ],
+    keys: [
+      { t: 0.0, hold: true, d: { 'spineL.flex': 2, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0, 'head.flex': 0 } },
+      { t: 2.0, hold: true, d: { 'spineL.flex': -12, 'spineT.flex': -8, 'spineC.flex': -5, 'neck.flex': 4, 'head.flex': 0 } },
+      { t: 2.3, hold: true, d: { 'spineL.flex': -12, 'spineT.flex': -8, 'spineC.flex': -5, 'neck.flex': 4, 'head.flex': 0 } },
+      { t: 4.3, hold: true, d: { 'spineL.flex': 2, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0, 'head.flex': 0 } }
+    ]
+  });
+
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -2724,6 +2784,21 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     base: { 'upperarmL.flex': 26, 'upperarmL.abd': -14, 'upperarmL.rot': 24,
             'forearmL.flex': 96, 'forearmL.rot': 40, 'handL.flex': 0 },
     keys: { 0: { 'forearmL.flex': 96 }, 1.3: { 'forearmL.flex': 96 }, 1.6: { 'forearmL.flex': 96 }, 5.1: { 'forearmL.flex': 96 } } });
+
+  /* ヒップアダクション: 上で2秒止める */
+  insertHold('adduct', 'adduct_hold', 1.0, 2, '上で2秒止める');
+
+  /* バックエクステンション: 上で3秒止める */
+  insertHold('backext', 'backext_hold', 2.0, 3, '上で3秒止める');
+
+  /* バックエクステンション: 腕を体の横に伸ばす。
+     下ろした姿勢では腕を体の横の床に置き、起こすときは上体と一緒に床から浮かせる（手で床を押さない）。
+     腕は胸についていくので、そのままだと起こしたときに手が床へ沈む。肩を後ろへ引いた角度を上のキーに入れてある */
+  derive('backext', { id: 'backext_arms',
+    base: { 'upperarmR.abd': 8, 'upperarmR.rot': 31, 'forearmR.flex': 5, 'forearmR.rot': 149, 'handR.flex': 9,
+            'upperarmL.abd': 8, 'upperarmL.rot': 31, 'forearmL.flex': 5, 'forearmL.rot': 149, 'handL.flex': 9 },
+    keys: { 0.0: { 'upperarmR.flex': 7, 'upperarmL.flex': 7 }, 2.0: { 'upperarmR.flex': -18, 'upperarmL.flex': -18 },
+            2.3: { 'upperarmR.flex': -18, 'upperarmL.flex': -18 }, 4.3: { 'upperarmR.flex': 7, 'upperarmL.flex': 7 } } });
 
   /* 腕立て伏せ: 床に置いた2つのダンベルの柄（左右方向。2本が一直線に並ぶ）に手のひらを乗せて行う。
      手は指が曲がらない1本の棒（長さ15cm）なので、柄を握る代わりに、手のひらを柄の上にかぶせて
@@ -3613,6 +3688,39 @@ const EX = [
     ],
     ng:["手首を返して手のひらが上を向く。それは普通のカール。","肘が前に出る。それは肩の動き。","反動で振り上げる。"],
     up:["下ろす動作に4秒かける","途中で2秒止める","片手ずつ集中して行う"]
+  },
+  /* 2026-10-06 追加の2種目（内転筋・脊柱起立筋をメインで鍛える種目。出典は notes/form-sources.md） */
+  {
+    id:"adduct", name:"ヒップアダクション", kind:"b", r:15, sets:3, side:true, level:1,
+    p:["adductors"], s:[],
+    how:[
+      "横向きに寝て、下の腕を頭の下に置く。上の手は上の腰に置く。",
+      "下の脚を前に出して上の脚の前に置く。両脚とも膝を伸ばし、足は床に置く。",
+      "下の脚を、膝を伸ばしたまま床から10〜15cm上げる。骨盤は床に垂直のまま動かさない。",
+      "2秒かけて下ろし、床につく手前で次の回へ。"
+    ],
+    ng:[
+      "高く上げようとして骨盤が傾く。股関節がこの向きに動く幅は狭いので、上がる高さは10〜15cmで十分。",
+      "膝が曲がる。伸ばしたまま、内ももで持ち上げる。",
+      "つま先が上や下を向く。つま先は正面に向けたまま、脚をねじらない。"
+    ],
+    up:["上で2秒止める","下ろす動作を3秒に","回数を20回まで伸ばす"]
+  },
+  {
+    id:"backext", name:"バックエクステンション", kind:"b", r:12, sets:3, level:1,
+    p:["erectors"], s:[],
+    how:[
+      "うつ伏せになり、脚は腰幅に開いて伸ばす。手は耳の横に添え、肘を横に開く。",
+      "骨盤とつま先を床につけたまま、みぞおちが床から離れるところまで上体を起こす。",
+      "あごは引いたまま、目線は床に向ける。",
+      "2秒かけて、胸が床につくまで下ろす。"
+    ],
+    ng:[
+      "反動をつけて跳ね上げる。腰に一気に負担がかかる。",
+      "高く反ろうとする。みぞおちが床から離れる高さで止める。",
+      "あごを上げて首を反らす。首は背骨の延長のまま。"
+    ],
+    up:["上で3秒止める","下ろす動作を3秒に","腕を頭の先へ伸ばして行う"]
   }
 ];
 EX.push({
@@ -4030,6 +4138,26 @@ hammer:{
  feel:"力こぶの外側から、前腕の親指側。手首が痛むなら握りが強すぎる。",
  easy:"片手ずつ行い、反対の手で肘を支える",
  hard:"途中で2秒止める",
+ reps:"3セット × 10〜15回"},
+adduct:{
+ why:"内ももの内転筋だけを狙って鍛える種目。スクワットやランジでも内転筋は使われるが、太ももの前やお尻と一緒に働くので、内転筋が先に限界まで使われることは少ない。筋電図で比べた研究では、ワイドスクワットやサイドランジより、この動きのほうが長内転筋（内転筋のひとつ）が強く働いた。",
+ setup:"床に横向きに寝て、下の腕を頭の下に置く。上の手は上の腰に置く。下の脚を前に出して上の脚の前に置き、両脚とも膝を伸ばして足を床に置く。",
+ breath:"上げながら吐き、下ろしながら吸う。",
+ tempo:"上げる1秒 → 下ろす2秒。",
+ rom:"足が床から10〜15cm上がるまで。股関節がこの向きに動く幅は狭いので、高さは要らない。骨盤が傾く手前が限界。",
+ feel:"下の脚の内もも。腰やわき腹が先に張るなら、上げすぎて骨盤が傾いている。",
+ easy:"上の手を体の前の床について支える（体がぐらつかなくなる）",
+ hard:"上で2秒止める",
+ reps:"左右それぞれ3セット × 12〜20回"},
+backext:{
+ why:"背骨の両わきを走る脊柱起立筋を、背中を反らす動きで直接鍛える種目。ルーマニアンデッドリフトやロウでは姿勢を保つために使われるだけで、背中を反らす動きそのものでは鍛えられていない。",
+ setup:"床にうつ伏せになり、脚は腰幅に開いて伸ばす。つま先は床につける。手は耳の横に添え、肘を横に開く。",
+ breath:"起こしながら吐き、下ろしながら吸う。",
+ tempo:"上げる2秒 → 下ろす2秒。",
+ rom:"みぞおちが床から離れるところまで。へそから下とつま先は床につけたまま。腰に痛みや詰まる感じが出る手前が限界。",
+ feel:"腰から背中の中ほどにかけての、背骨の両わき。腰の一点が痛むなら反りすぎ。",
+ easy:"腕を体の横に伸ばして行う（腕が体に近いぶん軽くなる）",
+ hard:"上で3秒止める",
  reps:"3セット × 10〜15回"}
 };
 
@@ -5490,7 +5618,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-05 22:44";
+const BUILD_VERSION = "2026-10-06 22:15";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6040,8 +6168,11 @@ const PHYS = {
   rear:{hold:"両足は床。上体を倒したまま、ダンベルは両手に1つずつ"},
   abduct:{hold:"体の横（下側の腰と脚）が床。下の腕は頭の下に置く"},
   hammer:{hold:"両足は床。肘は体側に固定。ダンベルは両手に1つずつ、縦に持つ"},
+  adduct:{hold:"体の横（下側の腰）と、後ろに置いた上の脚が床。下の腕は頭の下に置き、前に出した下の脚だけを浮かせる"},
+  backext:{hold:"骨盤から下（腰・太もも・つま先）は床につけたまま。手は耳の横に添えるだけで、床を押さない"},
   /* 組み方の動き（VARIANT_MOTION の名前）で書くと、その組み方の図にだけ出る。床に接するものが基本と違う組み方に使う */
-  pushup_deep:{hold:"床に置いたダンベルを握った手と、つま先だけで体を支える"}
+  pushup_deep:{hold:"床に置いたダンベルを握った手と、つま先だけで体を支える"},
+  backext_arms:{hold:"骨盤から下（腰・太もも・つま先）は床につけたまま。腕は体の横に伸ばし、上体と一緒に床から浮かせる"}
 };
 
 /* ---------- 図解（3Dマネキン） ---------- */
@@ -6082,6 +6213,8 @@ const DIANOTE = {
   rear: "上体の角度を保ったまま、腕を真横へ開く。肩甲骨を寄せて引くと、背中の運動になる。",
   abduct: "つま先は正面に向けたまま、脚を体より少し後ろで上げる。つま先が上を向くと太ももの前側に効いてしまう。",
   hammer: "手首の向きは縦のまま変えない。肘の位置を動かさずに巻き上げる。",
+  adduct: "骨盤は床に垂直のまま、前に出した下の脚だけを上げる。高く上げる必要はなく、床から10〜15cmで十分。",
+  backext: "骨盤は床につけたまま、腰から胸の順に起こす。あごは引いたまま、首だけを反らさない。",
 };
 
 let FIG = null, animRAF = null, playingId = null, playSlot = null, playBtn = null;
@@ -6364,30 +6497,53 @@ function restFor(item){
                種目が増えてもよいので目標に届くように）。届いている部位ばかりの日は種目が少ない。
                セット数はどの種目も3で固定（本人の要望。重さ・回数は本人が調整する）。
                部位の重み（PLAN_WEIGHT）は大きい部位を少しだけ重くしてある。目標に届いた部位も、16セットまでは少しだけ価値を残す
+   ・使えていない部位: 7日使えていない部位（下の unusedSoFar）を使う種目が、組んだメニューに1つも入らなかったとき（主でも補助でも）は、
+               その部位をメインで鍛える種目を先に入れてから組み直す（2026-10-06。planner.js の buildPlan）。
+               ヒップアダクションを足すと、内転筋を7日使えていないのに、内転筋を使う種目が1つも入らない日ができた
+               （ヒップアダクションは重みが0.15で1回10種目の取り合いに負け、サイドランジは回復の途中の部位を使わない種目が
+               あるので入らない）。入らなかったときだけ組み直すので、ひと通り使えている日のメニューは変わらない。
+               20分で組むとき・軽い週は、これまでどおり
    これまでの決まりもそのまま守る:
-   ・同じ動きの種目（例: ゴブレットスクワットとブルガリアンスクワット）は1日1つ
+   ・同じ動きの種目は1日1つ。同じ動きにまとめるのは、片方がもう片方のやさしい版・難しい版になっている種目だけ
+     （膝つき腕立て伏せと腕立て伏せ、スプリットスクワットとブルガリアンスクワットなど）。それ以外は、ほぼ同じ動きでも
+     別の動きとして扱い、同じ日に両方が入ることがある（2026-10-05 本人の判断。下の PATTERN）
    ・昨日（暦の昨日）3セット以上やった動きは、今日は出さない
    ・ダンベルが要る種目は、持っているダンベルで作れるものだけ
    ・動きごとに、今日やる組み方は伸ばし方（progress.js）で決まる。気分では入れ替えない
    A〜Dの各メニュー（ROUTINES）は、種目ごとのセット数・回数・メモの出どころとしてだけ使う。
    記録を始めた日は、そのときのメニューを保存して、その日のうちは変えない。 */
+/* 動き: 段階を上げていく単位。同じ動きの種目は1日1つで、メニューには前回の続き（次の段階）だけを入れる。
+   同じ動きにまとめるのは、片方がもう片方のやさしい版・難しい版になっている種目だけ:
+     膝つき腕立て伏せ→腕立て伏せ、スプリットスクワット→ブルガリアンスクワット、ヒップリフト→ヒップスラスト、
+     ルーマニアンデッドリフトの両脚→片脚、カーフレイズ（立って行う方が基本: 下の PATTERN_MAIN）
+   それ以外は、ほぼ同じ動きでも別の動きにする（2026-10-05 本人の判断: 違う種目なら、ほぼ同じ動きでも別のものとして
+   入れてよい）。同じ日に両方が入ることがある:
+     ゴブレットスクワット／ワイドスクワット／スプリットスクワット、腕立て伏せ／フロアプレス、ワンハンドロウ／ベントオーバーロウ、
+     トライセプスエクステンション／フロアトライセプスエクステンション、プランク／デッドバグ／クランチ、
+     サイドプランク／サイドベンド、ダンベルカール／ハンマーカール、サイドレイズ／フロントレイズ
+   それまでは「しゃがむ」「床を押す」のような大きなまとまりごとに1日1つで、まとまりの中では前回やった種目だけが続けて出て、
+   ほかの種目は出なかった */
 const PATTERN = {
-  goblet:"squat", split:"squat", rdl:"hinge", rdl1:"hinge", hipthrust:"bridge", calf:"calf",
-  pushup:"hpush", floorpress:"hpush", ohp:"vpush", lateral:"raise", row:"pull", farmer:"carry",
-  curl:"curl", triext:"ext", plank:"abs", deadbug:"abs", crunch:"abs", sideplank:"side",
-  sumo:"squat", splitfloor:"squat", bridge:"bridge", pushupknee:"hpush", fly:"fly",
-  skull:"ext", front:"fraise", shrug:"shrug", row2:"pull",
-  calfseat:"calf", sidebend:"side", sidelunge:"lunge",
-  slidecurl:"legcurl", pullover:"pullover", twist:"twist",
-  /* 2026-10-03: フロントレイズは肩の前・サイドレイズは肩の横で狙う部位が違うので、別の動きにした
-     （同じ動きのままだと、前回やった方だけが続けて出て、もう一方が出なくなる）。
-     ハンマーカールは、ダンベルカールとほぼ同じ「肘を曲げる」動きだが、別の動きとして扱う（2026-10-05 本人の判断:
-     違う種目なら、ほぼ同じ動きでも別のものとして入れてよい）。同じ日に両方が入ることもある */
-  sissy:"kneeext", rear:"rear", abduct:"abduct", hammer:"hammer"
+  goblet:"squat", sumo:"sumo", splitfloor:"splitsq", split:"splitsq", sidelunge:"lunge", sissy:"kneeext",
+  rdl:"hinge", rdl1:"hinge", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct", adduct:"adduct",
+  pushupknee:"hpush", pushup:"hpush", floorpress:"floorpress", fly:"fly",
+  row:"pull", row2:"row2", pullover:"pullover", ohp:"vpush", farmer:"carry", shrug:"shrug",
+  lateral:"raise", front:"fraise", rear:"rear", curl:"curl", hammer:"hammer", triext:"ext", skull:"skull",
+  calf:"calf", calfseat:"calf", backext:"backext", plank:"abs", deadbug:"deadbug", crunch:"crunch",
+  sideplank:"side", sidebend:"sidebend", twist:"twist"
 };
-/* メニューに並べる順（大きい動きを先に、体幹は最後に） */
-const PATTERN_ORDER = ["squat","lunge","kneeext","hinge","legcurl","hpush","fly","pull","pullover","vpush","bridge","abduct","carry","shrug",
-                       "raise","fraise","rear","curl","hammer","ext","calf","abs","side","twist"];
+/* 動きのまとまり: 種目を選ぶシートと履歴の種目選びの見出し（picker.js の PATTERN_HEAD）、提案タブの「動きごとの今の段階」の
+   見出し（view-plan.js の PATTERN_NAME）、軽い週を勧める判定（progress.js の deloadAdvice）に使う。
+   書いていない動きは、その動きだけのまとまり。メニュー作りには使わない */
+const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", floorpress:"hpush", row2:"pull", hammer:"curl", skull:"ext",
+                       deadbug:"abs", crunch:"abs", sidebend:"side"};
+function groupOf(pat){ return PATTERN_GROUP[pat] || pat; }
+/* メニューに並べる順（大きい動きを先に、体幹は最後に）。同じまとまりの動きは続けて並べる */
+const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","legcurl","hpush","floorpress","fly","pull","row2","pullover",
+                       "vpush","bridge","abduct","adduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull",
+                       "calf","backext","abs","deadbug","crunch","side","sidebend","twist"];
+/* まとまりの並び（PATTERN_ORDER に出てくる順） */
+function groupOrder(){ return Array.from(new Set(PATTERN_ORDER.map(groupOf))); }
 /* 動きの中で、メニュー作りが選ぶ種目を決めてある動き。前回ほかの種目をやっていても、この種目（とその楽／大変のやり方）で続ける。
    ふくらはぎは立って段差で行う方を基本にする: 座って行う方は腓腹筋がほとんど太らず、ヒラメ筋の太り方も
    立って行う方と同じくらいだった（Kinoshita 2023 doi:10.3389/fphys.2023.1272106）。座って行う方は種目を選ぶシートからは選べる */
@@ -6396,12 +6552,12 @@ const PATTERN_MAIN = {calf:"calf"};
 const PATTERN_FIRST = {calf:"calf"};
 /* 仕上げに足す動き: 書いてある動きを先に組んだ日だけ入れる。シシースクワット（膝を伸ばす）は大腿四頭筋だけを使うので、
    別の日に入れると大殿筋の回復の日とずれて、スクワット・ランジ（大腿四頭筋と大殿筋の両方を使う）が入る日がなくなる */
-const PATTERN_AFTER = {kneeext:["squat", "lunge"]};
+const PATTERN_AFTER = {kneeext:["squat", "sumo", "splitsq", "lunge"]};
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット）。大きい部位は3種目ぶん、ほかの部位は2種目ぶん。その種目がメインで鍛える部位について見る
-   （2026-10-05: 大きい部位を8から9へ。8だと、スクワットとルーマニアンデッドリフトで大殿筋が6になった日は、内転筋を
-   メインで鍛えるただ1つの種目のサイドランジが入らなかった） */
+   （2026-10-05: 大きい部位を8から9へ。8だと、スクワットとルーマニアンデッドリフトで大殿筋が6になった日は、当時は内転筋を
+   メインで鍛えるただ1つの種目だったサイドランジが入らなかった） */
 function dayMax(m){ return BIG_MUSCLES.includes(m) ? 9 : 6; }
 /* 1回の量の上限。週の目標に届かせるのに要る種目だけを入れるので、ふだんはこれより少ない（毎日やる人で平均4〜5種目）。
    上限いっぱいになるのは、週3回のように間が空くとき（2026-10-05 本人の要望: 種目が増えてもよいので目標に届くように。
@@ -6419,9 +6575,12 @@ const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.3, 
                      erectors:0.3, forearms:0.3, adductors:0.15};
 /* 同じくらいの価値なら、定番の動き（スクワット・ヒンジ・ロウ・プレス）を少し先にする係数。
    部位の不足だけで比べると、主役の部位が多い種目（サイドランジ）や補助の多い種目（プルオーバー）が
-   いつも勝ってしまい、スクワットやロウが出なくなるため。書いていない動きは1 */
+   いつも勝ってしまい、スクワットやロウが出なくなるため。書いていない動きは1。
+   使う部位が同じ種目どうし（ワンハンドロウとベントオーバーロウなど）は、価値がまったく同じになるので、
+   定番の方を少し先にしてある */
 const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9,
-                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, hammer:0.8};
+                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, adduct:0.85, backext:0.85, hammer:0.8,
+                      sumo:0.85, splitsq:0.95, row2:0.95, skull:0.95, crunch:0.95, deadbug:0.9, sidebend:0.95};
 /* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
    （0=連日でもよい、1=中1日=48時間、2=中2日=72時間、3=中3日=96時間）。その日に主役で6セット以上やったときは1日延ばす。
    文献の目安（2026-09-29 に調べたもの）: 下肢の大きい筋は中2日が最小で、量が多い・下ろす動作が強いと1日（ハムストリングは
@@ -6534,6 +6693,9 @@ function stepItem(item, dir){
          メニュー作りはその種目を入れてよい（2026-10-05 本人の判断。筋肉痛と選んだ部位があるときは入れないので空）。
          今日の記録は数えない: 数えると、その種目を1セットやったところでカードの説明が入れ替わってしまう */
 const UNUSED_DAYS = 7;
+/* 昨日までの UNUSED_DAYS-1 日に、その部位を1セットも使えていないか（補助で使った分も数える）。
+   exRest の unused と、メニュー作りが先に種目を入れる部位（planner.js の buildPlan）が、どちらもこれで決める */
+function unusedSoFar(m){ return muscleLoadBetween(m, 1, UNUSED_DAYS - 1) <= 0; }
 function exRest(exId){
   const ex = EXMAP[exId], picked = soreToday();
   const sore = ex.p.filter(m => picked.includes(m));
@@ -6541,7 +6703,7 @@ function exRest(exId){
   const resting = [];
   ex.p.forEach(m => { const d = recoverDaysLeft(m); if(d > 0) resting.push({m, left: d}); if(d > left){ left = d; muscle = m; } });
   if(!sore.length && !left) return null;
-  const unused = sore.length ? [] : ex.p.filter(m => muscleLoadBetween(m, 1, UNUSED_DAYS - 1) <= 0);
+  const unused = sore.length ? [] : ex.p.filter(unusedSoFar);
   return {sore, muscle, left, resting, unused};
 }
 /* メニュー作りが、回復の途中の部位があるのに入れた種目なら、その様子（exRest の結果）。そうでなければ null。
@@ -6646,7 +6808,10 @@ const VARIANT_TEXT = {
   abduct:     {hard: ["ダンベルを太ももに乗せる", "上の脚の太ももの外側にダンベルを乗せ、上の手で押さえたまま上げる。手が届く範囲で膝に近づけるほど重くなる。", {needsDb:true}],
                easy: ["膝を曲げて行う",    "上の脚の膝を90度に曲げたまま、脚全体を持ち上げる。脚が短くなるぶん軽くなる。"]},
   hammer:     {hard: ["途中で2秒止める",   "前腕が床と平行になったところで2秒止め、上まで巻き上げてから下ろす。"],
-               easy: ["肘を手で支える",    "片手ずつ行い、反対の手で肘を支える。"]}
+               easy: ["肘を手で支える",    "片手ずつ行い、反対の手で肘を支える。"]},
+  adduct:     {hard: ["上で2秒止める",    "脚を上げきった位置で2秒止めてから下ろす。"]},
+  backext:    {hard: ["上で3秒止める",    "上体を起こした位置で3秒止めてから下ろす。"],
+               easy: ["腕を体の横に伸ばす", "腕を体の横に伸ばし、手のひらを上に向ける。上体と一緒に腕も床から浮かせる。腕が体に近いぶん軽くなる。"]}
 };
 
 /* 組み方ごとの動き（src/motions_f.js）。無いものは基本のやり方の図を出し、
@@ -6683,6 +6848,8 @@ const VARIANT_MOTION = {
   "rear|上で2秒止める":"rear_hold", "rear|肘を深く曲げる":"rear_short",
   "abduct|ダンベルを太ももに乗せる":"abduct_db", "abduct|膝を曲げて行う":"abduct_bent",
   "hammer|途中で2秒止める":"hammer_hold", "hammer|肘を手で支える":"hammer_one",
+  "adduct|上で2秒止める":"adduct_hold",
+  "backext|上で3秒止める":"backext_hold", "backext|腕を体の横に伸ばす":"backext_arms",
   "pushup|ダンベルを握って行う":"pushup_deep"
 };
 /* 動きの見た目が基本と変わらない組み方（重さや時間だけ変えるもの）。図の断り書きを出さない */
@@ -6867,7 +7034,8 @@ function buildPlan(){
      あり、その部位をメインで鍛えられる種目が、回復の途中の部位を使うものしか今日は無いとき。
      例: ルーマニアンデッドリフトやヒップスラストだけをやった数日は大殿筋が回復の途中で、スクワットもランジも入らず、
      大腿四頭筋が1週間使えないままになる。ハムストリングのように、回復の途中の部位を使わない種目（スライディングレッグカール）が
-     ある部位は、そちらを入れる（1回の量の上限で入らない・今日は外した、のときも、回復の途中の部位を使う種目には替えない）。
+     ある部位は、そちらを入れる（1回の量の上限で入らない・今日は外した、のときも、回復の途中の部位を使う種目には替えない。
+     1回の量の上限で入らなかったときは、下の first でその種目を先に入れて組み直す）。
      使えていない部位1つにつき1種目まで（入れた時点で、その部位は「今日使う」になる）。
      筋肉痛と選んだ部位は入れない（unused が空になる）。回復の途中の部位を使う種目を今日外しているときも、代わりを入れない。
      入れた種目には、今日タブの行の印・種目カード・種目の下の1行に、入れたことと理由が出る（rules.js の restIncluded） */
@@ -6950,13 +7118,43 @@ function buildPlan(){
     if(plan.length === seedLen) fill(0.2, seedLen + 1);
     if(plan.length === seedLen) fill(0.01, seedLen + 1);
   }else{
-    /* 組み直し: 残す種目を先に入れる */
-    (planKeep || []).forEach(keepIn);
-    fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
-    /* 2. メインで鍛える部位が週の目標に届いていない種目は、価値が小さくても入れる（2026-10-05 本人の要望: 種目が増えてもよいので
-          目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
-    fill(0.01, LIM.exercises, c => EXMAP[c.ex].p.some(m => lack(m) > 0));
-    fill(0.2, Math.min(3, LIM.exercises));   /* 3. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    /* first は、ほかの種目より先に種目を入れておく部位（下の説明）。組み直すたびに、今日の記録だけを数えた状態へ戻す */
+    const start = {today: Object.assign({}, today), sets, minutes};
+    const compose = first => {
+      plan.length = 0; sets = start.sets; minutes = start.minutes;
+      Object.keys(today).forEach(m => delete today[m]);
+      Object.assign(today, start.today);
+      Object.keys(starved).forEach(k => delete starved[k]);
+      /* 組み直し: 残す種目を先に入れる */
+      (planKeep || []).forEach(keepIn);
+      /* 0. first の部位は、その部位をメインで鍛える種目を先に1つずつ入れる（前の部位の種目でもう使うなら入れない） */
+      first.forEach(u => { if(!(today[u] > 0)) fill(0.01, Math.min(plan.length + 1, LIM.exercises), c => EXMAP[c.ex].p.includes(u)); });
+      fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
+      /* 2. メインで鍛える部位が週の目標に届いていない種目は、価値が小さくても入れる（2026-10-05 本人の要望: 種目が増えてもよいので
+            目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
+      fill(0.01, LIM.exercises, c => EXMAP[c.ex].p.some(m => lack(m) > 0));
+      fill(0.2, Math.min(3, LIM.exercises));   /* 3. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+    };
+    /* 7日使えていない部位（rules.js の unusedSoFar）が、組んだメニューのどの種目にも入らなかったとき（主でも補助でも）は、
+       その部位をメインで鍛える種目を先に入れてから組み直す（2026-10-06）。
+       ヒップアダクション（内転筋だけを使う）を足すと、内転筋を7日使えていないのに、内転筋を使う種目が1つも入らない日ができた:
+       ・ヒップアダクションは重み（PLAN_WEIGHT）が0.15で価値が小さく、1回の種目数（10）の取り合いに負ける
+       ・サイドランジは、回復の途中の部位を使わない種目（ヒップアダクション）があるので、上の overdue では入らない
+       入れる種目は fill が選ぶので、回復・上限・今日は外した動きの決まりはそのまま効く（回復の途中の部位を使う種目が入るのは、
+       これまでどおり overdue のときだけ）。使えていない部位を無条件で先に入れると、全部こなしている日のメニューまで変わって
+       週の量が減った（毎日やる場合に広背筋 12→9.8、ハムストリング 7.1→6.8）ので、入らなかったときだけにする。
+       組み直して、あふれた種目の部位が新しく入らなくなったら、その部位も足してもう一度（first は増えるだけなので、部位の数で止まる）。
+       先に入れる順は、重みの大きい部位から。筋肉痛と選んだ部位は入れない（rest）。
+       20分で組むとき・軽い週（どちらも3種目）は、これまでどおり価値の順だけで組む */
+    const unused = LIM !== SESSION_MAX ? [] : Object.keys(MUSCLES).filter(m => unusedSoFar(m) && !rest[m])
+                                               .sort((a, b) => (PLAN_WEIGHT[b] || 0) - (PLAN_WEIGHT[a] || 0));
+    let first = [];
+    for(;;){
+      compose(first);
+      const left = unused.filter(u => !(today[u] > 0) && !first.includes(u));
+      if(!left.length) break;
+      first = unused.filter(u => first.includes(u) || left.includes(u));
+    }
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
@@ -7578,7 +7776,9 @@ const HOUSE = {
   sissy:     {up:"荷物を詰めたリュックを胸の前で抱える"},
   rear:      {down:"水を入れた500mlのペットボトルで行う"},
   abduct:    {up:"水を入れたペットボトルを太ももの外側に乗せ、手で押さえて行う"},
-  hammer:    {down:"水を入れたペットボトルを縦に持って行う"}
+  hammer:    {down:"水を入れたペットボトルを縦に持って行う"},
+  adduct:    {up:"水を入れたペットボトルを下の脚の内ももに乗せ、上の手で押さえて行う"},
+  backext:   {up:"水を入れた500mlのペットボトルを両手で持ち、頭の後ろに添えて行う"}
 };
 function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
 
@@ -8024,7 +8224,10 @@ function deloadAdvice(){
     const [a, b, c] = same;                    /* a が一番新しい */
     if(sameWeight(a, b) && sameWeight(b, c) && a.meanR < b.meanR && b.meanR < c.meanR) tired.push(pat);
   });
-  return tired.length >= 2 ? {suggest: true, patterns: tired} : null;
+  /* 動きのまとまり（rules.js の PATTERN_GROUP）で数える。同じまとまりの種目（ゴブレットスクワットとワイドスクワットなど）が
+     一緒に落ちているのは、その部位が疲れているだけのことがある */
+  const groups = Array.from(new Set(tired.map(groupOf)));
+  return groups.length >= 2 ? {suggest: true, patterns: groups} : null;
 }
 function setDeload(on){
   if(on){
@@ -8498,11 +8701,11 @@ function exerciseHistory(exId){
   });
   return out;
 }
-/* 動きの呼び名 */
+/* 動きのまとまり（rules.js の PATTERN_GROUP）の呼び名 */
 const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"股関節を折る", hpush:"胸で押す", fly:"胸を開く",
   pull:"引く", vpush:"上へ押す", bridge:"お尻を持ち上げる", carry:"持って歩く", shrug:"肩をすくめる", raise:"腕を横に上げる",
-  fraise:"腕を前に上げる", rear:"腕を後ろへ開く", kneeext:"膝を伸ばす", abduct:"脚を横に上げる",
-  curl:"肘を曲げる", hammer:"縦の握りで肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹",
+  fraise:"腕を前に上げる", rear:"腕を後ろへ開く", kneeext:"膝を伸ばす", abduct:"脚を横に上げる", adduct:"脚を内側に寄せる", backext:"背中を反らす",
+  curl:"肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹",
   legcurl:"膝を曲げる", pullover:"頭の上から引く", twist:"ひねる"};
 
 /* 動きごとの今の段階（記録のある動きだけ） */
@@ -8572,9 +8775,12 @@ function viewPlan(){
     return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段階と、次の段階までの回数がここに出ます。</div>`;
   }
   const rows = ladderRows();
-  const ladder = rows.length ? `<div class="card">${rows.map(r => `
+  /* 見出しは動きのまとまりごとに1回（同じまとまりの種目が続くあいだは出さない） */
+  const head = (r, i) => i && groupOf(rows[i - 1].pat) === groupOf(r.pat) ? ""
+    : `<p class="lk">${esc(PATTERN_NAME[groupOf(r.pat)] || "")}</p>`;
+  const ladder = rows.length ? `<div class="card">${rows.map((r, i) => `
       <div class="ladder">
-        <p class="lk">${esc(PATTERN_NAME[r.pat] || r.pat)}</p>
+        ${head(r, i)}
         <p class="ln"><b>${esc(itemName(r.item))}</b>　次の目標 ${r.p.target}${r.u}（範囲 ${r.p.lo}〜${r.p.hi}${r.u}）</p>
         <p class="lastline" style="margin-top:0">${esc(r.next)}</p>
       </div>`).join("")}
@@ -8598,7 +8804,7 @@ function viewPlan(){
       <h4>この提案の仕組み</h4>
       <p style="margin:0;font-size:14px">前回の同じやり方で、全部のセットが目標に届いたら、次は1回（秒の種目は5秒）増やします。回数が範囲の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しいやり方に進みます。</p>
       <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
-      <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。</p>
+      <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。</p>
       <p class="lastline">${esc(recoverGapText())}</p>
     </div>`;
 }
@@ -8824,14 +9030,14 @@ let histUndoTimer = null;
 
 function noonAt(date){ return asDate(date).getTime() + 12*3600*1000; }
 function splitKey(k){ const i = (k||"").indexOf("|"); return i < 0 ? [k||"", ""] : [k.slice(0,i), k.slice(i+1)]; }
-/* 種目選び（catalog() を動きごとにグループ化した <optgroup>） */
+/* 種目選び（catalog() を動きのまとまりごとにグループ化した <optgroup>） */
 function exOptionsHTML(selectedKey){
   const groups = {};
   catalog().forEach(row=>{
-    const p = patternOf(row.ex);
+    const p = groupOf(patternOf(row.ex));
     (groups[p] = groups[p] || []).push(row);
   });
-  return PATTERN_ORDER.filter(p=>groups[p] && groups[p].length).map(p=>{
+  return groupOrder().filter(p=>groups[p] && groups[p].length).map(p=>{
     const opts = groups[p].map(row=>{
       const key = row.ex + "|" + (row.label || "");
       return `<option value="${esc(key)}"${key===selectedKey?" selected":""}>${esc(itemName(row))}</option>`;
@@ -9420,7 +9626,7 @@ document.addEventListener("keydown", (e)=>{
   if(e.key === "Escape" && sheet.classList.contains("on")) sheet.classList.remove("on");
 });
 
-/* 動きの見出し（種目を選ぶシートと、履歴の「セットを追加」の種目選びで共通に使う） */
+/* 動きのまとまり（rules.js の PATTERN_GROUP）の見出し（種目を選ぶシートと、履歴の「セットを追加」の種目選びで共通に使う） */
 const PATTERN_HEAD = {
   squat:"しゃがむ（スクワット系）", lunge:"踏み込む（ランジ系）", hinge:"股関節を折る（ヒンジ系）",
   hpush:"床を押す（腕立て系）", fly:"胸を開閉する（フライ）", pull:"引く（ロウ系）",
@@ -9429,7 +9635,8 @@ const PATTERN_HEAD = {
   rear:"上体を倒して腕を開く（リアレイズ）", curl:"肘を曲げる（カール）",
   ext:"肘を伸ばす（エクステンション）", calf:"かかとを上げる（カーフ）", abs:"腹を固める・丸める",
   side:"横に曲げる・支える", legcurl:"膝を曲げる（レッグカール）", pullover:"頭の上から引く（プルオーバー）",
-  twist:"ひねる（ツイスト）", kneeext:"膝を伸ばす（シシースクワット）", abduct:"脚を横に上げる（アブダクション）"
+  twist:"ひねる（ツイスト）", kneeext:"膝を伸ばす（シシースクワット）", abduct:"脚を横に上げる（アブダクション）",
+  adduct:"脚を内側に寄せる（アダクション）", backext:"背中を反らす（バックエクステンション）"
 };
 
 /* 種目に付ける小さな印（今日のメニューでの扱い・昨日の動き・筋肉痛・回復まであと何日・ダンベル）。
@@ -9457,8 +9664,8 @@ function pickLevelText(row){
    入れたあとの持ち替えは、種目カードの「やさしく／難しく」で行う */
 function openPicker(){
   const groups = {};
-  EX.forEach(e=>{ const p = patternOf(e.id); (groups[p] = groups[p] || []).push(e); });
-  const body = PATTERN_ORDER.filter(p=>groups[p] && groups[p].length).map(p=>{
+  EX.forEach(e=>{ const p = groupOf(patternOf(e.id)); (groups[p] = groups[p] || []).push(e); });
+  const body = groupOrder().filter(p=>groups[p] && groups[p].length).map(p=>{
     const items = groups[p].map(e=>{
       const row = pickRowFor(e.id);
       return `
