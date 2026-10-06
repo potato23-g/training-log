@@ -190,7 +190,13 @@
   tab = "today"; openEx = activeItems()[0].ex; render();
   const id = openEx;
   document.getElementById("r_" + id).value = "12";
-  addSet(id); addSet(id);                                   /* 素早く2回 */
+  /* 素早く2回。2回目は 0.1 秒後に押したことにする（時計を止めて、その分だけ進める）。
+     実際の経過時間に任せると、ページを開いて最初の addSet は音の準備で 0.25 秒ほどかかるので、
+     検査中に機械が重いと 0.4 秒の見張りを超えて2回目が入り、ここから下の4つが落ちた（2026-10-06） */
+  const realNow = Date.now;
+  let fakeNow = realNow();
+  Date.now = () => fakeNow;
+  try { addSet(id); fakeNow += 100; addSet(id); } finally { Date.now = realNow; }
   ok(entryFor(TODAY, id, false).sets.length === 1, "B12: 二重押しで2セット入った");
   openEx = id; render();
   document.getElementById("r_" + id).value = "-3";

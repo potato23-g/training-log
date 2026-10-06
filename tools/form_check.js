@@ -24,6 +24,9 @@ function findT(m, score) {
   return best;
 }
 function at(m, t) { return M.solveFrame(m, t); }
+/* 体の部分（カプセル）と、その下面の床からの高さ */
+const capOf = (fr, bone) => M.capsules(fr).find((c) => c.bone === bone);
+const floorGap = (fr, bone) => { const c = capOf(fr, bone); return Math.min(c.a[1], c.b[1]) - c.r; };
 
 const CHECKS = {
   goblet: (m) => {
@@ -566,6 +569,55 @@ const CHECKS = {
       ['curlと同じ動き: 肘は前に出ない', `肘の前後移動 ${(elbowDrift * 100).toFixed(0)}cm`, elbowDrift < 0.08],
       ['curlと違い、縦の握り（中間位）を動作中保つ', `前腕の回旋 下${rotStart.toFixed(0)}° / 上${rotTop.toFixed(0)}°（90=中間位）`,
         Math.abs(rotStart - 90) < 5 && Math.abs(rotTop - 90) < 5]
+    ];
+  },
+
+  /* ============ 追加種目（2026-10-06） ============
+     adduct は ACE の Side Lying Hip Adduction の手順に合わせて作った動き。backext は筋電図の測定（Kim 2015）の動きを土台に、
+     手の位置と起こす高さを変えたもの（どちらも notes/form-sources.md の「追加種目（2026-10-06）」に、出典と違うところを書いてある）。
+     判定はアプリの解説文（DETAIL の setup/how/rom）どおりに3Dが動いているかを数値で見る */
+  adduct: (m) => {
+    const rest = at(m, 0), top = at(m, 1.0);
+    const kneeLower = M.boneAngles(top.pose, 'shankR').flex, kneeUpper = M.boneAngles(top.pose, 'shankL').flex;
+    const ahead = top.b.shankR.tip[0] - top.b.shankL.tip[0];                   /* 下（右）の足首が、上（左）の足首より前にある */
+    const upperFoot = Math.max(floorGap(rest, 'footL'), floorGap(top, 'footL'));
+    const lift = floorGap(top, 'footR');
+    const tilt = (fr) => angWith(V.sub(fr.b.thighL.pos, fr.b.thighR.pos), [0, 1, 0]);
+    const pelvisMove = V.dist(rest.b.pelvis.pos, top.b.pelvis.pos);
+    const handHip = V.dist(M.at(top, 'handL', M.HAND.palm), top.b.thighL.pos);
+    return [
+      ['下の脚を前に出して、上の脚の前に置く', `下の足首が上の足首より ${(ahead * 100).toFixed(0)}cm 前`, ahead > 0.20],
+      ['両脚とも膝を伸ばす', `膝屈曲 下${kneeLower.toFixed(0)}° / 上${kneeUpper.toFixed(0)}°`, kneeLower < 10 && kneeUpper < 10],
+      ['上の脚の足は床に置いたまま', `上の足の床からの高さ ${(upperFoot * 100).toFixed(1)}cm`, upperFoot < 0.02],
+      ['下の脚を床から10〜15cm上げる', `下の足の床からの高さ ${(lift * 100).toFixed(1)}cm`, lift >= 0.10 && lift <= 0.15],
+      ['骨盤は床に垂直のまま動かさない', `左右の股関節を結ぶ線の傾き 下${tilt(rest).toFixed(0)}° / 上${tilt(top).toFixed(0)}°（0=垂直） / 骨盤の動き ${(pelvisMove * 1000).toFixed(0)}mm`,
+        tilt(rest) < 3 && tilt(top) < 3 && pelvisMove < 0.005],
+      ['上の手は上の腰に置く', `手のひら〜上の股関節 ${(handHip * 100).toFixed(0)}cm`, handHip < 0.15]
+    ];
+  },
+  backext: (m) => {
+    const rest = at(m, 0), top = at(m, 2.0);
+    const feet = Math.abs(rest.b.shankR.tip[2] - rest.b.shankL.tip[2]);
+    const knee = M.boneAngles(rest.pose, 'shankR').flex;
+    const headMid = (fr) => { const c = capOf(fr, 'head'); return V.lerp(c.a, c.b, 0.5); };
+    const handHead = Math.max(V.dist(M.at(rest, 'handR', M.HAND.palm), headMid(rest)), V.dist(M.at(top, 'handR', M.HAND.palm), headMid(top)));
+    const elbows = rest.b.forearmR.pos[2] - rest.b.forearmL.pos[2], shoulders = rest.b.upperarmR.pos[2] - rest.b.upperarmL.pos[2];
+    const pelvisMove = V.dist(rest.b.pelvis.pos, top.b.pelvis.pos);
+    const toes = floorGap(top, 'toesR'), thigh = floorGap(top, 'thighR');
+    /* みぞおち = 腰椎の上端（胸椎の起点）の下面 */
+    const pit = (fr) => fr.b.spineT.pos[1] - capOf(fr, 'spineT').r;
+    const chestRest = floorGap(rest, 'spineT');
+    const neck = M.boneAngles(top.pose, 'neck').flex, head = M.boneAngles(top.pose, 'head').flex;
+    return [
+      ['脚は腰幅に開いて伸ばす', `足首の間隔 ${(feet * 100).toFixed(0)}cm / 膝屈曲 ${knee.toFixed(0)}°`, feet > 0.20 && feet < 0.40 && knee < 15],
+      ['手は耳の横に添え、肘を横に開く', `手のひら〜頭の中心 ${(handHead * 100).toFixed(0)}cm / 肘の間隔 ${(elbows * 100).toFixed(0)}cm（肩幅 ${(shoulders * 100).toFixed(0)}cm）`,
+        handHead < 0.22 && elbows > shoulders + 0.30],
+      ['骨盤とつま先は床につけたまま', `骨盤の動き ${(pelvisMove * 1000).toFixed(0)}mm / 起こしたときの床からの高さ つま先${(toes * 100).toFixed(1)}cm・太もも${(thigh * 100).toFixed(1)}cm`,
+        pelvisMove < 0.005 && toes < 0.02 && thigh < 0.02],
+      ['みぞおちが床から離れるところまで起こす（高く反らない）', `みぞおちの床からの高さ 下${(pit(rest) * 100).toFixed(1)}cm → 上${(pit(top) * 100).toFixed(1)}cm`,
+        pit(rest) < 0.02 && pit(top) >= 0.03 && pit(top) <= 0.08],
+      ['あごは引いたまま、首を反らさない', `起こしたときの首の屈曲 ${neck.toFixed(0)}° / 頭 ${head.toFixed(0)}°（負=反らす）`, neck >= 0 && head >= 0],
+      ['下ろすと胸が床につく', `下ろしたときの胸の床からの高さ ${(chestRest * 100).toFixed(1)}cm`, chestRest < 0.01]
     ];
   }
 };

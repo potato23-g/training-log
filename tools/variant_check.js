@@ -187,6 +187,18 @@ const CHECKS = [
     const depth = grip - chest, depthB = palmB - chestB;
     return [dbCount(v) === 2 && dbCount(b) === 0 && depth > depthB + 0.03,
       `ダンベル ${dbCount(v)}個 / 握りに対する胸の深さ ${(depth * 100).toFixed(1)}cm（元は手のひらに対して ${(depthB * 100).toFixed(1)}cm）`];
+  }],
+
+  /* --- 追加種目（2026-10-06）の組み方 --- */
+  ['adduct_hold', 'adduct', '上で2秒止める', (v) => [seg(v, /^上で\d+秒止める/) >= 1.7, `止める場面 ${seg(v, /^上で\d+秒止める/)}秒`]],
+  ['backext_hold', 'backext', '上で3秒止める', (v) => [seg(v, /^上で\d+秒止める/) >= 2.7, `止める場面 ${seg(v, /^上で\d+秒止める/)}秒`]],
+  ['backext_arms', 'backext', '腕を体の横に伸ばす（上体と一緒に床から浮かせる）', (v, b) => {
+    /* 手が腰の横にある（基本は耳の横）。起こしたときは手も床から離れる（手で床を押していない） */
+    const down = M.solveFrame(v, 0), up = M.solveFrame(v, 2.0), base = M.solveFrame(b, 0);
+    const along = (fr) => fr.b.handR.pos[0] - fr.b.pelvis.pos[0];             /* 手首が骨盤より頭側へどれだけ離れているか */
+    const low = (fr) => { const c = M.capsules(fr).find((x) => x.bone === 'handR'); return Math.min(c.a[1], c.b[1]) - c.r; };
+    return [Math.abs(along(down)) < 0.15 && Math.abs(along(up)) < 0.15 && along(base) > 0.50 && low(up) > 0.05,
+      `手首の位置（骨盤から頭側へ） ${(along(down) * 100).toFixed(0)}cm（元は ${(along(base) * 100).toFixed(0)}cm） / 起こしたときの手の床からの高さ ${(low(up) * 100).toFixed(0)}cm`];
   }]
 ];
 

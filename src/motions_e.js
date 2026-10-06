@@ -521,4 +521,64 @@
     }
   });
 
+  /* ---------------- ヒップアダクション ----------------
+     横向きに寝て、下の脚を内側（上）へ上げる。内ももの内転筋が主役。
+     ACE の手順どおり、下（右）の脚を前に出して上の脚の前に置き、両脚とも伸ばして足を床に置く。
+     下の脚は膝を伸ばしたまま、床から少しだけ上げる（股関節がこの向きに動く幅は狭い）。
+     上（左）の手は上の腰に置く。骨盤は床に垂直のまま動かさない */
+  M.register({
+    id: 'adduct',
+    /* 足側の斜め前から見る。真正面（az 92）からだと、上げた脚が後ろの脚に重なって上がり方が読み取れない。
+       斜めにしすぎる（az 125）と、カメラに近い足が大きく写って枠からはみ出す */
+    view: { az: 110, el: 16, dist: 3.0, target: [0, 0.2, -0.1] },
+    base: {
+      'pelvis.y': 0.22, 'pelvis.roll': 90, 'pelvis.pitch': 0, 'pelvis.x': 0, 'pelvis.z': 0,
+      'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0, 'head.flex': 0,
+      /* 下側（右）の腕は頭の下に敷く（ヒップアブダクションと同じ） */
+      'clavR.elev': 28, 'clavR.prot': 0, 'clavL.elev': 0, 'clavL.prot': 0,
+      'upperarmR.flex': 110, 'upperarmR.abd': 0, 'upperarmR.rot': 0, 'forearmR.flex': 90, 'forearmR.rot': 90, 'handR.flex': 0,
+      /* 上側（左）の腕は体の横に沿わせ、手を上の腰に置く */
+      'upperarmL.flex': 1.5, 'upperarmL.abd': 25, 'upperarmL.rot': 84.5, 'forearmL.flex': 48, 'forearmL.rot': 4.5, 'handL.flex': -9,
+      /* 下側（右）の脚は前に出して伸ばす。上側（左）の脚はその後ろで伸ばし、足を床に置く */
+      'thighR.flex': 28, 'thighR.rot': 0, 'shankR.flex': 2, 'footR.flex': 0, 'toesR.flex': 0,
+      'thighL.flex': -6, 'thighL.abd': -17, 'thighL.rot': 0, 'shankL.flex': 2, 'footL.flex': 0, 'toesL.flex': 0
+    },
+    phases: [
+      { t: 0, label: '上げる 1秒' }, { t: 1.0, label: '一番上' }, { t: 1.3, label: '下ろす 2秒' }
+    ],
+    keys: [
+      { t: 0.0, hold: true, d: { 'thighR.abd': 5 } },
+      { t: 1.0, hold: true, d: { 'thighR.abd': -3 } },
+      { t: 1.3, hold: true, d: { 'thighR.abd': -3 } },
+      { t: 3.3, hold: true, d: { 'thighR.abd': 5 } }
+    ]
+  });
+
+  /* ---------------- バックエクステンション ----------------
+     うつ伏せで上体を起こす。脊柱起立筋が主役。
+     筋電図の測定（Kim 2015）と同じく、脚は床につけたまま上体だけを起こす。手は耳の横に添える（測定は胸の前で組む）。
+     骨盤は床から動かさず、腰・胸の順に反らす。首は背骨の延長のまま反らさない */
+  M.register({
+    id: 'backext',
+    /* ほぼ真横から見る（腕立て伏せ・プランクと同じ向き）。上体の起き上がりは真横がいちばん読み取りやすい。
+       斜め（az 30）だと、カメラに近い頭が大きく写って枠からはみ出す */
+    view: { az: 10, el: 10, dist: 3.4, target: [0.1, 0.2, 0] },
+    base: {
+      'pelvis.x': 0, 'pelvis.z': 0, 'pelvis.y': 0.115, 'pelvis.pitch': 90,
+      'thighR.flex': 4.4, 'thighR.abd': 4, 'thighR.rot': 0, 'shankR.flex': 11.5, 'footR.flex': -45, 'toesR.flex': 0,
+      'thighL.flex': 4.4, 'thighL.abd': 4, 'thighL.rot': 0, 'shankL.flex': 11.5, 'footL.flex': -45, 'toesL.flex': 0,
+      'upperarmR.flex': 140, 'upperarmR.abd': 77, 'upperarmR.rot': 66, 'forearmR.flex': 139, 'forearmR.rot': 108, 'handR.flex': -4,
+      'upperarmL.flex': 140, 'upperarmL.abd': 77, 'upperarmL.rot': 66, 'forearmL.flex': 139, 'forearmL.rot': 108, 'handL.flex': -4
+    },
+    phases: [
+      { t: 0, label: '上げる 2秒' }, { t: 2.0, label: '一番上' }, { t: 2.3, label: '下ろす 2秒' }
+    ],
+    keys: [
+      { t: 0.0, hold: true, d: { 'spineL.flex': 2, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0, 'head.flex': 0 } },
+      { t: 2.0, hold: true, d: { 'spineL.flex': -12, 'spineT.flex': -8, 'spineC.flex': -5, 'neck.flex': 4, 'head.flex': 0 } },
+      { t: 2.3, hold: true, d: { 'spineL.flex': -12, 'spineT.flex': -8, 'spineC.flex': -5, 'neck.flex': 4, 'head.flex': 0 } },
+      { t: 4.3, hold: true, d: { 'spineL.flex': 2, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 0, 'head.flex': 0 } }
+    ]
+  });
+
 })(typeof window !== 'undefined' ? window : globalThis);

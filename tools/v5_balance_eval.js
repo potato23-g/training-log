@@ -6,9 +6,11 @@
    ・1回の量が上限（rules.js の SESSION_MAX: 30セット・10種目・90分）に収まっているか（capViolations が空で合格）
    ・週の目標（各部位10セット）にどこまで届くか。毎日やる場合に、2〜5週目の平均で目標の9割以上（underTarget が空で合格。
      2026-10-05 本人の要望: 種目が増えてもよいので目標に届くように）。
-     脚（大腿四頭筋・ハムストリング）は回復の日数（中3日。1日6セット以上なら中4日）で回数が決まるので7セット以上、
-     メインで鍛える種目が1つだけ・無い部位（内転筋・脊柱起立筋）は見ない
+     脚（大腿四頭筋・ハムストリング）は回復の日数（中3日。1日6セット以上なら中4日）で回数が決まるので7セット以上。
+     内転筋・脊柱起立筋も同じ9割で見る（2026-10-06: メインで鍛える種目のヒップアダクション・バックエクステンションを足した。
+     それまでは、メインで鍛える種目が1つだけ・無い部位として見ていなかった）
    ・毎日やる場合に、ハンマーカールがメニューに入るか（noHammer が空で合格。2026-10-05 本人の判断: ダンベルカールとは別の種目として入れてよい）
+   ・毎日やる場合に、ヒップアダクションとバックエクステンションがメニューに入るか（notPicked が空で合格）
    ・部位ごとの週あたり有効セット（主働筋1.0・補助0.5。2〜5週目の平均）と、1回あたりの種目数・時間（weekly・size は目で見る）
    を出す。日付は記録の日付を1日ずつずらして進める（v3_volume_eval.js と同じやり方） */
 setTimeout(() => {
@@ -22,10 +24,10 @@ setTimeout(() => {
   const schedules = {daily: d => true, "4/week": d => [0,1,3,4].includes(d % 7), "3/week": d => [0,2,4].includes(d % 7), "1日おき": d => d % 2 === 0};
   const DAYS = 35, FROM = 7;                  /* 1週目は記録が無い状態からの立ち上がりなので数えない */
   const KEY = ["quads","glutes","hams","chest","lats","sidedelt","reardelt","triceps","biceps","calves","gmed","abs","obliques"];
-  const out = {recoverViolations: [], capViolations: [], underTarget: [], noHammer: [], weekly: {}, low: {}, sessions: {}, size: {}, included: {}};
+  const out = {recoverViolations: [], capViolations: [], underTarget: [], noHammer: [], notPicked: [], weekly: {}, low: {}, sessions: {}, size: {}, included: {}};
   /* 週の目標に届くはずの部位（毎日やる場合）と、その下限 */
-  const LEGS = ["quads", "hams"], SKIP = ["adductors", "erectors"];
-  const floorOf = m => SKIP.includes(m) ? 0 : (LEGS.includes(m) ? 7 : WEEK_TARGET * 0.9);
+  const LEGS = ["quads", "hams"];
+  const floorOf = m => LEGS.includes(m) ? 7 : WEEK_TARGET * 0.9;
 
   for(const [name, on] of Object.entries(schedules)){
     state.sessions = {}; state.gear = {items: [{kg: 5, n: 2}], updatedAt: 1}; planMemo = null;
@@ -88,6 +90,7 @@ setTimeout(() => {
       Object.keys(MUSCLES).forEach(m => { const v = (load[m] || 0) / weeks;
         if(v < floorOf(m)) out.underTarget.push(MUSCLES[m] + " " + Math.round(v * 10) / 10 + "（下限 " + floorOf(m) + "）"); });
       if(!used.hammer) out.noHammer.push(name);
+      ["adduct", "backext"].forEach(id => { if(!used[id]) out.notPicked.push(EXMAP[id] ? EXMAP[id].name : id); });
     }
   }
   out.violationCount = out.recoverViolations.length;

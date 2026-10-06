@@ -421,6 +421,21 @@
             'forearmL.flex': 96, 'forearmL.rot': 40, 'handL.flex': 0 },
     keys: { 0: { 'forearmL.flex': 96 }, 1.3: { 'forearmL.flex': 96 }, 1.6: { 'forearmL.flex': 96 }, 5.1: { 'forearmL.flex': 96 } } });
 
+  /* ヒップアダクション: 上で2秒止める */
+  insertHold('adduct', 'adduct_hold', 1.0, 2, '上で2秒止める');
+
+  /* バックエクステンション: 上で3秒止める */
+  insertHold('backext', 'backext_hold', 2.0, 3, '上で3秒止める');
+
+  /* バックエクステンション: 腕を体の横に伸ばす。
+     下ろした姿勢では腕を体の横の床に置き、起こすときは上体と一緒に床から浮かせる（手で床を押さない）。
+     腕は胸についていくので、そのままだと起こしたときに手が床へ沈む。肩を後ろへ引いた角度を上のキーに入れてある */
+  derive('backext', { id: 'backext_arms',
+    base: { 'upperarmR.abd': 8, 'upperarmR.rot': 31, 'forearmR.flex': 5, 'forearmR.rot': 149, 'handR.flex': 9,
+            'upperarmL.abd': 8, 'upperarmL.rot': 31, 'forearmL.flex': 5, 'forearmL.rot': 149, 'handL.flex': 9 },
+    keys: { 0.0: { 'upperarmR.flex': 7, 'upperarmL.flex': 7 }, 2.0: { 'upperarmR.flex': -18, 'upperarmL.flex': -18 },
+            2.3: { 'upperarmR.flex': -18, 'upperarmL.flex': -18 }, 4.3: { 'upperarmR.flex': 7, 'upperarmL.flex': 7 } } });
+
   /* 腕立て伏せ: 床に置いた2つのダンベルの柄（左右方向。2本が一直線に並ぶ）に手のひらを乗せて行う。
      手は指が曲がらない1本の棒（長さ15cm）なので、柄を握る代わりに、手のひらを柄の上にかぶせて
      指先を前下へ PHI 度傾ける（'surface' の法線を前へ倒す）。こうすると手首が床から約13cmの高さに来て、

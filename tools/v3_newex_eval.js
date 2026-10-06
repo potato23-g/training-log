@@ -7,7 +7,7 @@
 (async () => {
   const NEW = ["sumo", "splitfloor", "bridge", "pushupknee", "fly", "skull", "front", "shrug", "row2",
                "calfseat", "sidebend", "sidelunge", "slidecurl", "pullover", "twist",
-               "sissy", "rear", "abduct", "hammer"];
+               "sissy", "rear", "abduct", "hammer", "adduct", "backext"];
   const out = {missing: [], noFigure: [], noDetail: [], noHold: [], noHouse: [], noMotion: [], noPattern: [],
                notInCatalog: [], badLevel: [], samples: {}};
 

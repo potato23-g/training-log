@@ -316,7 +316,9 @@ const HOUSE = {
   sissy:     {up:"荷物を詰めたリュックを胸の前で抱える"},
   rear:      {down:"水を入れた500mlのペットボトルで行う"},
   abduct:    {up:"水を入れたペットボトルを太ももの外側に乗せ、手で押さえて行う"},
-  hammer:    {down:"水を入れたペットボトルを縦に持って行う"}
+  hammer:    {down:"水を入れたペットボトルを縦に持って行う"},
+  adduct:    {up:"水を入れたペットボトルを下の脚の内ももに乗せ、上の手で押さえて行う"},
+  backext:   {up:"水を入れた500mlのペットボトルを両手で持ち、頭の後ろに添えて行う"}
 };
 function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
 

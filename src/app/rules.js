@@ -25,6 +25,12 @@ function restFor(item){
                種目が増えてもよいので目標に届くように）。届いている部位ばかりの日は種目が少ない。
                セット数はどの種目も3で固定（本人の要望。重さ・回数は本人が調整する）。
                部位の重み（PLAN_WEIGHT）は大きい部位を少しだけ重くしてある。目標に届いた部位も、16セットまでは少しだけ価値を残す
+   ・使えていない部位: 7日使えていない部位（下の unusedSoFar）を使う種目が、組んだメニューに1つも入らなかったとき（主でも補助でも）は、
+               その部位をメインで鍛える種目を先に入れてから組み直す（2026-10-06。planner.js の buildPlan）。
+               ヒップアダクションを足すと、内転筋を7日使えていないのに、内転筋を使う種目が1つも入らない日ができた
+               （ヒップアダクションは重みが0.15で1回10種目の取り合いに負け、サイドランジは回復の途中の部位を使わない種目が
+               あるので入らない）。入らなかったときだけ組み直すので、ひと通り使えている日のメニューは変わらない。
+               20分で組むとき・軽い週は、これまでどおり
    これまでの決まりもそのまま守る:
    ・同じ動きの種目は1日1つ。同じ動きにまとめるのは、片方がもう片方のやさしい版・難しい版になっている種目だけ
      （膝つき腕立て伏せと腕立て伏せ、スプリットスクワットとブルガリアンスクワットなど）。それ以外は、ほぼ同じ動きでも
@@ -47,11 +53,11 @@ function restFor(item){
    ほかの種目は出なかった */
 const PATTERN = {
   goblet:"squat", sumo:"sumo", splitfloor:"splitsq", split:"splitsq", sidelunge:"lunge", sissy:"kneeext",
-  rdl:"hinge", rdl1:"hinge", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct",
+  rdl:"hinge", rdl1:"hinge", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct", adduct:"adduct",
   pushupknee:"hpush", pushup:"hpush", floorpress:"floorpress", fly:"fly",
   row:"pull", row2:"row2", pullover:"pullover", ohp:"vpush", farmer:"carry", shrug:"shrug",
   lateral:"raise", front:"fraise", rear:"rear", curl:"curl", hammer:"hammer", triext:"ext", skull:"skull",
-  calf:"calf", calfseat:"calf", plank:"abs", deadbug:"deadbug", crunch:"crunch",
+  calf:"calf", calfseat:"calf", backext:"backext", plank:"abs", deadbug:"deadbug", crunch:"crunch",
   sideplank:"side", sidebend:"sidebend", twist:"twist"
 };
 /* 動きのまとまり: 種目を選ぶシートと履歴の種目選びの見出し（picker.js の PATTERN_HEAD）、提案タブの「動きごとの今の段階」の
@@ -62,8 +68,8 @@ const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", floorpress:"hpush", row2:"
 function groupOf(pat){ return PATTERN_GROUP[pat] || pat; }
 /* メニューに並べる順（大きい動きを先に、体幹は最後に）。同じまとまりの動きは続けて並べる */
 const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","legcurl","hpush","floorpress","fly","pull","row2","pullover",
-                       "vpush","bridge","abduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull",
-                       "calf","abs","deadbug","crunch","side","sidebend","twist"];
+                       "vpush","bridge","abduct","adduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull",
+                       "calf","backext","abs","deadbug","crunch","side","sidebend","twist"];
 /* まとまりの並び（PATTERN_ORDER に出てくる順） */
 function groupOrder(){ return Array.from(new Set(PATTERN_ORDER.map(groupOf))); }
 /* 動きの中で、メニュー作りが選ぶ種目を決めてある動き。前回ほかの種目をやっていても、この種目（とその楽／大変のやり方）で続ける。
@@ -78,8 +84,8 @@ const PATTERN_AFTER = {kneeext:["squat", "sumo", "splitsq", "lunge"]};
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット）。大きい部位は3種目ぶん、ほかの部位は2種目ぶん。その種目がメインで鍛える部位について見る
-   （2026-10-05: 大きい部位を8から9へ。8だと、スクワットとルーマニアンデッドリフトで大殿筋が6になった日は、内転筋を
-   メインで鍛えるただ1つの種目のサイドランジが入らなかった） */
+   （2026-10-05: 大きい部位を8から9へ。8だと、スクワットとルーマニアンデッドリフトで大殿筋が6になった日は、当時は内転筋を
+   メインで鍛えるただ1つの種目だったサイドランジが入らなかった） */
 function dayMax(m){ return BIG_MUSCLES.includes(m) ? 9 : 6; }
 /* 1回の量の上限。週の目標に届かせるのに要る種目だけを入れるので、ふだんはこれより少ない（毎日やる人で平均4〜5種目）。
    上限いっぱいになるのは、週3回のように間が空くとき（2026-10-05 本人の要望: 種目が増えてもよいので目標に届くように。
@@ -101,7 +107,7 @@ const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.3, 
    使う部位が同じ種目どうし（ワンハンドロウとベントオーバーロウなど）は、価値がまったく同じになるので、
    定番の方を少し先にしてある */
 const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9,
-                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, hammer:0.8,
+                      fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, adduct:0.85, backext:0.85, hammer:0.8,
                       sumo:0.85, splitsq:0.95, row2:0.95, skull:0.95, crunch:0.95, deadbug:0.9, sidebend:0.95};
 /* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
    （0=連日でもよい、1=中1日=48時間、2=中2日=72時間、3=中3日=96時間）。その日に主役で6セット以上やったときは1日延ばす。
@@ -215,6 +221,9 @@ function stepItem(item, dir){
          メニュー作りはその種目を入れてよい（2026-10-05 本人の判断。筋肉痛と選んだ部位があるときは入れないので空）。
          今日の記録は数えない: 数えると、その種目を1セットやったところでカードの説明が入れ替わってしまう */
 const UNUSED_DAYS = 7;
+/* 昨日までの UNUSED_DAYS-1 日に、その部位を1セットも使えていないか（補助で使った分も数える）。
+   exRest の unused と、メニュー作りが先に種目を入れる部位（planner.js の buildPlan）が、どちらもこれで決める */
+function unusedSoFar(m){ return muscleLoadBetween(m, 1, UNUSED_DAYS - 1) <= 0; }
 function exRest(exId){
   const ex = EXMAP[exId], picked = soreToday();
   const sore = ex.p.filter(m => picked.includes(m));
@@ -222,7 +231,7 @@ function exRest(exId){
   const resting = [];
   ex.p.forEach(m => { const d = recoverDaysLeft(m); if(d > 0) resting.push({m, left: d}); if(d > left){ left = d; muscle = m; } });
   if(!sore.length && !left) return null;
-  const unused = sore.length ? [] : ex.p.filter(m => muscleLoadBetween(m, 1, UNUSED_DAYS - 1) <= 0);
+  const unused = sore.length ? [] : ex.p.filter(unusedSoFar);
   return {sore, muscle, left, resting, unused};
 }
 /* メニュー作りが、回復の途中の部位があるのに入れた種目なら、その様子（exRest の結果）。そうでなければ null。
