@@ -22,7 +22,12 @@ const RAD = Math.PI / 180;
 const R = { pelvis: 0.13, spineL: 0.12, spineT: 0.15, spineC: 0.165, neck: 0.06, head: 0.105, clav: 0.05,
             upperarm: 0.065, forearm: 0.046, hand: 0.05, thigh: 0.09, shank: 0.066, foot: 0.095, toes: 0.055 };
 const R_DB = 0.115;
-const radius = (n) => (R[n] !== undefined ? R[n] : R[n.replace(/[RL]$/, '')]);
+const unknown = new Set();      /* 太さの表に無い骨（あれば不合格にする。黙って太さ 0 で通さない） */
+const radius = (n) => {
+  const r = R[n] !== undefined ? R[n] : R[n.replace(/[RL]$/, '')];
+  if (r === undefined) unknown.add(n);
+  return r || 0;
+};
 
 const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
 const cross = (p, q) => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]];
@@ -97,6 +102,10 @@ for (const id of Object.keys(M.motions)) {
   }
   rows.push({ id, w, h, now });
   if (notes.length) { bad++; console.log('== ' + id + '  枠 ' + w + '×' + h); notes.forEach((n) => console.log('   ' + n)); }
+}
+if (unknown.size) {
+  bad += unknown.size;
+  console.log('== 太さの表に無い骨: ' + [...unknown].join(' ') + '（この検査の R と figure3d.js の BULK に足す）');
 }
 if (ALL) {
   rows.sort((a, b) => b.now.ratio - a.now.ratio);
