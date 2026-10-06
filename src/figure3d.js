@@ -137,6 +137,119 @@
     return g;
   }
 
+  /* ---- 枠合わせ（計算だけで、描画の土台は使わない。tools/frame_check.js も同じ関数を呼んで確かめる） ---- */
+  const FOV = 30;                 /* カメラの視野角（縦・度） */
+
+  /* 動作全体が枠に収まるカメラ距離と中心を求める（種目ごとに1回だけ計算） */
+  const fitCache = {};
+  function fitView(motion, view, aspect) {
+    /* 枠合わせは種目の基準アングルで一度だけ計算する（指で回しても再計算しない） */
+    const base = motion.view || {};
+    const az = (base.az === undefined ? (view.az || 0) : base.az), el = (base.el === undefined ? (view.el || 0) : base.el);
+    const keyc = motion.id + '|' + Math.round(az) + '|' + Math.round(el) + '|' + aspect.toFixed(2);
+    if (fitCache[keyc]) return fitCache[keyc];
+    const a = az * Math.PI / 180, e = el * Math.PI / 180;
+    const fwd = [-Math.cos(e) * Math.sin(a), -Math.sin(e), -Math.cos(e) * Math.cos(a)];
+    const right = [Math.cos(a), 0, -Math.sin(a)];
+    const up = [fwd[1] * right[2] - fwd[2] * right[1], fwd[2] * right[0] - fwd[0] * right[2],
+                fwd[0] * right[1] - fwd[1] * right[0]];
+    const T = M.cycleTime(motion);
+    const pts = [];
+    for (let i = 0; i < 9; i++) {
+      const f = M.solveFrame(motion, T * i / 9);
+      Object.keys(f.b).forEach((n) => { pts.push(f.b[n].pos); pts.push(f.b[n].tip); });
+      (f.dumbbells || []).forEach((d) => pts.push(d.pos));
+    }
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, w1 = -1e9;
+    const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+    pts.forEach((p) => {
+      const u = dot(p, right), v = dot(p, up), w = dot(p, fwd);
+      if (u < u0) u0 = u; if (u > u1) u1 = u;
+      if (v < v0) v0 = v; if (v > v1) v1 = v;
+      if (w > w1) w1 = w;
+    });
+    const pad = view.pad === undefined ? 0.16 : view.pad;
+    const halfU = (u1 - u0) / 2 * (1 + pad) + 0.06, halfV = (v1 - v0) / 2 * (1 + pad) + 0.06;
+    const ty = Math.tan(FOV * Math.PI / 360);
+    const dist = Math.max(halfV / ty, halfU / (ty * aspect)) + 0.55;
+    const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
+    const cw = w1 - 0;
+    const shape = { halfU, halfV };
+    const target = [right[0] * cu + up[0] * cv + fwd[0] * cw,
+                    right[1] * cu + up[1] * cv + fwd[1] * cw,
+                    right[2] * cu + up[2] * cv + fwd[2] * cw];
+    /* カメラは setCamera が置く。向きは 0 を入れても既定（40・12）になるので、それに合わせる */
+    return (fitCache[keyc] = keepInFrame(motion, { target, dist, halfU, halfV }, az || 40, el || 12, aspect));
+  }
+
+  /* 再生中に枠の外へ出る動きだけ、収まるところまでカメラを引く。
+     fitView は9コマの骨の位置を平行に写した広がりで合わせるので、カメラに近い部分が遠近で大きく写ることと、
+     体・ダンベルの太さが入っていない。寝た体を斜めから見る動きや、ダンベルがカメラ側へ開く動きで外に出る。
+     1周を60等分したコマについて、骨の両端とダンベルを太さつきの球とみなし、枠の半分に対する比を測る。
+     比が 1 を超えた動きだけ、比が FRAME_FILL に収まる一番近い距離まで引く。片側だけが出ているぶんは注視点を
+     そちらへ寄せて、引く量を小さくする。1 以下の動きは fitView の結果をそのまま返す（図は変わらない） */
+  const FRAME_FILL = 0.95;
+  const FRAME_STEPS = 60;
+  /* 体とダンベルの太さ（m）。buildBody・dumbbellGeom の形を包む半径 */
+  const BULK = { pelvis: 0.13, spineL: 0.12, spineT: 0.15, spineC: 0.165, neck: 0.06, head: 0.105, clav: 0.05,
+                 upperarm: 0.065, forearm: 0.046, hand: 0.05, thigh: 0.09, shank: 0.066, foot: 0.095, toes: 0.055 };
+  const BULK_DB = 0.115;
+
+  /* 1周ぶんの骨の両端とダンベルの位置と太さ [x, y, z, 半径, …]。
+     同じ動きの枠合わせが縦横比だけ変えて続けて来るので、直前の動きのぶんを覚えておく */
+  let bulkId = null, bulkPts = null;
+  function bulkOf(motion) {
+    if (bulkId === motion.id) return bulkPts;
+    const T = M.cycleTime(motion), out = [];
+    for (let i = 0; i <= FRAME_STEPS; i++) {
+      const f = M.solveFrame(motion, T * i / FRAME_STEPS);
+      Object.keys(f.b).forEach((n) => {
+        const r = BULK[n] !== undefined ? BULK[n] : (BULK[n.slice(0, -1)] || 0);      /* 左右の骨は末尾の R・L を外して引く */
+        const p = f.b[n].pos, q = f.b[n].tip;
+        out.push(p[0], p[1], p[2], r, q[0], q[1], q[2], r);
+      });
+      (f.dumbbells || []).forEach((d) => out.push(d.pos[0], d.pos[1], d.pos[2], BULK_DB));
+    }
+    bulkId = motion.id; bulkPts = out;
+    return out;
+  }
+
+  function keepInFrame(motion, fit, az, el, aspect) {
+    const a = az * Math.PI / 180, e = el * Math.PI / 180;
+    /* カメラから見た 右・上・奥 */
+    const right = [Math.cos(a), 0, -Math.sin(a)];
+    const up = [-Math.sin(e) * Math.sin(a), Math.cos(e), -Math.sin(e) * Math.cos(a)];
+    const fwd = [-Math.cos(e) * Math.sin(a), -Math.sin(e), -Math.cos(e) * Math.cos(a)];
+    const kv = Math.tan(FOV * Math.PI / 360), kh = kv * aspect;
+    const pts = bulkOf(motion), t = fit.target;
+    const rel = [];               /* 注視点から見た 右・上・奥 へのずれと太さ */
+    let over = 0;
+    for (let i = 0; i < pts.length; i += 4) {
+      const x = pts[i] - t[0], y = pts[i + 1] - t[1], z = pts[i + 2] - t[2], r = pts[i + 3];
+      const u = x * right[0] + y * right[1] + z * right[2];
+      const v = x * up[0] + y * up[1] + z * up[2];
+      const w = x * fwd[0] + y * fwd[1] + z * fwd[2];
+      const depth = Math.max(fit.dist + w, 1e-6);
+      over = Math.max(over, (Math.abs(u) + r) / (depth * kh), (Math.abs(v) + r) / (depth * kv));
+      rel.push(u, v, w, r);
+    }
+    if (over <= 1) return fit;
+    /* 左右・上下それぞれ、両端がちょうど FRAME_FILL になる距離を出し、遠いほうに合わせる（近づけることはしない） */
+    const gh = kh * FRAME_FILL, gv = kv * FRAME_FILL;
+    let uHi = -1e9, uLo = 1e9, vHi = -1e9, vLo = 1e9;
+    for (let i = 0; i < rel.length; i += 4) {
+      const u = rel[i], v = rel[i + 1], w = rel[i + 2], r = rel[i + 3];
+      uHi = Math.max(uHi, u + r - gh * w); uLo = Math.min(uLo, u - r + gh * w);
+      vHi = Math.max(vHi, v + r - gv * w); vLo = Math.min(vLo, v - r + gv * w);
+    }
+    const dist = Math.max(fit.dist, (uHi - uLo) / (2 * gh), (vHi - vLo) / (2 * gv));
+    /* 注視点は、その距離で収まる範囲のうち元にいちばん近いところ（動かさずに済む向きには動かさない） */
+    const near = (lo, hi) => Math.min(Math.max(0, lo), hi);
+    const cu = near(uHi - gh * dist, uLo + gh * dist), cv = near(vHi - gv * dist, vLo + gv * dist);
+    const target = [t[0] + right[0] * cu + up[0] * cv, t[1] + right[1] * cu + up[1] * cv, t[2] + right[2] * cu + up[2] * cv];
+    return { target, dist, halfU: fit.halfU, halfV: fit.halfV, raw: fit };     /* raw は引く前（検査が比べる） */
+  }
+
   function create(THREE, canvas, opts) {
     const o = opts || {};
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -147,7 +260,7 @@
     renderer.outputColorSpace = THREE.SRGBColorSpace || renderer.outputColorSpace;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 40);
+    const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 40);
     let theme = THEME[o.theme === 'dark' ? 'dark' : 'light'];
 
     const mat = new THREE.MeshStandardMaterial({ color: theme.body, roughness: 0.62, metalness: 0.02 });
@@ -228,47 +341,6 @@
 
     let dbLimit = null;
 
-    /* 動作全体が枠に収まるカメラ距離と中心を求める（種目ごとに1回だけ計算） */
-    const fitCache = {};
-    function fitView(motion, view, aspect) {
-      /* 枠合わせは種目の基準アングルで一度だけ計算する（指で回しても再計算しない） */
-      const base = motion.view || {};
-      const az = (base.az === undefined ? (view.az || 0) : base.az), el = (base.el === undefined ? (view.el || 0) : base.el);
-      const keyc = motion.id + '|' + Math.round(az) + '|' + Math.round(el) + '|' + aspect.toFixed(2);
-      if (fitCache[keyc]) return fitCache[keyc];
-      const a = az * Math.PI / 180, e = el * Math.PI / 180;
-      const fwd = [-Math.cos(e) * Math.sin(a), -Math.sin(e), -Math.cos(e) * Math.cos(a)];
-      const right = [Math.cos(a), 0, -Math.sin(a)];
-      const up = [fwd[1] * right[2] - fwd[2] * right[1], fwd[2] * right[0] - fwd[0] * right[2],
-                  fwd[0] * right[1] - fwd[1] * right[0]];
-      const T = M.cycleTime(motion);
-      const pts = [];
-      for (let i = 0; i < 9; i++) {
-        const f = M.solveFrame(motion, T * i / 9);
-        Object.keys(f.b).forEach((n) => { pts.push(f.b[n].pos); pts.push(f.b[n].tip); });
-        (f.dumbbells || []).forEach((d) => pts.push(d.pos));
-      }
-      let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, w1 = -1e9;
-      const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
-      pts.forEach((p) => {
-        const u = dot(p, right), v = dot(p, up), w = dot(p, fwd);
-        if (u < u0) u0 = u; if (u > u1) u1 = u;
-        if (v < v0) v0 = v; if (v > v1) v1 = v;
-        if (w > w1) w1 = w;
-      });
-      const pad = view.pad === undefined ? 0.16 : view.pad;
-      const halfU = (u1 - u0) / 2 * (1 + pad) + 0.06, halfV = (v1 - v0) / 2 * (1 + pad) + 0.06;
-      const ty = Math.tan(camera.fov * Math.PI / 360);
-      const dist = Math.max(halfV / ty, halfU / (ty * aspect)) + 0.55;
-      const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
-      const cw = w1 - 0;
-      const shape = { halfU, halfV };
-      const target = [right[0] * cu + up[0] * cv + fwd[0] * cw,
-                      right[1] * cu + up[1] * cv + fwd[1] * cw,
-                      right[2] * cu + up[2] * cv + fwd[2] * cw];
-      return (fitCache[keyc] = { target, dist, halfU, halfV });
-    }
-
     function setCamera(view) {
       const az = (view.az || 40) * Math.PI / 180, el = (view.el || 12) * Math.PI / 180;
       const d = view.dist || 3.4;
@@ -337,5 +409,5 @@
              dispose: () => renderer.dispose() };
   }
 
-  root.FIGURE3D = { create, THEME };
+  root.FIGURE3D = { create, THEME, fitView, FOV };
 })(typeof window !== 'undefined' ? window : globalThis);

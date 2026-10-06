@@ -449,6 +449,7 @@ def main():
     run_bun("phase_check.js", "phase_check.js", judge_trailing_count("合っていない場面"))
     run_bun("anim_check.js", "anim_check.js", judge_trailing_count("ラベルと動きが食い違う場面"))
     run_bun("variant_check.js", "variant_check.js", judge_variant_check)
+    run_bun("frame_check.js", "frame_check.js", judge_trailing_count("枠からはみ出す動き"))
     run_bun("sync_test.js", "sync_test.js", judge_sync_test, timeout=180)
     run_bun("export_test.js", "export_test.js", judge_sync_test)          # CSV・テキストの書き出し
 
