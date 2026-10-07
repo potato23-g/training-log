@@ -78,6 +78,13 @@ function sanitizeState(obj){
     });
     out.gear = g;
   }
+  /* メニューに入れない種目（rules.js の exOn）。この版に無い種目の id も、形が合っていれば残す */
+  if(src.exOff && typeof src.exOff === "object" && Array.isArray(src.exOff.ids)){
+    var off = { ids: [] }, offAt = num(src.exOff.updatedAt);
+    src.exOff.ids.slice(0, 300).forEach(function(id){ if(exok(id) && off.ids.indexOf(id) < 0) off.ids.push(id); });
+    if(offAt !== null) off.updatedAt = offAt;
+    out.exOff = off;
+  }
   if(Array.isArray(src.program)) out.program = src.program.filter(exok);
   return out;
 }

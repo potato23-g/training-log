@@ -271,6 +271,20 @@ function runUnitTests(){
   }
 
   {
+    // メニューに入れない種目（exOff）: gear とは別の時刻で決める
+    const a = { sessions: {}, gear: { items: [{ kg: 5, n: 2 }], updatedAt: 30 }, exOff: { ids: ["rdl"], updatedAt: 10 } };
+    const b = { sessions: {}, gear: { items: [{ kg: 10, n: 2 }], updatedAt: 20 }, exOff: { ids: ["rdl", "plank"], updatedAt: 40 } };
+    const m = M.mergeState(a, b), m2 = M.mergeState(b, a);
+    ok(m.gear.items[0].kg === 5 && m.exOff.ids.join(",") === "rdl,plank", "merge: gear と exOff を別々の端末で変えても両方残る");
+    ok(M.stableKey(m) === M.stableKey(m2), "merge: exOff もどちらの端末で合流しても同じ");
+    ok(M.mergeState({ sessions: {}, exOff: { ids: [], updatedAt: 50 } }, b).exOff.ids.length === 0, "merge: exOff を全部戻したことも伝わる");
+    ok(M.mergeState(a, { sessions: {} }).exOff.ids.join(",") === "rdl", "merge: exOff が片側にしか無ければそれを採用");
+    ok(M.mergeState({ sessions: {} }, { sessions: {} }).exOff === undefined, "merge: exOff がどちらにも無ければ作らない");
+    const e1 = { sessions: {}, exOff: { ids: ["rdl"], updatedAt: 10 } }, e2 = { sessions: {}, exOff: { ids: ["calf"], updatedAt: 10 } };
+    ok(M.stableKey(M.mergeState(e1, e2).exOff) === M.stableKey(M.mergeState(e2, e1).exOff), "merge: exOff も同点なら、どちらの端末で合流しても同じ");
+  }
+
+  {
     const legacy = () => ({ w: 10, r: 10, rpe: 8 });
     const a = { sessions: { "2026-01-05": { date: "2026-01-05", entries: [{ ex: "row", sets: [legacy()] }] } } };
     const b = { sessions: { "2026-01-05": { date: "2026-01-05", entries: [{ ex: "row", sets: [legacy()] }] } } };
@@ -421,6 +435,17 @@ async function runMainIntegration(port){
     ok(!!settingsFile && settingsFile.format === 2 && settingsFile.gear && settingsFile.gear.items[0].kg === 8, "gear: settings.jsonの中身が正しい");
     await A.ctx.syncNow();
     ok(!!A.ctx.state.gear && A.ctx.state.gear.items[0].kg === 8, "gear: settings.json経由でBの変更がAに届く");
+
+    // メニューに入れない種目も settings.json 経由で届く。別の端末で同時に変えたダンベルも残る
+    B.ctx.state.exOff = { ids: ["rdl", "plank"], updatedAt: Date.now() };
+    A.ctx.state.gear = { items: [{ kg: 12, n: 2 }], updatedAt: Date.now() + 5 };
+    await B.ctx.syncNow();
+    await A.ctx.syncNow();
+    await B.ctx.syncNow();
+    const offFile = await mockFile(mock.base, "trainlog/settings.json");
+    ok(!!offFile && offFile.exOff && offFile.exOff.ids.join(",") === "rdl,plank" && offFile.gear.items[0].kg === 12, "exOff: settings.jsonに gear と並んで入る");
+    ok(!!A.ctx.state.exOff && A.ctx.state.exOff.ids.join(",") === "rdl,plank" && A.ctx.state.gear.items[0].kg === 12, "exOff: Bの変更がAに届き、Aのダンベルの変更も残る");
+    ok(B.ctx.state.gear.items[0].kg === 12 && B.ctx.state.exOff.ids.join(",") === "rdl,plank", "exOff: Aのダンベルの変更がBに届き、Bの exOff も残る");
 
     // 409を1回だけ強制 → 自動リトライで成功する
     await fetch(mock.base + "/_mock/conflict", { method: "POST" });

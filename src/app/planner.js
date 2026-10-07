@@ -101,6 +101,7 @@ function buildPlan(){
   /* その組み方を今日のメニューに入れられない理由（入れられるなら ""）。"rest:glutes" のように、理由と部位を返す */
   const why = c => {
     const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n), pat = patternOf(c.ex);
+    if(!exOn(c.ex)) return "off";                                                   /* メニューに入れない種目（rules.js の exOn） */
     if(plan.some(p => patternOf(p.ex) === pat)) return "same";                      /* 同じ動きは1日1つ */
     if(donePattern.has(pat)) return "done";                                         /* 今日もうやった動き */
     if(planSkip && planSkip.has(pat)) return "skip";                                /* 今日は外した動き */
@@ -181,12 +182,17 @@ function buildPlan(){
      段の近さで割り引いた値のまま動きどうしを比べると、記録の無い動きのうち、選ぶ種目が標準の段でないもの
      （ワンハンドロウ・ダンベルカール・サイドレイズ・シュラッグ・ファーマーズウォーク・サイドベンド・プランクなど）は、
      記録が付くまで価値が半分以下になり、使えていない部位があってもメニューに入らなかった（2026-10-04 本人の指摘） */
+  /* 今日のメニュー（今日もう記録した種目も）に、反対の部位の種目があるか（rules.js の opposite）。
+     あれば、動きどうしを比べる値を少し上げて先に選ぶ（2026-10-08 本人の要望: 反対の部位を入れられるときは、同じ日に鍛える）。
+     入れるかどうかのしきい値（minGain）には掛けない: 掛けると、これまで入らなかった種目まで入って1回の量が増える */
+  const paired = c => plan.some(p => opposite(p.ex, c.ex)) || doneToday.some(e => opposite(e.ex, c.ex));
   const fill = (minGain, upTo, only) => {
     while(plan.length < upTo){
       const byPattern = {};
       catalog().filter(c => (!only || only(c)) && allowed(c) && candidate(c)).forEach(c => {
         const g = gain(c), pat = patternOf(c.ex), f = fit(c);
-        if(g >= minGain && (!byPattern[pat] || f > byPattern[pat].f)) byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1)};
+        if(g >= minGain && (!byPattern[pat] || f > byPattern[pat].f))
+          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1)};
       });
       const best = Object.keys(byPattern).map(p => byPattern[p]).sort((a, b) => b.v - a.v)[0];
       if(!best) return;
@@ -276,7 +282,12 @@ function buildPlan(){
     });
   }
 
-  if(!planSeed) plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
+  if(!planSeed){
+    plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
+    /* 反対の部位どうしは隣に並べる（1セットずつ交互に行いやすいように） */
+    const ordered = pairUp(plan);
+    plan.length = 0; ordered.forEach(p => plan.push(p));
+  }
   planMemo = plan;
   return planMemo;
 }

@@ -94,6 +94,7 @@ function exByRow(e){
     : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">${st === "skipped" ? "今日のメニューに戻す" : "今日のメニューに追加"}</button>`;
   return `<div class="exbyrow">
     <button class="exbyname" data-act="goref" data-ex="${e.id}">${esc(e.name)}</button>
+    ${exOn(e.id) ? "" : `<span class="exbytag">${EX_OFF_TAG}</span>`}
     ${right}
   </div>`;
 }

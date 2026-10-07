@@ -27,6 +27,7 @@ function pickerTags(id){
   const st = menuState(id);
   if(st === "in") out += `<span class="pktag plan">今日のメニューにある</span>`;
   else if(st === "skipped") out += `<span class="pktag">今日は外した</span>`;
+  if(!exOn(id)) out += `<span class="pktag">${EX_OFF_TAG}</span>`;
   if(patternsYesterday().has(patternOf(id))) out += `<span class="pktag">昨日やった動き</span>`;
   const rest = exRest(id);
   if(rest && rest.sore.length) out += `<span class="pktag warn">筋肉痛</span>`;
@@ -96,3 +97,17 @@ function openSoreSheet(){
   sheet.classList.add("on");
 }
 ACTIONS.sore = () => openSoreSheet();
+/* 種目をメニューに入れる／入れないの切り替え（設定のシートと種目タブ）。
+   今日のメニューに入っていて、まだ記録していない種目を外したときは、その場で組み直す（自分で追加した種目は残す） */
+ACTIONS.exoff = el => {
+  const id = el.dataset.ex;
+  if(!EXMAP[id]) return;
+  const on = !exOn(id);
+  setExOn(id, on);
+  planMemo = null; resetProg();
+  const s = state.sessions[TODAY], e = entryFor(TODAY, id, false);
+  const it = !on && s && s.plan ? s.plan.find(x => x.ex === id) : null;
+  if(it && !it.manual && !it.skip && !(e && e.sets.length)) replanToday();
+  else render();
+  setStatus("「" + EXMAP[id].name + "」を" + (on ? "メニューに入れる種目に戻しました" : "メニューに入れない種目にしました"));
+};

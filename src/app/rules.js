@@ -81,6 +81,60 @@ const PATTERN_FIRST = {calf:"calf"};
 /* 仕上げに足す動き: 書いてある動きを先に組んだ日だけ入れる。シシースクワット（膝を伸ばす）は大腿四頭筋だけを使うので、
    別の日に入れると大殿筋の回復の日とずれて、スクワット・ランジ（大腿四頭筋と大殿筋の両方を使う）が入る日がなくなる */
 const PATTERN_AFTER = {kneeext:["squat", "sumo", "splitsq", "lunge"]};
+/* メニューに入れない種目（2026-10-08 本人の要望: やりたくない種目は、メニューに入らないようにオンオフできるように）。
+   state.exOff = {ids:[種目id], updatedAt}。ダンベルの登録と同じく端末をまたいで同期する（settings.json。時刻は gear と別に持つ）。
+   効くのはメニュー作りが選ぶところだけ（planner.js の why の "off"・やさしく／難しくの持ち替え先）。
+   「種目を選んで追加」からは、入れない種目も自分で入れられる。記録や推移には触れない。
+   画面の印・ボタン・メニュー作りは、どれも exOn() で判定する */
+const EX_OFF_HEAD = "メニューに入れる種目", EX_OFF_TAG = "メニューに入れない";
+const EX_OFF_NOTE = "メニューには入りません。「種目を選んで追加」からは追加できます。";
+function exOffIds(){ const o = state.exOff; return o && Array.isArray(o.ids) ? o.ids : []; }
+function exOn(id){ return !exOffIds().includes(id); }
+function setExOn(id, on){
+  const ids = exOffIds().filter(x => x !== id);          /* この版に無い種目の id は、そのまま残す */
+  if(!on) ids.push(id);
+  state.exOff = {ids, updatedAt: typeof stampNow === "function" ? stampNow() : Date.now()};
+  persistProgram();
+  if(typeof syncSchedule === "function") syncSchedule();
+}
+/* 反対の部位（関節をはさんで逆の働きをする部位）。メニュー作りは、今日のメニューに入れた種目と反対の部位を
+   メインで鍛える種目が入れられるとき、それを少し先に選び、隣に並べる（2026-10-08 本人の要望）。
+   回復・1日と1週間の上限・外した動き・入れない種目の決まりはそのままで、入れられない種目を入れることはしない。
+   文献: 反対の部位の種目を1セットずつ交互に行うと、ふつうの順でやるのと比べて、筋肉の付き方・筋力の伸びは同じくらいで
+   時間は短く済む（Mang 2025 doi:10.1519/JSC.0000000000005246）。休憩を削らずに交互にやると、こなせる回数・量が増える
+   （Chien 2026 doi:10.3390/jfmk11030370、Paz 2019 doi:10.1519/JSC.0000000000002353）。
+   脚の大きい種目どうし（スクワットとルーマニアンデッドリフト）は、どちらも大殿筋をメインで使うので組にしない（下の opposite） */
+const ANTAGONIST = {chest:"lats", lats:"chest", biceps:"triceps", triceps:"biceps", quads:"hams", hams:"quads",
+                    frontdelt:"reardelt", reardelt:"frontdelt", abs:"erectors", erectors:"abs", adductors:"gmed", gmed:"adductors"};
+/* 同じくらいの価値なら、今日のメニューの種目と反対の部位の種目を先にする係数 */
+let PAIR_PREF = 1.1;
+/* 2つの種目が反対の部位どうしか: メインで鍛える部位に反対の組があり、同じ部位をメインで使っていない */
+function opposite(a, b){
+  const A = EXMAP[a], B = EXMAP[b];
+  if(!A || !B || a === b || A.p.some(m => B.p.includes(m))) return false;
+  return A.p.some(m => B.p.includes(ANTAGONIST[m]));
+}
+/* メニューの並びを、反対の部位どうしが隣になるように直す（前から見て、まだ組になっていない最初の相手を次に持ってくる） */
+function pairUp(items){
+  const rest = items.slice(), out = [];
+  while(rest.length){
+    const a = rest.shift();
+    out.push(a);
+    if(a.skip) continue;
+    const j = rest.findIndex(b => !b.skip && opposite(a.ex, b.ex));
+    if(j >= 0) out.push(rest.splice(j, 1)[0]);
+  }
+  return out;
+}
+/* 今日のメニューで隣り合っている、反対の部位どうしの組 [[a, b], …]（1つの種目は1つの組にだけ入る）。
+   組は保存しない。画面に出すところは、どこもここから作る */
+function menuPairs(items){
+  const out = [];
+  for(let i = 0; i + 1 < items.length; i++){
+    if(opposite(items[i].ex, items[i + 1].ex)){ out.push([items[i], items[i + 1]]); i++; }
+  }
+  return out;
+}
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット）。大きい部位は3種目ぶん、ほかの部位は2種目ぶん。その種目がメインで鍛える部位について見る
@@ -201,6 +255,7 @@ function stepItem(item, dir){
   const cands = catalog().filter(c => {
     if(patternOf(c.ex) !== pat) return false;
     if(c.ex === item.ex && (c.label || "") === (item.label || "")) return false;
+    if(c.ex !== item.ex && !exOn(c.ex)) return false;   /* メニューに入れない種目へは持ち替えない */
     if(!gearReady(c.ex, c)) return false;   /* 持っているダンベルで作れない（種目の種類・needsDb の組み方を問わず） */
     const lv = itemLevel(c);
     return dir > 0 ? lv > now : lv < now;

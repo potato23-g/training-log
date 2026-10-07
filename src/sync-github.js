@@ -4,7 +4,7 @@
 
    リモートの形:
      trainlog/YYYY-MM.json = {app:"trainlog", format:2, month:"YYYY-MM", sessions:{...その月の日付だけ}}
-     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}}
+     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}, exOff?:{ids:[...], updatedAt}}
    月ごとのファイルに分けているのは、記録するたびに全履歴を送らずに済ませるため
    （1年続けると単一ファイルは約1.7MBになる。変わった月だけをやり取りする）。
    旧形式（単一の trainlog.json、format:1）が残っていれば、初回だけ読み込んで取り込む（移行）。
@@ -182,7 +182,12 @@ function mergeState(local, remote){
   });
   syncPruneOldDel(sessions);
 
-  return { sessions: sessions, gear: syncMergeGear(a.gear, b.gear) };
+  var out = { sessions: sessions, gear: syncMergeGear(a.gear, b.gear) };
+  /* メニューに入れない種目（exOff）も、gear と同じ決め方（updatedAt の新しい方を丸ごと）。gear とは別々に決めるので、
+     片方の端末でダンベルを、もう片方で種目のオンオフを変えても、両方残る */
+  var off = syncMergeGear(a.exOff, b.exOff);
+  if(off) out.exOff = off;
+  return out;
 }
 
 /* "YYYY-MM-DD" が今日から何日前か。core.js の todayKey/daysAgo には頼らない
@@ -611,7 +616,7 @@ function syncApplyMonthToState(monthSessions, month){
 }
 /* リモートに無い状態で、ローカルも空（作る価値が無い）パート */
 function syncPartIsEmpty(part, localPart){
-  if(part.kind === "settings") return localPart.gear === undefined || localPart.gear === null;
+  if(part.kind === "settings") return (localPart.gear === undefined || localPart.gear === null) && !localPart.exOff;
   return Object.keys(localPart.sessions).length === 0;
 }
 
@@ -642,10 +647,16 @@ function syncBuildParts(listing){
   return parts;
 }
 
+/* settings.json に入れる中身。exOff は、あるときだけ入れる（無い端末の中身のキーが変わって、読み直しが起きないように） */
+function syncSettingsPart(gear, exOff){
+  var out = { gear: gear };
+  if(exOff) out.exOff = exOff;
+  return out;
+}
 function syncLocalPartOf(part){
   return part.kind === "month"
     ? { sessions: syncSessionsForMonth(state.sessions, part.month) }
-    : { gear: state.gear };
+    : syncSettingsPart(state.gear, state.exOff);
 }
 
 /* 1パート（1ファイル）ぶんの pull→merge→push。meta はその場で更新して呼び出し側が即persistする。
@@ -681,15 +692,15 @@ async function syncPart(cfg, part, meta){
       merged = { sessions: mergeState({ sessions: localPart.sessions }, { sessions: remoteContent.sessions || {} }).sessions };
       remoteContentKey = stableKey({ sessions: remoteContent.sessions || {} });
     }else{
-      merged = { gear: syncMergeGear(localPart.gear, remoteContent.gear) };
-      remoteContentKey = stableKey({ gear: remoteContent.gear });
+      merged = syncSettingsPart(syncMergeGear(localPart.gear, remoteContent.gear), syncMergeGear(localPart.exOff, remoteContent.exOff));
+      remoteContentKey = stableKey(syncSettingsPart(remoteContent.gear, remoteContent.exOff));
     }
   }
 
   var mergedKey = stableKey(merged);
   if(mergedKey !== localKey){
     if(part.kind === "month") syncApplyMonthToState(merged.sessions, part.month);
-    else state.gear = merged.gear;
+    else{ state.gear = merged.gear; if(merged.exOff) state.exOff = merged.exOff; }
     changedLocally = true;
     /* meta を進める前に端末へ保存する。途中で閉じられて「見た」印だけ残ると、
        次の同期で取り込み前の中身を送り返してしまうため */
@@ -705,7 +716,7 @@ async function syncPart(cfg, part, meta){
   if(shouldPush){
     var payload = part.kind === "month"
       ? { app: "trainlog", format: 2, month: part.month, sessions: merged.sessions }
-      : { app: "trainlog", format: 2, gear: merged.gear };
+      : Object.assign({ app: "trainlog", format: 2 }, merged);
     var pushed = await syncPushFile(cfg, SYNC_DIR + "/" + name, payload, remoteSha);
     newSha = pushed.sha || remoteSha;
   }
@@ -723,9 +734,10 @@ async function syncMaybeMigrate(cfg, listing, meta){
   var old = await syncGetFileLenient(cfg, SYNC_LEGACY_PATH);
   if(!old.parsed) return false;
   var oldState = typeof sanitizeState === "function" ? sanitizeState(old.parsed) : old.parsed;
-  var migrated = mergeState({ sessions: state.sessions, gear: state.gear }, oldState);
+  var migrated = mergeState({ sessions: state.sessions, gear: state.gear, exOff: state.exOff }, oldState);
   state.sessions = migrated.sessions;
   state.gear = migrated.gear;
+  if(migrated.exOff) state.exOff = migrated.exOff;
   return true;
 }
 

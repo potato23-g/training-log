@@ -13,6 +13,7 @@ function loadLocal(){
       state.sessions = o.sessions||{};
       state.program = o.program||DEFAULT_PROGRAM.slice();
       state.gear = readGear(o.gear);          /* 持っているダンベル（旧形式は読み替える） */
+      if(o.exOff && Array.isArray(o.exOff.ids)) state.exOff = o.exOff;   /* メニューに入れない種目 */
       ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
     }
   }catch(e){}

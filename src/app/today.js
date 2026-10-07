@@ -96,7 +96,10 @@ function viewToday(){
      restIncluded・restIncludedText から出す（カードを開かなくても、入れたことと理由が分かるように: 2026-10-05 本人の要望） */
   const includedLine = items.map(it => ({it, r: restIncluded(it)})).filter(x => x.r)
     .map(x => `<p class="skipped">${esc(itemName(x.it))}: ${esc(restIncludedText(x.r))}</p>`).join("");
-  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + includedLine + skippedLine + soreLine + `
+  /* 反対の部位どうしで隣に並んだ種目（rules.js の menuPairs）。両方終わった組は出さない */
+  const pairLine = menuPairs(items).filter(p => !p.every(it => isDoneToday(it.ex)))
+    .map(p => `<p class="skipped">${esc(itemName(p[0]))}と${esc(itemName(p[1]))}: 反対の部位を使う種目です。1セットずつ交互に行えます。</p>`).join("");
+  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
