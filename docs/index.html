@@ -2975,6 +2975,119 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     return g;
   }
 
+  /* ---- 枠合わせ（計算だけで、描画の土台は使わない。tools/frame_check.js も同じ関数を呼んで確かめる） ---- */
+  const FOV = 30;                 /* カメラの視野角（縦・度） */
+
+  /* 動作全体が枠に収まるカメラ距離と中心を求める（種目ごとに1回だけ計算） */
+  const fitCache = {};
+  function fitView(motion, view, aspect) {
+    /* 枠合わせは種目の基準アングルで一度だけ計算する（指で回しても再計算しない） */
+    const base = motion.view || {};
+    const az = (base.az === undefined ? (view.az || 0) : base.az), el = (base.el === undefined ? (view.el || 0) : base.el);
+    const keyc = motion.id + '|' + Math.round(az) + '|' + Math.round(el) + '|' + aspect.toFixed(2);
+    if (fitCache[keyc]) return fitCache[keyc];
+    const a = az * Math.PI / 180, e = el * Math.PI / 180;
+    const fwd = [-Math.cos(e) * Math.sin(a), -Math.sin(e), -Math.cos(e) * Math.cos(a)];
+    const right = [Math.cos(a), 0, -Math.sin(a)];
+    const up = [fwd[1] * right[2] - fwd[2] * right[1], fwd[2] * right[0] - fwd[0] * right[2],
+                fwd[0] * right[1] - fwd[1] * right[0]];
+    const T = M.cycleTime(motion);
+    const pts = [];
+    for (let i = 0; i < 9; i++) {
+      const f = M.solveFrame(motion, T * i / 9);
+      Object.keys(f.b).forEach((n) => { pts.push(f.b[n].pos); pts.push(f.b[n].tip); });
+      (f.dumbbells || []).forEach((d) => pts.push(d.pos));
+    }
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, w1 = -1e9;
+    const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+    pts.forEach((p) => {
+      const u = dot(p, right), v = dot(p, up), w = dot(p, fwd);
+      if (u < u0) u0 = u; if (u > u1) u1 = u;
+      if (v < v0) v0 = v; if (v > v1) v1 = v;
+      if (w > w1) w1 = w;
+    });
+    const pad = view.pad === undefined ? 0.16 : view.pad;
+    const halfU = (u1 - u0) / 2 * (1 + pad) + 0.06, halfV = (v1 - v0) / 2 * (1 + pad) + 0.06;
+    const ty = Math.tan(FOV * Math.PI / 360);
+    const dist = Math.max(halfV / ty, halfU / (ty * aspect)) + 0.55;
+    const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
+    const cw = w1 - 0;
+    const shape = { halfU, halfV };
+    const target = [right[0] * cu + up[0] * cv + fwd[0] * cw,
+                    right[1] * cu + up[1] * cv + fwd[1] * cw,
+                    right[2] * cu + up[2] * cv + fwd[2] * cw];
+    /* カメラは setCamera が置く。向きは 0 を入れても既定（40・12）になるので、それに合わせる */
+    return (fitCache[keyc] = keepInFrame(motion, { target, dist, halfU, halfV }, az || 40, el || 12, aspect));
+  }
+
+  /* 再生中に枠の外へ出る動きだけ、収まるところまでカメラを引く。
+     fitView は9コマの骨の位置を平行に写した広がりで合わせるので、カメラに近い部分が遠近で大きく写ることと、
+     体・ダンベルの太さが入っていない。寝た体を斜めから見る動きや、ダンベルがカメラ側へ開く動きで外に出る。
+     1周を60等分したコマについて、骨の両端とダンベルを太さつきの球とみなし、枠の半分に対する比を測る。
+     比が 1 を超えた動きだけ、比が FRAME_FILL に収まる一番近い距離まで引く。片側だけが出ているぶんは注視点を
+     そちらへ寄せて、引く量を小さくする。1 以下の動きは fitView の結果をそのまま返す（図は変わらない） */
+  const FRAME_FILL = 0.95;
+  const FRAME_STEPS = 60;
+  /* 体とダンベルの太さ（m）。buildBody・dumbbellGeom の形を包む半径 */
+  const BULK = { pelvis: 0.13, spineL: 0.12, spineT: 0.15, spineC: 0.165, neck: 0.06, head: 0.105, clav: 0.05,
+                 upperarm: 0.065, forearm: 0.046, hand: 0.05, thigh: 0.09, shank: 0.066, foot: 0.095, toes: 0.055 };
+  const BULK_DB = 0.115;
+
+  /* 1周ぶんの骨の両端とダンベルの位置と太さ [x, y, z, 半径, …]。
+     同じ動きの枠合わせが縦横比だけ変えて続けて来るので、直前の動きのぶんを覚えておく */
+  let bulkId = null, bulkPts = null;
+  function bulkOf(motion) {
+    if (bulkId === motion.id) return bulkPts;
+    const T = M.cycleTime(motion), out = [];
+    for (let i = 0; i <= FRAME_STEPS; i++) {
+      const f = M.solveFrame(motion, T * i / FRAME_STEPS);
+      Object.keys(f.b).forEach((n) => {
+        const r = BULK[n] !== undefined ? BULK[n] : (BULK[n.slice(0, -1)] || 0);      /* 左右の骨は末尾の R・L を外して引く */
+        const p = f.b[n].pos, q = f.b[n].tip;
+        out.push(p[0], p[1], p[2], r, q[0], q[1], q[2], r);
+      });
+      (f.dumbbells || []).forEach((d) => out.push(d.pos[0], d.pos[1], d.pos[2], BULK_DB));
+    }
+    bulkId = motion.id; bulkPts = out;
+    return out;
+  }
+
+  function keepInFrame(motion, fit, az, el, aspect) {
+    const a = az * Math.PI / 180, e = el * Math.PI / 180;
+    /* カメラから見た 右・上・奥 */
+    const right = [Math.cos(a), 0, -Math.sin(a)];
+    const up = [-Math.sin(e) * Math.sin(a), Math.cos(e), -Math.sin(e) * Math.cos(a)];
+    const fwd = [-Math.cos(e) * Math.sin(a), -Math.sin(e), -Math.cos(e) * Math.cos(a)];
+    const kv = Math.tan(FOV * Math.PI / 360), kh = kv * aspect;
+    const pts = bulkOf(motion), t = fit.target;
+    const rel = [];               /* 注視点から見た 右・上・奥 へのずれと太さ */
+    let over = 0;
+    for (let i = 0; i < pts.length; i += 4) {
+      const x = pts[i] - t[0], y = pts[i + 1] - t[1], z = pts[i + 2] - t[2], r = pts[i + 3];
+      const u = x * right[0] + y * right[1] + z * right[2];
+      const v = x * up[0] + y * up[1] + z * up[2];
+      const w = x * fwd[0] + y * fwd[1] + z * fwd[2];
+      const depth = Math.max(fit.dist + w, 1e-6);
+      over = Math.max(over, (Math.abs(u) + r) / (depth * kh), (Math.abs(v) + r) / (depth * kv));
+      rel.push(u, v, w, r);
+    }
+    if (over <= 1) return fit;
+    /* 左右・上下それぞれ、両端がちょうど FRAME_FILL になる距離を出し、遠いほうに合わせる（近づけることはしない） */
+    const gh = kh * FRAME_FILL, gv = kv * FRAME_FILL;
+    let uHi = -1e9, uLo = 1e9, vHi = -1e9, vLo = 1e9;
+    for (let i = 0; i < rel.length; i += 4) {
+      const u = rel[i], v = rel[i + 1], w = rel[i + 2], r = rel[i + 3];
+      uHi = Math.max(uHi, u + r - gh * w); uLo = Math.min(uLo, u - r + gh * w);
+      vHi = Math.max(vHi, v + r - gv * w); vLo = Math.min(vLo, v - r + gv * w);
+    }
+    const dist = Math.max(fit.dist, (uHi - uLo) / (2 * gh), (vHi - vLo) / (2 * gv));
+    /* 注視点は、その距離で収まる範囲のうち元にいちばん近いところ（動かさずに済む向きには動かさない） */
+    const near = (lo, hi) => Math.min(Math.max(0, lo), hi);
+    const cu = near(uHi - gh * dist, uLo + gh * dist), cv = near(vHi - gv * dist, vLo + gv * dist);
+    const target = [t[0] + right[0] * cu + up[0] * cv, t[1] + right[1] * cu + up[1] * cv, t[2] + right[2] * cu + up[2] * cv];
+    return { target, dist, halfU: fit.halfU, halfV: fit.halfV, raw: fit };     /* raw は引く前（検査が比べる） */
+  }
+
   function create(THREE, canvas, opts) {
     const o = opts || {};
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -2985,7 +3098,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     renderer.outputColorSpace = THREE.SRGBColorSpace || renderer.outputColorSpace;
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 40);
+    const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 40);
     let theme = THEME[o.theme === 'dark' ? 'dark' : 'light'];
 
     const mat = new THREE.MeshStandardMaterial({ color: theme.body, roughness: 0.62, metalness: 0.02 });
@@ -3066,47 +3179,6 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
     let dbLimit = null;
 
-    /* 動作全体が枠に収まるカメラ距離と中心を求める（種目ごとに1回だけ計算） */
-    const fitCache = {};
-    function fitView(motion, view, aspect) {
-      /* 枠合わせは種目の基準アングルで一度だけ計算する（指で回しても再計算しない） */
-      const base = motion.view || {};
-      const az = (base.az === undefined ? (view.az || 0) : base.az), el = (base.el === undefined ? (view.el || 0) : base.el);
-      const keyc = motion.id + '|' + Math.round(az) + '|' + Math.round(el) + '|' + aspect.toFixed(2);
-      if (fitCache[keyc]) return fitCache[keyc];
-      const a = az * Math.PI / 180, e = el * Math.PI / 180;
-      const fwd = [-Math.cos(e) * Math.sin(a), -Math.sin(e), -Math.cos(e) * Math.cos(a)];
-      const right = [Math.cos(a), 0, -Math.sin(a)];
-      const up = [fwd[1] * right[2] - fwd[2] * right[1], fwd[2] * right[0] - fwd[0] * right[2],
-                  fwd[0] * right[1] - fwd[1] * right[0]];
-      const T = M.cycleTime(motion);
-      const pts = [];
-      for (let i = 0; i < 9; i++) {
-        const f = M.solveFrame(motion, T * i / 9);
-        Object.keys(f.b).forEach((n) => { pts.push(f.b[n].pos); pts.push(f.b[n].tip); });
-        (f.dumbbells || []).forEach((d) => pts.push(d.pos));
-      }
-      let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, w1 = -1e9;
-      const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
-      pts.forEach((p) => {
-        const u = dot(p, right), v = dot(p, up), w = dot(p, fwd);
-        if (u < u0) u0 = u; if (u > u1) u1 = u;
-        if (v < v0) v0 = v; if (v > v1) v1 = v;
-        if (w > w1) w1 = w;
-      });
-      const pad = view.pad === undefined ? 0.16 : view.pad;
-      const halfU = (u1 - u0) / 2 * (1 + pad) + 0.06, halfV = (v1 - v0) / 2 * (1 + pad) + 0.06;
-      const ty = Math.tan(camera.fov * Math.PI / 360);
-      const dist = Math.max(halfV / ty, halfU / (ty * aspect)) + 0.55;
-      const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
-      const cw = w1 - 0;
-      const shape = { halfU, halfV };
-      const target = [right[0] * cu + up[0] * cv + fwd[0] * cw,
-                      right[1] * cu + up[1] * cv + fwd[1] * cw,
-                      right[2] * cu + up[2] * cv + fwd[2] * cw];
-      return (fitCache[keyc] = { target, dist, halfU, halfV });
-    }
-
     function setCamera(view) {
       const az = (view.az || 40) * Math.PI / 180, el = (view.el || 12) * Math.PI / 180;
       const d = view.dist || 3.4;
@@ -3175,7 +3247,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
              dispose: () => renderer.dispose() };
   }
 
-  root.FIGURE3D = { create, THEME };
+  root.FIGURE3D = { create, THEME, fitView, FOV };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -4252,6 +4324,13 @@ function sanitizeState(obj){
     });
     out.gear = g;
   }
+  /* メニューに入れない種目（rules.js の exOn）。この版に無い種目の id も、形が合っていれば残す */
+  if(src.exOff && typeof src.exOff === "object" && Array.isArray(src.exOff.ids)){
+    var off = { ids: [] }, offAt = num(src.exOff.updatedAt);
+    src.exOff.ids.slice(0, 300).forEach(function(id){ if(exok(id) && off.ids.indexOf(id) < 0) off.ids.push(id); });
+    if(offAt !== null) off.updatedAt = offAt;
+    out.exOff = off;
+  }
   if(Array.isArray(src.program)) out.program = src.program.filter(exok);
   return out;
 }
@@ -4277,6 +4356,7 @@ function applyLoaded(o){
   state.sessions = c.sessions || {};
   state.program = c.program && c.program.length ? c.program : DEFAULT_PROGRAM.slice();
   state.gear = readGear(c.gear);          /* 持っているダンベル（旧形式は読み替える） */
+  if(c.exOff) state.exOff = c.exOff; else delete state.exOff;   /* メニューに入れない種目 */
   ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
 }
 function loadLocal(){
@@ -4315,6 +4395,7 @@ function saveLocal(){
         const m = mergeState(state, other);
         state.sessions = m.sessions;
         if(m.gear) state.gear = m.gear;
+        if(m.exOff) state.exOff = m.exOff;
       }catch(e){}
     }
     /* 消した印（del）は古い日ならもう要らない。統合のときだけでなく、ここでも間引く
@@ -4371,10 +4452,11 @@ try{
     let other;
     try{ other = sanitizeState(JSON.parse(e.newValue)); }catch(x){ return; }
     const m = mergeState(state, other);
-    const key = o => (typeof stableKey === "function" ? stableKey : JSON.stringify)({sessions: o.sessions, gear: o.gear});
+    const key = o => (typeof stableKey === "function" ? stableKey : JSON.stringify)({sessions: o.sessions, gear: o.gear, exOff: o.exOff});
     const mineOnly = key(m) !== key(other);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
+    if(m.exOff) state.exOff = m.exOff;
     lastRaw = e.newValue;
     if(mineOnly) saveLocal();
     if(typeof syncSafeRender === "function") syncSafeRender(); else render();
@@ -4397,7 +4479,7 @@ function rotateBackups(){
       if(older !== null) localStorage.setItem(LS + ".bak" + i, older);
     }
     localStorage.setItem(LS + ".bak1", JSON.stringify({savedAt: new Date().toISOString(), day: TODAY,
-      data: {sessions: state.sessions, program: state.program, gear: state.gear}}));
+      data: {sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff}}));
   }catch(e){}                              /* 容量が足りなければ控えはあきらめる（本体の保存を優先） */
 }
 /* 以前の版の控え（trainlog.v1.bak。起動のたびに上書きしていた）を、一度だけ新しい控えへ移す */
@@ -4442,9 +4524,11 @@ function restoreBackup(key){
     const m = mergeState(state, incoming);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
+    if(m.exOff) state.exOff = m.exOff;
   }else{
     Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
     if(incoming.gear) state.gear = incoming.gear;
+    if(incoming.exOff) state.exOff = incoming.exOff;
   }
   STORE_PROBLEM = null;
   saveLocal();
@@ -4471,7 +4555,7 @@ async function saveFile(filename, text){
 /* ---- バックアップ（JSON） ---- */
 function backupJSON(){
   return JSON.stringify({ app:"trainlog", version:1, savedAt:new Date().toISOString(),
-                          sessions: state.sessions, program: state.program, gear: state.gear }, null, 1);
+                          sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff }, null, 1);
 }
 async function backupSave(){
   const ok = await saveFile("trainlog-backup-" + TODAY + ".json", backupJSON());
@@ -4497,9 +4581,11 @@ function applyBackup(text){
     const m = mergeState(state, incoming);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
+    if(m.exOff) state.exOff = m.exOff;
   }else{
     Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
     if(incoming.gear) state.gear = incoming.gear;
+    if(incoming.exOff) state.exOff = incoming.exOff;
   }
   if(incoming.program && incoming.program.length) state.program = incoming.program;
   STORE_PROBLEM = null;
@@ -4574,7 +4660,7 @@ function backupReminder(){
 
    リモートの形:
      trainlog/YYYY-MM.json = {app:"trainlog", format:2, month:"YYYY-MM", sessions:{...その月の日付だけ}}
-     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}}
+     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}, exOff?:{ids:[...], updatedAt}}
    月ごとのファイルに分けているのは、記録するたびに全履歴を送らずに済ませるため
    （1年続けると単一ファイルは約1.7MBになる。変わった月だけをやり取りする）。
    旧形式（単一の trainlog.json、format:1）が残っていれば、初回だけ読み込んで取り込む（移行）。
@@ -4752,7 +4838,12 @@ function mergeState(local, remote){
   });
   syncPruneOldDel(sessions);
 
-  return { sessions: sessions, gear: syncMergeGear(a.gear, b.gear) };
+  var out = { sessions: sessions, gear: syncMergeGear(a.gear, b.gear) };
+  /* メニューに入れない種目（exOff）も、gear と同じ決め方（updatedAt の新しい方を丸ごと）。gear とは別々に決めるので、
+     片方の端末でダンベルを、もう片方で種目のオンオフを変えても、両方残る */
+  var off = syncMergeGear(a.exOff, b.exOff);
+  if(off) out.exOff = off;
+  return out;
 }
 
 /* "YYYY-MM-DD" が今日から何日前か。core.js の todayKey/daysAgo には頼らない
@@ -5181,7 +5272,7 @@ function syncApplyMonthToState(monthSessions, month){
 }
 /* リモートに無い状態で、ローカルも空（作る価値が無い）パート */
 function syncPartIsEmpty(part, localPart){
-  if(part.kind === "settings") return localPart.gear === undefined || localPart.gear === null;
+  if(part.kind === "settings") return (localPart.gear === undefined || localPart.gear === null) && !localPart.exOff;
   return Object.keys(localPart.sessions).length === 0;
 }
 
@@ -5212,10 +5303,16 @@ function syncBuildParts(listing){
   return parts;
 }
 
+/* settings.json に入れる中身。exOff は、あるときだけ入れる（無い端末の中身のキーが変わって、読み直しが起きないように） */
+function syncSettingsPart(gear, exOff){
+  var out = { gear: gear };
+  if(exOff) out.exOff = exOff;
+  return out;
+}
 function syncLocalPartOf(part){
   return part.kind === "month"
     ? { sessions: syncSessionsForMonth(state.sessions, part.month) }
-    : { gear: state.gear };
+    : syncSettingsPart(state.gear, state.exOff);
 }
 
 /* 1パート（1ファイル）ぶんの pull→merge→push。meta はその場で更新して呼び出し側が即persistする。
@@ -5251,15 +5348,15 @@ async function syncPart(cfg, part, meta){
       merged = { sessions: mergeState({ sessions: localPart.sessions }, { sessions: remoteContent.sessions || {} }).sessions };
       remoteContentKey = stableKey({ sessions: remoteContent.sessions || {} });
     }else{
-      merged = { gear: syncMergeGear(localPart.gear, remoteContent.gear) };
-      remoteContentKey = stableKey({ gear: remoteContent.gear });
+      merged = syncSettingsPart(syncMergeGear(localPart.gear, remoteContent.gear), syncMergeGear(localPart.exOff, remoteContent.exOff));
+      remoteContentKey = stableKey(syncSettingsPart(remoteContent.gear, remoteContent.exOff));
     }
   }
 
   var mergedKey = stableKey(merged);
   if(mergedKey !== localKey){
     if(part.kind === "month") syncApplyMonthToState(merged.sessions, part.month);
-    else state.gear = merged.gear;
+    else{ state.gear = merged.gear; if(merged.exOff) state.exOff = merged.exOff; }
     changedLocally = true;
     /* meta を進める前に端末へ保存する。途中で閉じられて「見た」印だけ残ると、
        次の同期で取り込み前の中身を送り返してしまうため */
@@ -5275,7 +5372,7 @@ async function syncPart(cfg, part, meta){
   if(shouldPush){
     var payload = part.kind === "month"
       ? { app: "trainlog", format: 2, month: part.month, sessions: merged.sessions }
-      : { app: "trainlog", format: 2, gear: merged.gear };
+      : Object.assign({ app: "trainlog", format: 2 }, merged);
     var pushed = await syncPushFile(cfg, SYNC_DIR + "/" + name, payload, remoteSha);
     newSha = pushed.sha || remoteSha;
   }
@@ -5293,9 +5390,10 @@ async function syncMaybeMigrate(cfg, listing, meta){
   var old = await syncGetFileLenient(cfg, SYNC_LEGACY_PATH);
   if(!old.parsed) return false;
   var oldState = typeof sanitizeState === "function" ? sanitizeState(old.parsed) : old.parsed;
-  var migrated = mergeState({ sessions: state.sessions, gear: state.gear }, oldState);
+  var migrated = mergeState({ sessions: state.sessions, gear: state.gear, exOff: state.exOff }, oldState);
   state.sessions = migrated.sessions;
   state.gear = migrated.gear;
+  if(migrated.exOff) state.exOff = migrated.exOff;
   return true;
 }
 
@@ -5618,7 +5716,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-06 22:15";
+const BUILD_VERSION = "2026-10-08 00:36";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6553,6 +6651,60 @@ const PATTERN_FIRST = {calf:"calf"};
 /* 仕上げに足す動き: 書いてある動きを先に組んだ日だけ入れる。シシースクワット（膝を伸ばす）は大腿四頭筋だけを使うので、
    別の日に入れると大殿筋の回復の日とずれて、スクワット・ランジ（大腿四頭筋と大殿筋の両方を使う）が入る日がなくなる */
 const PATTERN_AFTER = {kneeext:["squat", "sumo", "splitsq", "lunge"]};
+/* メニューに入れない種目（2026-10-08 本人の要望: やりたくない種目は、メニューに入らないようにオンオフできるように）。
+   state.exOff = {ids:[種目id], updatedAt}。ダンベルの登録と同じく端末をまたいで同期する（settings.json。時刻は gear と別に持つ）。
+   効くのはメニュー作りが選ぶところだけ（planner.js の why の "off"・やさしく／難しくの持ち替え先）。
+   「種目を選んで追加」からは、入れない種目も自分で入れられる。記録や推移には触れない。
+   画面の印・ボタン・メニュー作りは、どれも exOn() で判定する */
+const EX_OFF_HEAD = "メニューに入れない種目", EX_OFF_TAG = "メニューに入れない";
+const EX_OFF_NOTE = "メニューには入りません。「種目を選んで追加」からは追加できます。";
+function exOffIds(){ const o = state.exOff; return o && Array.isArray(o.ids) ? o.ids : []; }
+function exOn(id){ return !exOffIds().includes(id); }
+function setExOn(id, on){
+  const ids = exOffIds().filter(x => x !== id);          /* この版に無い種目の id は、そのまま残す */
+  if(!on) ids.push(id);
+  state.exOff = {ids, updatedAt: typeof stampNow === "function" ? stampNow() : Date.now()};
+  persistProgram();
+  if(typeof syncSchedule === "function") syncSchedule();
+}
+/* 反対の部位（関節をはさんで逆の働きをする部位）。メニュー作りは、今日のメニューに入れた種目と反対の部位を
+   メインで鍛える種目が入れられるとき、それを少し先に選び、隣に並べる（2026-10-08 本人の要望）。
+   回復・1日と1週間の上限・外した動き・入れない種目の決まりはそのままで、入れられない種目を入れることはしない。
+   文献: 反対の部位の種目を1セットずつ交互に行うと、ふつうの順でやるのと比べて、筋肉の付き方・筋力の伸びは同じくらいで
+   時間は短く済む（Mang 2025 doi:10.1519/JSC.0000000000005246）。休憩を削らずに交互にやると、こなせる回数・量が増える
+   （Chien 2026 doi:10.3390/jfmk11030370、Paz 2019 doi:10.1519/JSC.0000000000002353）。
+   脚の大きい種目どうし（スクワットとルーマニアンデッドリフト）は、どちらも大殿筋をメインで使うので組にしない（下の opposite） */
+const ANTAGONIST = {chest:"lats", lats:"chest", biceps:"triceps", triceps:"biceps", quads:"hams", hams:"quads",
+                    frontdelt:"reardelt", reardelt:"frontdelt", abs:"erectors", erectors:"abs", adductors:"gmed", gmed:"adductors"};
+/* 同じくらいの価値なら、今日のメニューの種目と反対の部位の種目を先にする係数 */
+let PAIR_PREF = 1.1;
+/* 2つの種目が反対の部位どうしか: メインで鍛える部位に反対の組があり、同じ部位をメインで使っていない */
+function opposite(a, b){
+  const A = EXMAP[a], B = EXMAP[b];
+  if(!A || !B || a === b || A.p.some(m => B.p.includes(m))) return false;
+  return A.p.some(m => B.p.includes(ANTAGONIST[m]));
+}
+/* メニューの並びを、反対の部位どうしが隣になるように直す（前から見て、まだ組になっていない最初の相手を次に持ってくる） */
+function pairUp(items){
+  const rest = items.slice(), out = [];
+  while(rest.length){
+    const a = rest.shift();
+    out.push(a);
+    if(a.skip) continue;
+    const j = rest.findIndex(b => !b.skip && opposite(a.ex, b.ex));
+    if(j >= 0) out.push(rest.splice(j, 1)[0]);
+  }
+  return out;
+}
+/* 今日のメニューで隣り合っている、反対の部位どうしの組 [[a, b], …]（1つの種目は1つの組にだけ入る）。
+   組は保存しない。画面に出すところは、どこもここから作る */
+function menuPairs(items){
+  const out = [];
+  for(let i = 0; i + 1 < items.length; i++){
+    if(opposite(items[i].ex, items[i + 1].ex)){ out.push([items[i], items[i + 1]]); i++; }
+  }
+  return out;
+}
 const WEEK_TARGET = 10, WEEK_MAX = 16;
 const BIG_MUSCLES = ["quads","glutes","hams","chest","lats"];
 /* 1日にかける上限（有効セット）。大きい部位は3種目ぶん、ほかの部位は2種目ぶん。その種目がメインで鍛える部位について見る
@@ -6673,6 +6825,7 @@ function stepItem(item, dir){
   const cands = catalog().filter(c => {
     if(patternOf(c.ex) !== pat) return false;
     if(c.ex === item.ex && (c.label || "") === (item.label || "")) return false;
+    if(c.ex !== item.ex && !exOn(c.ex)) return false;   /* メニューに入れない種目へは持ち替えない */
     if(!gearReady(c.ex, c)) return false;   /* 持っているダンベルで作れない（種目の種類・needsDb の組み方を問わず） */
     const lv = itemLevel(c);
     return dir > 0 ? lv > now : lv < now;
@@ -7005,6 +7158,7 @@ function buildPlan(){
   /* その組み方を今日のメニューに入れられない理由（入れられるなら ""）。"rest:glutes" のように、理由と部位を返す */
   const why = c => {
     const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n), pat = patternOf(c.ex);
+    if(!exOn(c.ex)) return "off";                                                   /* メニューに入れない種目（rules.js の exOn） */
     if(plan.some(p => patternOf(p.ex) === pat)) return "same";                      /* 同じ動きは1日1つ */
     if(donePattern.has(pat)) return "done";                                         /* 今日もうやった動き */
     if(planSkip && planSkip.has(pat)) return "skip";                                /* 今日は外した動き */
@@ -7085,12 +7239,17 @@ function buildPlan(){
      段の近さで割り引いた値のまま動きどうしを比べると、記録の無い動きのうち、選ぶ種目が標準の段でないもの
      （ワンハンドロウ・ダンベルカール・サイドレイズ・シュラッグ・ファーマーズウォーク・サイドベンド・プランクなど）は、
      記録が付くまで価値が半分以下になり、使えていない部位があってもメニューに入らなかった（2026-10-04 本人の指摘） */
+  /* 今日のメニュー（今日もう記録した種目も）に、反対の部位の種目があるか（rules.js の opposite）。
+     あれば、動きどうしを比べる値を少し上げて先に選ぶ（2026-10-08 本人の要望: 反対の部位を入れられるときは、同じ日に鍛える）。
+     入れるかどうかのしきい値（minGain）には掛けない: 掛けると、これまで入らなかった種目まで入って1回の量が増える */
+  const paired = c => plan.some(p => opposite(p.ex, c.ex)) || doneToday.some(e => opposite(e.ex, c.ex));
   const fill = (minGain, upTo, only) => {
     while(plan.length < upTo){
       const byPattern = {};
       catalog().filter(c => (!only || only(c)) && allowed(c) && candidate(c)).forEach(c => {
         const g = gain(c), pat = patternOf(c.ex), f = fit(c);
-        if(g >= minGain && (!byPattern[pat] || f > byPattern[pat].f)) byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1)};
+        if(g >= minGain && (!byPattern[pat] || f > byPattern[pat].f))
+          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1)};
       });
       const best = Object.keys(byPattern).map(p => byPattern[p]).sort((a, b) => b.v - a.v)[0];
       if(!best) return;
@@ -7180,7 +7339,12 @@ function buildPlan(){
     });
   }
 
-  if(!planSeed) plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
+  if(!planSeed){
+    plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
+    /* 反対の部位どうしは隣に並べる（1セットずつ交互に行いやすいように） */
+    const ordered = pairUp(plan);
+    plan.length = 0; ordered.forEach(p => plan.push(p));
+  }
   planMemo = plan;
   return planMemo;
 }
@@ -7448,7 +7612,10 @@ function viewToday(){
      restIncluded・restIncludedText から出す（カードを開かなくても、入れたことと理由が分かるように: 2026-10-05 本人の要望） */
   const includedLine = items.map(it => ({it, r: restIncluded(it)})).filter(x => x.r)
     .map(x => `<p class="skipped">${esc(itemName(x.it))}: ${esc(restIncludedText(x.r))}</p>`).join("");
-  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + includedLine + skippedLine + soreLine + `
+  /* 反対の部位どうしで隣に並んだ種目（rules.js の menuPairs）。両方終わった組は出さない */
+  const pairLine = menuPairs(items).filter(p => !p.every(it => isDoneToday(it.ex)))
+    .map(p => `<p class="skipped">${esc(itemName(p[0]))}と${esc(itemName(p[1]))}: 反対の部位を使う種目です。1セットずつ交互に行えます。</p>`).join("");
+  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
@@ -8497,7 +8664,8 @@ function viewEx(){
       <h4>目安</h4>
       <p style="margin:0 0 6px;font-size:14px">${kindLabel}　${d.reps||""}</p>
       ${holdOf(refEx)?`<p class="lastline" style="margin-top:0"><b>使うダンベル</b>　${gearLine(refEx, refSug)}</p>`:""}
-      <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">${{in: "今日のメニューで開く", skipped: "今日のメニューに戻す"}[menuState(ex.id)] || "今日のメニューに追加"}</button></div>
+      <div class="rowbtns"><button data-act="addtoday" data-ex="${ex.id}">${{in: "今日のメニューで開く", skipped: "今日のメニューに戻す"}[menuState(ex.id)] || "今日のメニューに追加"}</button><button data-act="exoff" data-ex="${ex.id}" aria-pressed="${!exOn(ex.id)}">${exOn(ex.id) ? "メニューに入れない" : "メニューに入れる"}</button></div>
+      ${exOn(ex.id) ? "" : `<p class="lastline">${EX_OFF_NOTE}</p>`}
     </div>`;
 
   const right = `
@@ -8639,6 +8807,7 @@ function exByRow(e){
     : `<button class="exbyadd" data-act="addtoday" data-ex="${e.id}">${st === "skipped" ? "今日のメニューに戻す" : "今日のメニューに追加"}</button>`;
   return `<div class="exbyrow">
     <button class="exbyname" data-act="goref" data-ex="${e.id}">${esc(e.name)}</button>
+    ${exOn(e.id) ? "" : `<span class="exbytag">${EX_OFF_TAG}</span>`}
     ${right}
   </div>`;
 }
@@ -8742,7 +8911,7 @@ function balanceSuggestions(){
   BIG.forEach(m=>{
     const v = load30[m] || 0;
     if(v <= 2){
-      const cands = EX.filter(e=>e.p.includes(m)).slice(0,3).map(e=>e.name);
+      const cands = EX.filter(e=>e.p.includes(m) && exOn(e.id)).slice(0,3).map(e=>e.name);
       out.push({kind:"balance", muscle:m,
         title: MUSCLES[m] + "：直近30日でほぼ使えていません",
         body: cands.length ? "候補: " + cands.join("、") : "",
@@ -8804,7 +8973,8 @@ function viewPlan(){
       <h4>この提案の仕組み</h4>
       <p style="margin:0;font-size:14px">前回の同じやり方で、全部のセットが目標に届いたら、次は1回（秒の種目は5秒）増やします。回数が範囲の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しいやり方に進みます。</p>
       <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
-      <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。</p>
+      <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。設定の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
+      <p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目が入れられるときは、その種目を先に選んで隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>
       <p class="lastline">${esc(recoverGapText())}</p>
     </div>`;
 }
@@ -9646,6 +9816,7 @@ function pickerTags(id){
   const st = menuState(id);
   if(st === "in") out += `<span class="pktag plan">今日のメニューにある</span>`;
   else if(st === "skipped") out += `<span class="pktag">今日は外した</span>`;
+  if(!exOn(id)) out += `<span class="pktag">${EX_OFF_TAG}</span>`;
   if(patternsYesterday().has(patternOf(id))) out += `<span class="pktag">昨日やった動き</span>`;
   const rest = exRest(id);
   if(rest && rest.sore.length) out += `<span class="pktag warn">筋肉痛</span>`;
@@ -9715,6 +9886,20 @@ function openSoreSheet(){
   sheet.classList.add("on");
 }
 ACTIONS.sore = () => openSoreSheet();
+/* 種目をメニューに入れる／入れないの切り替え（設定のシートと種目タブ）。
+   今日のメニューに入っていて、まだ記録していない種目を外したときは、その場で組み直す（自分で追加した種目は残す） */
+ACTIONS.exoff = el => {
+  const id = el.dataset.ex;
+  if(!EXMAP[id]) return;
+  const on = !exOn(id);
+  setExOn(id, on);
+  planMemo = null; resetProg();
+  const s = state.sessions[TODAY], e = entryFor(TODAY, id, false);
+  const it = !on && s && s.plan ? s.plan.find(x => x.ex === id) : null;
+  if(it && !it.manual && !it.skip && !(e && e.sets.length)) replanToday();
+  else render();
+  setStatus("「" + EXMAP[id].name + "」を" + (on ? "メニューに入れる種目に戻しました" : "メニューに入れない種目にしました"));
+};
 /* ---------- 書き出し ---------- */
 function buildCSV(){
   const rows = [["日付","種目","セット","重量kg","回数/秒","きつさ","メモ"]];
@@ -9968,9 +10153,19 @@ function dayStartCard(){
     <p class="lastline">夜遅くに始めて0時を過ぎても、区切りの時刻までは同じ日の記録になります。</p>
   </div>`;
 }
+/* メニューに入れない種目（押して切り替える。色の付いた種目は入らない: 筋肉痛の部位のシートと同じ向き）。判定と保存は rules.js の exOn・setExOn */
+function exOffCard(){
+  const order = EX.slice().sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.id)) - PATTERN_ORDER.indexOf(patternOf(b.id)));
+  return `<h3 class="sec">${EX_OFF_HEAD}</h3>
+  <div class="card">
+    <p class="lastline" style="margin-top:0">やりたくない種目を押して選んでください。選んだ種目は、${EX_OFF_NOTE}</p>
+    <div class="sorechips">${order.map(e => `<button class="sorechip${exOn(e.id) ? "" : " on"}" data-act="exoff" data-ex="${e.id}" aria-pressed="${!exOn(e.id)}">${esc(e.name)}</button>`).join("")}</div>
+  </div>`;
+}
 function settingsHTML(){
   return `<h4 data-settings="1">設定</h4>
     ${gearCard()}
+    ${exOffCard()}
     ${dayStartCard()}
     ${settingsCard()}
     ${typeof syncCard === "function" ? syncCard() : ""}
