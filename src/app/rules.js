@@ -86,7 +86,7 @@ const PATTERN_AFTER = {kneeext:["squat", "sumo", "splitsq", "lunge"]};
    効くのはメニュー作りが選ぶところだけ（planner.js の why の "off"・やさしく／難しくの持ち替え先）。
    「種目を選んで追加」からは、入れない種目も自分で入れられる。記録や推移には触れない。
    画面の印・ボタン・メニュー作りは、どれも exOn() で判定する */
-const EX_OFF_HEAD = "メニューに入れる種目", EX_OFF_TAG = "メニューに入れない";
+const EX_OFF_HEAD = "メニューに入れない種目", EX_OFF_TAG = "メニューに入れない";
 const EX_OFF_NOTE = "メニューには入りません。「種目を選んで追加」からは追加できます。";
 function exOffIds(){ const o = state.exOff; return o && Array.isArray(o.ids) ? o.ids : []; }
 function exOn(id){ return !exOffIds().includes(id); }

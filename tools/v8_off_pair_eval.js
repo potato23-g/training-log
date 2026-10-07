@@ -90,7 +90,7 @@ setTimeout(() => {
   box.innerHTML = exOffCard();
   const chips = Array.from(box.querySelectorAll("[data-act=exoff]"));
   need(chips.length === EX.length, "設定の押しボタンの数が種目の数と違う: " + chips.length);
-  chips.forEach(c => need(c.classList.contains("on") === exOn(c.dataset.ex) && c.getAttribute("aria-pressed") === String(exOn(c.dataset.ex)), "設定の押しボタンが合わない: " + c.dataset.ex));
+  chips.forEach(c => need(c.classList.contains("on") === !exOn(c.dataset.ex) && c.getAttribute("aria-pressed") === String(!exOn(c.dataset.ex)), "設定の押しボタンが合わない: " + c.dataset.ex));
 
   /* ---- 3. 切り替え ---- */
   reset(null);

@@ -195,13 +195,13 @@ function dayStartCard(){
     <p class="lastline">夜遅くに始めて0時を過ぎても、区切りの時刻までは同じ日の記録になります。</p>
   </div>`;
 }
-/* メニューに入れる種目（押して切り替える。色の付いた種目が入る）。判定と保存は rules.js の exOn・setExOn */
+/* メニューに入れない種目（押して切り替える。色の付いた種目は入らない: 筋肉痛の部位のシートと同じ向き）。判定と保存は rules.js の exOn・setExOn */
 function exOffCard(){
   const order = EX.slice().sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.id)) - PATTERN_ORDER.indexOf(patternOf(b.id)));
   return `<h3 class="sec">${EX_OFF_HEAD}</h3>
   <div class="card">
-    <p class="lastline" style="margin-top:0">やりたくない種目は、押して外してください。外した種目は${EX_OFF_NOTE}</p>
-    <div class="sorechips">${order.map(e => `<button class="sorechip${exOn(e.id) ? " on" : ""}" data-act="exoff" data-ex="${e.id}" aria-pressed="${exOn(e.id)}">${esc(e.name)}</button>`).join("")}</div>
+    <p class="lastline" style="margin-top:0">やりたくない種目を押して選んでください。選んだ種目は、${EX_OFF_NOTE}</p>
+    <div class="sorechips">${order.map(e => `<button class="sorechip${exOn(e.id) ? "" : " on"}" data-act="exoff" data-ex="${e.id}" aria-pressed="${!exOn(e.id)}">${esc(e.name)}</button>`).join("")}</div>
   </div>`;
 }
 function settingsHTML(){
