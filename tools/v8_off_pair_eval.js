@@ -7,7 +7,10 @@
    3. 切り替え: 今日のメニューにある、まだ記録していない種目を外すと、その場でメニューから消える。記録した種目・自分で追加した種目は残る。
       端末の保存に入り、読み直しても残る
    4. 反対の部位: opposite は向きを変えても同じ。組んだメニューでは、反対の部位どうしで、まだ組になっていない種目が離れたまま
-      残っていないこと。今日タブの一行が menuPairs の組の数だけ出ること。組が1つもできなければ、この検査は決まりを通っていない */
+      残っていないこと。今日タブの一行が menuPairs の組の数だけ出ること。組が1つもできなければ、この検査は決まりを通っていない
+   5. できる限り入れる（2026-10-09）: 相手のいない種目があるのに、反対の部位の動きが「入れられる」のまま入っていない日が無いこと
+      （planWhy の理由が ""）。並びは組の数が一番多いこと（menuPairs の数 = pairMates の数）。
+      「メニューを組み直す」「おまかせで1種目追加」「種目を選んで追加」の後も、反対の部位どうしが離れたまま残らないこと */
 setTimeout(() => {
   const out = {fails: [], pairs: 0, sessions: 0, seat: 0};
   const need = (cond, msg) => { if(!cond) out.fails.push(msg); };
@@ -49,7 +52,12 @@ setTimeout(() => {
       reset(off);
       for(let day = 0; day < 35; day++){
         if(schedules[name](day)){
-          const plan = buildPlan();
+          planWhy = {}; planMemo = null;
+          const plan = buildPlan(), W = planWhy;
+          planWhy = null;
+          unpaired(plan).forEach(it => Object.keys(W).forEach(pat => need(!(W[pat] === "" && catalog().some(c => patternOf(c.ex) === pat && exOn(c.ex) && opposite(it.ex, c.ex))),
+            "相手を入れられるのに入っていない: " + it.ex + "←" + pat + "（" + off.join(",") + "・" + name + "・" + day + "日目）")));
+          need(menuPairs(plan).length * 2 === plan.length - unpaired(plan).length, "組の数が一番多い並びになっていない: " + plan.map(it => it.ex).join(","));
           plan.forEach(it => need(exOn(it.ex), "外した種目がメニューに入った: " + it.ex + "（" + off.join(",") + "・" + name + "・" + day + "日目）"));
           need(new Set(plan.map(it => it.ex)).size === plan.length, "同じ種目が2回入った（" + name + "・" + day + "日目）");
           need(!loose(plan), "反対の部位どうしが離れたまま: " + plan.map(it => it.ex).join(",") + "（" + name + "・" + day + "日目）");
@@ -138,6 +146,35 @@ setTimeout(() => {
   }
   need(lines > 0, "今日タブに一行が一度も出なかった");
   out.lines = lines + "/" + shown;
+
+  /* ---- 5. 組み直し・追加の後の並び ---- */
+  need(pairUp([{ex: "sidelunge"}, {ex: "goblet"}, {ex: "slidecurl"}, {ex: "abduct"}]).map(x => x.ex).join(",") === "sidelunge,abduct,goblet,slidecurl", "相手の取り合いで組が減った");
+  reset(null);
+  tab = "today";
+  let moved = 0;
+  for(let day = 0; day < 10; day++){
+    const s5 = session(TODAY);
+    fixPlan(s5);
+    const names = () => activeItems().map(it => it.ex).join(",");
+    /* 反対の部位の片方を自分で追加する（もう片方がメニューにあって、まだ組になっていないとき、その隣に入る） */
+    const freeNow = unpaired(activeItems());
+    const want = EX.find(e => exOn(e.id) && !todayItems().some(it => it.ex === e.id) && freeNow.some(a => opposite(a.ex, e.id)) && (!holdOf(e.id) || gearOptions(e.id).length));
+    if(want){
+      addToProgramToday(want.id, "");
+      need(!loose(activeItems()), "種目を選んで追加の後、反対の部位どうしが離れている: " + names());
+      moved++;
+    }
+    addAutoToday();
+    need(!loose(activeItems()), "おまかせで1種目追加の後、反対の部位どうしが離れている: " + names());
+    doAll([activeItems()[0]]);
+    replanToday();
+    need(!loose(activeItems()), "メニューを組み直した後、反対の部位どうしが離れている: " + names());
+    doAll(activeItems().filter(it => !isDoneToday(it.ex)));
+    openEx = null; editEx = null; todayMsg = "";
+    nextDay(); nextDay();
+  }
+  need(moved > 0, "種目を選んで追加の場面を一度も通らなかった");
+  out.moved = moved;
 
   reset(null);
   try{ localStorage.removeItem("trainlog.v1"); }catch(e){}

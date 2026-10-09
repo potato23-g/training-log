@@ -199,6 +199,15 @@ function buildPlan(){
       take(best.c);
     }
   };
+  /* 反対の部位の相手がいない種目に、入れられるかぎり相手を足す（下の compose の 4） */
+  const pairFill = () => {
+    for(;;){
+      const lone = unpaired(plan), n = plan.length;
+      if(!lone.length) return;
+      fill(0, n + 1, c => lone.some(a => opposite(a.ex, c.ex)));
+      if(plan.length === n) return;
+    }
+  };
   /* 残す種目（おまかせ追加・組み直し）を入れる。記録済みのセットは上で数えたので、残りのセットの分だけ足す */
   const keepIn = it => {
     if(plan.some(p => p.ex === it.ex)) return;
@@ -236,6 +245,11 @@ function buildPlan(){
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
       fill(0.01, LIM.exercises, c => EXMAP[c.ex].p.some(m => lack(m) > 0));
       fill(0.2, Math.min(3, LIM.exercises));   /* 3. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+      /* 4. 反対の部位の相手がいない種目には、入れられるかぎり相手を足す（2026-10-09 本人の指摘: 上腕二頭筋と上腕三頭筋を
+            同じ日に出せるのに出なかった。できる限り入れる）。それまでは並べ替えの値を少し上げるだけ（PAIR_PREF）で、
+            相手の部位が週の目標に届いている日は、入れられるのに入らなかった。
+            回復・1日と1週間の上限・1回の量の上限・外した動き・入れない種目の決まりは why のまま効く */
+      pairFill();
     };
     /* 7日使えていない部位（rules.js の unusedSoFar）が、組んだメニューのどの種目にも入らなかったとき（主でも補助でも）は、
        その部位をメインで鍛える種目を先に入れてから組み直す（2026-10-06）。
@@ -261,15 +275,23 @@ function buildPlan(){
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
      超えていたら、その部位が主役の種目を外す（セット数は3で固定なので、減らすのではなく外す） */
-  for(let guard = 0; guard < 12; guard++){
-    const over = Object.keys(today).find(m => (week[m] || 0) + today[m] > WEEK_MAX
-                                          && plan.some(p => EXMAP[p.ex].p[0] === m && !p.seed));
-    if(!over) break;
-    const i = plan.findIndex(p => EXMAP[p.ex].p[0] === over && !p.seed);
-    const all = exLoad(plan[i].ex, plan[i].sets || SETS_PER_EXERCISE);
-    Object.keys(all).forEach(m => today[m] -= all[m]);
-    sets -= plan[i].sets || SETS_PER_EXERCISE; minutes -= mins(plan[i]); plan.splice(i, 1);
-  }
+  const trim = () => {
+    let cut = 0;
+    for(let guard = 0; guard < 12; guard++){
+      const over = Object.keys(today).find(m => (week[m] || 0) + today[m] > WEEK_MAX
+                                            && plan.some(p => EXMAP[p.ex].p[0] === m && !p.seed));
+      if(!over) break;
+      const i = plan.findIndex(p => EXMAP[p.ex].p[0] === over && !p.seed);
+      const all = exLoad(plan[i].ex, plan[i].sets || SETS_PER_EXERCISE);
+      Object.keys(all).forEach(m => today[m] -= all[m]);
+      sets -= plan[i].sets || SETS_PER_EXERCISE; minutes -= mins(plan[i]); plan.splice(i, 1);
+      Object.keys(starved).forEach(k => delete starved[k]);
+      cut++;
+    }
+    return cut;
+  };
+  /* 外して空いた枠に、相手のいない種目の反対の部位が入るなら入れる（入れた分でまた超えたら、もう一度だけ外す） */
+  if(trim() && !planSeed){ pairFill(); trim(); }
   plan.forEach(p => delete p.seed);
   /* 入らなかった動きの理由を残す（頼まれたときだけ）。その動きで今日やる組み方（決めてあればそれ、無ければ素の組み方）で見る */
   if(planWhy){
@@ -401,9 +423,9 @@ function replanToday(opt){
   }finally{
     planSkip = null; planShort = false; planKeep = null; planMemo = null;
   }
-  /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく） */
+  /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく）。反対の部位どうしは隣に並べる */
   const added = fresh.filter(x => !keep.some(k => k.ex === x.ex));
-  const plan = keep.filter(k => !k.skip).concat(added).concat(keep.filter(k => k.skip));
+  const plan = pairUp(keep.filter(k => !k.skip).concat(added)).concat(keep.filter(k => k.skip));
   /* 組み直しは意図した変更（同期で自動のメニューに負けない）。空でも保存する（保存しないと、同期で
      ほかの端末の今日のメニューが戻ってきてしまう） */
   s.plan = plan; s.planAt = s.planEdit = stampNow();

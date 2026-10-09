@@ -281,7 +281,7 @@ function addToProgramToday(id, label){
       s.plan[i] = Object.assign({}, row, {manual: true});
     }
   }else{
-    s.plan.push(Object.assign({}, row, {manual: true}));
+    s.plan = addBeside(s.plan, Object.assign({}, row, {manual: true}));   /* 反対の部位の種目があれば、その隣に */
   }
   s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
@@ -384,7 +384,7 @@ function addAutoToday(){
     return;
   }
   if(!s.plan) s.plan = [];
-  s.plan = s.plan.concat([Object.assign({}, picked)]);
+  s.plan = addBeside(s.plan, Object.assign({}, picked));          /* 反対の部位の種目があれば、その隣に */
   s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
@@ -392,7 +392,7 @@ function addAutoToday(){
   todayMsg = "「" + itemName(picked) + "」を追加しました（" + EXMAP[picked.ex].p.map(m => MUSCLES[m]).join("・") + "の今週の量が足りていません）"
     + (over ? "。1回の目安（" + SESSION_MAX.exercises + "種目・" + SESSION_MAX.sets + "セット・" + SESSION_MAX.minutes + "分）は超えます" : "");
   render();
-  /* 足した種目は一覧の最後に付くので、その位置まで動かして見えるようにする */
+  /* 足した種目の位置まで動かして見えるようにする（一覧の最後か、反対の部位の種目の隣に入る） */
   const el = document.querySelector('[data-act="toggle"][data-ex="' + picked.ex + '"]');
   if(el && el.scrollIntoView) el.scrollIntoView({block: "center"});
   setStatus(shownMsg);

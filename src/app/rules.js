@@ -100,6 +100,8 @@ function setExOn(id, on){
 /* 反対の部位（関節をはさんで逆の働きをする部位）。メニュー作りは、今日のメニューに入れた種目と反対の部位を
    メインで鍛える種目が入れられるとき、それを少し先に選び、隣に並べる（2026-10-08 本人の要望）。
    回復・1日と1週間の上限・外した動き・入れない種目の決まりはそのままで、入れられない種目を入れることはしない。
+   2026-10-09 本人の指摘（上腕二頭筋と上腕三頭筋を同じ日に出せるのに出なかった。できる限り入れる）で、相手のいない種目には、
+   入れられるかぎり反対の部位の種目を足すようにした（planner.js の pairFill）。組み直し・追加の後も隣に並べる（pairUp・addBeside）。
    文献: 反対の部位の種目を1セットずつ交互に行うと、ふつうの順でやるのと比べて、筋肉の付き方・筋力の伸びは同じくらいで
    時間は短く済む（Mang 2025 doi:10.1519/JSC.0000000000005246）。休憩を削らずに交互にやると、こなせる回数・量が増える
    （Chien 2026 doi:10.3390/jfmk11030370、Paz 2019 doi:10.1519/JSC.0000000000002353）。
@@ -114,16 +116,57 @@ function opposite(a, b){
   if(!A || !B || a === b || A.p.some(m => B.p.includes(m))) return false;
   return A.p.some(m => B.p.includes(ANTAGONIST[m]));
 }
-/* メニューの並びを、反対の部位どうしが隣になるように直す（前から見て、まだ組になっていない最初の相手を次に持ってくる） */
+/* 反対の部位どうしの組を、できるだけ多く作る（1つの種目は1つの組にだけ入る）。返すのは 相手の位置の表（組にならない種目は -1）。
+   前から順に最初の相手を取るだけだと、相手の取り合いで組が減ることがある（サイドランジがスライディングレッグカールを取ると、
+   ゴブレットスクワットの相手がいなくなる、など）ので、全部の組み合わせから組の数が一番多いものを選ぶ。
+   同じ数なら、前の種目から先に組にする。外した種目は組にしない */
+function pairMates(items){
+  const n = items.length, ok = (i, j) => !items[i].skip && !items[j].skip && opposite(items[i].ex, items[j].ex);
+  const memo = {};
+  const best = used => {                               /* used: もう決まった種目の印。残りで作れる組 [数, [[i,j],…]] */
+    let i = 0;
+    while(i < n && used[i]) i++;
+    if(i >= n) return [0, []];
+    const key = used.join("");
+    if(memo[key]) return memo[key];
+    let top = null;
+    used[i] = 1;
+    for(let j = i + 1; j < n; j++){
+      if(used[j] || !ok(i, j)) continue;
+      used[j] = 1;
+      const r = best(used);
+      used[j] = 0;
+      if(!top || r[0] + 1 > top[0]) top = [r[0] + 1, [[i, j]].concat(r[1])];
+    }
+    const alone = best(used);
+    used[i] = 0;
+    if(!top || alone[0] > top[0]) top = alone;
+    return memo[key] = top;
+  };
+  const mate = items.map(() => -1);
+  best(items.map(() => 0))[1].forEach(p => { mate[p[0]] = p[1]; mate[p[1]] = p[0]; });
+  return mate;
+}
+/* メニューの並びを、反対の部位どうしが隣になるように直す（組の後ろの種目を、前の種目のすぐ後へ持ってくる） */
 function pairUp(items){
-  const rest = items.slice(), out = [];
-  while(rest.length){
-    const a = rest.shift();
-    out.push(a);
-    if(a.skip) continue;
-    const j = rest.findIndex(b => !b.skip && opposite(a.ex, b.ex));
-    if(j >= 0) out.push(rest.splice(j, 1)[0]);
-  }
+  const mate = pairMates(items), out = [], done = items.map(() => false);
+  items.forEach((a, i) => {
+    if(done[i]) return;
+    out.push(a); done[i] = true;
+    if(mate[i] >= 0){ out.push(items[mate[i]]); done[mate[i]] = true; }
+  });
+  return out;
+}
+/* 反対の部位どうしで、組になっていない種目（外した種目は除く） */
+function unpaired(items){
+  const mate = pairMates(items);
+  return items.filter((it, i) => mate[i] < 0 && !it.skip);
+}
+/* 保存してあるメニューに種目を1つ足す。反対の部位の種目がまだ組になっていなければ、そのすぐ後に入れる。無ければ最後 */
+function addBeside(plan, row){
+  const free = unpaired(plan), b = free.find(it => opposite(it.ex, row.ex));
+  const out = plan.slice();
+  out.splice(b ? plan.indexOf(b) + 1 : plan.length, 0, row);
   return out;
 }
 /* 今日のメニューで隣り合っている、反対の部位どうしの組 [[a, b], …]（1つの種目は1つの組にだけ入る）。
