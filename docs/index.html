@@ -1984,6 +1984,22 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
                    'forearmR.flex': 8, 'forearmL.flex': 8, 'neck.flex': -23 } }
   });
 
+  /* ---------------- ダンベルデッドリフト ----------------
+     ルーマニアンデッドリフトと違い、膝も曲げて腰を落とし、ダンベルを体の横（すねの外側）に沿って、すねの半ばまで下ろす。
+     床を押して、膝と股関節を同時に伸ばして立つ */
+  const dlKey = (y, pitch, arm, neck) => ({ 'pelvis.y': y, 'pelvis.pitch': pitch, 'upperarmR.flex': arm, 'upperarmL.flex': arm, 'neck.flex': neck });
+  derive('rdl', {
+    id: 'deadlift',
+    set: {
+      view: { az: 58, el: 10, dist: 3.4, target: [-0.05, 0.70, 0] },
+      phases: [{ t: 0, label: '立った位置' }, { t: 0.4, label: '膝と股関節を曲げて下ろす 3秒' },
+               { t: 3.4, label: '床を押して立つ 1.5秒' }]
+    },
+    base: { 'upperarmR.abd': 12, 'upperarmL.abd': 12, 'forearmR.flex': 6, 'forearmL.flex': 6 },
+    keys: { 0: dlKey(0.949, 3, 3, -2), 0.9: dlKey(0.905, 20, 15, -7), 2.1: dlKey(0.800, 46, 39, -15),
+            3.4: dlKey(0.720, 66, 58, -22), 4.2: dlKey(0.840, 36, 30, -12), 4.9: dlKey(0.949, 3, 3, -2) }
+  });
+
   /* ---------------- サイドベンド ----------------
      片手にダンベルを持ち、体を真横に倒して戻す。腹斜筋を直接使う */
   const sbPose = (bend) => ({
@@ -2532,6 +2548,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   /* ============ 止める組み方: 元の動きに新しい静止区間を挿し込む ============ */
   insertHold('rdl', 'rdl_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('rdl1', 'rdl1_hold', 3.4, 2, '一番下で2秒止める');
+  insertHold('deadlift', 'deadlift_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('split', 'split_hold', 3.0, 2, '一番下で2秒止める');
   insertHold('splitfloor', 'splitfloor_hold', 3.0, 2, '一番下で2秒止める');
   /* row の t=0 はもともと「腕を垂らした位置」で0.4秒の場面（秒数なし）。
@@ -3801,6 +3818,28 @@ EX.push({
   variant:"両脚版と動きは同じです。片脚で立ち、反対の脚を後ろに伸ばしながら上体を倒します。負荷が倍になるうえ、バランスを保つために体幹と足首も使います。壁や椅子に指先を添えて構いません。",
   how:null, ng:null, up:null
 });
+/* ダンベルデッドリフト（2026-10-09 本人の要望: デッドリフト系の種目を追加）。ルーマニアンデッドリフトと違い、膝も曲げて
+   腰を落とし、床を押して立つ。出典と違うところは notes/form-sources.md の「追加種目（2026-10-09）」 */
+EX.push({
+  id:"deadlift", name:"ダンベルデッドリフト", kind:"w", w:5, r:10, sets:3, level:2,
+  p:["glutes","quads"], s:["hams","erectors","traps","forearms"],
+  how:[
+    "足は腰幅。ダンベルを両手に1つずつ、体の横に持って立つ。",
+    "背中をまっすぐにしたまま、尻を後ろに引きながら膝も曲げて、ダンベルをすねの外側に沿って下ろす。",
+    "ダンベルがすねの半ばまで下りたら止める。肩はダンベルの真上か、少し前。",
+    "足の裏全体で床を押し、膝と股関節を同時に伸ばして立つ。"
+  ],
+  ng:[
+    "背中が丸まる。丸まる手前が今の可動域の限界。",
+    "ダンベルが体から離れて前に出る。腰への負担が増える。",
+    "先に膝だけが伸びて尻が上がり、あとから上体を起こす。膝と股関節は同時に伸ばす。"
+  ],
+  up:[
+    "下ろす動作に3秒かける",
+    "一番下で2秒止める",
+    "持っているダンベルのうち、重い方に替える"
+  ]
+});
 const EXMAP = Object.fromEntries(EX.map(e=>[e.id,e]));
 /* 派生種目は親の図・解説・手順を引き継ぐ */
 function baseOf(id){ const e=EXMAP[id]; return (e && e.base) ? e.base : id; }
@@ -4230,7 +4269,17 @@ backext:{
  feel:"腰から背中の中ほどにかけての、背骨の両わき。腰の一点が痛むなら反りすぎ。",
  easy:"腕を体の横に伸ばして行う（腕が体に近いぶん軽くなる）",
  hard:"上で3秒止める",
- reps:"3セット × 10〜15回"}
+ reps:"3セット × 10〜15回"},
+deadlift:{
+ why:"床に近い位置から、脚と尻の力で立ち上がる種目。ルーマニアンデッドリフトより膝を深く曲げるので、尻に加えて太ももの前も強く使い、背中は姿勢を保つために働く。",
+ setup:"足は腰幅。ダンベルを両手に1つずつ、手のひらを体に向けて体の横に持つ。胸を張り、肩を下げる。",
+ breath:"上で吸って腹を固め、下ろして立ち上がりきるまで止める。上まで戻ってから吐く。",
+ tempo:"下ろす3秒 → 立ち上がる1〜2秒。",
+ rom:"ダンベルがすねの半ばに来るまで。そこまで下ろす前に背中が丸まるなら、丸まる手前で止める。",
+ feel:"尻と太ももの前、もも裏。腰の中央だけが張るなら背中が丸まっている。",
+ easy:"ダンベルが膝の高さに来たところで止める",
+ hard:"一番下で2秒止める",
+ reps:"3セット × 8〜12回"}
 };
 
 /* 既定メニュー（週3・全身） */
@@ -5716,7 +5765,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-08 00:36";
+const BUILD_VERSION = "2026-10-10 00:07";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6232,6 +6281,7 @@ const PHYS = {
   goblet:{hold:"両足は床につけたまま。ダンベルは胸の前で両手で支える"},
   rdl:{hold:"両足は床につけたまま。ダンベルは両手で体の前に持つ"},
   rdl1:{hold:"片足だけが床。ダンベルは体の前に持つ"},
+  deadlift:{hold:"両足は床につけたまま。ダンベルは両手に1つずつ、体の横に持つ"},
   split:{hold:"前足は床、後ろ足の甲をベッドに乗せる。ダンベルは両手に1つずつ"},
   hipthrust:{hold:"肩甲骨をベッドの縁に当て、足裏は床。ダンベルは骨盤の上に置いて手で支える"},
   row:{hold:"片手と片膝を椅子に乗せ、反対の足は床。ダンベルは垂らした手に1つ"},
@@ -6313,6 +6363,7 @@ const DIANOTE = {
   hammer: "手首の向きは縦のまま変えない。肘の位置を動かさずに巻き上げる。",
   adduct: "骨盤は床に垂直のまま、前に出した下の脚だけを上げる。高く上げる必要はなく、床から10〜15cmで十分。",
   backext: "骨盤は床につけたまま、腰から胸の順に起こす。あごは引いたまま、首だけを反らさない。",
+  deadlift: "背中はまっすぐのまま、膝と股関節を一緒に曲げる。ダンベルはすねの外側に沿って、すねの半ばまで下ろす。",
 };
 
 let FIG = null, animRAF = null, playingId = null, playSlot = null, playBtn = null;
@@ -6571,7 +6622,7 @@ if(window.matchMedia){
 /* ---------- 今日 ---------- */
 const REST = {split:120, goblet:120, sumo:120, splitfloor:120, rdl:120, rdl1:120, hipthrust:105, bridge:90,
               row:105, row2:105, ohp:105, pushup:105, pushupknee:105, floorpress:105, fly:90,
-              sidelunge:120, slidecurl:90, pullover:90};
+              sidelunge:120, slidecurl:90, pullover:90, deadlift:120};
 function restFor(item){
   const ex = EXMAP[item.ex];
   if(ex.kind === "t") return 60;
@@ -6614,6 +6665,7 @@ function restFor(item){
    同じ動きにまとめるのは、片方がもう片方のやさしい版・難しい版になっている種目だけ:
      膝つき腕立て伏せ→腕立て伏せ、スプリットスクワット→ブルガリアンスクワット、ヒップリフト→ヒップスラスト、
      ルーマニアンデッドリフトの両脚→片脚、カーフレイズ（立って行う方が基本: 下の PATTERN_MAIN）
+     （ダンベルデッドリフトは、膝も曲げて床の近くから立つ別の動き。ルーマニアンデッドリフトとは別に数える: 2026-10-09）
    それ以外は、ほぼ同じ動きでも別の動きにする（2026-10-05 本人の判断: 違う種目なら、ほぼ同じ動きでも別のものとして
    入れてよい）。同じ日に両方が入ることがある:
      ゴブレットスクワット／ワイドスクワット／スプリットスクワット、腕立て伏せ／フロアプレス、ワンハンドロウ／ベントオーバーロウ、
@@ -6623,7 +6675,7 @@ function restFor(item){
    ほかの種目は出なかった */
 const PATTERN = {
   goblet:"squat", sumo:"sumo", splitfloor:"splitsq", split:"splitsq", sidelunge:"lunge", sissy:"kneeext",
-  rdl:"hinge", rdl1:"hinge", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct", adduct:"adduct",
+  rdl:"hinge", rdl1:"hinge", deadlift:"deadlift", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct", adduct:"adduct",
   pushupknee:"hpush", pushup:"hpush", floorpress:"floorpress", fly:"fly",
   row:"pull", row2:"row2", pullover:"pullover", ohp:"vpush", farmer:"carry", shrug:"shrug",
   lateral:"raise", front:"fraise", rear:"rear", curl:"curl", hammer:"hammer", triext:"ext", skull:"skull",
@@ -6633,11 +6685,11 @@ const PATTERN = {
 /* 動きのまとまり: 種目を選ぶシートと履歴の種目選びの見出し（picker.js の PATTERN_HEAD）、提案タブの「動きごとの今の段階」の
    見出し（view-plan.js の PATTERN_NAME）、軽い週を勧める判定（progress.js の deloadAdvice）に使う。
    書いていない動きは、その動きだけのまとまり。メニュー作りには使わない */
-const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", floorpress:"hpush", row2:"pull", hammer:"curl", skull:"ext",
+const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", deadlift:"hinge", floorpress:"hpush", row2:"pull", hammer:"curl", skull:"ext",
                        deadbug:"abs", crunch:"abs", sidebend:"side"};
 function groupOf(pat){ return PATTERN_GROUP[pat] || pat; }
 /* メニューに並べる順（大きい動きを先に、体幹は最後に）。同じまとまりの動きは続けて並べる */
-const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","legcurl","hpush","floorpress","fly","pull","row2","pullover",
+const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","deadlift","legcurl","hpush","floorpress","fly","pull","row2","pullover",
                        "vpush","bridge","abduct","adduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull",
                        "calf","backext","abs","deadbug","crunch","side","sidebend","twist"];
 /* まとまりの並び（PATTERN_ORDER に出てくる順） */
@@ -6670,6 +6722,8 @@ function setExOn(id, on){
 /* 反対の部位（関節をはさんで逆の働きをする部位）。メニュー作りは、今日のメニューに入れた種目と反対の部位を
    メインで鍛える種目が入れられるとき、それを少し先に選び、隣に並べる（2026-10-08 本人の要望）。
    回復・1日と1週間の上限・外した動き・入れない種目の決まりはそのままで、入れられない種目を入れることはしない。
+   2026-10-09 本人の指摘（上腕二頭筋と上腕三頭筋を同じ日に出せるのに出なかった。できる限り入れる）で、相手のいない種目には、
+   入れられるかぎり反対の部位の種目を足すようにした（planner.js の pairFill）。組み直し・追加の後も隣に並べる（pairUp・addBeside）。
    文献: 反対の部位の種目を1セットずつ交互に行うと、ふつうの順でやるのと比べて、筋肉の付き方・筋力の伸びは同じくらいで
    時間は短く済む（Mang 2025 doi:10.1519/JSC.0000000000005246）。休憩を削らずに交互にやると、こなせる回数・量が増える
    （Chien 2026 doi:10.3390/jfmk11030370、Paz 2019 doi:10.1519/JSC.0000000000002353）。
@@ -6684,16 +6738,57 @@ function opposite(a, b){
   if(!A || !B || a === b || A.p.some(m => B.p.includes(m))) return false;
   return A.p.some(m => B.p.includes(ANTAGONIST[m]));
 }
-/* メニューの並びを、反対の部位どうしが隣になるように直す（前から見て、まだ組になっていない最初の相手を次に持ってくる） */
+/* 反対の部位どうしの組を、できるだけ多く作る（1つの種目は1つの組にだけ入る）。返すのは 相手の位置の表（組にならない種目は -1）。
+   前から順に最初の相手を取るだけだと、相手の取り合いで組が減ることがある（サイドランジがスライディングレッグカールを取ると、
+   ゴブレットスクワットの相手がいなくなる、など）ので、全部の組み合わせから組の数が一番多いものを選ぶ。
+   同じ数なら、前の種目から先に組にする。外した種目は組にしない */
+function pairMates(items){
+  const n = items.length, ok = (i, j) => !items[i].skip && !items[j].skip && opposite(items[i].ex, items[j].ex);
+  const memo = {};
+  const best = used => {                               /* used: もう決まった種目の印。残りで作れる組 [数, [[i,j],…]] */
+    let i = 0;
+    while(i < n && used[i]) i++;
+    if(i >= n) return [0, []];
+    const key = used.join("");
+    if(memo[key]) return memo[key];
+    let top = null;
+    used[i] = 1;
+    for(let j = i + 1; j < n; j++){
+      if(used[j] || !ok(i, j)) continue;
+      used[j] = 1;
+      const r = best(used);
+      used[j] = 0;
+      if(!top || r[0] + 1 > top[0]) top = [r[0] + 1, [[i, j]].concat(r[1])];
+    }
+    const alone = best(used);
+    used[i] = 0;
+    if(!top || alone[0] > top[0]) top = alone;
+    return memo[key] = top;
+  };
+  const mate = items.map(() => -1);
+  best(items.map(() => 0))[1].forEach(p => { mate[p[0]] = p[1]; mate[p[1]] = p[0]; });
+  return mate;
+}
+/* メニューの並びを、反対の部位どうしが隣になるように直す（組の後ろの種目を、前の種目のすぐ後へ持ってくる） */
 function pairUp(items){
-  const rest = items.slice(), out = [];
-  while(rest.length){
-    const a = rest.shift();
-    out.push(a);
-    if(a.skip) continue;
-    const j = rest.findIndex(b => !b.skip && opposite(a.ex, b.ex));
-    if(j >= 0) out.push(rest.splice(j, 1)[0]);
-  }
+  const mate = pairMates(items), out = [], done = items.map(() => false);
+  items.forEach((a, i) => {
+    if(done[i]) return;
+    out.push(a); done[i] = true;
+    if(mate[i] >= 0){ out.push(items[mate[i]]); done[mate[i]] = true; }
+  });
+  return out;
+}
+/* 反対の部位どうしで、組になっていない種目（外した種目は除く） */
+function unpaired(items){
+  const mate = pairMates(items);
+  return items.filter((it, i) => mate[i] < 0 && !it.skip);
+}
+/* 保存してあるメニューに種目を1つ足す。反対の部位の種目がまだ組になっていなければ、そのすぐ後に入れる。無ければ最後 */
+function addBeside(plan, row){
+  const free = unpaired(plan), b = free.find(it => opposite(it.ex, row.ex));
+  const out = plan.slice();
+  out.splice(b ? plan.indexOf(b) + 1 : plan.length, 0, row);
   return out;
 }
 /* 今日のメニューで隣り合っている、反対の部位どうしの組 [[a, b], …]（1つの種目は1つの組にだけ入る）。
@@ -6732,7 +6827,10 @@ const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.3, 
    定番の方を少し先にしてある */
 const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9,
                       fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, adduct:0.85, backext:0.85, hammer:0.8,
-                      sumo:0.85, splitsq:0.95, row2:0.95, skull:0.95, crunch:0.95, deadbug:0.9, sidebend:0.95};
+                      sumo:0.85, splitsq:0.95, row2:0.95, skull:0.95, crunch:0.95, deadbug:0.9, sidebend:0.95,
+                      /* デッドリフトは大殿筋と大腿四頭筋の1日の上限をスクワットと分け合うので、サイドランジと同じ順にする。
+                         1 のままだとサイドランジが入らない日が増えて、毎日やる場合の内転筋が週 9.4 → 8.3 に減った（2026-10-09 の試算） */
+                      deadlift:0.7};
 /* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
    （0=連日でもよい、1=中1日=48時間、2=中2日=72時間、3=中3日=96時間）。その日に主役で6セット以上やったときは1日延ばす。
    文献の目安（2026-09-29 に調べたもの）: 下肢の大きい筋は中2日が最小で、量が多い・下ろす動作が強いと1日（ハムストリングは
@@ -6963,6 +7061,7 @@ const VARIANT_TEXT = {
   hammer:     {hard: ["途中で2秒止める",   "前腕が床と平行になったところで2秒止め、上まで巻き上げてから下ろす。"],
                easy: ["肘を手で支える",    "片手ずつ行い、反対の手で肘を支える。"]},
   adduct:     {hard: ["上で2秒止める",    "脚を上げきった位置で2秒止めてから下ろす。"]},
+  deadlift:   {hard: ["一番下で2秒止める", "ダンベルがすねの半ばまで下りた位置で2秒止め、反動を使わずに立ち上がる。"]},
   backext:    {hard: ["上で3秒止める",    "上体を起こした位置で3秒止めてから下ろす。"],
                easy: ["腕を体の横に伸ばす", "腕を体の横に伸ばし、手のひらを上に向ける。上体と一緒に腕も床から浮かせる。腕が体に近いぶん軽くなる。"]}
 };
@@ -7001,7 +7100,7 @@ const VARIANT_MOTION = {
   "rear|上で2秒止める":"rear_hold", "rear|肘を深く曲げる":"rear_short",
   "abduct|ダンベルを太ももに乗せる":"abduct_db", "abduct|膝を曲げて行う":"abduct_bent",
   "hammer|途中で2秒止める":"hammer_hold", "hammer|肘を手で支える":"hammer_one",
-  "adduct|上で2秒止める":"adduct_hold",
+  "adduct|上で2秒止める":"adduct_hold", "deadlift|一番下で2秒止める":"deadlift_hold",
   "backext|上で3秒止める":"backext_hold", "backext|腕を体の横に伸ばす":"backext_arms",
   "pushup|ダンベルを握って行う":"pushup_deep"
 };
@@ -7256,6 +7355,15 @@ function buildPlan(){
       take(best.c);
     }
   };
+  /* 反対の部位の相手がいない種目に、入れられるかぎり相手を足す（下の compose の 4） */
+  const pairFill = () => {
+    for(;;){
+      const lone = unpaired(plan), n = plan.length;
+      if(!lone.length) return;
+      fill(0, n + 1, c => lone.some(a => opposite(a.ex, c.ex)));
+      if(plan.length === n) return;
+    }
+  };
   /* 残す種目（おまかせ追加・組み直し）を入れる。記録済みのセットは上で数えたので、残りのセットの分だけ足す */
   const keepIn = it => {
     if(plan.some(p => p.ex === it.ex)) return;
@@ -7293,6 +7401,11 @@ function buildPlan(){
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
       fill(0.01, LIM.exercises, c => EXMAP[c.ex].p.some(m => lack(m) > 0));
       fill(0.2, Math.min(3, LIM.exercises));   /* 3. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+      /* 4. 反対の部位の相手がいない種目には、入れられるかぎり相手を足す（2026-10-09 本人の指摘: 上腕二頭筋と上腕三頭筋を
+            同じ日に出せるのに出なかった。できる限り入れる）。それまでは並べ替えの値を少し上げるだけ（PAIR_PREF）で、
+            相手の部位が週の目標に届いている日は、入れられるのに入らなかった。
+            回復・1日と1週間の上限・1回の量の上限・外した動き・入れない種目の決まりは why のまま効く */
+      pairFill();
     };
     /* 7日使えていない部位（rules.js の unusedSoFar）が、組んだメニューのどの種目にも入らなかったとき（主でも補助でも）は、
        その部位をメインで鍛える種目を先に入れてから組み直す（2026-10-06）。
@@ -7318,15 +7431,25 @@ function buildPlan(){
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
      超えていたら、その部位が主役の種目を外す（セット数は3で固定なので、減らすのではなく外す） */
-  for(let guard = 0; guard < 12; guard++){
-    const over = Object.keys(today).find(m => (week[m] || 0) + today[m] > WEEK_MAX
-                                          && plan.some(p => EXMAP[p.ex].p[0] === m && !p.seed));
-    if(!over) break;
-    const i = plan.findIndex(p => EXMAP[p.ex].p[0] === over && !p.seed);
-    const all = exLoad(plan[i].ex, plan[i].sets || SETS_PER_EXERCISE);
-    Object.keys(all).forEach(m => today[m] -= all[m]);
-    sets -= plan[i].sets || SETS_PER_EXERCISE; minutes -= mins(plan[i]); plan.splice(i, 1);
-  }
+  const trim = () => {
+    let cut = 0;
+    for(let guard = 0; guard < 12; guard++){
+      const over = Object.keys(today).find(m => (week[m] || 0) + today[m] > WEEK_MAX
+                                            && plan.some(p => EXMAP[p.ex].p[0] === m && !p.seed));
+      if(!over) break;
+      const i = plan.findIndex(p => EXMAP[p.ex].p[0] === over && !p.seed);
+      const all = exLoad(plan[i].ex, plan[i].sets || SETS_PER_EXERCISE);
+      Object.keys(all).forEach(m => today[m] -= all[m]);
+      sets -= plan[i].sets || SETS_PER_EXERCISE; minutes -= mins(plan[i]); plan.splice(i, 1);
+      Object.keys(starved).forEach(k => delete starved[k]);
+      cut++;
+    }
+    return cut;
+  };
+  /* 外して空いた枠に、相手のいない種目の反対の部位が入るなら入れる。入れた分でまた超えたら外して、空いた枠でもう一度見る
+     （外すたびに時間と種目数が空くので、1回目には入らなかった相手が入ることがある）。外した種目は週の上限で戻らないので止まる */
+  for(let round = 0; round < 4 && trim() && !planSeed; round++) pairFill();
+  trim();
   plan.forEach(p => delete p.seed);
   /* 入らなかった動きの理由を残す（頼まれたときだけ）。その動きで今日やる組み方（決めてあればそれ、無ければ素の組み方）で見る */
   if(planWhy){
@@ -7458,9 +7581,9 @@ function replanToday(opt){
   }finally{
     planSkip = null; planShort = false; planKeep = null; planMemo = null;
   }
-  /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく） */
+  /* 残した種目のあとに、新しく選んだ種目を足す（外した種目は最後に置いておく）。反対の部位どうしは隣に並べる */
   const added = fresh.filter(x => !keep.some(k => k.ex === x.ex));
-  const plan = keep.filter(k => !k.skip).concat(added).concat(keep.filter(k => k.skip));
+  const plan = pairUp(keep.filter(k => !k.skip).concat(added)).concat(keep.filter(k => k.skip));
   /* 組み直しは意図した変更（同期で自動のメニューに負けない）。空でも保存する（保存しないと、同期で
      ほかの端末の今日のメニューが戻ってきてしまう） */
   s.plan = plan; s.planAt = s.planEdit = stampNow();
@@ -7749,7 +7872,8 @@ const HOLD = {
   sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
   pullover:  {one:"両手でまとめて持つ",                                    per:"total"},
   rear:      {pair:"両手に1つずつ持つ",    one:"片手ずつ開き、反対の手は膝に置く",   per:"arm"},
-  hammer:    {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"}
+  hammer:    {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
+  deadlift:  {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"}
 };
 function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
 /* この種目（catalog の行）は、今持っているダンベルで行えるか。C19: HOLD の無い種目は常に true。
@@ -7846,7 +7970,7 @@ function nearestOption(opts, w){
 }
 
 /* 記録がない種目の最初の重さの目安(per が arm の種目は片腕あたり)。この重さ以下で一番重い使い方から始める */
-const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity, pullover:8, rear:3, hammer:6};
+const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity, pullover:8, rear:3, hammer:6, deadlift:12};
 function startKg(id){ const v = START_KG[id] !== undefined ? START_KG[id] : START_KG[baseOf(id)]; return v === undefined ? 8 : v; }
 function defaultOption(id){
   const opts = gearOptions(id); if(!opts.length) return null;
@@ -7945,7 +8069,8 @@ const HOUSE = {
   abduct:    {up:"水を入れたペットボトルを太ももの外側に乗せ、手で押さえて行う"},
   hammer:    {down:"水を入れたペットボトルを縦に持って行う"},
   adduct:    {up:"水を入れたペットボトルを下の脚の内ももに乗せ、上の手で押さえて行う"},
-  backext:   {up:"水を入れた500mlのペットボトルを両手で持ち、頭の後ろに添えて行う"}
+  backext:   {up:"水を入れた500mlのペットボトルを両手で持ち、頭の後ろに添えて行う"},
+  deadlift:  {up:"本や水を入れたペットボトルを詰めたリュックを背負い、ダンベルと一緒に使う", down:"水を入れた2Lのペットボトルを両手に1本ずつ持つ"}
 };
 function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
 
@@ -8974,7 +9099,7 @@ function viewPlan(){
       <p style="margin:0;font-size:14px">前回の同じやり方で、全部のセットが目標に届いたら、次は1回（秒の種目は5秒）増やします。回数が範囲の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しいやり方に進みます。</p>
       <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
       <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。設定の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
-      <p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目が入れられるときは、その種目を先に選んで隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>
+      <p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は、回復と上限の範囲で入れられるかぎり入れて、隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>
       <p class="lastline">${esc(recoverGapText())}</p>
     </div>`;
 }
@@ -9671,7 +9796,7 @@ function addToProgramToday(id, label){
       s.plan[i] = Object.assign({}, row, {manual: true});
     }
   }else{
-    s.plan.push(Object.assign({}, row, {manual: true}));
+    s.plan = addBeside(s.plan, Object.assign({}, row, {manual: true}));   /* 反対の部位の種目があれば、その隣に */
   }
   s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
@@ -9774,7 +9899,7 @@ function addAutoToday(){
     return;
   }
   if(!s.plan) s.plan = [];
-  s.plan = s.plan.concat([Object.assign({}, picked)]);
+  s.plan = addBeside(s.plan, Object.assign({}, picked));          /* 反対の部位の種目があれば、その隣に */
   s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
@@ -9782,7 +9907,7 @@ function addAutoToday(){
   todayMsg = "「" + itemName(picked) + "」を追加しました（" + EXMAP[picked.ex].p.map(m => MUSCLES[m]).join("・") + "の今週の量が足りていません）"
     + (over ? "。1回の目安（" + SESSION_MAX.exercises + "種目・" + SESSION_MAX.sets + "セット・" + SESSION_MAX.minutes + "分）は超えます" : "");
   render();
-  /* 足した種目は一覧の最後に付くので、その位置まで動かして見えるようにする */
+  /* 足した種目の位置まで動かして見えるようにする（一覧の最後か、反対の部位の種目の隣に入る） */
   const el = document.querySelector('[data-act="toggle"][data-ex="' + picked.ex + '"]');
   if(el && el.scrollIntoView) el.scrollIntoView({block: "center"});
   setStatus(shownMsg);
