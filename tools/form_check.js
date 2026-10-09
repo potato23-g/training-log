@@ -256,6 +256,44 @@ const CHECKS = {
       ['腕は体の横に垂らす', `腕と鉛直のなす角 ${armDown.toFixed(0)}°`, armDown < 20]
     ];
   },
+  /* ダンベルデッドリフト: NASM の Barbell Deadlift の手順（足は腰幅・肩は重りの真上か少し前・背骨は中間位・
+     股関節と膝を同時に伸ばす・重りを体から離さない）を、ダンベルを体の横に持つ形に直したもの
+     （notes/form-sources.md の「追加種目（2026-10-09）」）。判定はアプリの解説文どおりに3Dが動いているかを見る */
+  deadlift: (m) => {
+    const top = at(m, 0), bottom = findT(m, (fr) => -fr.b.handR.pos[1]);
+    const b = bottom.fr.b;
+    const feet = Math.abs(top.b.shankR.tip[2] - top.b.shankL.tip[2]);
+    const knee = M.boneAngles(bottom.fr.pose, 'shankR').flex;
+    const torso = fromHoriz(dir(bottom.fr, 'spineT'));
+    const spine = ['spineL', 'spineT', 'spineC'].map((s) => Math.abs(M.boneAngles(bottom.fr.pose, s).flex));
+    const grip = M.at(bottom.fr, 'handR', M.HAND.grip), ankle = b.shankR.tip, kneeP = b.shankR.pos;
+    const mid = (ankle[1] + kneeP[1]) / 2;
+    const side = grip[2] - ankle[2], fore = grip[0] - ankle[0];
+    const over = b.upperarmR.pos[0] - grip[0];
+    const heel = M.at(bottom.fr, 'footR', M.FOOT.heel)[1];
+    /* 立ち上がりのあいだ、膝と股関節が同じ割合で伸びているか（先に膝だけが伸びて尻が上がる、になっていないか） */
+    const T = M.cycleTime(m), k0 = knee, h0 = M.boneAngles(bottom.fr.pose, 'thighR').flex;
+    const kT = M.boneAngles(top.pose, 'shankR').flex, hT = M.boneAngles(top.pose, 'thighR').flex;
+    let lag = 0;
+    for (let i = 0; i <= 40; i++) {
+      const fr = at(m, bottom.t + (T - bottom.t) * i / 40);
+      const kf = (k0 - M.boneAngles(fr.pose, 'shankR').flex) / (k0 - kT), hf = (h0 - M.boneAngles(fr.pose, 'thighR').flex) / (h0 - hT);
+      lag = Math.max(lag, kf - hf);
+    }
+    return [
+      ['足は腰幅', `足首の間隔 ${(feet * 100).toFixed(0)}cm`, feet > 0.18 && feet < 0.32],
+      ['膝も曲げて下ろす（ルーマニアンデッドリフトより深く）', `一番下の膝屈曲 ${knee.toFixed(0)}°`, knee >= 55 && knee <= 90],
+      ['背中はまっすぐのまま（丸めない）', `体幹の傾き ${torso.toFixed(0)}° / 背骨の曲げ ${spine.map((x) => x.toFixed(0)).join('・')}°`,
+        torso > 10 && torso < 50 && Math.max.apply(null, spine) <= 6],
+      ['ダンベルはすねの半ばまで下ろす', `握りの高さ ${(grip[1] * 100).toFixed(0)}cm / すねの半ば ${(mid * 100).toFixed(0)}cm（足首 ${(ankle[1] * 100).toFixed(0)}・膝 ${(kneeP[1] * 100).toFixed(0)}）`,
+        Math.abs(grip[1] - mid) < 0.08],
+      ['ダンベルはすねの外側に沿わせる（体から離さない）', `握りは足首より外へ ${(side * 100).toFixed(0)}cm・前へ ${(fore * 100).toFixed(0)}cm`,
+        side > 0.08 && side < 0.25 && fore > -0.05 && fore < 0.22],
+      ['肩はダンベルの真上か、少し前', `肩は握りより前へ ${(over * 100).toFixed(0)}cm`, over >= -0.02 && over < 0.15],
+      ['かかとが浮かない', `かかとの高さ ${(heel * 100).toFixed(1)}cm`, heel < 0.02],
+      ['膝と股関節を同時に伸ばして立つ', `膝が股関節より先に伸びた割合の最大 ${(lag * 100).toFixed(0)}%`, lag < 0.25]
+    ];
+  },
   rdl1: (m) => {
     const deepest = findT(m, (fr) => -fr.b.handR.pos[1]);
     const back = fromHoriz(dir(deepest.fr, 'spineT'));

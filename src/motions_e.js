@@ -207,6 +207,22 @@
                    'forearmR.flex': 8, 'forearmL.flex': 8, 'neck.flex': -23 } }
   });
 
+  /* ---------------- ダンベルデッドリフト ----------------
+     ルーマニアンデッドリフトと違い、膝も曲げて腰を落とし、ダンベルを体の横（すねの外側）に沿って、すねの半ばまで下ろす。
+     床を押して、膝と股関節を同時に伸ばして立つ */
+  const dlKey = (y, pitch, arm, neck) => ({ 'pelvis.y': y, 'pelvis.pitch': pitch, 'upperarmR.flex': arm, 'upperarmL.flex': arm, 'neck.flex': neck });
+  derive('rdl', {
+    id: 'deadlift',
+    set: {
+      view: { az: 58, el: 10, dist: 3.4, target: [-0.05, 0.70, 0] },
+      phases: [{ t: 0, label: '立った位置' }, { t: 0.4, label: '膝と股関節を曲げて下ろす 3秒' },
+               { t: 3.4, label: '床を押して立つ 1.5秒' }]
+    },
+    base: { 'upperarmR.abd': 12, 'upperarmL.abd': 12, 'forearmR.flex': 6, 'forearmL.flex': 6 },
+    keys: { 0: dlKey(0.949, 3, 3, -2), 0.9: dlKey(0.905, 20, 15, -7), 2.1: dlKey(0.800, 46, 39, -15),
+            3.4: dlKey(0.720, 66, 58, -22), 4.2: dlKey(0.840, 36, 30, -12), 4.9: dlKey(0.949, 3, 3, -2) }
+  });
+
   /* ---------------- サイドベンド ----------------
      片手にダンベルを持ち、体を真横に倒して戻す。腹斜筋を直接使う */
   const sbPose = (bend) => ({

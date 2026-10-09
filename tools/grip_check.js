@@ -34,6 +34,8 @@ const WANT = {
   /* NASM: "a neutral grip"（手のひらは太もも側） */
   rdl: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '立位: 手のひらは太ももの側' }],
   rdl1: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '立位: 手のひらは太ももの側' }],
+  deadlift: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '立位: 手のひらは体の側' },
+             { t: 3.4, hand: 'handR', to: [0, 0, -1], label: '一番下: 手のひらはすねの側' }],
   /* ACE: ダンベルは腰の真横、ニュートラル */
   farmer: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' }],
   calf: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' }],

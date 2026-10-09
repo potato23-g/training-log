@@ -168,6 +168,7 @@
   /* ============ 止める組み方: 元の動きに新しい静止区間を挿し込む ============ */
   insertHold('rdl', 'rdl_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('rdl1', 'rdl1_hold', 3.4, 2, '一番下で2秒止める');
+  insertHold('deadlift', 'deadlift_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('split', 'split_hold', 3.0, 2, '一番下で2秒止める');
   insertHold('splitfloor', 'splitfloor_hold', 3.0, 2, '一番下で2秒止める');
   /* row の t=0 はもともと「腕を垂らした位置」で0.4秒の場面（秒数なし）。

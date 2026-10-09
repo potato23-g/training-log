@@ -73,6 +73,7 @@ const VARIANT_TEXT = {
   hammer:     {hard: ["途中で2秒止める",   "前腕が床と平行になったところで2秒止め、上まで巻き上げてから下ろす。"],
                easy: ["肘を手で支える",    "片手ずつ行い、反対の手で肘を支える。"]},
   adduct:     {hard: ["上で2秒止める",    "脚を上げきった位置で2秒止めてから下ろす。"]},
+  deadlift:   {hard: ["一番下で2秒止める", "ダンベルがすねの半ばまで下りた位置で2秒止め、反動を使わずに立ち上がる。"]},
   backext:    {hard: ["上で3秒止める",    "上体を起こした位置で3秒止めてから下ろす。"],
                easy: ["腕を体の横に伸ばす", "腕を体の横に伸ばし、手のひらを上に向ける。上体と一緒に腕も床から浮かせる。腕が体に近いぶん軽くなる。"]}
 };
@@ -111,7 +112,7 @@ const VARIANT_MOTION = {
   "rear|上で2秒止める":"rear_hold", "rear|肘を深く曲げる":"rear_short",
   "abduct|ダンベルを太ももに乗せる":"abduct_db", "abduct|膝を曲げて行う":"abduct_bent",
   "hammer|途中で2秒止める":"hammer_hold", "hammer|肘を手で支える":"hammer_one",
-  "adduct|上で2秒止める":"adduct_hold",
+  "adduct|上で2秒止める":"adduct_hold", "deadlift|一番下で2秒止める":"deadlift_hold",
   "backext|上で3秒止める":"backext_hold", "backext|腕を体の横に伸ばす":"backext_arms",
   "pushup|ダンベルを握って行う":"pushup_deep"
 };

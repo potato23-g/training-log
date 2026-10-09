@@ -1,7 +1,7 @@
 /* ---------- 今日 ---------- */
 const REST = {split:120, goblet:120, sumo:120, splitfloor:120, rdl:120, rdl1:120, hipthrust:105, bridge:90,
               row:105, row2:105, ohp:105, pushup:105, pushupknee:105, floorpress:105, fly:90,
-              sidelunge:120, slidecurl:90, pullover:90};
+              sidelunge:120, slidecurl:90, pullover:90, deadlift:120};
 function restFor(item){
   const ex = EXMAP[item.ex];
   if(ex.kind === "t") return 60;
@@ -44,6 +44,7 @@ function restFor(item){
    同じ動きにまとめるのは、片方がもう片方のやさしい版・難しい版になっている種目だけ:
      膝つき腕立て伏せ→腕立て伏せ、スプリットスクワット→ブルガリアンスクワット、ヒップリフト→ヒップスラスト、
      ルーマニアンデッドリフトの両脚→片脚、カーフレイズ（立って行う方が基本: 下の PATTERN_MAIN）
+     （ダンベルデッドリフトは、膝も曲げて床の近くから立つ別の動き。ルーマニアンデッドリフトとは別に数える: 2026-10-09）
    それ以外は、ほぼ同じ動きでも別の動きにする（2026-10-05 本人の判断: 違う種目なら、ほぼ同じ動きでも別のものとして
    入れてよい）。同じ日に両方が入ることがある:
      ゴブレットスクワット／ワイドスクワット／スプリットスクワット、腕立て伏せ／フロアプレス、ワンハンドロウ／ベントオーバーロウ、
@@ -53,7 +54,7 @@ function restFor(item){
    ほかの種目は出なかった */
 const PATTERN = {
   goblet:"squat", sumo:"sumo", splitfloor:"splitsq", split:"splitsq", sidelunge:"lunge", sissy:"kneeext",
-  rdl:"hinge", rdl1:"hinge", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct", adduct:"adduct",
+  rdl:"hinge", rdl1:"hinge", deadlift:"deadlift", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct", adduct:"adduct",
   pushupknee:"hpush", pushup:"hpush", floorpress:"floorpress", fly:"fly",
   row:"pull", row2:"row2", pullover:"pullover", ohp:"vpush", farmer:"carry", shrug:"shrug",
   lateral:"raise", front:"fraise", rear:"rear", curl:"curl", hammer:"hammer", triext:"ext", skull:"skull",
@@ -63,11 +64,11 @@ const PATTERN = {
 /* 動きのまとまり: 種目を選ぶシートと履歴の種目選びの見出し（picker.js の PATTERN_HEAD）、提案タブの「動きごとの今の段階」の
    見出し（view-plan.js の PATTERN_NAME）、軽い週を勧める判定（progress.js の deloadAdvice）に使う。
    書いていない動きは、その動きだけのまとまり。メニュー作りには使わない */
-const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", floorpress:"hpush", row2:"pull", hammer:"curl", skull:"ext",
+const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", deadlift:"hinge", floorpress:"hpush", row2:"pull", hammer:"curl", skull:"ext",
                        deadbug:"abs", crunch:"abs", sidebend:"side"};
 function groupOf(pat){ return PATTERN_GROUP[pat] || pat; }
 /* メニューに並べる順（大きい動きを先に、体幹は最後に）。同じまとまりの動きは続けて並べる */
-const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","legcurl","hpush","floorpress","fly","pull","row2","pullover",
+const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","deadlift","legcurl","hpush","floorpress","fly","pull","row2","pullover",
                        "vpush","bridge","abduct","adduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull",
                        "calf","backext","abs","deadbug","crunch","side","sidebend","twist"];
 /* まとまりの並び（PATTERN_ORDER に出てくる順） */
@@ -205,7 +206,10 @@ const PLAN_WEIGHT = {quads:1, glutes:1, hams:1, chest:1, lats:1, frontdelt:0.3, 
    定番の方を少し先にしてある */
 const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, raise:0.9,
                       fraise:0.8, rear:0.9, kneeext:0.8, abduct:0.85, adduct:0.85, backext:0.85, hammer:0.8,
-                      sumo:0.85, splitsq:0.95, row2:0.95, skull:0.95, crunch:0.95, deadbug:0.9, sidebend:0.95};
+                      sumo:0.85, splitsq:0.95, row2:0.95, skull:0.95, crunch:0.95, deadbug:0.9, sidebend:0.95,
+                      /* デッドリフトは大殿筋と大腿四頭筋の1日の上限をスクワットと分け合うので、サイドランジと同じ順にする。
+                         1 のままだとサイドランジが入らない日が増えて、毎日やる場合の内転筋が週 9.4 → 8.3 に減った（2026-10-09 の試算） */
+                      deadlift:0.7};
 /* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
    （0=連日でもよい、1=中1日=48時間、2=中2日=72時間、3=中3日=96時間）。その日に主役で6セット以上やったときは1日延ばす。
    文献の目安（2026-09-29 に調べたもの）: 下肢の大きい筋は中2日が最小で、量が多い・下ろす動作が強いと1日（ハムストリングは
