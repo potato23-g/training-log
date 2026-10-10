@@ -4,7 +4,7 @@
 
    リモートの形:
      trainlog/YYYY-MM.json = {app:"trainlog", format:2, month:"YYYY-MM", sessions:{...その月の日付だけ}}
-     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}, exOff?:{ids:[...], updatedAt}}
+     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}, exOff?:{ids:[...], updatedAt}, tune?:{pref?, pair?, gap?, prog?}}
    月ごとのファイルに分けているのは、記録するたびに全履歴を送らずに済ませるため
    （1年続けると単一ファイルは約1.7MBになる。変わった月だけをやり取りする）。
    旧形式（単一の trainlog.json、format:1）が残っていれば、初回だけ読み込んで取り込む（移行）。
@@ -187,6 +187,8 @@ function mergeState(local, remote){
      片方の端末でダンベルを、もう片方で種目のオンオフを変えても、両方残る */
   var off = syncMergeGear(a.exOff, b.exOff);
   if(off) out.exOff = off;
+  var tune = syncMergeTune(a.tune, b.tune);
+  if(tune) out.tune = tune;
   return out;
 }
 
@@ -351,6 +353,17 @@ function syncMergeGear(a, b){
   if(atA > atB || !b) return a;
   if(!a) return b;
   return (stableKey(b) || "") > (stableKey(a) || "") ? b : a;
+}
+
+/* 本人が変えた決まり（rules.js の state.tune）は、まとまり（pref・pair・gap・prog）ごとに gear と同じ決め方。
+   片方の端末で回復の日数を、もう片方で種目の出やすさを変えても、両方残る。どちらにも無ければ undefined */
+function syncMergeTune(a, b){
+  var out = {}, any = false;
+  ["pref", "pair", "gap", "prog"].forEach(function(k){
+    var m = syncMergeGear(a && a[k], b && b[k]);
+    if(m){ out[k] = m; any = true; }
+  });
+  return any ? out : undefined;
 }
 
 /* ============================================================
@@ -616,7 +629,7 @@ function syncApplyMonthToState(monthSessions, month){
 }
 /* リモートに無い状態で、ローカルも空（作る価値が無い）パート */
 function syncPartIsEmpty(part, localPart){
-  if(part.kind === "settings") return (localPart.gear === undefined || localPart.gear === null) && !localPart.exOff;
+  if(part.kind === "settings") return (localPart.gear === undefined || localPart.gear === null) && !localPart.exOff && !localPart.tune;
   return Object.keys(localPart.sessions).length === 0;
 }
 
@@ -648,15 +661,16 @@ function syncBuildParts(listing){
 }
 
 /* settings.json に入れる中身。exOff は、あるときだけ入れる（無い端末の中身のキーが変わって、読み直しが起きないように） */
-function syncSettingsPart(gear, exOff){
+function syncSettingsPart(gear, exOff, tune){
   var out = { gear: gear };
   if(exOff) out.exOff = exOff;
+  if(tune) out.tune = tune;
   return out;
 }
 function syncLocalPartOf(part){
   return part.kind === "month"
     ? { sessions: syncSessionsForMonth(state.sessions, part.month) }
-    : syncSettingsPart(state.gear, state.exOff);
+    : syncSettingsPart(state.gear, state.exOff, state.tune);
 }
 
 /* 1パート（1ファイル）ぶんの pull→merge→push。meta はその場で更新して呼び出し側が即persistする。
@@ -692,15 +706,15 @@ async function syncPart(cfg, part, meta){
       merged = { sessions: mergeState({ sessions: localPart.sessions }, { sessions: remoteContent.sessions || {} }).sessions };
       remoteContentKey = stableKey({ sessions: remoteContent.sessions || {} });
     }else{
-      merged = syncSettingsPart(syncMergeGear(localPart.gear, remoteContent.gear), syncMergeGear(localPart.exOff, remoteContent.exOff));
-      remoteContentKey = stableKey(syncSettingsPart(remoteContent.gear, remoteContent.exOff));
+      merged = syncSettingsPart(syncMergeGear(localPart.gear, remoteContent.gear), syncMergeGear(localPart.exOff, remoteContent.exOff), syncMergeTune(localPart.tune, remoteContent.tune));
+      remoteContentKey = stableKey(syncSettingsPart(remoteContent.gear, remoteContent.exOff, remoteContent.tune));
     }
   }
 
   var mergedKey = stableKey(merged);
   if(mergedKey !== localKey){
     if(part.kind === "month") syncApplyMonthToState(merged.sessions, part.month);
-    else{ state.gear = merged.gear; if(merged.exOff) state.exOff = merged.exOff; }
+    else{ state.gear = merged.gear; if(merged.exOff) state.exOff = merged.exOff; if(merged.tune) state.tune = merged.tune; }
     changedLocally = true;
     /* meta を進める前に端末へ保存する。途中で閉じられて「見た」印だけ残ると、
        次の同期で取り込み前の中身を送り返してしまうため */
@@ -734,10 +748,11 @@ async function syncMaybeMigrate(cfg, listing, meta){
   var old = await syncGetFileLenient(cfg, SYNC_LEGACY_PATH);
   if(!old.parsed) return false;
   var oldState = typeof sanitizeState === "function" ? sanitizeState(old.parsed) : old.parsed;
-  var migrated = mergeState({ sessions: state.sessions, gear: state.gear, exOff: state.exOff }, oldState);
+  var migrated = mergeState({ sessions: state.sessions, gear: state.gear, exOff: state.exOff, tune: state.tune }, oldState);
   state.sessions = migrated.sessions;
   state.gear = migrated.gear;
   if(migrated.exOff) state.exOff = migrated.exOff;
+  if(migrated.tune) state.tune = migrated.tune;
   return true;
 }
 

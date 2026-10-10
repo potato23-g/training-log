@@ -21,6 +21,7 @@ function applyLoaded(o){
   state.program = c.program && c.program.length ? c.program : DEFAULT_PROGRAM.slice();
   state.gear = readGear(c.gear);          /* 持っているダンベル（旧形式は読み替える） */
   if(c.exOff) state.exOff = c.exOff; else delete state.exOff;   /* メニューに入れない種目 */
+  if(c.tune) state.tune = c.tune; else delete state.tune;       /* 本人が変えた決まり（rules.js の state.tune） */
   ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
 }
 function loadLocal(){
@@ -59,7 +60,7 @@ function saveLocal(){
         const m = mergeState(state, other);
         state.sessions = m.sessions;
         if(m.gear) state.gear = m.gear;
-        if(m.exOff) state.exOff = m.exOff;
+        if(m.exOff) state.exOff = m.exOff; if(m.tune) state.tune = m.tune;
       }catch(e){}
     }
     /* 消した印（del）は古い日ならもう要らない。統合のときだけでなく、ここでも間引く
@@ -116,11 +117,11 @@ try{
     let other;
     try{ other = sanitizeState(JSON.parse(e.newValue)); }catch(x){ return; }
     const m = mergeState(state, other);
-    const key = o => (typeof stableKey === "function" ? stableKey : JSON.stringify)({sessions: o.sessions, gear: o.gear, exOff: o.exOff});
+    const key = o => (typeof stableKey === "function" ? stableKey : JSON.stringify)({sessions: o.sessions, gear: o.gear, exOff: o.exOff, tune: o.tune});
     const mineOnly = key(m) !== key(other);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
-    if(m.exOff) state.exOff = m.exOff;
+    if(m.exOff) state.exOff = m.exOff; if(m.tune) state.tune = m.tune;
     lastRaw = e.newValue;
     if(mineOnly) saveLocal();
     if(typeof syncSafeRender === "function") syncSafeRender(); else render();
@@ -143,7 +144,7 @@ function rotateBackups(){
       if(older !== null) localStorage.setItem(LS + ".bak" + i, older);
     }
     localStorage.setItem(LS + ".bak1", JSON.stringify({savedAt: new Date().toISOString(), day: TODAY,
-      data: {sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff}}));
+      data: {sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff, tune: state.tune}}));
   }catch(e){}                              /* 容量が足りなければ控えはあきらめる（本体の保存を優先） */
 }
 /* 以前の版の控え（trainlog.v1.bak。起動のたびに上書きしていた）を、一度だけ新しい控えへ移す */
@@ -188,11 +189,11 @@ function restoreBackup(key){
     const m = mergeState(state, incoming);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
-    if(m.exOff) state.exOff = m.exOff;
+    if(m.exOff) state.exOff = m.exOff; if(m.tune) state.tune = m.tune;
   }else{
     Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
     if(incoming.gear) state.gear = incoming.gear;
-    if(incoming.exOff) state.exOff = incoming.exOff;
+    if(incoming.exOff) state.exOff = incoming.exOff; if(incoming.tune) state.tune = incoming.tune;
   }
   STORE_PROBLEM = null;
   saveLocal();
@@ -219,7 +220,7 @@ async function saveFile(filename, text){
 /* ---- バックアップ（JSON） ---- */
 function backupJSON(){
   return JSON.stringify({ app:"trainlog", version:1, savedAt:new Date().toISOString(),
-                          sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff }, null, 1);
+                          sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff, tune: state.tune }, null, 1);
 }
 async function backupSave(){
   const ok = await saveFile("trainlog-backup-" + TODAY + ".json", backupJSON());
@@ -245,11 +246,11 @@ function applyBackup(text){
     const m = mergeState(state, incoming);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
-    if(m.exOff) state.exOff = m.exOff;
+    if(m.exOff) state.exOff = m.exOff; if(m.tune) state.tune = m.tune;
   }else{
     Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
     if(incoming.gear) state.gear = incoming.gear;
-    if(incoming.exOff) state.exOff = incoming.exOff;
+    if(incoming.exOff) state.exOff = incoming.exOff; if(incoming.tune) state.tune = incoming.tune;
   }
   if(incoming.program && incoming.program.length) state.program = incoming.program;
   STORE_PROBLEM = null;

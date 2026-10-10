@@ -98,6 +98,51 @@ function setExOn(id, on){
   persistProgram();
   if(typeof syncSchedule === "function") syncSchedule();
 }
+/* 本人が変えられる決まり（2026-10-10 本人の要望: 提案を細かくカスタマイズできるようにしたい。選んだのは
+   種目の出やすさ・反対の部位と回復の日数・回数や重量の増え方）。
+   state.tune = {pref:{map:{動き:1|-1}, updatedAt}, pair:{off:true, updatedAt}, gap:{map:{部位:日数}, updatedAt},
+                 prog:{step:2, first:"harder", updatedAt}}
+   初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
+   4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
+   読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
+const TUNE_KEYS = ["pref", "pair", "gap", "prog"];
+function tunePart(k){ const t = state.tune; return (t && t[k] && typeof t[k] === "object") ? t[k] : null; }
+function setTune(k, part){
+  const t = Object.assign({}, state.tune || {});
+  t[k] = Object.assign({}, part, {updatedAt: typeof stampNow === "function" ? stampNow() : Date.now()});
+  state.tune = t;
+  persistProgram();
+  if(typeof syncSchedule === "function") syncSchedule();
+}
+/* そのまとまりが初めの設定のままか */
+function tuneIsDefault(k){
+  const p = tunePart(k);
+  if(!p) return true;
+  if(k === "pref" || k === "gap") return !p.map || !Object.keys(p.map).length;
+  if(k === "pair") return p.off !== true;
+  return p.step !== 2 && p.first !== "harder";
+}
+function tuneChanged(){ return TUNE_KEYS.some(k => !tuneIsDefault(k)); }
+/* 種目の出やすさ（動きごと）: 1=よく出す / 0=ふつう / -1=あまり出さない。
+   よく出す: 回復と上限の範囲で入れられる日は、ほかの種目より先に入れる（planner.js の compose の最初）。
+   あまり出さない: メインで鍛える部位が週の目標から遠いとき（価値がしきい値 1 以上）と、7日使えていない部位を埋めるときだけ入れる */
+const EX_PREF_LABEL = {"1": "よく出す", "0": "ふつう", "-1": "あまり出さない"};
+const EX_PREF_FACTOR = {"1": 1.5, "0": 1, "-1": 0.6};
+function patPref(pat){ const p = tunePart("pref"), v = p && p.map ? p.map[pat] : 0; return v === 1 || v === -1 ? v : 0; }
+function exPref(id){ return patPref(patternOf(id)); }
+function setPatPref(pat, v){
+  const p = tunePart("pref"), map = Object.assign({}, p && p.map);
+  if(v === 1 || v === -1) map[pat] = v; else delete map[pat];
+  setTune("pref", {map});
+}
+/* 反対の部位を同じ日に鍛えるか（しないときは、相手を足さない・隣に並べない・今日タブの一行も出さない: 下の opposite） */
+function pairOn(){ const p = tunePart("pair"); return !(p && p.off === true); }
+/* 回数の増やし方: 全部のセットで目標に届いた次の回に増やす数（秒の種目は 5 倍）。入力欄の ± の刻み（progress.js の progStep）とは別 */
+function progGain(kind){ const p = tunePart("prog"), n = p && p.step === 2 ? 2 : 1; return (kind === "t" ? 5 : 1) * n; }
+/* 回数の範囲の上限に届いたとき、先にどちらへ進むか: "heavier"=ダンベルを重く（初めの設定）/ "harder"=一段難しいやり方 */
+function progFirst(){ const p = tunePart("prog"); return p && p.first === "harder" ? "harder" : "heavier"; }
+const RECOVER_GAP_MAX = 5;
+
 /* 反対の部位（関節をはさんで逆の働きをする部位）。メニュー作りは、今日のメニューに入れた種目と反対の部位を
    メインで鍛える種目が入れられるとき、それを少し先に選び、隣に並べる（2026-10-08 本人の要望）。
    回復・1日と1週間の上限・外した動き・入れない種目の決まりはそのままで、入れられない種目を入れることはしない。
@@ -114,6 +159,7 @@ let PAIR_PREF = 1.1;
 /* 2つの種目が反対の部位どうしか: メインで鍛える部位に反対の組があり、同じ部位をメインで使っていない */
 function opposite(a, b){
   const A = EXMAP[a], B = EXMAP[b];
+  if(!pairOn()) return false;
   if(!A || !B || a === b || A.p.some(m => B.p.includes(m))) return false;
   return A.p.some(m => B.p.includes(ANTAGONIST[m]));
 }
@@ -223,7 +269,17 @@ const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, frontdelt:1, si
 const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
 /* 1種目のセット数。本人の要望で3に固定（2026-09-29。重さ・回数は本人が調整する） */
 const SETS_PER_EXERCISE = 3;
-function recoverGap(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
+/* 初めの設定の日数と、今の日数（本人が設定で変えた部位はその日数: 上の state.tune.gap） */
+function recoverGapDefault(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
+function recoverGap(m){
+  const p = tunePart("gap"), v = p && p.map ? p.map[m] : undefined;
+  return (typeof v === "number" && v >= 0 && v <= RECOVER_GAP_MAX && v === Math.floor(v)) ? v : recoverGapDefault(m);
+}
+function setRecoverGap(m, v){
+  const p = tunePart("gap"), map = Object.assign({}, p && p.map);
+  if(v === recoverGapDefault(m)) delete map[m]; else map[m] = v;
+  setTune("gap", {map});
+}
 /* 部位 m が主役（主働筋）だったセット数（fromDaysAgo〜toDaysAgo 日前） */
 function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   let n = 0;

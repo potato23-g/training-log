@@ -85,6 +85,24 @@ function sanitizeState(obj){
     if(offAt !== null) off.updatedAt = offAt;
     out.exOff = off;
   }
+  /* 本人が変えた決まり（rules.js の state.tune）。形と範囲の合う値だけ残す。まとまりごとの時刻も残す
+     （中身が空でも、初めの設定に戻した時刻としてほかの端末へ伝える） */
+  if(src.tune && typeof src.tune === "object" && !Array.isArray(src.tune)){
+    var tn = {}, part = function(k){ var v = src.tune[k]; return v && typeof v === "object" && !Array.isArray(v) ? v : null; };
+    var stamp = function(from, to){ var n = num(from.updatedAt); if(n !== null) to.updatedAt = n; return to; };
+    var maps = function(k, keyok, valok){
+      var v = part(k); if(!v) return;
+      var m = {}, srcMap = v.map && typeof v.map === "object" && !Array.isArray(v.map) ? v.map : {};
+      Object.keys(srcMap).slice(0, 100).forEach(function(key){ var n = num(srcMap[key]); if(keyok(key) && n !== null && valok(n)) m[key] = n; });
+      tn[k] = stamp(v, { map: m });
+    };
+    maps("pref", exok, function(n){ return n === 1 || n === -1; });
+    maps("gap", function(key){ return /^[a-z]{2,20}$/.test(key); }, function(n){ return n >= 0 && n <= 5 && n === Math.floor(n); });
+    var pr = part("pair"); if(pr) tn.pair = stamp(pr, pr.off === true ? { off: true } : {});
+    var pg = part("prog");
+    if(pg){ var g2 = {}; if(num(pg.step) === 2) g2.step = 2; if(pg.first === "harder") g2.first = "harder"; tn.prog = stamp(pg, g2); }
+    if(Object.keys(tn).length) out.tune = tn;
+  }
   if(Array.isArray(src.program)) out.program = src.program.filter(exok);
   return out;
 }

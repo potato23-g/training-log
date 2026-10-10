@@ -204,10 +204,85 @@ function exOffCard(){
     <div class="sorechips">${order.map(e => `<button class="sorechip${exOn(e.id) ? "" : " on"}" data-act="exoff" data-ex="${e.id}" aria-pressed="${!exOn(e.id)}">${esc(e.name)}</button>`).join("")}</div>
   </div>`;
 }
+/* メニューと目標の決め方（rules.js の state.tune）。選べるのは、反対の部位・回数の増やし方・上限に届いたときの進み方・
+   部位ごとの回復の日数・種目の出やすさ。値はどれも rules.js の関数（pairOn・progGain・progFirst・recoverGap・patPref）から読む。
+   長い2つの一覧は畳んでおく（開いたかどうかは、描き直しても保つ） */
+const TUNE_HEAD = "メニューと目標の決め方";
+const tuneOpen = {gap: false, pref: false};
+function tuneCard(){
+  const sel = (key, cur, opts) => `<select data-tune="${key}">${opts.map(o => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`;
+  const gapRows = Object.keys(MUSCLES).map(m => {
+    const d = recoverGapDefault(m), opts = [];
+    for(let g = 0; g <= RECOVER_GAP_MAX; g++) opts.push([g, recoverGapLabel(g)]);
+    return `<div class="tunerow"><span>${esc(MUSCLES[m])}${recoverGap(m) !== d ? `<small data-gapwas="${m}">初めの設定は「${esc(recoverGapLabel(d))}」</small>` : ""}</span>${sel("gap:" + m, recoverGap(m), opts)}</div>`;
+  }).join("");
+  const prefRows = PATTERN_ORDER.map(pat => {
+    const names = EX.filter(e => !e.base && patternOf(e.id) === pat).map(e => e.name);
+    if(!names.length) return "";
+    return `<div class="tunerow"><span>${esc(names.join("・"))}</span>${sel("pref:" + pat, patPref(pat), [[1, EX_PREF_LABEL["1"]], [0, EX_PREF_LABEL["0"]], [-1, EX_PREF_LABEL["-1"]]])}</div>`;
+  }).join("");
+  return `<h3 class="sec">${TUNE_HEAD}</h3>
+  <div class="card">
+    <div class="fld"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
+      ${sel("pair", pairOn() ? 1 : 0, [[1, "同じ日に鍛えて、隣に並べる"], [0, "そろえない"]])}</div>
+    <div class="fld"><label>全部のセットが目標に届いたとき、次の目標</label>
+      ${sel("step", progGain("w"), [[1, "1回増やす（秒の種目は5秒）"], [2, "2回増やす（秒の種目は10秒）"]])}</div>
+    <div class="fld"><label>回数の範囲の上限に届いたとき</label>
+      ${sel("first", progFirst(), [["heavier", "ダンベルを先に重くする"], ["harder", "一段難しいやり方に先に進む"]])}</div>
+    <details class="tune" data-tune-d="gap"${tuneOpen.gap ? " open" : ""}><summary>部位ごとの回復の日数</summary>
+      <p class="lastline" style="margin-top:0">${esc(RECOVER_NOTE)}。</p>
+      ${gapRows}
+    </details>
+    <details class="tune" data-tune-d="pref"${tuneOpen.pref ? " open" : ""}><summary>種目の出やすさ</summary>
+      <p class="lastline" style="margin-top:0">「${EX_PREF_LABEL["1"]}」は、回復と上限の範囲で入れられる日に、ほかの種目より先に入れます。「${EX_PREF_LABEL["-1"]}」は、メインで鍛える部位が週の目標から遠いときと、${UNUSED_DAYS}日以上使えていないときだけ入れます。</p>
+      ${prefRows}
+    </details>
+    ${tuneChanged() ? `<div class="rowbtns"><button data-act="tunereset">初めの設定に戻す</button></div>` : ""}
+  </div>`;
+}
+/* 決まりを変えたあと: メニューにかかわる変更で、今日のメニューがもう決まっていれば組み直す（記録した種目・自分で追加した種目は残る） */
+function tuneApplied(menu, msg){
+  planMemo = null; resetProg();
+  const s = state.sessions[TODAY];
+  if(menu && s && s.plan) replanToday(); else render();
+  setStatus(msg);
+}
+function wireTune(root){
+  root.querySelectorAll("details[data-tune-d]").forEach(d => { d.ontoggle = () => { tuneOpen[d.dataset.tuneD] = d.open; }; });
+  root.querySelectorAll("select[data-tune]").forEach(el => {
+    el.onchange = () => {
+      const k = el.dataset.tune, v = el.value, at = k.indexOf(":"), kind = at < 0 ? k : k.slice(0, at), id = at < 0 ? "" : k.slice(at + 1);
+      const prog = () => { const p = tunePart("prog"), o = {}; if(p && p.step === 2) o.step = 2; if(p && p.first === "harder") o.first = "harder"; return o; };
+      if(kind === "pair"){
+        setTune("pair", v === "0" ? {off: true} : {});
+        tuneApplied(true, v === "0" ? "反対の部位をそろえないようにしました" : "反対の部位を同じ日に鍛えるようにしました");
+      }else if(kind === "step"){
+        const o = prog(); if(v === "2") o.step = 2; else delete o.step;
+        setTune("prog", o);
+        tuneApplied(false, "次の目標を" + progGain("w") + "回ずつ増やすようにしました");
+      }else if(kind === "first"){
+        const o = prog(); if(v === "harder") o.first = "harder"; else delete o.first;
+        setTune("prog", o);
+        tuneApplied(false, progFirst() === "harder" ? "上限に届いたら、難しいやり方に先に進むようにしました" : "上限に届いたら、ダンベルを先に重くするようにしました");
+      }else if(kind === "gap" && MUSCLES[id]){
+        setRecoverGap(id, +v);
+        tuneApplied(true, MUSCLES[id] + "の回復の日数を「" + recoverGapLabel(recoverGap(id)) + "」にしました");
+      }else if(kind === "pref" && PATTERN_ORDER.includes(id)){
+        setPatPref(id, +v);
+        tuneApplied(true, "出やすさを「" + EX_PREF_LABEL[String(patPref(id))] + "」にしました");
+      }
+    };
+  });
+}
+ACTIONS.tunereset = () => {
+  setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); setTune("prog", {});
+  tuneApplied(true, "「" + TUNE_HEAD + "」を初めの設定に戻しました");
+};
 function settingsHTML(){
   return `<h4 data-settings="1">設定</h4>
     ${gearCard()}
     ${exOffCard()}
+    ${tuneCard()}
     ${dayStartCard()}
     ${settingsCard()}
     ${typeof syncCard === "function" ? syncCard() : ""}
@@ -219,6 +294,7 @@ function wireSettings(){
   wireInputs(sheetInner);
   if(typeof wireGearCard === "function") wireGearCard(sheetInner);
   if(typeof syncWire === "function") syncWire(sheetInner);
+  wireTune(sheetInner);
   const sel = sheetInner.querySelector("#dayStartSel");
   if(sel) sel.onchange = ()=>{
     PREF.set("dayStart", +sel.value);

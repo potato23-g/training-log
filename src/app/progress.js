@@ -99,6 +99,18 @@ function sameWeight(a, b){
   return Math.abs(a.w - b.w) < 0.01;
 }
 
+/* 回数の範囲の上限に届いたとき、次に進む先: {opt}=ダンベルを一段重く / {item}=一段難しいやり方 / {}=今の道具では一番上。
+   初めの設定は、無理なく重くできれば重く、できなければ難しいやり方。本人が「難しいやり方を先に」を選んでいれば逆の順
+   （rules.js の progFirst）。提案タブの「次の段階まで」もここから作る */
+function nextUp(item, cur, opts){
+  const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
+  const opt = nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg) ? nx : null;
+  if(progFirst() === "harder"){ const h = stepItem(item, 1); return h ? {item: h} : opt ? {opt} : {}; }
+  if(opt) return {opt};
+  const h = stepItem(item, 1);
+  return h ? {item: h} : {};
+}
+
 /* ---- 今日のその組み方の目標 ----
    {target, opt, w, change, why, src, next, lo, hi, last}
    change: first（はじめて）/ stepped-up・stepped-down・switched（段を移って1回目）/ up（1回増やす）/
@@ -109,7 +121,7 @@ function progressFor(item){
   const key = itemKey(item);
   if(progMemo.items[key]) return progMemo.items[key];
   const id = item.ex, ex = EXMAP[id], kind = ex.kind, u = unitOf(kind);
-  const rr = repRange(id, item), step = progStep(kind);
+  const rr = repRange(id, item), step = progGain(kind);
   const opts = itemOptions(item);
   const optByW = w => (w === undefined || w === null) ? null : (opts.find(o => Math.abs(o.total - w) < 0.01) || null);
   const res = {lo: rr.lo, hi: rr.hi, step, change: "", why: "", src: "", target: 0, opt: null, w: undefined, next: null, last: null};
@@ -150,18 +162,18 @@ function progressFor(item){
       res.change = "deload";
       res.why = "軽めの週です。目標は前回と同じにして、種目を少なめにしています";
     }else if(ev.allHit){
-      const nt = ev.target + step;
+      /* 2回ずつ増やす設定のとき、上限のひとつ手前からは上限まで（上限を飛び越えて次の段階へ進まない） */
+      const nt = ev.target < rr.hi ? Math.min(rr.hi, ev.target + step) : ev.target + step;
       if(nt <= rr.hi){
         res.target = nt; res.change = "up";
-        res.why = "前回は全部のセットで目標に届いたので、" + step + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
+        res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
       }else{
         /* 幅の上限に届いた → 一段上へ */
-        const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
-        if(nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg)){
+        const way = nextUp(item, cur, opts), nx = way.opt, nxt = way.item;
+        if(nx){
           res.opt = nx; res.target = rr.lo; res.change = "heavier";
           res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から始めます";
         }else{
-          const nxt = stepItem(item, 1);
           if(nxt){
             res.next = nxt; res.change = "harder"; res.target = rr.hi;
             res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";

@@ -2,6 +2,13 @@
 
 /* ---- 筋肉痛の部位を選ぶシート ---- */
 .sorechips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+/* 設定の「メニューと目標の決め方」: 畳んだ一覧と、名前＋選択の行 */
+.sheet .inner details.tune{border-top:1px solid var(--rule);margin-top:10px}
+.sheet .inner details.tune summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;font-size:15px}
+.sheet .inner .tunerow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
+.sheet .inner .tunerow span{flex:1 1 0;min-width:0;font-size:14px}
+.sheet .inner .tunerow span small{display:block;font-size:12px;color:var(--ink-2)}
+.sheet .inner .tunerow select{flex:0 0 auto;width:auto;max-width:58%;min-height:44px}
 .sheet .inner .sorechip{min-height:44px;padding:6px 14px;border:1px solid var(--rule);border-radius:22px;
   background:var(--panel-2);color:var(--ink-2);font-size:13.5px;font-weight:600}
 .sheet .inner .sorechip.on{background:var(--muscle);border-color:var(--muscle);color:#fff}

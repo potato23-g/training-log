@@ -280,6 +280,13 @@ function runUnitTests(){
     ok(M.mergeState({ sessions: {}, exOff: { ids: [], updatedAt: 50 } }, b).exOff.ids.length === 0, "merge: exOff を全部戻したことも伝わる");
     ok(M.mergeState(a, { sessions: {} }).exOff.ids.join(",") === "rdl", "merge: exOff が片側にしか無ければそれを採用");
     ok(M.mergeState({ sessions: {} }, { sessions: {} }).exOff === undefined, "merge: exOff がどちらにも無ければ作らない");
+    // 本人が変えた決まり（tune）: まとまりごとに別の時刻で決める
+    const t1 = { sessions: {}, tune: { gap: { map: { quads: 2 }, updatedAt: 30 }, pref: { map: { curl: -1 }, updatedAt: 10 } } };
+    const t2 = { sessions: {}, tune: { gap: { map: { quads: 3 }, updatedAt: 20 }, pref: { map: { deadlift: 1 }, updatedAt: 40 }, prog: { step: 2, updatedAt: 5 } } };
+    const tm = M.mergeState(t1, t2), tm2 = M.mergeState(t2, t1);
+    ok(tm.tune.gap.map.quads === 2 && tm.tune.pref.map.deadlift === 1 && tm.tune.pref.map.curl === undefined && tm.tune.prog.step === 2, "merge: tune はまとまりごとに新しいほうを採用し、片側だけのまとまりも残る");
+    ok(M.stableKey(tm) === M.stableKey(tm2), "merge: tune もどちらの端末で合流しても同じ");
+    ok(M.mergeState({ sessions: {} }, { sessions: {} }).tune === undefined, "merge: tune がどちらにも無ければ作らない");
     const e1 = { sessions: {}, exOff: { ids: ["rdl"], updatedAt: 10 } }, e2 = { sessions: {}, exOff: { ids: ["calf"], updatedAt: 10 } };
     ok(M.stableKey(M.mergeState(e1, e2).exOff) === M.stableKey(M.mergeState(e2, e1).exOff), "merge: exOff も同点なら、どちらの端末で合流しても同じ");
   }
@@ -446,6 +453,21 @@ async function runMainIntegration(port){
     ok(!!offFile && offFile.exOff && offFile.exOff.ids.join(",") === "rdl,plank" && offFile.gear.items[0].kg === 12, "exOff: settings.jsonに gear と並んで入る");
     ok(!!A.ctx.state.exOff && A.ctx.state.exOff.ids.join(",") === "rdl,plank" && A.ctx.state.gear.items[0].kg === 12, "exOff: Bの変更がAに届き、Aのダンベルの変更も残る");
     ok(B.ctx.state.gear.items[0].kg === 12 && B.ctx.state.exOff.ids.join(",") === "rdl,plank", "exOff: Aのダンベルの変更がBに届き、Bの exOff も残る");
+
+    // 本人が変えた決まり（tune）も settings.json 経由で届く。別々の端末で別のまとまりを変えたら両方残る
+    B.ctx.state.tune = { gap: { map: { quads: 2 }, updatedAt: Date.now() } };
+    A.ctx.state.tune = { pref: { map: { deadlift: 1 }, updatedAt: Date.now() + 5 }, pair: { off: true, updatedAt: Date.now() + 5 } };
+    await B.ctx.syncNow();
+    await A.ctx.syncNow();
+    await B.ctx.syncNow();
+    const tuneFile = await mockFile(mock.base, "trainlog/settings.json");
+    const tuneOk = t => !!t && !!t.gap && t.gap.map.quads === 2 && !!t.pref && t.pref.map.deadlift === 1 && !!t.pair && t.pair.off === true;
+    ok(!!tuneFile && tuneOk(tuneFile.tune) && tuneFile.exOff.ids.join(",") === "rdl,plank" && tuneFile.gear.items[0].kg === 12, "tune: settings.jsonに gear・exOff と並んで入る");
+    ok(tuneOk(A.ctx.state.tune) && tuneOk(B.ctx.state.tune), "tune: 別々の端末で変えたまとまりが、両方の端末に残る");
+    A.ctx.state.tune.pair = { updatedAt: Date.now() + 50 };
+    await A.ctx.syncNow();
+    await B.ctx.syncNow();
+    ok(B.ctx.state.tune.pair.off !== true && B.ctx.state.tune.gap.map.quads === 2, "tune: 初めの設定に戻したことも届き、ほかのまとまりは残る");
 
     // 409を1回だけ強制 → 自動リトライで成功する
     await fetch(mock.base + "/_mock/conflict", { method: "POST" });

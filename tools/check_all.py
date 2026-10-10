@@ -485,6 +485,7 @@ def main():
     # 7日使えていない部位のために、回復の途中の部位を使う種目を入れる場面と、入れたことの表示（行の印・カードの文・下の1行）
     run_browser("v7_restin_eval.js", "v7_restin_eval.js", judge_empty_arrays("fails", "silent", "mismatch", "neverIncluded"), timeout=240)
     run_browser("v8_off_pair_eval.js", "v8_off_pair_eval.js", judge_empty_arrays("fails"), timeout=240)
+    run_browser("v9_tune_eval.js", "v9_tune_eval.js", judge_empty_arrays("fails"), timeout=240)
     run_browser("v3_dayroll_eval.js", "v3_dayroll_eval.js", judge_smoke)
     run_browser("v3_update_eval.js", "v3_update_eval.js", judge_smoke, needs_common=True)
     run_browser_2phase("v3_persist_eval.js", "v3_persist_eval.js")

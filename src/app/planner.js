@@ -186,13 +186,16 @@ function buildPlan(){
      あれば、動きどうしを比べる値を少し上げて先に選ぶ（2026-10-08 本人の要望: 反対の部位を入れられるときは、同じ日に鍛える）。
      入れるかどうかのしきい値（minGain）には掛けない: 掛けると、これまで入らなかった種目まで入って1回の量が増える */
   const paired = c => plan.some(p => opposite(p.ex, c.ex)) || doneToday.some(e => opposite(e.ex, c.ex));
-  const fill = (minGain, upTo, only) => {
+  const fill = (minGain, upTo, only, force) => {
     while(plan.length < upTo){
       const byPattern = {};
       catalog().filter(c => (!only || only(c)) && allowed(c) && candidate(c)).forEach(c => {
-        const g = gain(c), pat = patternOf(c.ex), f = fit(c);
-        if(g >= minGain && (!byPattern[pat] || f > byPattern[pat].f))
-          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1)};
+        const g = gain(c), pat = patternOf(c.ex), f = fit(c), pr = patPref(pat);
+        /* 「あまり出さない」にした動き（rules.js の patPref）は、週の目標から遠い部位を埋めるとき（価値が 1 以上）と、
+           7日使えていない部位を先に入れるとき（force）だけ入れる */
+        const need = pr < 0 && !force ? Math.max(minGain, 1) : minGain;
+        if(g * (pr < 0 ? EX_PREF_FACTOR[pr] : 1) >= need && (!byPattern[pat] || f > byPattern[pat].f))
+          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1) * EX_PREF_FACTOR[pr]};
       });
       const best = Object.keys(byPattern).map(p => byPattern[p]).sort((a, b) => b.v - a.v)[0];
       if(!best) return;
@@ -239,7 +242,9 @@ function buildPlan(){
       /* 組み直し: 残す種目を先に入れる */
       (planKeep || []).forEach(keepIn);
       /* 0. first の部位は、その部位をメインで鍛える種目を先に1つずつ入れる（前の部位の種目でもう使うなら入れない） */
-      first.forEach(u => { if(!(today[u] > 0)) fill(0.01, Math.min(plan.length + 1, LIM.exercises), c => EXMAP[c.ex].p.includes(u)); });
+      first.forEach(u => { if(!(today[u] > 0)) fill(0.01, Math.min(plan.length + 1, LIM.exercises), c => EXMAP[c.ex].p.includes(u), true); });
+      /* 「よく出す」にした動きは、回復と上限の範囲で入れられる日は先に入れる（20分で組むとき・軽い週は、価値の順だけ） */
+      if(LIM === SESSION_MAX) fill(0, LIM.exercises, c => exPref(c.ex) > 0);
       fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
       /* 2. メインで鍛える部位が週の目標に届いていない種目は、価値が小さくても入れる（2026-10-05 本人の要望: 種目が増えてもよいので
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
