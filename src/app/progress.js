@@ -99,14 +99,18 @@ function sameWeight(a, b){
   return Math.abs(a.w - b.w) < 0.01;
 }
 
-/* 回数の範囲の上限に届いたとき、次に進む先: {opt}=ダンベルを一段重く / {item}=一段難しいやり方 / {}=今の道具では一番上。
+/* 回数の範囲の上限に届いたとき、次に進む先: {opt, steps}=ダンベルを重く（steps 段）/ {item}=一段難しいやり方 /
+   {stay}=本人が「上限のまま続ける」を選んでいる / {}=今の道具では一番上。
+   2段重くする設定（rules.js の progJump）のときは、上がり幅が一段ぶんの目安の2回ぶんに収まれば2段、収まらなければ一段。
    初めの設定は、無理なく重くできれば重く、できなければ難しいやり方。本人が「難しいやり方を先に」を選んでいれば逆の順
    （rules.js の progFirst）。提案タブの「次の段階まで」もここから作る */
 function nextUp(item, cur, opts){
-  const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
-  const opt = nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg) ? nx : null;
-  if(progFirst() === "harder"){ const h = stepItem(item, 1); return h ? {item: h} : opt ? {opt} : {}; }
-  if(opt) return {opt};
+  if(progFirst() === "stay") return {stay: true};
+  const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null, n2 = i >= 0 ? opts[i + 2] : null;
+  let opt = nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg) ? nx : null, steps = 1;
+  if(opt && progJump() === 2 && n2 && (n2.key <= cur.key * PROG.jumpRatio * PROG.jumpRatio || n2.key - cur.key <= PROG.jumpKg * 2)){ opt = n2; steps = 2; }
+  if(progFirst() === "harder"){ const h = stepItem(item, 1); return h ? {item: h} : opt ? {opt, steps} : {}; }
+  if(opt) return {opt, steps};
   const h = stepItem(item, 1);
   return h ? {item: h} : {};
 }
@@ -124,7 +128,7 @@ function progressFor(item){
   const rr = repRange(id, item), step = progGain(kind);
   const opts = itemOptions(item);
   const optByW = w => (w === undefined || w === null) ? null : (opts.find(o => Math.abs(o.total - w) < 0.01) || null);
-  const res = {lo: rr.lo, hi: rr.hi, step, change: "", why: "", src: "", target: 0, opt: null, w: undefined, next: null, last: null};
+  const res = {lo: rr.lo, hi: rr.hi, step, change: "", why: "", src: "", target: 0, opt: null, w: undefined, next: null, last: null, need: progNeed(), run: 0};
   const hist = patternHistory(patternOf(id));
   const mine = hist.filter(h => h.ex === id && h.label === (item.label || ""));
 
@@ -162,9 +166,22 @@ function progressFor(item){
       res.change = "deload";
       res.why = "軽めの週です。目標は前回と同じにして、種目を少なめにしています";
     }else if(ev.allHit){
-      /* 2回ずつ増やす設定のとき、上限のひとつ手前からは上限まで（上限を飛び越えて次の段階へ進まない） */
-      const nt = ev.target < rr.hi ? Math.min(rr.hi, ev.target + step) : ev.target + step;
-      if(nt <= rr.hi){
+      /* 続けて何回届いたか（同じ重さ・同じかそれ以上の目標で、全部のセットが届いた回を新しい順に数える）。
+         本人が決めた回数（rules.js の progNeed）に足りないうちは、同じ目標で続ける */
+      let run = 1;
+      while(run < res.need && mine[run]){
+        const e = evalSession(mine[run]);
+        if(e.allHit && sameWeight(e, ev) && e.target >= ev.target) run++; else break;
+      }
+      /* 2回以上ずつ増やす設定のとき、上限の手前からは上限まで（上限を飛び越えて次の段階へ進まない） */
+      const nt = ev.target < rr.hi ? Math.min(rr.hi, ev.target + step) : ev.target + Math.max(step, 1);
+      if(run < res.need){
+        res.run = run; res.change = "hold";
+        res.why = "前回は全部のセットで目標に届きました。あと" + (res.need - run) + "回続けて届いたら、次へ進みます";
+      }else if(nt === ev.target){
+        res.change = "hold";
+        res.why = "前回は全部のセットで目標に届きました。目標は同じ" + u + "数のまま続けます";
+      }else if(nt <= rr.hi){
         res.target = nt; res.change = "up";
         res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
       }else{
@@ -172,9 +189,12 @@ function progressFor(item){
         const way = nextUp(item, cur, opts), nx = way.opt, nxt = way.item;
         if(nx){
           res.opt = nx; res.target = rr.lo; res.change = "heavier";
-          res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から始めます";
+          res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重くします。" + rr.lo + u + "から始めます";
         }else{
-          if(nxt){
+          if(way.stay){
+            res.target = rr.hi; res.change = "top"; res.stay = true;
+            res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届きました。上限のまま続けます";
+          }else if(nxt){
             res.next = nxt; res.change = "harder"; res.target = rr.hi;
             res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";
           }else{

@@ -225,10 +225,14 @@ function tuneCard(){
   <div class="card">
     <div class="fld"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
       ${sel("pair", pairOn() ? 1 : 0, [[1, "同じ日に鍛えて、隣に並べる"], [0, "そろえない"]])}</div>
-    <div class="fld"><label>全部のセットが目標に届いたとき、次の目標</label>
-      ${sel("step", progGain("w"), [[1, "1回増やす（秒の種目は5秒）"], [2, "2回増やす（秒の種目は10秒）"]])}</div>
+    <div class="fld"><label>目標を上げるのは、全部のセットが目標に届いた回が</label>
+      ${sel("need", progNeed(), [[1, "1回あったら（次の回から上げる）"], [2, "2回続いたら"], [3, "3回続いたら"]])}</div>
+    <div class="fld"><label>そのとき、次の目標</label>
+      ${sel("step", progGain("w"), [[0, "増やさない（同じ目標で続ける）"], [1, "1回増やす（秒の種目は5秒）"], [2, "2回増やす（秒の種目は10秒）"], [3, "3回増やす（秒の種目は15秒）"]])}</div>
     <div class="fld"><label>回数の範囲の上限に届いたとき</label>
-      ${sel("first", progFirst(), [["heavier", "ダンベルを先に重くする"], ["harder", "一段難しいやり方に先に進む"]])}</div>
+      ${sel("first", progFirst(), [["heavier", "ダンベルを先に重くする"], ["harder", "一段難しいやり方に先に進む"], ["stay", "上限のまま続ける"]])}</div>
+    <div class="fld"><label>ダンベルを重くするとき</label>
+      ${sel("jump", progJump(), [[1, "一段重くする"], [2, "2段重くする（重すぎるときは一段）"]])}</div>
     <details class="tune" data-tune-d="gap"${tuneOpen.gap ? " open" : ""}><summary>部位ごとの回復の日数</summary>
       <p class="lastline" style="margin-top:0">${esc(RECOVER_NOTE)}。</p>
       ${gapRows}
@@ -252,18 +256,21 @@ function wireTune(root){
   root.querySelectorAll("select[data-tune]").forEach(el => {
     el.onchange = () => {
       const k = el.dataset.tune, v = el.value, at = k.indexOf(":"), kind = at < 0 ? k : k.slice(0, at), id = at < 0 ? "" : k.slice(at + 1);
-      const prog = () => { const p = tunePart("prog"), o = {}; if(p && p.step === 2) o.step = 2; if(p && p.first === "harder") o.first = "harder"; return o; };
       if(kind === "pair"){
         setTune("pair", v === "0" ? {off: true} : {});
         tuneApplied(true, v === "0" ? "反対の部位をそろえないようにしました" : "反対の部位を同じ日に鍛えるようにしました");
       }else if(kind === "step"){
-        const o = prog(); if(v === "2") o.step = 2; else delete o.step;
-        setTune("prog", o);
-        tuneApplied(false, "次の目標を" + progGain("w") + "回ずつ増やすようにしました");
+        setProg("step", +v);
+        tuneApplied(false, progGain("w") ? "次の目標を" + progGain("w") + "回ずつ増やすようにしました" : "目標を増やさないようにしました");
+      }else if(kind === "need"){
+        setProg("need", +v);
+        tuneApplied(false, progNeed() > 1 ? progNeed() + "回続けて届いたら、目標を上げるようにしました" : "目標に届いた次の回から、目標を上げるようにしました");
+      }else if(kind === "jump"){
+        setProg("jump", +v);
+        tuneApplied(false, progJump() === 2 ? "ダンベルを2段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
       }else if(kind === "first"){
-        const o = prog(); if(v === "harder") o.first = "harder"; else delete o.first;
-        setTune("prog", o);
-        tuneApplied(false, progFirst() === "harder" ? "上限に届いたら、難しいやり方に先に進むようにしました" : "上限に届いたら、ダンベルを先に重くするようにしました");
+        setProg("first", v);
+        tuneApplied(false, progFirst() === "harder" ? "上限に届いたら、難しいやり方に先に進むようにしました" : progFirst() === "stay" ? "上限に届いたら、上限のまま続けるようにしました" : "上限に届いたら、ダンベルを先に重くするようにしました");
       }else if(kind === "gap" && MUSCLES[id]){
         setRecoverGap(id, +v);
         tuneApplied(true, MUSCLES[id] + "の回復の日数を「" + recoverGapLabel(recoverGap(id)) + "」にしました");

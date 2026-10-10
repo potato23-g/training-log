@@ -100,7 +100,12 @@ function sanitizeState(obj){
     maps("gap", function(key){ return /^[a-z]{2,20}$/.test(key); }, function(n){ return n >= 0 && n <= 5 && n === Math.floor(n); });
     var pr = part("pair"); if(pr) tn.pair = stamp(pr, pr.off === true ? { off: true } : {});
     var pg = part("prog");
-    if(pg){ var g2 = {}; if(num(pg.step) === 2) g2.step = 2; if(pg.first === "harder") g2.first = "harder"; tn.prog = stamp(pg, g2); }
+    if(pg){ var g2 = {}, ps = num(pg.step), pn = num(pg.need);
+      if(ps === 0 || ps === 2 || ps === 3) g2.step = ps;
+      if(pn === 2 || pn === 3) g2.need = pn;
+      if(num(pg.jump) === 2) g2.jump = 2;
+      if(pg.first === "harder" || pg.first === "stay") g2.first = pg.first;
+      tn.prog = stamp(pg, g2); }
     if(Object.keys(tn).length) out.tune = tn;
   }
   if(Array.isArray(src.program)) out.program = src.program.filter(exok);

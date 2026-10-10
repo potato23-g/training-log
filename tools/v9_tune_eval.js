@@ -163,12 +163,75 @@ setTimeout(() => {
   p = after({prog: {step: 2, first: "harder", updatedAt: 1}}, "goblet", rr.lo);
   need(p.target === rr.lo + 2, "増やす数と進み方を両方変えると、増やす数が効かない");
   need(/次は2回（秒の種目は10秒）増やします/.test(viewPlan()), "提案タブの説明の増やす数が設定と違う");
+  /* 続けて何回届いたら上げるか・増やさない・上限のまま・2段重く（2026-10-11）。
+     days: 新しい順に [目標, 重さの段（省けば初めの持ち方）]。どの日も全部のセットで目標どおり */
+  const afterDays = (tune, exId, days) => {
+    reset(tune, adj);
+    const item = catalogItem(exId), opts = itemOptions(item), base = opts.length ? optionIndex(opts, defaultOptionFor(item)) : -1;
+    days.forEach((dy, n) => {
+      const d = shiftKey(TODAY, -3 * (n + 1)), target = dy[0], opt = base >= 0 ? opts[base + (dy[1] || 0)] : null;
+      const sets = [0, 1, 2].map(k => { const st = {id: "t" + n + k, at: k, r: target, label: "", target}; if(opt) st.w = opt.total; return st; });
+      state.sessions[d] = {date: d, entries: [{ex: exId, sets}], plan: [{ex: exId, sets: 3}]};
+    });
+    fresh();
+    return progressFor(catalogItem(exId));
+  };
+  const need2 = {prog: {need: 2, updatedAt: 1}}, need3 = {prog: {need: 3, step: 2, updatedAt: 1}};
+  p = afterDays(need2, "goblet", [[rr.lo]]);
+  need(p.target === rr.lo && p.change === "hold" && p.run === 1 && /あと1回続けて届いたら/.test(p.why), "2回続けての設定で、1回届いただけで上げた: " + p.target + " " + p.change);
+  const leftOf = () => +(/あと(\d+)回のトレーニング/.exec(rowOf().next) || [0, -1])[1];
+  need(leftOf() === (rr.hi - rr.lo) * 2 + 1, "提案タブの「あと何回」が、2回続けての設定と合わない: " + rowOf().next);
+  need(/同じやり方・同じ重さで、2回続けて全部のセットが目標に届いたら/.test(viewPlan()), "提案タブの説明が、2回続けての設定と違う");
+  p = afterDays(need2, "goblet", [[rr.lo], [rr.lo]]);
+  need(p.target === rr.lo + 1 && p.change === "up" && p.run === 0, "2回続けて届いたのに上げない: " + p.target + " " + p.change);
+  need(leftOf() === (rr.hi - rr.lo - 1) * 2 + 2, "提案タブの「あと何回」が、上げた直後の回数と合わない: " + rowOf().next);
+  p = afterDays(need2, "goblet", [[rr.lo + 1], [rr.lo]]);
+  need(p.target === rr.lo + 1 && p.change === "hold", "目標を上げて1回目なのに、前の目標の回を数えた: " + p.target);
+  p = afterDays(need2, "goblet", [[rr.lo, 1], [rr.lo, 0]]);
+  need(p.target === rr.lo && p.change === "hold", "重さを変えて1回目なのに、前の重さの回を数えた: " + p.target + " " + p.change);
+  p = afterDays(need3, "goblet", [[rr.lo], [rr.lo]]);
+  need(p.target === rr.lo && p.run === 2 && /あと1回続けて/.test(p.why), "3回続けての設定で、2回で上げた");
+  p = afterDays(need3, "goblet", [[rr.lo], [rr.lo], [rr.lo]]);
+  need(p.target === rr.lo + 2 && p.change === "up", "3回続けて届いたのに、2回ぶん上げない: " + p.target);
+  p = afterDays(need2, "goblet", [[rr.hi], [rr.hi]]);
+  need(p.change === "heavier" && p.target === rr.lo, "2回続けて上限に届いたのに重くしない: " + p.change);
+  p = afterDays(need2, "goblet", [[rr.hi]]);
+  need(p.change === "hold" && p.target === rr.hi && leftOf() === 1, "上限に1回届いただけで重くした・「あと何回」が違う: " + p.change + " " + rowOf().next);
+  /* 3回ずつ・増やさない */
+  p = after({prog: {step: 3, updatedAt: 1}}, "goblet", rr.lo);
+  need(p.target === Math.min(rr.hi, rr.lo + 3) && p.change === "up", "3回ずつの設定で、3回増えない: " + p.target);
+  const zero = {prog: {step: 0, updatedAt: 1}};
+  p = after(zero, "goblet", rr.lo);
+  need(p.target === rr.lo && p.change === "hold" && /同じ回数のまま/.test(p.why) && progGain("w") === 0 && progGain("t") === 0, "増やさない設定で、目標が変わった: " + p.target + " " + p.change);
+  need(rowOf().next === "目標は" + rr.lo + "回のまま続けます" && /回数は増やさず、同じ目標で続けます/.test(viewPlan()), "提案タブが、増やさない設定と合わない: " + rowOf().next);
+  p = after(zero, "goblet", rr.hi);
+  need(p.change === "heavier", "増やさない設定で、上限の回をやり切っても重くしない: " + p.change);
+  /* 上限のまま続ける */
+  const stay = {prog: {first: "stay", updatedAt: 1}};
+  p = after(stay, "goblet", rr.hi);
+  need(p.change === "top" && p.stay && p.target === rr.hi && !p.next && /上限のまま続けます/.test(p.why) && !/一番上の段階/.test(p.why), "上限のまま続ける設定で、先へ進んだ: " + p.change + " " + p.why);
+  need(/のまま続けます/.test(rowOf().next) && !/一番上の段階/.test(rowOf().next) && /回数が範囲の上限に届いたら、上限のまま続けます/.test(viewPlan()), "提案タブが、上限のまま続ける設定と合わない: " + rowOf().next);
+  p = after(stay, "goblet", rr.lo);
+  need(p.target === rr.lo + 1 && /届いたあとは、上限のまま続けます/.test(rowOf().next), "上限のまま続ける設定で、上限までの行が違う: " + rowOf().next);
+  /* 2段重く: 上がり幅が目安に収まれば2段、収まらなければ一段 */
+  const jump2 = {prog: {jump: 2, updatedAt: 1}};
+  const one = after(null, "goblet", rr.hi), i0 = optionIndex(gopts, defaultOptionFor(gb));
+  p = after(jump2, "goblet", rr.hi);
+  const far = gopts[i0 + 2], fits = !!far && (far.key <= gopts[i0].key * PROG.jumpRatio * PROG.jumpRatio || far.key - gopts[i0].key <= PROG.jumpKg * 2);
+  need(one.change === "heavier" && Math.abs(one.w - gopts[i0 + 1].total) < 0.01 && /一段重くします/.test(one.why), "初めの設定で、一段重くならない");
+  need(fits, "検査の前提: 2段上の重さが目安に収まる");
+  need(p.change === "heavier" && Math.abs(p.w - far.total) < 0.01 && /2段重くします/.test(p.why), "2段重くする設定で、2段重くならない: " + p.w + " " + p.why);
+  p = after(jump2, "goblet", rr.lo);
+  need(/ダンベルを2段重く（/.test(rowOf().next) && rowOf().next.includes(far.text) && /無理なく重くできれば2段（重すぎるときは一段）重く/.test(viewPlan()), "提案タブが、2段重くする設定と合わない: " + rowOf().next);
+  reset(jump2, [{kg: 5, n: 1}, {kg: 7, n: 1}, {kg: 20, n: 1}]);
+  const fo = itemOptions(gb), fw = nextUp(gb, fo[0], fo);
+  need(fo.length >= 3 && fw.opt && fw.steps === 1 && optionIndex(fo, fw.opt) === 1, "2段上が重すぎるのに、一段にしない: " + JSON.stringify(fo.map(o => o.key)) + " " + JSON.stringify(fw.steps));
 
   /* ---- 6. 保存 ---- */
   const dirty = sanitizeState({sessions: {}, tune: {
     pref: {map: {curl: -1, "<b>": 1, hinge: 2, lunge: "1"}, updatedAt: "7", junk: 1},
     gap: {map: {quads: 4, glutes: 6, hams: 1.5, "QUADS": 1, chest: "0"}, updatedAt: 8},
-    pair: {off: "yes", updatedAt: 9}, prog: {step: 3, first: "easier", updatedAt: 10}, other: {x: 1}}});
+    pair: {off: "yes", updatedAt: 9}, prog: {step: 4, need: 1, jump: 3, first: "easier", updatedAt: 10}, other: {x: 1}}});
   const t = dirty.tune || {};
   need(JSON.stringify(t.pref) === JSON.stringify({map: {curl: -1, lunge: 1}, updatedAt: 7}), "sanitize: 出やすさ " + JSON.stringify(t.pref));
   need(JSON.stringify(t.gap) === JSON.stringify({map: {quads: 4, chest: 0}, updatedAt: 8}), "sanitize: 回復の日数 " + JSON.stringify(t.gap));
@@ -176,6 +239,8 @@ setTimeout(() => {
   need(sanitizeState({sessions: {}}).tune === undefined && sanitizeState({sessions: {}, tune: "x"}).tune === undefined, "sanitize: 設定が無いのに作った");
   const keep = sanitizeState({sessions: {}, tune: {pair: {off: true, updatedAt: 3}, prog: {step: 2, first: "harder", updatedAt: 4}}}).tune;
   need(keep.pair.off === true && keep.prog.step === 2 && keep.prog.first === "harder", "sanitize: 正しい値を落とした");
+  const keep2 = sanitizeState({sessions: {}, tune: {prog: {step: 0, need: 3, jump: 2, first: "stay", updatedAt: 4}}}).tune.prog;
+  need(keep2.step === 0 && keep2.need === 3 && keep2.jump === 2 && keep2.first === "stay", "sanitize: 増え方の正しい値を落とした " + JSON.stringify(keep2));
   if(typeof mergeState === "function"){
     const A = {sessions: {}, tune: {pref: {map: {curl: 1}, updatedAt: 10}, gap: {map: {quads: 2}, updatedAt: 5}}};
     const B = {sessions: {}, tune: {gap: {map: {}, updatedAt: 20}, pair: {off: true, updatedAt: 1}}};
@@ -193,9 +258,9 @@ setTimeout(() => {
   const q = k => sheetInner.querySelector('select[data-tune="' + k + '"]');
   const all = Array.from(sheetInner.querySelectorAll("select[data-tune]"));
   const pats = PATTERN_ORDER.filter(pat => EX.some(e => !e.base && patternOf(e.id) === pat));
-  need(all.length === 3 + Object.keys(MUSCLES).length + pats.length, "設定の選択の数が違う: " + all.length);
+  need(all.length === 5 + Object.keys(MUSCLES).length + pats.length, "設定の選択の数が違う: " + all.length);
   need(EX.filter(e => !e.base).every(e => pats.includes(patternOf(e.id))), "出やすさの一覧に出ない種目がある");
-  const shownOk = () => q("pair").value === (pairOn() ? "1" : "0") && q("step").value === String(progGain("w")) && q("first").value === progFirst()
+  const shownOk = () => q("pair").value === (pairOn() ? "1" : "0") && q("step").value === String(progGain("w")) && q("first").value === progFirst() && q("need").value === String(progNeed()) && q("jump").value === String(progJump())
     && Object.keys(MUSCLES).every(m => q("gap:" + m).value === String(recoverGap(m))) && pats.every(pat => q("pref:" + pat).value === String(patPref(pat)));
   need(shownOk(), "設定の選択の値が、読み出しの関数と合わない");
   need(!!sheetInner.querySelector("[data-act=tunereset]"), "変えた設定があるのに「初めの設定に戻す」が出ない");
@@ -209,6 +274,10 @@ setTimeout(() => {
   const before = s.plan.map(x => x.ex).join(",");
   pick("pair", "1");
   need(pairOn() && shownOk(), "選択を変えても反対の部位が戻らない・設定の表示が古い");
+  pick("need", "3"); pick("jump", "2"); pick("step", "0"); pick("first", "stay");
+  need(progNeed() === 3 && progJump() === 2 && progGain("w") === 0 && progFirst() === "stay" && shownOk(), "増え方の選択を変えた値が入らない・設定の表示が古い: " + JSON.stringify(state.tune.prog));
+  pick("need", "1"); pick("jump", "1");
+  need(!("need" in state.tune.prog) && !("jump" in state.tune.prog) && state.tune.prog.step === 0 && state.tune.prog.first === "stay", "増え方: 初めの設定と同じ値を持ったまま・ほかの値が消えた " + JSON.stringify(state.tune.prog));
   pick("gap:glutes", "1"); pick("pref:hinge", "-1"); pick("step", "1"); pick("first", "harder");
   need(recoverGap("glutes") === 1 && patPref("hinge") === -1 && progGain("w") === 1 && progFirst() === "harder" && shownOk(), "選択を変えた値が入らない・設定の表示が古い");
   need(state.tune.prog.step === undefined && state.tune.prog.first === "harder", "増え方: 初めの設定と同じ値を持ったまま");
