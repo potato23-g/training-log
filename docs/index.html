@@ -5811,7 +5811,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-11 00:07";
+const BUILD_VERSION = "2026-10-11 00:12";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -8571,12 +8571,12 @@ function progressFor(item){
         res.why = "前回は全部のセットで目標に届きました。目標は同じ" + u + "数のまま続けます";
       }else if(nt <= rr.hi){
         res.target = nt; res.change = "up";
-        res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
+        res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします" + (progFirst() === "stay" ? "" : "（" + rr.hi + u + "に届いたら次の段階へ）");
       }else{
         /* 幅の上限に届いた → 一段上へ */
         const way = nextUp(item, cur, opts), nx = way.opt, nxt = way.item;
         if(nx){
-          res.opt = nx; res.target = rr.lo; res.change = "heavier";
+          res.opt = nx; res.target = rr.lo; res.change = "heavier"; res.steps = way.steps;
           res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重くします。" + rr.lo + u + "から始めます";
         }else{
           if(way.stay){
@@ -8796,7 +8796,7 @@ function todayAdvice(item, sug){
   if(!n){
     if(p.snap !== undefined) return {level:"gear", short:"持ち方変更",
       text: "前回の " + kgText(p.snap) + " は、今登録しているダンベルでは作れません。今日は" + optText(p.opt) + "にしています。"};
-    if(p.change === "heavier") return {level:"harder", short:"一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
+    if(p.change === "heavier") return {level:"harder", short: p.steps === 2 ? "2段重く" : "一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
     if(p.change === "lighter") return {level:"easier", warn:true, short:"一段軽く", text: p.why + "。"};
     if(p.change === "stepped-up") return {level:"harder", short:"段階を上げた", text: p.why + "。"};
     if(p.change === "stepped-down") return {level:"easier", short:"段階を下げた", text: p.why + "。"};
