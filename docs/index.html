@@ -327,6 +327,13 @@ textarea{min-height:64px;resize:vertical}
 
 /* ---- 筋肉痛の部位を選ぶシート ---- */
 .sorechips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}
+/* 設定の「メニューと目標の決め方」: 畳んだ一覧と、名前＋選択の行 */
+.sheet .inner details.tune{border-top:1px solid var(--rule);margin-top:10px}
+.sheet .inner details.tune summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;font-size:15px}
+.sheet .inner .tunerow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0}
+.sheet .inner .tunerow span{flex:1 1 0;min-width:0;font-size:14px}
+.sheet .inner .tunerow span small{display:block;font-size:12px;color:var(--ink-2)}
+.sheet .inner .tunerow select{flex:0 0 auto;width:auto;max-width:58%;min-height:44px}
 .sheet .inner .sorechip{min-height:44px;padding:6px 14px;border:1px solid var(--rule);border-radius:22px;
   background:var(--panel-2);color:var(--ink-2);font-size:13.5px;font-weight:600}
 .sheet .inner .sorechip.on{background:var(--muscle);border-color:var(--muscle);color:#fff}
@@ -4380,6 +4387,24 @@ function sanitizeState(obj){
     if(offAt !== null) off.updatedAt = offAt;
     out.exOff = off;
   }
+  /* 本人が変えた決まり（rules.js の state.tune）。形と範囲の合う値だけ残す。まとまりごとの時刻も残す
+     （中身が空でも、初めの設定に戻した時刻としてほかの端末へ伝える） */
+  if(src.tune && typeof src.tune === "object" && !Array.isArray(src.tune)){
+    var tn = {}, part = function(k){ var v = src.tune[k]; return v && typeof v === "object" && !Array.isArray(v) ? v : null; };
+    var stamp = function(from, to){ var n = num(from.updatedAt); if(n !== null) to.updatedAt = n; return to; };
+    var maps = function(k, keyok, valok){
+      var v = part(k); if(!v) return;
+      var m = {}, srcMap = v.map && typeof v.map === "object" && !Array.isArray(v.map) ? v.map : {};
+      Object.keys(srcMap).slice(0, 100).forEach(function(key){ var n = num(srcMap[key]); if(keyok(key) && n !== null && valok(n)) m[key] = n; });
+      tn[k] = stamp(v, { map: m });
+    };
+    maps("pref", exok, function(n){ return n === 1 || n === -1; });
+    maps("gap", function(key){ return /^[a-z]{2,20}$/.test(key); }, function(n){ return n >= 0 && n <= 5 && n === Math.floor(n); });
+    var pr = part("pair"); if(pr) tn.pair = stamp(pr, pr.off === true ? { off: true } : {});
+    var pg = part("prog");
+    if(pg){ var g2 = {}; if(num(pg.step) === 2) g2.step = 2; if(pg.first === "harder") g2.first = "harder"; tn.prog = stamp(pg, g2); }
+    if(Object.keys(tn).length) out.tune = tn;
+  }
   if(Array.isArray(src.program)) out.program = src.program.filter(exok);
   return out;
 }
@@ -4406,6 +4431,7 @@ function applyLoaded(o){
   state.program = c.program && c.program.length ? c.program : DEFAULT_PROGRAM.slice();
   state.gear = readGear(c.gear);          /* 持っているダンベル（旧形式は読み替える） */
   if(c.exOff) state.exOff = c.exOff; else delete state.exOff;   /* メニューに入れない種目 */
+  if(c.tune) state.tune = c.tune; else delete state.tune;       /* 本人が変えた決まり（rules.js の state.tune） */
   ensureIds(state);                       /* 古い記録にもセットごとのIDを振る */
 }
 function loadLocal(){
@@ -4444,7 +4470,7 @@ function saveLocal(){
         const m = mergeState(state, other);
         state.sessions = m.sessions;
         if(m.gear) state.gear = m.gear;
-        if(m.exOff) state.exOff = m.exOff;
+        if(m.exOff) state.exOff = m.exOff; if(m.tune) state.tune = m.tune;
       }catch(e){}
     }
     /* 消した印（del）は古い日ならもう要らない。統合のときだけでなく、ここでも間引く
@@ -4501,11 +4527,11 @@ try{
     let other;
     try{ other = sanitizeState(JSON.parse(e.newValue)); }catch(x){ return; }
     const m = mergeState(state, other);
-    const key = o => (typeof stableKey === "function" ? stableKey : JSON.stringify)({sessions: o.sessions, gear: o.gear, exOff: o.exOff});
+    const key = o => (typeof stableKey === "function" ? stableKey : JSON.stringify)({sessions: o.sessions, gear: o.gear, exOff: o.exOff, tune: o.tune});
     const mineOnly = key(m) !== key(other);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
-    if(m.exOff) state.exOff = m.exOff;
+    if(m.exOff) state.exOff = m.exOff; if(m.tune) state.tune = m.tune;
     lastRaw = e.newValue;
     if(mineOnly) saveLocal();
     if(typeof syncSafeRender === "function") syncSafeRender(); else render();
@@ -4528,7 +4554,7 @@ function rotateBackups(){
       if(older !== null) localStorage.setItem(LS + ".bak" + i, older);
     }
     localStorage.setItem(LS + ".bak1", JSON.stringify({savedAt: new Date().toISOString(), day: TODAY,
-      data: {sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff}}));
+      data: {sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff, tune: state.tune}}));
   }catch(e){}                              /* 容量が足りなければ控えはあきらめる（本体の保存を優先） */
 }
 /* 以前の版の控え（trainlog.v1.bak。起動のたびに上書きしていた）を、一度だけ新しい控えへ移す */
@@ -4573,11 +4599,11 @@ function restoreBackup(key){
     const m = mergeState(state, incoming);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
-    if(m.exOff) state.exOff = m.exOff;
+    if(m.exOff) state.exOff = m.exOff; if(m.tune) state.tune = m.tune;
   }else{
     Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
     if(incoming.gear) state.gear = incoming.gear;
-    if(incoming.exOff) state.exOff = incoming.exOff;
+    if(incoming.exOff) state.exOff = incoming.exOff; if(incoming.tune) state.tune = incoming.tune;
   }
   STORE_PROBLEM = null;
   saveLocal();
@@ -4604,7 +4630,7 @@ async function saveFile(filename, text){
 /* ---- バックアップ（JSON） ---- */
 function backupJSON(){
   return JSON.stringify({ app:"trainlog", version:1, savedAt:new Date().toISOString(),
-                          sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff }, null, 1);
+                          sessions: state.sessions, program: state.program, gear: state.gear, exOff: state.exOff, tune: state.tune }, null, 1);
 }
 async function backupSave(){
   const ok = await saveFile("trainlog-backup-" + TODAY + ".json", backupJSON());
@@ -4630,11 +4656,11 @@ function applyBackup(text){
     const m = mergeState(state, incoming);
     state.sessions = m.sessions;
     if(m.gear) state.gear = m.gear;
-    if(m.exOff) state.exOff = m.exOff;
+    if(m.exOff) state.exOff = m.exOff; if(m.tune) state.tune = m.tune;
   }else{
     Object.keys(incoming.sessions).forEach(d=>{ state.sessions[d] = incoming.sessions[d]; });
     if(incoming.gear) state.gear = incoming.gear;
-    if(incoming.exOff) state.exOff = incoming.exOff;
+    if(incoming.exOff) state.exOff = incoming.exOff; if(incoming.tune) state.tune = incoming.tune;
   }
   if(incoming.program && incoming.program.length) state.program = incoming.program;
   STORE_PROBLEM = null;
@@ -4709,7 +4735,7 @@ function backupReminder(){
 
    リモートの形:
      trainlog/YYYY-MM.json = {app:"trainlog", format:2, month:"YYYY-MM", sessions:{...その月の日付だけ}}
-     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}, exOff?:{ids:[...], updatedAt}}
+     trainlog/settings.json = {app:"trainlog", format:2, gear:{...}, exOff?:{ids:[...], updatedAt}, tune?:{pref?, pair?, gap?, prog?}}
    月ごとのファイルに分けているのは、記録するたびに全履歴を送らずに済ませるため
    （1年続けると単一ファイルは約1.7MBになる。変わった月だけをやり取りする）。
    旧形式（単一の trainlog.json、format:1）が残っていれば、初回だけ読み込んで取り込む（移行）。
@@ -4892,6 +4918,8 @@ function mergeState(local, remote){
      片方の端末でダンベルを、もう片方で種目のオンオフを変えても、両方残る */
   var off = syncMergeGear(a.exOff, b.exOff);
   if(off) out.exOff = off;
+  var tune = syncMergeTune(a.tune, b.tune);
+  if(tune) out.tune = tune;
   return out;
 }
 
@@ -5056,6 +5084,17 @@ function syncMergeGear(a, b){
   if(atA > atB || !b) return a;
   if(!a) return b;
   return (stableKey(b) || "") > (stableKey(a) || "") ? b : a;
+}
+
+/* 本人が変えた決まり（rules.js の state.tune）は、まとまり（pref・pair・gap・prog）ごとに gear と同じ決め方。
+   片方の端末で回復の日数を、もう片方で種目の出やすさを変えても、両方残る。どちらにも無ければ undefined */
+function syncMergeTune(a, b){
+  var out = {}, any = false;
+  ["pref", "pair", "gap", "prog"].forEach(function(k){
+    var m = syncMergeGear(a && a[k], b && b[k]);
+    if(m){ out[k] = m; any = true; }
+  });
+  return any ? out : undefined;
 }
 
 /* ============================================================
@@ -5321,7 +5360,7 @@ function syncApplyMonthToState(monthSessions, month){
 }
 /* リモートに無い状態で、ローカルも空（作る価値が無い）パート */
 function syncPartIsEmpty(part, localPart){
-  if(part.kind === "settings") return (localPart.gear === undefined || localPart.gear === null) && !localPart.exOff;
+  if(part.kind === "settings") return (localPart.gear === undefined || localPart.gear === null) && !localPart.exOff && !localPart.tune;
   return Object.keys(localPart.sessions).length === 0;
 }
 
@@ -5353,15 +5392,16 @@ function syncBuildParts(listing){
 }
 
 /* settings.json に入れる中身。exOff は、あるときだけ入れる（無い端末の中身のキーが変わって、読み直しが起きないように） */
-function syncSettingsPart(gear, exOff){
+function syncSettingsPart(gear, exOff, tune){
   var out = { gear: gear };
   if(exOff) out.exOff = exOff;
+  if(tune) out.tune = tune;
   return out;
 }
 function syncLocalPartOf(part){
   return part.kind === "month"
     ? { sessions: syncSessionsForMonth(state.sessions, part.month) }
-    : syncSettingsPart(state.gear, state.exOff);
+    : syncSettingsPart(state.gear, state.exOff, state.tune);
 }
 
 /* 1パート（1ファイル）ぶんの pull→merge→push。meta はその場で更新して呼び出し側が即persistする。
@@ -5397,15 +5437,15 @@ async function syncPart(cfg, part, meta){
       merged = { sessions: mergeState({ sessions: localPart.sessions }, { sessions: remoteContent.sessions || {} }).sessions };
       remoteContentKey = stableKey({ sessions: remoteContent.sessions || {} });
     }else{
-      merged = syncSettingsPart(syncMergeGear(localPart.gear, remoteContent.gear), syncMergeGear(localPart.exOff, remoteContent.exOff));
-      remoteContentKey = stableKey(syncSettingsPart(remoteContent.gear, remoteContent.exOff));
+      merged = syncSettingsPart(syncMergeGear(localPart.gear, remoteContent.gear), syncMergeGear(localPart.exOff, remoteContent.exOff), syncMergeTune(localPart.tune, remoteContent.tune));
+      remoteContentKey = stableKey(syncSettingsPart(remoteContent.gear, remoteContent.exOff, remoteContent.tune));
     }
   }
 
   var mergedKey = stableKey(merged);
   if(mergedKey !== localKey){
     if(part.kind === "month") syncApplyMonthToState(merged.sessions, part.month);
-    else{ state.gear = merged.gear; if(merged.exOff) state.exOff = merged.exOff; }
+    else{ state.gear = merged.gear; if(merged.exOff) state.exOff = merged.exOff; if(merged.tune) state.tune = merged.tune; }
     changedLocally = true;
     /* meta を進める前に端末へ保存する。途中で閉じられて「見た」印だけ残ると、
        次の同期で取り込み前の中身を送り返してしまうため */
@@ -5439,10 +5479,11 @@ async function syncMaybeMigrate(cfg, listing, meta){
   var old = await syncGetFileLenient(cfg, SYNC_LEGACY_PATH);
   if(!old.parsed) return false;
   var oldState = typeof sanitizeState === "function" ? sanitizeState(old.parsed) : old.parsed;
-  var migrated = mergeState({ sessions: state.sessions, gear: state.gear, exOff: state.exOff }, oldState);
+  var migrated = mergeState({ sessions: state.sessions, gear: state.gear, exOff: state.exOff, tune: state.tune }, oldState);
   state.sessions = migrated.sessions;
   state.gear = migrated.gear;
   if(migrated.exOff) state.exOff = migrated.exOff;
+  if(migrated.tune) state.tune = migrated.tune;
   return true;
 }
 
@@ -5765,7 +5806,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-10 00:07";
+const BUILD_VERSION = "2026-10-10 23:44";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6719,6 +6760,51 @@ function setExOn(id, on){
   persistProgram();
   if(typeof syncSchedule === "function") syncSchedule();
 }
+/* 本人が変えられる決まり（2026-10-10 本人の要望: 提案を細かくカスタマイズできるようにしたい。選んだのは
+   種目の出やすさ・反対の部位と回復の日数・回数や重量の増え方）。
+   state.tune = {pref:{map:{動き:1|-1}, updatedAt}, pair:{off:true, updatedAt}, gap:{map:{部位:日数}, updatedAt},
+                 prog:{step:2, first:"harder", updatedAt}}
+   初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
+   4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
+   読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
+const TUNE_KEYS = ["pref", "pair", "gap", "prog"];
+function tunePart(k){ const t = state.tune; return (t && t[k] && typeof t[k] === "object") ? t[k] : null; }
+function setTune(k, part){
+  const t = Object.assign({}, state.tune || {});
+  t[k] = Object.assign({}, part, {updatedAt: typeof stampNow === "function" ? stampNow() : Date.now()});
+  state.tune = t;
+  persistProgram();
+  if(typeof syncSchedule === "function") syncSchedule();
+}
+/* そのまとまりが初めの設定のままか */
+function tuneIsDefault(k){
+  const p = tunePart(k);
+  if(!p) return true;
+  if(k === "pref" || k === "gap") return !p.map || !Object.keys(p.map).length;
+  if(k === "pair") return p.off !== true;
+  return p.step !== 2 && p.first !== "harder";
+}
+function tuneChanged(){ return TUNE_KEYS.some(k => !tuneIsDefault(k)); }
+/* 種目の出やすさ（動きごと）: 1=よく出す / 0=ふつう / -1=あまり出さない。
+   よく出す: 回復と上限の範囲で入れられる日は、ほかの種目より先に入れる（planner.js の compose の最初）。
+   あまり出さない: メインで鍛える部位が週の目標から遠いとき（価値がしきい値 1 以上）と、7日使えていない部位を埋めるときだけ入れる */
+const EX_PREF_LABEL = {"1": "よく出す", "0": "ふつう", "-1": "あまり出さない"};
+const EX_PREF_FACTOR = {"1": 1.5, "0": 1, "-1": 0.6};
+function patPref(pat){ const p = tunePart("pref"), v = p && p.map ? p.map[pat] : 0; return v === 1 || v === -1 ? v : 0; }
+function exPref(id){ return patPref(patternOf(id)); }
+function setPatPref(pat, v){
+  const p = tunePart("pref"), map = Object.assign({}, p && p.map);
+  if(v === 1 || v === -1) map[pat] = v; else delete map[pat];
+  setTune("pref", {map});
+}
+/* 反対の部位を同じ日に鍛えるか（しないときは、相手を足さない・隣に並べない・今日タブの一行も出さない: 下の opposite） */
+function pairOn(){ const p = tunePart("pair"); return !(p && p.off === true); }
+/* 回数の増やし方: 全部のセットで目標に届いた次の回に増やす数（秒の種目は 5 倍）。入力欄の ± の刻み（progress.js の progStep）とは別 */
+function progGain(kind){ const p = tunePart("prog"), n = p && p.step === 2 ? 2 : 1; return (kind === "t" ? 5 : 1) * n; }
+/* 回数の範囲の上限に届いたとき、先にどちらへ進むか: "heavier"=ダンベルを重く（初めの設定）/ "harder"=一段難しいやり方 */
+function progFirst(){ const p = tunePart("prog"); return p && p.first === "harder" ? "harder" : "heavier"; }
+const RECOVER_GAP_MAX = 5;
+
 /* 反対の部位（関節をはさんで逆の働きをする部位）。メニュー作りは、今日のメニューに入れた種目と反対の部位を
    メインで鍛える種目が入れられるとき、それを少し先に選び、隣に並べる（2026-10-08 本人の要望）。
    回復・1日と1週間の上限・外した動き・入れない種目の決まりはそのままで、入れられない種目を入れることはしない。
@@ -6735,6 +6821,7 @@ let PAIR_PREF = 1.1;
 /* 2つの種目が反対の部位どうしか: メインで鍛える部位に反対の組があり、同じ部位をメインで使っていない */
 function opposite(a, b){
   const A = EXMAP[a], B = EXMAP[b];
+  if(!pairOn()) return false;
   if(!A || !B || a === b || A.p.some(m => B.p.includes(m))) return false;
   return A.p.some(m => B.p.includes(ANTAGONIST[m]));
 }
@@ -6844,7 +6931,17 @@ const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, frontdelt:1, si
 const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
 /* 1種目のセット数。本人の要望で3に固定（2026-09-29。重さ・回数は本人が調整する） */
 const SETS_PER_EXERCISE = 3;
-function recoverGap(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
+/* 初めの設定の日数と、今の日数（本人が設定で変えた部位はその日数: 上の state.tune.gap） */
+function recoverGapDefault(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
+function recoverGap(m){
+  const p = tunePart("gap"), v = p && p.map ? p.map[m] : undefined;
+  return (typeof v === "number" && v >= 0 && v <= RECOVER_GAP_MAX && v === Math.floor(v)) ? v : recoverGapDefault(m);
+}
+function setRecoverGap(m, v){
+  const p = tunePart("gap"), map = Object.assign({}, p && p.map);
+  if(v === recoverGapDefault(m)) delete map[m]; else map[m] = v;
+  setTune("gap", {map});
+}
 /* 部位 m が主役（主働筋）だったセット数（fromDaysAgo〜toDaysAgo 日前） */
 function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   let n = 0;
@@ -7342,13 +7439,16 @@ function buildPlan(){
      あれば、動きどうしを比べる値を少し上げて先に選ぶ（2026-10-08 本人の要望: 反対の部位を入れられるときは、同じ日に鍛える）。
      入れるかどうかのしきい値（minGain）には掛けない: 掛けると、これまで入らなかった種目まで入って1回の量が増える */
   const paired = c => plan.some(p => opposite(p.ex, c.ex)) || doneToday.some(e => opposite(e.ex, c.ex));
-  const fill = (minGain, upTo, only) => {
+  const fill = (minGain, upTo, only, force) => {
     while(plan.length < upTo){
       const byPattern = {};
       catalog().filter(c => (!only || only(c)) && allowed(c) && candidate(c)).forEach(c => {
-        const g = gain(c), pat = patternOf(c.ex), f = fit(c);
-        if(g >= minGain && (!byPattern[pat] || f > byPattern[pat].f))
-          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1)};
+        const g = gain(c), pat = patternOf(c.ex), f = fit(c), pr = patPref(pat);
+        /* 「あまり出さない」にした動き（rules.js の patPref）は、週の目標から遠い部位を埋めるとき（価値が 1 以上）と、
+           7日使えていない部位を先に入れるとき（force）だけ入れる */
+        const need = pr < 0 && !force ? Math.max(minGain, 1) : minGain;
+        if(g * (pr < 0 ? EX_PREF_FACTOR[pr] : 1) >= need && (!byPattern[pat] || f > byPattern[pat].f))
+          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1) * EX_PREF_FACTOR[pr]};
       });
       const best = Object.keys(byPattern).map(p => byPattern[p]).sort((a, b) => b.v - a.v)[0];
       if(!best) return;
@@ -7395,7 +7495,9 @@ function buildPlan(){
       /* 組み直し: 残す種目を先に入れる */
       (planKeep || []).forEach(keepIn);
       /* 0. first の部位は、その部位をメインで鍛える種目を先に1つずつ入れる（前の部位の種目でもう使うなら入れない） */
-      first.forEach(u => { if(!(today[u] > 0)) fill(0.01, Math.min(plan.length + 1, LIM.exercises), c => EXMAP[c.ex].p.includes(u)); });
+      first.forEach(u => { if(!(today[u] > 0)) fill(0.01, Math.min(plan.length + 1, LIM.exercises), c => EXMAP[c.ex].p.includes(u), true); });
+      /* 「よく出す」にした動きは、回復と上限の範囲で入れられる日は先に入れる（20分で組むとき・軽い週は、価値の順だけ） */
+      if(LIM === SESSION_MAX) fill(0, LIM.exercises, c => exPref(c.ex) > 0);
       fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
       /* 2. メインで鍛える部位が週の目標に届いていない種目は、価値が小さくても入れる（2026-10-05 本人の要望: 種目が増えてもよいので
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
@@ -8362,6 +8464,18 @@ function sameWeight(a, b){
   return Math.abs(a.w - b.w) < 0.01;
 }
 
+/* 回数の範囲の上限に届いたとき、次に進む先: {opt}=ダンベルを一段重く / {item}=一段難しいやり方 / {}=今の道具では一番上。
+   初めの設定は、無理なく重くできれば重く、できなければ難しいやり方。本人が「難しいやり方を先に」を選んでいれば逆の順
+   （rules.js の progFirst）。提案タブの「次の段階まで」もここから作る */
+function nextUp(item, cur, opts){
+  const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
+  const opt = nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg) ? nx : null;
+  if(progFirst() === "harder"){ const h = stepItem(item, 1); return h ? {item: h} : opt ? {opt} : {}; }
+  if(opt) return {opt};
+  const h = stepItem(item, 1);
+  return h ? {item: h} : {};
+}
+
 /* ---- 今日のその組み方の目標 ----
    {target, opt, w, change, why, src, next, lo, hi, last}
    change: first（はじめて）/ stepped-up・stepped-down・switched（段を移って1回目）/ up（1回増やす）/
@@ -8372,7 +8486,7 @@ function progressFor(item){
   const key = itemKey(item);
   if(progMemo.items[key]) return progMemo.items[key];
   const id = item.ex, ex = EXMAP[id], kind = ex.kind, u = unitOf(kind);
-  const rr = repRange(id, item), step = progStep(kind);
+  const rr = repRange(id, item), step = progGain(kind);
   const opts = itemOptions(item);
   const optByW = w => (w === undefined || w === null) ? null : (opts.find(o => Math.abs(o.total - w) < 0.01) || null);
   const res = {lo: rr.lo, hi: rr.hi, step, change: "", why: "", src: "", target: 0, opt: null, w: undefined, next: null, last: null};
@@ -8413,18 +8527,18 @@ function progressFor(item){
       res.change = "deload";
       res.why = "軽めの週です。目標は前回と同じにして、種目を少なめにしています";
     }else if(ev.allHit){
-      const nt = ev.target + step;
+      /* 2回ずつ増やす設定のとき、上限のひとつ手前からは上限まで（上限を飛び越えて次の段階へ進まない） */
+      const nt = ev.target < rr.hi ? Math.min(rr.hi, ev.target + step) : ev.target + step;
       if(nt <= rr.hi){
         res.target = nt; res.change = "up";
-        res.why = "前回は全部のセットで目標に届いたので、" + step + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
+        res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
       }else{
         /* 幅の上限に届いた → 一段上へ */
-        const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
-        if(nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg)){
+        const way = nextUp(item, cur, opts), nx = way.opt, nxt = way.item;
+        if(nx){
           res.opt = nx; res.target = rr.lo; res.change = "heavier";
           res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から始めます";
         }else{
-          const nxt = stepItem(item, 1);
           if(nxt){
             res.next = nxt; res.change = "harder"; res.target = rr.hi;
             res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";
@@ -9015,10 +9129,8 @@ function ladderRows(){
     if(p.change === "top"){
       next = "今の道具では、この動きの一番上の段階で、回数も上限です" + tip;
     }else{
-      const opts = itemOptions(K), i = p.opt ? optionIndex(opts, p.opt) : -1, nx = i >= 0 ? opts[i + 1] : null;
-      const heavier = nx && (nx.key <= p.opt.key * PROG.jumpRatio || nx.key - p.opt.key <= PROG.jumpKg);
-      const up = heavier ? null : stepItem(K, 1);
-      const left = Math.max(0, Math.round((p.hi - p.target) / p.step)) + 1;   /* 今日を含めて、上限の回に届くまでの回数 */
+      const way = nextUp(K, p.opt, itemOptions(K)), nx = way.opt, heavier = !!nx, up = way.item || null;
+      const left = Math.max(0, Math.ceil((p.hi - p.target) / p.step)) + 1;   /* 今日を含めて、上限の回に届くまでの回数 */
       next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを一段重く（" + nx.text + "）"
            : up ? "あと" + left + "回のトレーニングで「" + itemName(up) + "」へ"
            : "あと" + left + "回のトレーニングで" + u + "数が範囲の上限（" + p.hi + u + "）に届きます。今の道具では、この先の段階はありません";
@@ -9096,10 +9208,10 @@ function viewPlan(){
     ${balanceCards}
     <div class="card">
       <h4>この提案の仕組み</h4>
-      <p style="margin:0;font-size:14px">前回の同じやり方で、全部のセットが目標に届いたら、次は1回（秒の種目は5秒）増やします。回数が範囲の上限に届いたら、持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しいやり方に進みます。</p>
+      <p style="margin:0;font-size:14px">前回の同じやり方で、全部のセットが目標に届いたら、次は${progGain("w")}回（秒の種目は${progGain("t")}秒）増やします。回数が範囲の上限に届いたら、${progFirst() === "harder" ? "同じ動きの一段難しいやり方に進み、難しいやり方が無ければ、持っているダンベルで無理なく重くできるときに重くします" : "持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しいやり方に進みます"}。</p>
       <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
       <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。設定の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
-      <p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は、回復と上限の範囲で入れられるかぎり入れて、隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>
+      ${pairOn() ? `<p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は、回復と上限の範囲で入れられるかぎり入れて、隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>` : ""}
       <p class="lastline">${esc(recoverGapText())}</p>
     </div>`;
 }
@@ -10287,10 +10399,85 @@ function exOffCard(){
     <div class="sorechips">${order.map(e => `<button class="sorechip${exOn(e.id) ? "" : " on"}" data-act="exoff" data-ex="${e.id}" aria-pressed="${!exOn(e.id)}">${esc(e.name)}</button>`).join("")}</div>
   </div>`;
 }
+/* メニューと目標の決め方（rules.js の state.tune）。選べるのは、反対の部位・回数の増やし方・上限に届いたときの進み方・
+   部位ごとの回復の日数・種目の出やすさ。値はどれも rules.js の関数（pairOn・progGain・progFirst・recoverGap・patPref）から読む。
+   長い2つの一覧は畳んでおく（開いたかどうかは、描き直しても保つ） */
+const TUNE_HEAD = "メニューと目標の決め方";
+const tuneOpen = {gap: false, pref: false};
+function tuneCard(){
+  const sel = (key, cur, opts) => `<select data-tune="${key}">${opts.map(o => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`;
+  const gapRows = Object.keys(MUSCLES).map(m => {
+    const d = recoverGapDefault(m), opts = [];
+    for(let g = 0; g <= RECOVER_GAP_MAX; g++) opts.push([g, recoverGapLabel(g)]);
+    return `<div class="tunerow"><span>${esc(MUSCLES[m])}${recoverGap(m) !== d ? `<small data-gapwas="${m}">初めの設定は「${esc(recoverGapLabel(d))}」</small>` : ""}</span>${sel("gap:" + m, recoverGap(m), opts)}</div>`;
+  }).join("");
+  const prefRows = PATTERN_ORDER.map(pat => {
+    const names = EX.filter(e => !e.base && patternOf(e.id) === pat).map(e => e.name);
+    if(!names.length) return "";
+    return `<div class="tunerow"><span>${esc(names.join("・"))}</span>${sel("pref:" + pat, patPref(pat), [[1, EX_PREF_LABEL["1"]], [0, EX_PREF_LABEL["0"]], [-1, EX_PREF_LABEL["-1"]]])}</div>`;
+  }).join("");
+  return `<h3 class="sec">${TUNE_HEAD}</h3>
+  <div class="card">
+    <div class="fld"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
+      ${sel("pair", pairOn() ? 1 : 0, [[1, "同じ日に鍛えて、隣に並べる"], [0, "そろえない"]])}</div>
+    <div class="fld"><label>全部のセットが目標に届いたとき、次の目標</label>
+      ${sel("step", progGain("w"), [[1, "1回増やす（秒の種目は5秒）"], [2, "2回増やす（秒の種目は10秒）"]])}</div>
+    <div class="fld"><label>回数の範囲の上限に届いたとき</label>
+      ${sel("first", progFirst(), [["heavier", "ダンベルを先に重くする"], ["harder", "一段難しいやり方に先に進む"]])}</div>
+    <details class="tune" data-tune-d="gap"${tuneOpen.gap ? " open" : ""}><summary>部位ごとの回復の日数</summary>
+      <p class="lastline" style="margin-top:0">${esc(RECOVER_NOTE)}。</p>
+      ${gapRows}
+    </details>
+    <details class="tune" data-tune-d="pref"${tuneOpen.pref ? " open" : ""}><summary>種目の出やすさ</summary>
+      <p class="lastline" style="margin-top:0">「${EX_PREF_LABEL["1"]}」は、回復と上限の範囲で入れられる日に、ほかの種目より先に入れます。「${EX_PREF_LABEL["-1"]}」は、メインで鍛える部位が週の目標から遠いときと、${UNUSED_DAYS}日以上使えていないときだけ入れます。</p>
+      ${prefRows}
+    </details>
+    ${tuneChanged() ? `<div class="rowbtns"><button data-act="tunereset">初めの設定に戻す</button></div>` : ""}
+  </div>`;
+}
+/* 決まりを変えたあと: メニューにかかわる変更で、今日のメニューがもう決まっていれば組み直す（記録した種目・自分で追加した種目は残る） */
+function tuneApplied(menu, msg){
+  planMemo = null; resetProg();
+  const s = state.sessions[TODAY];
+  if(menu && s && s.plan) replanToday(); else render();
+  setStatus(msg);
+}
+function wireTune(root){
+  root.querySelectorAll("details[data-tune-d]").forEach(d => { d.ontoggle = () => { tuneOpen[d.dataset.tuneD] = d.open; }; });
+  root.querySelectorAll("select[data-tune]").forEach(el => {
+    el.onchange = () => {
+      const k = el.dataset.tune, v = el.value, at = k.indexOf(":"), kind = at < 0 ? k : k.slice(0, at), id = at < 0 ? "" : k.slice(at + 1);
+      const prog = () => { const p = tunePart("prog"), o = {}; if(p && p.step === 2) o.step = 2; if(p && p.first === "harder") o.first = "harder"; return o; };
+      if(kind === "pair"){
+        setTune("pair", v === "0" ? {off: true} : {});
+        tuneApplied(true, v === "0" ? "反対の部位をそろえないようにしました" : "反対の部位を同じ日に鍛えるようにしました");
+      }else if(kind === "step"){
+        const o = prog(); if(v === "2") o.step = 2; else delete o.step;
+        setTune("prog", o);
+        tuneApplied(false, "次の目標を" + progGain("w") + "回ずつ増やすようにしました");
+      }else if(kind === "first"){
+        const o = prog(); if(v === "harder") o.first = "harder"; else delete o.first;
+        setTune("prog", o);
+        tuneApplied(false, progFirst() === "harder" ? "上限に届いたら、難しいやり方に先に進むようにしました" : "上限に届いたら、ダンベルを先に重くするようにしました");
+      }else if(kind === "gap" && MUSCLES[id]){
+        setRecoverGap(id, +v);
+        tuneApplied(true, MUSCLES[id] + "の回復の日数を「" + recoverGapLabel(recoverGap(id)) + "」にしました");
+      }else if(kind === "pref" && PATTERN_ORDER.includes(id)){
+        setPatPref(id, +v);
+        tuneApplied(true, "出やすさを「" + EX_PREF_LABEL[String(patPref(id))] + "」にしました");
+      }
+    };
+  });
+}
+ACTIONS.tunereset = () => {
+  setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); setTune("prog", {});
+  tuneApplied(true, "「" + TUNE_HEAD + "」を初めの設定に戻しました");
+};
 function settingsHTML(){
   return `<h4 data-settings="1">設定</h4>
     ${gearCard()}
     ${exOffCard()}
+    ${tuneCard()}
     ${dayStartCard()}
     ${settingsCard()}
     ${typeof syncCard === "function" ? syncCard() : ""}
@@ -10302,6 +10489,7 @@ function wireSettings(){
   wireInputs(sheetInner);
   if(typeof wireGearCard === "function") wireGearCard(sheetInner);
   if(typeof syncWire === "function") syncWire(sheetInner);
+  wireTune(sheetInner);
   const sel = sheetInner.querySelector("#dayStartSel");
   if(sel) sel.onchange = ()=>{
     PREF.set("dayStart", +sel.value);
