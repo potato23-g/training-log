@@ -5817,7 +5817,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-11 00:32";
+const BUILD_VERSION = "2026-10-11 00:38";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6814,7 +6814,7 @@ function pairOn(){ const p = tunePart("pair"); return !(p && p.off === true); }
 function progGain(kind){ const p = tunePart("prog"), s = p ? p.step : 1, n = s === 0 || s === 2 || s === 3 ? s : 1; return (kind === "t" ? 5 : 1) * n; }
 /* 2026-10-11 本人の要望（決めた回数をやり切ったら何段階上げるか・上げないかを細かく選びたい）で足した3つ:
    progNeed = 同じやり方・同じ重さ・同じ目標で、続けて何回、全部のセットが目標に届いたら上げるか（1〜3。初めの設定は1）
-   progJump = ダンベルを何段ずつ重くするか（0=重くしない / 1 / 2。2段が重すぎるときは一段: progress.js の nextUp）
+   progJump = ダンベルを何段ずつ重くするか（0=重くしない / 1 / 2。二段が重すぎるときは一段: progress.js の nextUp）
    progGain が 0 = 回数は増やさない（目標に届いたら、回数はそのままで重さ・やり方を上げる）。
    回数・重さ・やり方は別々に選べる（2026-10-11 本人の要望: 回数も重さも別々に、増やさないこともできるように）。
    10-11 00:12 の版が保存した first:"stay"（上限のまま続ける）は、重くしない・やり方も変えない、として読む */
@@ -6992,7 +6992,7 @@ function recoverGroups(){
 }
 /* 「中3日」「連日でもよい」 */
 function recoverGapLabel(g){ return g ? "中" + g + "日" : "連日でもよい"; }
-const RECOVER_NOTE = "空けるのは、その部位をメインで" + RECOVER_PRIMARY + "セット以上やったとき。1日に" + RECOVER_HEAVY + "セット以上なら、空ける日を1日増やします";
+const RECOVER_NOTE = "日数を空けるのは、その部位をメインで" + RECOVER_PRIMARY + "セット以上鍛えたときです。1日に" + RECOVER_HEAVY + "セット以上鍛えたときは、空ける日数を1日増やします";
 /* 「中3日: 大腿四頭筋・大殿筋…／…／連日でもよい: 腹直筋…」（提案タブの説明用） */
 function recoverGapText(){
   return recoverGroups().map(g => recoverGapLabel(g.gap) + ": " + g.muscles.map(m => MUSCLES[m]).join("・")).join("／")
@@ -8497,7 +8497,7 @@ function sameWeight(a, b){
 
 /* 回数の範囲の上限に届いたとき、次に進む先: {opt, steps}=ダンベルを重く（steps 段）/ {item}=一段難しいやり方 /
    {stay}=本人が重さもやり方も上げないことにしている（残った方に先が無いときも）/ {}=今の道具では一番上。
-   2段重くする設定（rules.js の progJump）のときは、上がり幅が一段ぶんの目安の2回ぶんに収まれば2段、収まらなければ一段。
+   二段重くする設定（rules.js の progJump）のときは、上がり幅が一段ぶんの目安の2回ぶんに収まれば二段、収まらなければ一段。
    初めの設定は、無理なく重くできれば重く、できなければ難しいやり方。本人が「難しいやり方を先に」を選んでいれば逆の順
    （rules.js の progFirst）。提案タブの「次の段階まで」もここから作る */
 function nextUp(item, cur, opts){
@@ -8574,7 +8574,7 @@ function progressFor(item){
       const nt = ev.target < rr.hi ? Math.min(rr.hi, ev.target + step) : ev.target + Math.max(step, 1);
       if(run < res.need){
         res.run = run; res.change = "hold";
-        res.why = "前回は全部のセットで目標に届きました。あと" + (res.need - run) + "回続けて届いたら、次へ進みます";
+        res.why = "前回は全部のセットで目標に届きました。あと" + (res.need - run) + "回続けて届いたら、目標を上げます";
       }else if(step && nt <= rr.hi){
         res.target = nt; res.change = "up";
         res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします" + (nextUp(item, cur, opts).stay ? "" : "（" + rr.hi + u + "に届いたら次の段階へ）");
@@ -8585,11 +8585,11 @@ function progressFor(item){
         const keepT = step ? rr.hi : ev.target;
         if(nx){
           res.opt = nx; res.target = step ? rr.lo : ev.target; res.change = "heavier"; res.steps = way.steps;
-          res.why = head + "ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重くします。" + (step ? rr.lo + u + "から始めます" : u + "数は同じ" + ev.target + u + "です");
+          res.why = head + "ダンベルを" + (way.steps === 2 ? "二段" : "一段") + "重くします。" + (step ? rr.lo + u + "から始めます" : u + "数は" + ev.target + u + "のままです");
         }else{
           if(way.stay && !step && ev.target < rr.hi){
             res.change = "hold"; res.stay = true;
-            res.why = "前回は全部のセットで目標に届きました。目標は同じ" + u + "数のまま続けます";
+            res.why = "前回は全部のセットで目標に届きました。目標は変えずに続けます";
           }else if(way.stay){
             res.target = keepT; res.change = "top"; res.stay = true;
             res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届きました。上限のまま続けます";
@@ -8807,7 +8807,7 @@ function todayAdvice(item, sug){
   if(!n){
     if(p.snap !== undefined) return {level:"gear", short:"持ち方変更",
       text: "前回の " + kgText(p.snap) + " は、今登録しているダンベルでは作れません。今日は" + optText(p.opt) + "にしています。"};
-    if(p.change === "heavier") return {level:"harder", short: p.steps === 2 ? "2段重く" : "一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
+    if(p.change === "heavier") return {level:"harder", short: p.steps === 2 ? "二段重く" : "一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
     if(p.change === "lighter") return {level:"easier", warn:true, short:"一段軽く", text: p.why + "。"};
     if(p.change === "stepped-up") return {level:"harder", short:"段階を上げた", text: p.why + "。"};
     if(p.change === "stepped-down") return {level:"easier", short:"段階を下げた", text: p.why + "。"};
@@ -9174,10 +9174,10 @@ const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"�
 function progRuleText(){
   const need = progNeed(), step = progGain("w"), jump = progJump(), first = progFirst();
   const when = (need > 1 ? "同じやり方・同じ重さで、" + need + "回続けて" : "前回の同じやり方で、") + "全部のセットが目標に届いたら、";
-  const two = jump === 2 ? "2段（重すぎるときは一段）" : "";
+  const two = jump === 2 ? "二段（重すぎるときは一段）" : "";
   const up = jump && first === "heavier" ? "持っているダンベルで無理なく重くできれば" + two + "重く、できなければ同じ動きの一段難しいやり方に進みます"
-           : jump && first === "harder" ? "同じ動きの一段難しいやり方に進み、難しいやり方が無ければ、持っているダンベルで無理なく重くできるときに" + two + "重くします"
-           : jump ? "持っているダンベルで無理なく重くできるときに" + two + "重くします"
+           : jump && first === "harder" ? "同じ動きの一段難しいやり方に進みます。難しいやり方が無いときは、持っているダンベルで無理なく重くできれば" + two + "重くします"
+           : jump ? "持っているダンベルで無理なく重くできれば" + two + "重くします"
            : first !== "keep" ? "同じ動きの一段難しいやり方に進みます" : "";
   if(!step) return up ? when + "回数は増やさずに、" + up + "。" : "全部のセットが目標に届いても、回数は増やさず、同じ目標で続けます。";
   return when + "次は" + step + "回（秒の種目は" + progGain("t") + "秒）増やします。回数が範囲の上限に届いたら、" + (up || "上限のまま続けます") + "。";
@@ -9202,7 +9202,7 @@ function ladderRows(){
       const nx = way.opt, heavier = !!nx, up = way.item || null;
       /* 今日を含めて、上限の回をやり切るまでの回数（目標を上げるのに続けて何回要るか: p.need。今の目標でもう届いた回: p.run） */
       const left = Math.max(0, p.step ? Math.ceil((p.hi - p.target) / p.step) : 0) * p.need + (p.need - p.run);
-      next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重く（" + nx.text + "）"
+      next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを" + (way.steps === 2 ? "二段" : "一段") + "重くします。次の重さは「" + nx.text + "」"
            : up ? "あと" + left + "回のトレーニングで「" + itemName(up) + "」へ"
            : way.stay ? "あと" + left + "回のトレーニングで" + u + "数が範囲の上限（" + p.hi + u + "）に届きます。届いたあとは、上限のまま続けます"
            : !p.step ? "今の道具では、この動きの一番上の段階です" + tip
@@ -10485,19 +10485,18 @@ function tuneSel(key, cur, opts){
 function progCard(){
   const step = progGain("w"), jump = progJump(), first = progFirst();
   const jumpNote = !jump ? "" : (step ? "回数が範囲の上限に届いたら重くして、回数は範囲の下限から始め直します。" : "目標に届いたら重くします。回数は変えません。")
-                 + (jump === 2 ? "2段では重すぎるときは、一段だけ重くします。" : "");
+                 + (jump === 2 ? "二段では重すぎるときは、一段だけ重くします。" : "");
   /* 重くしないときは、やり方を「重くする前に」「重くできないときに」で分ける意味が無いので、進むか変えないかだけを出す */
   const ways = jump ? [["keep", "進まない"], ["heavier", "重くできなくなったら進む"], ["harder", "重くする前に進む"]]
                     : [["keep", "進まない"], [first === "harder" ? "harder" : "heavier", "進む"]];
   return `<h3 class="sec">${PROG_HEAD}</h3>
   <div class="card">
-    <p class="lastline" style="margin-top:0">全部のセットで目標に届いたあと、次の目標をどう上げるかを選べます。</p>
-    <div class="fld tunefld"><label>上げるタイミング</label>
-      ${tuneSel("need", progNeed(), [[1, "目標に届いたら、次の回から上げる"], [2, "2回続けて届いたら上げる"], [3, "3回続けて届いたら上げる"]])}</div>
+    <div class="fld tunefld" style="margin-top:0"><label>目標を上げるタイミング（全部のセットで目標に届いたら）</label>
+      ${tuneSel("need", progNeed(), [[1, "1回届いたら、次の回から上げる"], [2, "2回続けて届いたら上げる"], [3, "3回続けて届いたら上げる"]])}</div>
     <div class="fld tunefld"><label>回数</label>
       ${tuneSel("step", step, [[0, "増やさない"], [1, "1回ずつ増やす（秒の種目は5秒ずつ）"], [2, "2回ずつ増やす（秒の種目は10秒ずつ）"], [3, "3回ずつ増やす（秒の種目は15秒ずつ）"]])}</div>
     <div class="fld tunefld"><label>ダンベルの重さ</label>
-      ${tuneSel("jump", jump, [[0, "重くしない"], [1, "一段ずつ重くする"], [2, "2段ずつ重くする"]])}
+      ${tuneSel("jump", jump, [[0, "重くしない"], [1, "一段ずつ重くする"], [2, "二段ずつ重くする"]])}
       ${jumpNote ? `<p class="lastline" data-jumpnote="1" style="margin:4px 0 0">${jumpNote}</p>` : ""}</div>
     <div class="fld tunefld"><label>同じ動きの、一段難しいやり方へ</label>
       ${tuneSel("first", first, ways)}</div>
@@ -10555,10 +10554,10 @@ function wireTune(root){
         tuneApplied(false, progGain("w") ? "回数を" + progGain("w") + "回ずつ増やすようにしました" : "回数を増やさないようにしました");
       }else if(kind === "need"){
         setProg("need", +v);
-        tuneApplied(false, progNeed() > 1 ? progNeed() + "回続けて届いたら上げるようにしました" : "目標に届いたら、次の回から上げるようにしました");
+        tuneApplied(false, progNeed() > 1 ? progNeed() + "回続けて届いたら上げるようにしました" : "1回届いたら、次の回から上げるようにしました");
       }else if(kind === "jump"){
         setProg("jump", +v);
-        tuneApplied(false, !progJump() ? "ダンベルを重くしないようにしました" : progJump() === 2 ? "ダンベルを2段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
+        tuneApplied(false, !progJump() ? "ダンベルを重くしないようにしました" : progJump() === 2 ? "ダンベルを二段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
       }else if(kind === "first"){
         setProg("first", v);
         tuneApplied(false, progFirst() === "keep" ? "難しいやり方へ進まないようにしました" : !progJump() ? "一段難しいやり方へ進むようにしました"
