@@ -4402,7 +4402,12 @@ function sanitizeState(obj){
     maps("gap", function(key){ return /^[a-z]{2,20}$/.test(key); }, function(n){ return n >= 0 && n <= 5 && n === Math.floor(n); });
     var pr = part("pair"); if(pr) tn.pair = stamp(pr, pr.off === true ? { off: true } : {});
     var pg = part("prog");
-    if(pg){ var g2 = {}; if(num(pg.step) === 2) g2.step = 2; if(pg.first === "harder") g2.first = "harder"; tn.prog = stamp(pg, g2); }
+    if(pg){ var g2 = {}, ps = num(pg.step), pn = num(pg.need);
+      if(ps === 0 || ps === 2 || ps === 3) g2.step = ps;
+      if(pn === 2 || pn === 3) g2.need = pn;
+      if(num(pg.jump) === 2) g2.jump = 2;
+      if(pg.first === "harder" || pg.first === "stay") g2.first = pg.first;
+      tn.prog = stamp(pg, g2); }
     if(Object.keys(tn).length) out.tune = tn;
   }
   if(Array.isArray(src.program)) out.program = src.program.filter(exok);
@@ -5806,7 +5811,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-10 23:44";
+const BUILD_VERSION = "2026-10-11 00:07";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6763,7 +6768,7 @@ function setExOn(id, on){
 /* 本人が変えられる決まり（2026-10-10 本人の要望: 提案を細かくカスタマイズできるようにしたい。選んだのは
    種目の出やすさ・反対の部位と回復の日数・回数や重量の増え方）。
    state.tune = {pref:{map:{動き:1|-1}, updatedAt}, pair:{off:true, updatedAt}, gap:{map:{部位:日数}, updatedAt},
-                 prog:{step:2, first:"harder", updatedAt}}
+                 prog:{step:0|2|3, need:2|3, jump:2, first:"harder"|"stay", updatedAt}}
    初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
    4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
    読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
@@ -6782,7 +6787,7 @@ function tuneIsDefault(k){
   if(!p) return true;
   if(k === "pref" || k === "gap") return !p.map || !Object.keys(p.map).length;
   if(k === "pair") return p.off !== true;
-  return p.step !== 2 && p.first !== "harder";
+  return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier";
 }
 function tuneChanged(){ return TUNE_KEYS.some(k => !tuneIsDefault(k)); }
 /* 種目の出やすさ（動きごと）: 1=よく出す / 0=ふつう / -1=あまり出さない。
@@ -6800,9 +6805,27 @@ function setPatPref(pat, v){
 /* 反対の部位を同じ日に鍛えるか（しないときは、相手を足さない・隣に並べない・今日タブの一行も出さない: 下の opposite） */
 function pairOn(){ const p = tunePart("pair"); return !(p && p.off === true); }
 /* 回数の増やし方: 全部のセットで目標に届いた次の回に増やす数（秒の種目は 5 倍）。入力欄の ± の刻み（progress.js の progStep）とは別 */
-function progGain(kind){ const p = tunePart("prog"), n = p && p.step === 2 ? 2 : 1; return (kind === "t" ? 5 : 1) * n; }
-/* 回数の範囲の上限に届いたとき、先にどちらへ進むか: "heavier"=ダンベルを重く（初めの設定）/ "harder"=一段難しいやり方 */
-function progFirst(){ const p = tunePart("prog"); return p && p.first === "harder" ? "harder" : "heavier"; }
+function progGain(kind){ const p = tunePart("prog"), s = p ? p.step : 1, n = s === 0 || s === 2 || s === 3 ? s : 1; return (kind === "t" ? 5 : 1) * n; }
+/* 2026-10-11 本人の要望（決めた回数をやり切ったら何段階上げるか・上げないかを細かく選びたい）で足した3つ:
+   progNeed = 同じやり方・同じ重さ・同じ目標で、続けて何回、全部のセットが目標に届いたら上げるか（1〜3。初めの設定は1）
+   progJump = ダンベルを重くするとき、何段重くするか（1か2。2段が重すぎるときは一段: progress.js の nextUp）
+   progGain が 0 = 回数は増やさない。progFirst が "stay" = 上限に届いても、重くも難しくもしない */
+function progNeed(){ const p = tunePart("prog"), n = p ? p.need : 1; return n === 2 || n === 3 ? n : 1; }
+function progJump(){ const p = tunePart("prog"); return p && p.jump === 2 ? 2 : 1; }
+/* 増やし方のひとつを変える（初めの設定と同じ値は持たない） */
+function setProg(field, v){
+  const o = {step: progGain("w"), need: progNeed(), jump: progJump(), first: progFirst()};
+  o[field] = v;
+  const out = {};
+  if(o.step === 0 || o.step === 2 || o.step === 3) out.step = o.step;
+  if(o.need === 2 || o.need === 3) out.need = o.need;
+  if(o.jump === 2) out.jump = 2;
+  if(o.first === "harder" || o.first === "stay") out.first = o.first;
+  setTune("prog", out);
+}
+/* 回数の範囲の上限に届いたとき、先にどちらへ進むか: "heavier"=ダンベルを重く（初めの設定）/ "harder"=一段難しいやり方 /
+   "stay"=どちらもしない（上限のまま続ける） */
+function progFirst(){ const p = tunePart("prog"), f = p ? p.first : ""; return f === "harder" || f === "stay" ? f : "heavier"; }
 const RECOVER_GAP_MAX = 5;
 
 /* 反対の部位（関節をはさんで逆の働きをする部位）。メニュー作りは、今日のメニューに入れた種目と反対の部位を
@@ -8464,14 +8487,18 @@ function sameWeight(a, b){
   return Math.abs(a.w - b.w) < 0.01;
 }
 
-/* 回数の範囲の上限に届いたとき、次に進む先: {opt}=ダンベルを一段重く / {item}=一段難しいやり方 / {}=今の道具では一番上。
+/* 回数の範囲の上限に届いたとき、次に進む先: {opt, steps}=ダンベルを重く（steps 段）/ {item}=一段難しいやり方 /
+   {stay}=本人が「上限のまま続ける」を選んでいる / {}=今の道具では一番上。
+   2段重くする設定（rules.js の progJump）のときは、上がり幅が一段ぶんの目安の2回ぶんに収まれば2段、収まらなければ一段。
    初めの設定は、無理なく重くできれば重く、できなければ難しいやり方。本人が「難しいやり方を先に」を選んでいれば逆の順
    （rules.js の progFirst）。提案タブの「次の段階まで」もここから作る */
 function nextUp(item, cur, opts){
-  const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null;
-  const opt = nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg) ? nx : null;
-  if(progFirst() === "harder"){ const h = stepItem(item, 1); return h ? {item: h} : opt ? {opt} : {}; }
-  if(opt) return {opt};
+  if(progFirst() === "stay") return {stay: true};
+  const i = cur ? optionIndex(opts, cur) : -1, nx = i >= 0 ? opts[i + 1] : null, n2 = i >= 0 ? opts[i + 2] : null;
+  let opt = nx && (nx.key <= cur.key * PROG.jumpRatio || nx.key - cur.key <= PROG.jumpKg) ? nx : null, steps = 1;
+  if(opt && progJump() === 2 && n2 && (n2.key <= cur.key * PROG.jumpRatio * PROG.jumpRatio || n2.key - cur.key <= PROG.jumpKg * 2)){ opt = n2; steps = 2; }
+  if(progFirst() === "harder"){ const h = stepItem(item, 1); return h ? {item: h} : opt ? {opt, steps} : {}; }
+  if(opt) return {opt, steps};
   const h = stepItem(item, 1);
   return h ? {item: h} : {};
 }
@@ -8489,7 +8516,7 @@ function progressFor(item){
   const rr = repRange(id, item), step = progGain(kind);
   const opts = itemOptions(item);
   const optByW = w => (w === undefined || w === null) ? null : (opts.find(o => Math.abs(o.total - w) < 0.01) || null);
-  const res = {lo: rr.lo, hi: rr.hi, step, change: "", why: "", src: "", target: 0, opt: null, w: undefined, next: null, last: null};
+  const res = {lo: rr.lo, hi: rr.hi, step, change: "", why: "", src: "", target: 0, opt: null, w: undefined, next: null, last: null, need: progNeed(), run: 0};
   const hist = patternHistory(patternOf(id));
   const mine = hist.filter(h => h.ex === id && h.label === (item.label || ""));
 
@@ -8527,9 +8554,22 @@ function progressFor(item){
       res.change = "deload";
       res.why = "軽めの週です。目標は前回と同じにして、種目を少なめにしています";
     }else if(ev.allHit){
-      /* 2回ずつ増やす設定のとき、上限のひとつ手前からは上限まで（上限を飛び越えて次の段階へ進まない） */
-      const nt = ev.target < rr.hi ? Math.min(rr.hi, ev.target + step) : ev.target + step;
-      if(nt <= rr.hi){
+      /* 続けて何回届いたか（同じ重さ・同じかそれ以上の目標で、全部のセットが届いた回を新しい順に数える）。
+         本人が決めた回数（rules.js の progNeed）に足りないうちは、同じ目標で続ける */
+      let run = 1;
+      while(run < res.need && mine[run]){
+        const e = evalSession(mine[run]);
+        if(e.allHit && sameWeight(e, ev) && e.target >= ev.target) run++; else break;
+      }
+      /* 2回以上ずつ増やす設定のとき、上限の手前からは上限まで（上限を飛び越えて次の段階へ進まない） */
+      const nt = ev.target < rr.hi ? Math.min(rr.hi, ev.target + step) : ev.target + Math.max(step, 1);
+      if(run < res.need){
+        res.run = run; res.change = "hold";
+        res.why = "前回は全部のセットで目標に届きました。あと" + (res.need - run) + "回続けて届いたら、次へ進みます";
+      }else if(nt === ev.target){
+        res.change = "hold";
+        res.why = "前回は全部のセットで目標に届きました。目標は同じ" + u + "数のまま続けます";
+      }else if(nt <= rr.hi){
         res.target = nt; res.change = "up";
         res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
       }else{
@@ -8537,9 +8577,12 @@ function progressFor(item){
         const way = nextUp(item, cur, opts), nx = way.opt, nxt = way.item;
         if(nx){
           res.opt = nx; res.target = rr.lo; res.change = "heavier";
-          res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを一段重くします。" + rr.lo + u + "から始めます";
+          res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重くします。" + rr.lo + u + "から始めます";
         }else{
-          if(nxt){
+          if(way.stay){
+            res.target = rr.hi; res.change = "top"; res.stay = true;
+            res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届きました。上限のまま続けます";
+          }else if(nxt){
             res.next = nxt; res.change = "harder"; res.target = rr.hi;
             res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、次は一段難しい「" + itemName(nxt) + "」に進みます";
           }else{
@@ -9116,6 +9159,7 @@ const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"�
   curl:"肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹",
   legcurl:"膝を曲げる", pullover:"頭の上から引く", twist:"ひねる"};
 
+function progJumpText(){ return progJump() === 2 ? "2段（重すぎるときは一段）" : ""; }
 /* 動きごとの今の段階（記録のある動きだけ） */
 function ladderRows(){
   const out = [];
@@ -9127,12 +9171,16 @@ function ladderRows(){
     const tip = hs.up ? "。さらに負荷を上げるなら「" + gearText(hs.up) + "」" : "";
     let next;
     if(p.change === "top"){
-      next = "今の道具では、この動きの一番上の段階で、回数も上限です" + tip;
+      next = p.stay ? u + "数は範囲の上限（" + p.hi + u + "）のまま続けます" : "今の道具では、この動きの一番上の段階で、回数も上限です" + tip;
+    }else if(!p.step && p.target < p.hi){
+      next = "目標は" + p.target + u + "のまま続けます";
     }else{
       const way = nextUp(K, p.opt, itemOptions(K)), nx = way.opt, heavier = !!nx, up = way.item || null;
-      const left = Math.max(0, Math.ceil((p.hi - p.target) / p.step)) + 1;   /* 今日を含めて、上限の回に届くまでの回数 */
-      next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを一段重く（" + nx.text + "）"
+      /* 今日を含めて、上限の回をやり切るまでの回数（目標を上げるのに続けて何回要るか: p.need。今の目標でもう届いた回: p.run） */
+      const left = Math.max(0, p.step ? Math.ceil((p.hi - p.target) / p.step) : 0) * p.need + (p.need - p.run);
+      next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重く（" + nx.text + "）"
            : up ? "あと" + left + "回のトレーニングで「" + itemName(up) + "」へ"
+           : way.stay ? "あと" + left + "回のトレーニングで" + u + "数が範囲の上限（" + p.hi + u + "）に届きます。届いたあとは、上限のまま続けます"
            : "あと" + left + "回のトレーニングで" + u + "数が範囲の上限（" + p.hi + u + "）に届きます。今の道具では、この先の段階はありません";
     }
     out.push({pat, item: K, p, u, next});
@@ -9208,7 +9256,7 @@ function viewPlan(){
     ${balanceCards}
     <div class="card">
       <h4>この提案の仕組み</h4>
-      <p style="margin:0;font-size:14px">前回の同じやり方で、全部のセットが目標に届いたら、次は${progGain("w")}回（秒の種目は${progGain("t")}秒）増やします。回数が範囲の上限に届いたら、${progFirst() === "harder" ? "同じ動きの一段難しいやり方に進み、難しいやり方が無ければ、持っているダンベルで無理なく重くできるときに重くします" : "持っているダンベルで無理なく重くできれば重く、できなければ同じ動きの一段難しいやり方に進みます"}。</p>
+      <p style="margin:0;font-size:14px">${progNeed() > 1 ? "同じやり方・同じ重さで、" + progNeed() + "回続けて" : "前回の同じやり方で、"}全部のセットが目標に届いたら、${progGain("w") ? "次は" + progGain("w") + "回（秒の種目は" + progGain("t") + "秒）増やします" : "回数は増やさず、同じ目標で続けます"}。回数が範囲の上限に届いたら、${progFirst() === "stay" ? "上限のまま続けます" : progFirst() === "harder" ? "同じ動きの一段難しいやり方に進み、難しいやり方が無ければ、持っているダンベルで無理なく重くできるときに" + progJumpText() + "重くします" : "持っているダンベルで無理なく重くできれば" + progJumpText() + "重く、できなければ同じ動きの一段難しいやり方に進みます"}。</p>
       <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
       <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。設定の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
       ${pairOn() ? `<p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は、回復と上限の範囲で入れられるかぎり入れて、隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>` : ""}
@@ -10420,10 +10468,14 @@ function tuneCard(){
   <div class="card">
     <div class="fld"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
       ${sel("pair", pairOn() ? 1 : 0, [[1, "同じ日に鍛えて、隣に並べる"], [0, "そろえない"]])}</div>
-    <div class="fld"><label>全部のセットが目標に届いたとき、次の目標</label>
-      ${sel("step", progGain("w"), [[1, "1回増やす（秒の種目は5秒）"], [2, "2回増やす（秒の種目は10秒）"]])}</div>
+    <div class="fld"><label>目標を上げるのは、全部のセットが目標に届いた回が</label>
+      ${sel("need", progNeed(), [[1, "1回あったら（次の回から上げる）"], [2, "2回続いたら"], [3, "3回続いたら"]])}</div>
+    <div class="fld"><label>そのとき、次の目標</label>
+      ${sel("step", progGain("w"), [[0, "増やさない（同じ目標で続ける）"], [1, "1回増やす（秒の種目は5秒）"], [2, "2回増やす（秒の種目は10秒）"], [3, "3回増やす（秒の種目は15秒）"]])}</div>
     <div class="fld"><label>回数の範囲の上限に届いたとき</label>
-      ${sel("first", progFirst(), [["heavier", "ダンベルを先に重くする"], ["harder", "一段難しいやり方に先に進む"]])}</div>
+      ${sel("first", progFirst(), [["heavier", "ダンベルを先に重くする"], ["harder", "一段難しいやり方に先に進む"], ["stay", "上限のまま続ける"]])}</div>
+    <div class="fld"><label>ダンベルを重くするとき</label>
+      ${sel("jump", progJump(), [[1, "一段重くする"], [2, "2段重くする（重すぎるときは一段）"]])}</div>
     <details class="tune" data-tune-d="gap"${tuneOpen.gap ? " open" : ""}><summary>部位ごとの回復の日数</summary>
       <p class="lastline" style="margin-top:0">${esc(RECOVER_NOTE)}。</p>
       ${gapRows}
@@ -10447,18 +10499,21 @@ function wireTune(root){
   root.querySelectorAll("select[data-tune]").forEach(el => {
     el.onchange = () => {
       const k = el.dataset.tune, v = el.value, at = k.indexOf(":"), kind = at < 0 ? k : k.slice(0, at), id = at < 0 ? "" : k.slice(at + 1);
-      const prog = () => { const p = tunePart("prog"), o = {}; if(p && p.step === 2) o.step = 2; if(p && p.first === "harder") o.first = "harder"; return o; };
       if(kind === "pair"){
         setTune("pair", v === "0" ? {off: true} : {});
         tuneApplied(true, v === "0" ? "反対の部位をそろえないようにしました" : "反対の部位を同じ日に鍛えるようにしました");
       }else if(kind === "step"){
-        const o = prog(); if(v === "2") o.step = 2; else delete o.step;
-        setTune("prog", o);
-        tuneApplied(false, "次の目標を" + progGain("w") + "回ずつ増やすようにしました");
+        setProg("step", +v);
+        tuneApplied(false, progGain("w") ? "次の目標を" + progGain("w") + "回ずつ増やすようにしました" : "目標を増やさないようにしました");
+      }else if(kind === "need"){
+        setProg("need", +v);
+        tuneApplied(false, progNeed() > 1 ? progNeed() + "回続けて届いたら、目標を上げるようにしました" : "目標に届いた次の回から、目標を上げるようにしました");
+      }else if(kind === "jump"){
+        setProg("jump", +v);
+        tuneApplied(false, progJump() === 2 ? "ダンベルを2段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
       }else if(kind === "first"){
-        const o = prog(); if(v === "harder") o.first = "harder"; else delete o.first;
-        setTune("prog", o);
-        tuneApplied(false, progFirst() === "harder" ? "上限に届いたら、難しいやり方に先に進むようにしました" : "上限に届いたら、ダンベルを先に重くするようにしました");
+        setProg("first", v);
+        tuneApplied(false, progFirst() === "harder" ? "上限に届いたら、難しいやり方に先に進むようにしました" : progFirst() === "stay" ? "上限に届いたら、上限のまま続けるようにしました" : "上限に届いたら、ダンベルを先に重くするようにしました");
       }else if(kind === "gap" && MUSCLES[id]){
         setRecoverGap(id, +v);
         tuneApplied(true, MUSCLES[id] + "の回復の日数を「" + recoverGapLabel(recoverGap(id)) + "」にしました");
