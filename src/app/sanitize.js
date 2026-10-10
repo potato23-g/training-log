@@ -103,8 +103,9 @@ function sanitizeState(obj){
     if(pg){ var g2 = {}, ps = num(pg.step), pn = num(pg.need);
       if(ps === 0 || ps === 2 || ps === 3) g2.step = ps;
       if(pn === 2 || pn === 3) g2.need = pn;
-      if(num(pg.jump) === 2) g2.jump = 2;
-      if(pg.first === "harder" || pg.first === "stay") g2.first = pg.first;
+      var pj = num(pg.jump);
+      if(pj === 0 || pj === 2) g2.jump = pj;
+      if(pg.first === "harder" || pg.first === "keep" || pg.first === "stay") g2.first = pg.first;
       tn.prog = stamp(pg, g2); }
     if(Object.keys(tn).length) out.tune = tn;
   }

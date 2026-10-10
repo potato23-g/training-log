@@ -101,7 +101,7 @@ function setExOn(id, on){
 /* 本人が変えられる決まり（2026-10-10 本人の要望: 提案を細かくカスタマイズできるようにしたい。選んだのは
    種目の出やすさ・反対の部位と回復の日数・回数や重量の増え方）。
    state.tune = {pref:{map:{動き:1|-1}, updatedAt}, pair:{off:true, updatedAt}, gap:{map:{部位:日数}, updatedAt},
-                 prog:{step:0|2|3, need:2|3, jump:2, first:"harder"|"stay", updatedAt}}
+                 prog:{step:0|2|3, need:2|3, jump:0|2, first:"harder"|"keep", updatedAt}}
    初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
    4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
    読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
@@ -126,7 +126,7 @@ function tuneChanged(){ return TUNE_KEYS.some(k => !tuneIsDefault(k)); }
 /* 種目の出やすさ（動きごと）: 1=よく出す / 0=ふつう / -1=あまり出さない。
    よく出す: 回復と上限の範囲で入れられる日は、ほかの種目より先に入れる（planner.js の compose の最初）。
    あまり出さない: メインで鍛える部位が週の目標から遠いとき（価値がしきい値 1 以上）と、7日使えていない部位を埋めるときだけ入れる */
-const EX_PREF_LABEL = {"1": "よく出す", "0": "ふつう", "-1": "あまり出さない"};
+const EX_PREF_LABEL = {"1": "多めに入れる", "0": "ふつう", "-1": "少なめに入れる"};
 const EX_PREF_FACTOR = {"1": 1.5, "0": 1, "-1": 0.6};
 function patPref(pat){ const p = tunePart("pref"), v = p && p.map ? p.map[pat] : 0; return v === 1 || v === -1 ? v : 0; }
 function exPref(id){ return patPref(patternOf(id)); }
@@ -141,10 +141,12 @@ function pairOn(){ const p = tunePart("pair"); return !(p && p.off === true); }
 function progGain(kind){ const p = tunePart("prog"), s = p ? p.step : 1, n = s === 0 || s === 2 || s === 3 ? s : 1; return (kind === "t" ? 5 : 1) * n; }
 /* 2026-10-11 本人の要望（決めた回数をやり切ったら何段階上げるか・上げないかを細かく選びたい）で足した3つ:
    progNeed = 同じやり方・同じ重さ・同じ目標で、続けて何回、全部のセットが目標に届いたら上げるか（1〜3。初めの設定は1）
-   progJump = ダンベルを重くするとき、何段重くするか（1か2。2段が重すぎるときは一段: progress.js の nextUp）
-   progGain が 0 = 回数は増やさない。progFirst が "stay" = 上限に届いても、重くも難しくもしない */
+   progJump = ダンベルを何段ずつ重くするか（0=重くしない / 1 / 2。2段が重すぎるときは一段: progress.js の nextUp）
+   progGain が 0 = 回数は増やさない（目標に届いたら、回数はそのままで重さ・やり方を上げる）。
+   回数・重さ・やり方は別々に選べる（2026-10-11 本人の要望: 回数も重さも別々に、増やさないこともできるように）。
+   10-11 00:12 の版が保存した first:"stay"（上限のまま続ける）は、重くしない・やり方も変えない、として読む */
 function progNeed(){ const p = tunePart("prog"), n = p ? p.need : 1; return n === 2 || n === 3 ? n : 1; }
-function progJump(){ const p = tunePart("prog"); return p && p.jump === 2 ? 2 : 1; }
+function progJump(){ const p = tunePart("prog"); return !p ? 1 : p.first === "stay" || p.jump === 0 ? 0 : p.jump === 2 ? 2 : 1; }
 /* 増やし方のひとつを変える（初めの設定と同じ値は持たない） */
 function setProg(field, v){
   const o = {step: progGain("w"), need: progNeed(), jump: progJump(), first: progFirst()};
@@ -152,13 +154,13 @@ function setProg(field, v){
   const out = {};
   if(o.step === 0 || o.step === 2 || o.step === 3) out.step = o.step;
   if(o.need === 2 || o.need === 3) out.need = o.need;
-  if(o.jump === 2) out.jump = 2;
-  if(o.first === "harder" || o.first === "stay") out.first = o.first;
+  if(o.jump === 0 || o.jump === 2) out.jump = o.jump;
+  if(o.first === "harder" || o.first === "keep") out.first = o.first;
   setTune("prog", out);
 }
-/* 回数の範囲の上限に届いたとき、先にどちらへ進むか: "heavier"=ダンベルを重く（初めの設定）/ "harder"=一段難しいやり方 /
-   "stay"=どちらもしない（上限のまま続ける） */
-function progFirst(){ const p = tunePart("prog"), f = p ? p.first : ""; return f === "harder" || f === "stay" ? f : "heavier"; }
+/* やり方の進め方: "heavier"=ダンベルを重くできないときに一段難しいやり方へ（初めの設定）/ "harder"=重くするより先に難しいやり方へ /
+   "keep"=やり方は変えない */
+function progFirst(){ const p = tunePart("prog"), f = p ? p.first : ""; return f === "harder" ? f : f === "keep" || f === "stay" ? "keep" : "heavier"; }
 const RECOVER_GAP_MAX = 5;
 
 /* 反対の部位（関節をはさんで逆の働きをする部位）。メニュー作りは、今日のメニューに入れた種目と反対の部位を

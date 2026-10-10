@@ -196,52 +196,71 @@ function dayStartCard(){
   </div>`;
 }
 /* メニューに入れない種目（押して切り替える。色の付いた種目は入らない: 筋肉痛の部位のシートと同じ向き）。判定と保存は rules.js の exOn・setExOn */
-function exOffCard(){
+function exOffBody(){
   const order = EX.slice().sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.id)) - PATTERN_ORDER.indexOf(patternOf(b.id)));
-  return `<h3 class="sec">${EX_OFF_HEAD}</h3>
+  return `<p class="lastline" style="margin-top:0">やりたくない種目を押して選んでください。選んだ種目は、${EX_OFF_NOTE}</p>
+    <div class="sorechips">${order.map(e => `<button class="sorechip${exOn(e.id) ? "" : " on"}" data-act="exoff" data-ex="${e.id}" aria-pressed="${!exOn(e.id)}">${esc(e.name)}</button>`).join("")}</div>`;
+}
+/* 提案タブの「目標の上げ方」「メニューの組み方」（rules.js の state.tune と exOff）。
+   2026-10-11 本人の要望で、設定のシートから提案タブへ移した（設定のシートに残すのは、道具・1日の区切り・休憩の合図・同期・バックアップ）。
+   値はどれも rules.js の関数（progNeed・progGain・progJump・progFirst・pairOn・recoverGap・patPref・exOn）から読む。
+   長い一覧は畳んでおく（開いたかどうかは、描き直しても保つ） */
+const PROG_HEAD = "目標の上げ方", MENU_HEAD = "メニューの組み方", PREF_HEAD = "種目を入れる頻度";
+const tuneOpen = {gap: false, pref: false, off: false};
+function tuneSel(key, cur, opts){
+  return `<select data-tune="${key}">${opts.map(o => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`;
+}
+function progCard(){
+  const step = progGain("w"), jump = progJump(), first = progFirst();
+  const jumpNote = !jump ? "" : (step ? "回数が範囲の上限に届いたら重くして、回数は範囲の下限から始め直します。" : "目標に届いたら重くします。回数は変えません。")
+                 + (jump === 2 ? "2段では重すぎるときは、一段だけ重くします。" : "");
+  /* 重くしないときは、やり方を「重くする前に」「重くできないときに」で分ける意味が無いので、進むか変えないかだけを出す */
+  const ways = jump ? [["keep", "進まない"], ["heavier", "重くできなくなったら進む"], ["harder", "重くする前に進む"]]
+                    : [["keep", "進まない"], [first === "harder" ? "harder" : "heavier", "進む"]];
+  return `<h3 class="sec">${PROG_HEAD}</h3>
   <div class="card">
-    <p class="lastline" style="margin-top:0">やりたくない種目を押して選んでください。選んだ種目は、${EX_OFF_NOTE}</p>
-    <div class="sorechips">${order.map(e => `<button class="sorechip${exOn(e.id) ? "" : " on"}" data-act="exoff" data-ex="${e.id}" aria-pressed="${!exOn(e.id)}">${esc(e.name)}</button>`).join("")}</div>
+    <p class="lastline" style="margin-top:0">全部のセットで目標に届いたあと、次の目標をどう上げるかを選べます。</p>
+    <div class="fld tunefld"><label>上げるタイミング</label>
+      ${tuneSel("need", progNeed(), [[1, "目標に届いたら、次の回から上げる"], [2, "2回続けて届いたら上げる"], [3, "3回続けて届いたら上げる"]])}</div>
+    <div class="fld tunefld"><label>回数</label>
+      ${tuneSel("step", step, [[0, "増やさない"], [1, "1回ずつ増やす（秒の種目は5秒ずつ）"], [2, "2回ずつ増やす（秒の種目は10秒ずつ）"], [3, "3回ずつ増やす（秒の種目は15秒ずつ）"]])}</div>
+    <div class="fld tunefld"><label>ダンベルの重さ</label>
+      ${tuneSel("jump", jump, [[0, "重くしない"], [1, "一段ずつ重くする"], [2, "2段ずつ重くする"]])}
+      ${jumpNote ? `<p class="lastline" data-jumpnote="1" style="margin:4px 0 0">${jumpNote}</p>` : ""}</div>
+    <div class="fld tunefld"><label>同じ動きの、一段難しいやり方へ</label>
+      ${tuneSel("first", first, ways)}</div>
+    ${tuneIsDefault("prog") ? "" : `<div class="rowbtns"><button data-act="tunereset" data-part="prog">初めの設定に戻す</button></div>`}
   </div>`;
 }
-/* メニューと目標の決め方（rules.js の state.tune）。選べるのは、反対の部位・回数の増やし方・上限に届いたときの進み方・
-   部位ごとの回復の日数・種目の出やすさ。値はどれも rules.js の関数（pairOn・progGain・progFirst・recoverGap・patPref）から読む。
-   長い2つの一覧は畳んでおく（開いたかどうかは、描き直しても保つ） */
-const TUNE_HEAD = "メニューと目標の決め方";
-const tuneOpen = {gap: false, pref: false};
-function tuneCard(){
-  const sel = (key, cur, opts) => `<select data-tune="${key}">${opts.map(o => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`;
+function menuCard(){
   const gapRows = Object.keys(MUSCLES).map(m => {
     const d = recoverGapDefault(m), opts = [];
     for(let g = 0; g <= RECOVER_GAP_MAX; g++) opts.push([g, recoverGapLabel(g)]);
-    return `<div class="tunerow"><span>${esc(MUSCLES[m])}${recoverGap(m) !== d ? `<small data-gapwas="${m}">初めの設定は「${esc(recoverGapLabel(d))}」</small>` : ""}</span>${sel("gap:" + m, recoverGap(m), opts)}</div>`;
+    return `<div class="tunerow"><span>${esc(MUSCLES[m])}${recoverGap(m) !== d ? `<small data-gapwas="${m}">初めの設定は「${esc(recoverGapLabel(d))}」</small>` : ""}</span>${tuneSel("gap:" + m, recoverGap(m), opts)}</div>`;
   }).join("");
   const prefRows = PATTERN_ORDER.map(pat => {
     const names = EX.filter(e => !e.base && patternOf(e.id) === pat).map(e => e.name);
     if(!names.length) return "";
-    return `<div class="tunerow"><span>${esc(names.join("・"))}</span>${sel("pref:" + pat, patPref(pat), [[1, EX_PREF_LABEL["1"]], [0, EX_PREF_LABEL["0"]], [-1, EX_PREF_LABEL["-1"]]])}</div>`;
+    return `<div class="tunerow"><span>${esc(names.join("・"))}</span>${tuneSel("pref:" + pat, patPref(pat), [[1, EX_PREF_LABEL["1"]], [0, EX_PREF_LABEL["0"]], [-1, EX_PREF_LABEL["-1"]]])}</div>`;
   }).join("");
-  return `<h3 class="sec">${TUNE_HEAD}</h3>
+  const nOff = EX.filter(e => !exOn(e.id)).length;
+  const changed = ["pref", "gap", "pair"].some(k => !tuneIsDefault(k));
+  return `<h3 class="sec">${MENU_HEAD}</h3>
   <div class="card">
-    <div class="fld"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
-      ${sel("pair", pairOn() ? 1 : 0, [[1, "同じ日に鍛えて、隣に並べる"], [0, "そろえない"]])}</div>
-    <div class="fld"><label>目標を上げるのは、全部のセットが目標に届いた回が</label>
-      ${sel("need", progNeed(), [[1, "1回あったら（次の回から上げる）"], [2, "2回続いたら"], [3, "3回続いたら"]])}</div>
-    <div class="fld"><label>そのとき、次の目標</label>
-      ${sel("step", progGain("w"), [[0, "増やさない（同じ目標で続ける）"], [1, "1回増やす（秒の種目は5秒）"], [2, "2回増やす（秒の種目は10秒）"], [3, "3回増やす（秒の種目は15秒）"]])}</div>
-    <div class="fld"><label>回数の範囲の上限に届いたとき</label>
-      ${sel("first", progFirst(), [["heavier", "ダンベルを先に重くする"], ["harder", "一段難しいやり方に先に進む"], ["stay", "上限のまま続ける"]])}</div>
-    <div class="fld"><label>ダンベルを重くするとき</label>
-      ${sel("jump", progJump(), [[1, "一段重くする"], [2, "2段重くする（重すぎるときは一段）"]])}</div>
+    <div class="fld tunefld" style="margin-top:0"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
+      ${tuneSel("pair", pairOn() ? 1 : 0, [[1, "同じ日に入れて、続けて並べる"], [0, "組み合わせない"]])}</div>
     <details class="tune" data-tune-d="gap"${tuneOpen.gap ? " open" : ""}><summary>部位ごとの回復の日数</summary>
       <p class="lastline" style="margin-top:0">${esc(RECOVER_NOTE)}。</p>
       ${gapRows}
     </details>
-    <details class="tune" data-tune-d="pref"${tuneOpen.pref ? " open" : ""}><summary>種目の出やすさ</summary>
-      <p class="lastline" style="margin-top:0">「${EX_PREF_LABEL["1"]}」は、回復と上限の範囲で入れられる日に、ほかの種目より先に入れます。「${EX_PREF_LABEL["-1"]}」は、メインで鍛える部位が週の目標から遠いときと、${UNUSED_DAYS}日以上使えていないときだけ入れます。</p>
+    <details class="tune" data-tune-d="pref"${tuneOpen.pref ? " open" : ""}><summary>${PREF_HEAD}</summary>
+      <p class="lastline" style="margin-top:0">「${EX_PREF_LABEL["1"]}」にした種目は、入れられる日には優先して入れます。「${EX_PREF_LABEL["-1"]}」にした種目は、メインで鍛える部位の量が足りていないときだけ入れます。</p>
       ${prefRows}
     </details>
-    ${tuneChanged() ? `<div class="rowbtns"><button data-act="tunereset">初めの設定に戻す</button></div>` : ""}
+    <details class="tune" data-tune-d="off"${tuneOpen.off ? " open" : ""}><summary>${EX_OFF_HEAD}${nOff ? "（" + nOff + "種目）" : ""}</summary>
+      ${exOffBody()}
+    </details>
+    ${changed ? `<div class="rowbtns"><button data-act="tunereset" data-part="menu">初めの設定に戻す</button></div>` : ""}
   </div>`;
 }
 /* 決まりを変えたあと: メニューにかかわる変更で、今日のメニューがもう決まっていれば組み直す（記録した種目・自分で追加した種目は残る） */
@@ -258,38 +277,41 @@ function wireTune(root){
       const k = el.dataset.tune, v = el.value, at = k.indexOf(":"), kind = at < 0 ? k : k.slice(0, at), id = at < 0 ? "" : k.slice(at + 1);
       if(kind === "pair"){
         setTune("pair", v === "0" ? {off: true} : {});
-        tuneApplied(true, v === "0" ? "反対の部位をそろえないようにしました" : "反対の部位を同じ日に鍛えるようにしました");
+        tuneApplied(true, v === "0" ? "反対の部位を組み合わせないようにしました" : "反対の部位を同じ日に入れるようにしました");
       }else if(kind === "step"){
         setProg("step", +v);
-        tuneApplied(false, progGain("w") ? "次の目標を" + progGain("w") + "回ずつ増やすようにしました" : "目標を増やさないようにしました");
+        tuneApplied(false, progGain("w") ? "回数を" + progGain("w") + "回ずつ増やすようにしました" : "回数を増やさないようにしました");
       }else if(kind === "need"){
         setProg("need", +v);
-        tuneApplied(false, progNeed() > 1 ? progNeed() + "回続けて届いたら、目標を上げるようにしました" : "目標に届いた次の回から、目標を上げるようにしました");
+        tuneApplied(false, progNeed() > 1 ? progNeed() + "回続けて届いたら上げるようにしました" : "目標に届いたら、次の回から上げるようにしました");
       }else if(kind === "jump"){
         setProg("jump", +v);
-        tuneApplied(false, progJump() === 2 ? "ダンベルを2段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
+        tuneApplied(false, !progJump() ? "ダンベルを重くしないようにしました" : progJump() === 2 ? "ダンベルを2段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
       }else if(kind === "first"){
         setProg("first", v);
-        tuneApplied(false, progFirst() === "harder" ? "上限に届いたら、難しいやり方に先に進むようにしました" : progFirst() === "stay" ? "上限に届いたら、上限のまま続けるようにしました" : "上限に届いたら、ダンベルを先に重くするようにしました");
+        tuneApplied(false, progFirst() === "keep" ? "難しいやり方へ進まないようにしました" : !progJump() ? "一段難しいやり方へ進むようにしました"
+          : progFirst() === "harder" ? "重くする前に、難しいやり方へ進むようにしました" : "重くできなくなったら、難しいやり方へ進むようにしました");
       }else if(kind === "gap" && MUSCLES[id]){
         setRecoverGap(id, +v);
         tuneApplied(true, MUSCLES[id] + "の回復の日数を「" + recoverGapLabel(recoverGap(id)) + "」にしました");
       }else if(kind === "pref" && PATTERN_ORDER.includes(id)){
         setPatPref(id, +v);
-        tuneApplied(true, "出やすさを「" + EX_PREF_LABEL[String(patPref(id))] + "」にしました");
+        tuneApplied(true, "入れる頻度を「" + EX_PREF_LABEL[String(patPref(id))] + "」にしました");
       }
     };
   });
 }
-ACTIONS.tunereset = () => {
-  setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); setTune("prog", {});
-  tuneApplied(true, "「" + TUNE_HEAD + "」を初めの設定に戻しました");
+WIRES.push(wireTune);
+/* 「目標の上げ方」だけ・「メニューの組み方」だけを初めの設定に戻す（メニューに入れない種目は戻さない） */
+ACTIONS.tunereset = el => {
+  const prog = el && el.dataset.part === "prog";
+  if(prog) setTune("prog", {});
+  else{ setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); }
+  tuneApplied(!prog, "「" + (prog ? PROG_HEAD : MENU_HEAD) + "」を初めの設定に戻しました");
 };
 function settingsHTML(){
   return `<h4 data-settings="1">設定</h4>
     ${gearCard()}
-    ${exOffCard()}
-    ${tuneCard()}
     ${dayStartCard()}
     ${settingsCard()}
     ${typeof syncCard === "function" ? syncCard() : ""}
@@ -301,7 +323,6 @@ function wireSettings(){
   wireInputs(sheetInner);
   if(typeof wireGearCard === "function") wireGearCard(sheetInner);
   if(typeof syncWire === "function") syncWire(sheetInner);
-  wireTune(sheetInner);
   const sel = sheetInner.querySelector("#dayStartSel");
   if(sel) sel.onchange = ()=>{
     PREF.set("dayStart", +sel.value);

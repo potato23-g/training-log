@@ -97,7 +97,7 @@ function openSoreSheet(){
   sheet.classList.add("on");
 }
 ACTIONS.sore = () => openSoreSheet();
-/* 種目をメニューに入れる／入れないの切り替え（設定のシートと種目タブ）。
+/* 種目をメニューに入れる／入れないの切り替え（提案タブの「メニューの組み方」と種目タブ）。
    今日のメニューに入っていて、まだ記録していない種目を外したときは、その場で組み直す（自分で追加した種目は残す） */
 ACTIONS.exoff = el => {
   const id = el.dataset.ex;

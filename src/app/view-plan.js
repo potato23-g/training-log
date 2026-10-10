@@ -21,7 +21,18 @@ const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"�
   curl:"肘を曲げる", ext:"肘を伸ばす", calf:"かかとを上げる", abs:"お腹", side:"わき腹",
   legcurl:"膝を曲げる", pullover:"頭の上から引く", twist:"ひねる"};
 
-function progJumpText(){ return progJump() === 2 ? "2段（重すぎるときは一段）" : ""; }
+/* 「この提案の仕組み」の、目標の上げ方の文（提案タブの「目標の上げ方」で選んだとおりに書く） */
+function progRuleText(){
+  const need = progNeed(), step = progGain("w"), jump = progJump(), first = progFirst();
+  const when = (need > 1 ? "同じやり方・同じ重さで、" + need + "回続けて" : "前回の同じやり方で、") + "全部のセットが目標に届いたら、";
+  const two = jump === 2 ? "2段（重すぎるときは一段）" : "";
+  const up = jump && first === "heavier" ? "持っているダンベルで無理なく重くできれば" + two + "重く、できなければ同じ動きの一段難しいやり方に進みます"
+           : jump && first === "harder" ? "同じ動きの一段難しいやり方に進み、難しいやり方が無ければ、持っているダンベルで無理なく重くできるときに" + two + "重くします"
+           : jump ? "持っているダンベルで無理なく重くできるときに" + two + "重くします"
+           : first !== "keep" ? "同じ動きの一段難しいやり方に進みます" : "";
+  if(!step) return up ? when + "回数は増やさずに、" + up + "。" : "全部のセットが目標に届いても、回数は増やさず、同じ目標で続けます。";
+  return when + "次は" + step + "回（秒の種目は" + progGain("t") + "秒）増やします。回数が範囲の上限に届いたら、" + (up || "上限のまま続けます") + "。";
+}
 /* 動きごとの今の段階（記録のある動きだけ） */
 function ladderRows(){
   const out = [];
@@ -32,17 +43,20 @@ function ladderRows(){
     const hs = houseOf(K.ex);
     const tip = hs.up ? "。さらに負荷を上げるなら「" + gearText(hs.up) + "」" : "";
     let next;
+    const way = p.change === "top" ? {} : nextUp(K, p.opt, itemOptions(K));
     if(p.change === "top"){
-      next = p.stay ? u + "数は範囲の上限（" + p.hi + u + "）のまま続けます" : "今の道具では、この動きの一番上の段階で、回数も上限です" + tip;
-    }else if(!p.step && p.target < p.hi){
+      next = p.stay ? u + "数は範囲の上限（" + p.hi + u + "）のまま続けます"
+           : "今の道具では、この動きの一番上の段階" + (p.target >= p.hi ? "で、回数も上限です" : "です") + tip;
+    }else if(!p.step && way.stay){
       next = "目標は" + p.target + u + "のまま続けます";
     }else{
-      const way = nextUp(K, p.opt, itemOptions(K)), nx = way.opt, heavier = !!nx, up = way.item || null;
+      const nx = way.opt, heavier = !!nx, up = way.item || null;
       /* 今日を含めて、上限の回をやり切るまでの回数（目標を上げるのに続けて何回要るか: p.need。今の目標でもう届いた回: p.run） */
       const left = Math.max(0, p.step ? Math.ceil((p.hi - p.target) / p.step) : 0) * p.need + (p.need - p.run);
       next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重く（" + nx.text + "）"
            : up ? "あと" + left + "回のトレーニングで「" + itemName(up) + "」へ"
            : way.stay ? "あと" + left + "回のトレーニングで" + u + "数が範囲の上限（" + p.hi + u + "）に届きます。届いたあとは、上限のまま続けます"
+           : !p.step ? "今の道具では、この動きの一番上の段階です" + tip
            : "あと" + left + "回のトレーニングで" + u + "数が範囲の上限（" + p.hi + u + "）に届きます。今の道具では、この先の段階はありません";
     }
     out.push({pat, item: K, p, u, next});
@@ -88,7 +102,9 @@ function deloadCard(){
 function viewPlan(){
   const total = sortedDates().filter(d=>(state.sessions[d].entries||[]).some(e=>e.sets.length)).length;
   if(total < 1){
-    return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段階と、次の段階までの回数がここに出ます。</div>`;
+    return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段階と、次の段階までの回数がここに出ます。</div>
+    ${progCard()}
+    ${menuCard()}`;
   }
   const rows = ladderRows();
   /* 見出しは動きのまとまりごとに1回（同じまとまりの種目が続くあいだは出さない） */
@@ -116,11 +132,13 @@ function viewPlan(){
     ${ladder}
     <h3 class="sec">部位のバランス</h3>
     ${balanceCards}
+    ${progCard()}
+    ${menuCard()}
     <div class="card">
       <h4>この提案の仕組み</h4>
-      <p style="margin:0;font-size:14px">${progNeed() > 1 ? "同じやり方・同じ重さで、" + progNeed() + "回続けて" : "前回の同じやり方で、"}全部のセットが目標に届いたら、${progGain("w") ? "次は" + progGain("w") + "回（秒の種目は" + progGain("t") + "秒）増やします" : "回数は増やさず、同じ目標で続けます"}。回数が範囲の上限に届いたら、${progFirst() === "stay" ? "上限のまま続けます" : progFirst() === "harder" ? "同じ動きの一段難しいやり方に進み、難しいやり方が無ければ、持っているダンベルで無理なく重くできるときに" + progJumpText() + "重くします" : "持っているダンベルで無理なく重くできれば" + progJumpText() + "重く、できなければ同じ動きの一段難しいやり方に進みます"}。</p>
+      <p style="margin:0;font-size:14px">${progRuleText()}</p>
       <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
-      <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。設定の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
+      <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。上の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
       ${pairOn() ? `<p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は、回復と上限の範囲で入れられるかぎり入れて、隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>` : ""}
       <p class="lastline">${esc(recoverGapText())}</p>
     </div>`;

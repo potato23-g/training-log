@@ -9,7 +9,7 @@
    5. 増え方: 2回ずつ増やす設定では目標が2回増え、上限のひとつ手前からは上限で止まる（飛び越えて次の段階へ進まない）。
       上限に届いたときの進み方（重くする／難しいやり方）が設定どおりで、提案タブの「次の段階まで」と説明文も同じ
    6. 保存: 形の合わない値は sanitizeState で落ちる。まとまりごとに新しい方が残る（mergeState）
-   7. 画面: 設定の選択の値が、どれも読み出しの関数と同じ。選択を変えると保存され、今日のメニューが組み直る。
+   7. 画面（提案タブ。設定のシートには残っていない）: 選択の値が、どれも読み出しの関数と同じ。選択を変えると保存され、今日のメニューが組み直る。
       「初めの設定に戻す」で全部戻る */
 setTimeout(() => {
   const out = {fails: [], counts: {}};
@@ -94,7 +94,7 @@ setTimeout(() => {
   need(offPairs === 0 && offLines === 0, "そろえない設定なのに、組ができた・今日タブに一行が出た: " + offPairs + "/" + offLines);
   need(!pairOn() && !opposite("pushup", "row") && !opposite("curl", "triext"), "そろえない設定で opposite が真のまま");
   doAll(buildPlan()); fresh(); tab = "plan";
-  need(!/反対の部位/.test(viewPlan()), "そろえない設定なのに、提案タブに反対の部位の説明が出ている");
+  need(!/反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は/.test(viewPlan()), "そろえない設定なのに、提案タブに反対の部位の説明が出ている");
   state.tune = {pair: {updatedAt: 2}}; fresh();
   need(pairOn() && opposite("pushup", "row") && /反対の部位/.test(viewPlan()), "反対の部位を戻しても、組・説明が戻らない");
   let onPairs = 0;
@@ -201,13 +201,39 @@ setTimeout(() => {
   p = after({prog: {step: 3, updatedAt: 1}}, "goblet", rr.lo);
   need(p.target === Math.min(rr.hi, rr.lo + 3) && p.change === "up", "3回ずつの設定で、3回増えない: " + p.target);
   const zero = {prog: {step: 0, updatedAt: 1}};
-  p = after(zero, "goblet", rr.lo);
-  need(p.target === rr.lo && p.change === "hold" && /同じ回数のまま/.test(p.why) && progGain("w") === 0 && progGain("t") === 0, "増やさない設定で、目標が変わった: " + p.target + " " + p.change);
-  need(rowOf().next === "目標は" + rr.lo + "回のまま続けます" && /回数は増やさず、同じ目標で続けます/.test(viewPlan()), "提案タブが、増やさない設定と合わない: " + rowOf().next);
-  p = after(zero, "goblet", rr.hi);
-  need(p.change === "heavier", "増やさない設定で、上限の回をやり切っても重くしない: " + p.change);
-  /* 上限のまま続ける */
-  const stay = {prog: {first: "stay", updatedAt: 1}};
+  /* 回数・重さ・やり方は別々に選べる（2026-10-11）。回数だけ増やさない: 目標に届いたら、回数はそのままで重くする */
+  p = after(zero, "goblet", rr.lo + 1);
+  need(p.change === "heavier" && p.target === rr.lo + 1 && p.opt && /全部のセットで目標に届いたので、ダンベルを一段重くします。回数は同じ/.test(p.why) && progGain("w") === 0 && progGain("t") === 0,
+    "回数を増やさない設定で、目標に届いても重くしない・回数が変わった: " + p.change + " " + p.target + " " + p.why);
+  need(/あと1回のトレーニングで、ダンベルを一段重く/.test(rowOf().next) && /回数は増やさずに、持っているダンベルで無理なく重くできれば重く/.test(viewPlan()), "提案タブが、回数を増やさない設定と合わない: " + rowOf().next);
+  p = afterDays({prog: {step: 0, need: 2, updatedAt: 1}}, "goblet", [[rr.lo]]);
+  need(p.change === "hold" && p.run === 1 && /あと1回のトレーニングで、ダンベルを一段重く/.test(rowOf().next), "回数を増やさず2回続けての設定で、1回で重くした: " + p.change + " " + rowOf().next);
+  /* 回数も重さも増やさず、やり方だけ進む */
+  p = after({prog: {step: 0, jump: 0, updatedAt: 1}}, "goblet", rr.lo + 1);
+  need(p.change === "harder" && p.next && p.target === rr.lo + 1 && p.opt && Math.abs(p.w - defaultOptionFor(gb).total) < 0.01, "回数も重さも増やさない設定で、難しいやり方へ進まない: " + p.change);
+  /* 全部増やさない: 同じ目標のまま */
+  const none = {prog: {step: 0, jump: 0, first: "keep", updatedAt: 1}};
+  p = after(none, "goblet", rr.lo);
+  need(p.target === rr.lo && p.change === "hold" && !p.next && /同じ回数のまま/.test(p.why), "全部増やさない設定で、目標が変わった: " + p.target + " " + p.change);
+  need(rowOf().next === "目標は" + rr.lo + "回のまま続けます" && /回数は増やさず、同じ目標で続けます/.test(viewPlan()), "提案タブが、全部増やさない設定と合わない: " + rowOf().next);
+  /* 重さだけ増やさない: 回数は増え、上限に届いたら難しいやり方へ */
+  const noKg = {prog: {jump: 0, updatedAt: 1}};
+  p = after(noKg, "goblet", rr.lo);
+  need(p.target === rr.lo + 1 && p.change === "up" && progJump() === 0, "重くしない設定で、回数が増えない: " + p.target);
+  p = after(noKg, "goblet", rr.hi);
+  need(p.change === "harder" && p.next && !/重く/.test(p.why), "重くしない設定で、上限に届いたのに難しいやり方へ進まない・重くした: " + p.change + " " + p.why);
+  need(/回数が範囲の上限に届いたら、同じ動きの一段難しいやり方に進みます。/.test(viewPlan()), "提案タブの説明が、重くしない設定と違う");
+  /* やり方だけ変えない: 重くできるうちは重く、できなくなったら上限のまま */
+  const noWay = {prog: {first: "keep", updatedAt: 1}};
+  p = after(noWay, "goblet", rr.hi);
+  need(p.change === "heavier" && /無理なく重くできるときに重くします。/.test(viewPlan()), "やり方を変えない設定で、重くしない: " + p.change);
+  reset(noWay, [{kg: 5, n: 1}]);
+  const lone = itemOptions(gb);
+  need(nextUp(gb, lone[lone.length - 1], lone).stay === true && !nextUp(gb, lone[lone.length - 1], lone).item, "やり方を変えない設定で、重くできないときに難しいやり方へ進む");
+  /* 重さもやり方も上げない（10-11 00:12 の版が保存した first:"stay" も同じに読む） */
+  const stay = {prog: {jump: 0, first: "keep", updatedAt: 1}};
+  reset({prog: {first: "stay", updatedAt: 1}});
+  need(progJump() === 0 && progFirst() === "keep" && !tuneIsDefault("prog"), "前の版の「上限のまま続ける」を、重くしない・やり方を変えないとして読んでいない");
   p = after(stay, "goblet", rr.hi);
   need(p.change === "top" && p.stay && p.target === rr.hi && !p.next && /上限のまま続けます/.test(p.why) && !/一番上の段階/.test(p.why), "上限のまま続ける設定で、先へ進んだ: " + p.change + " " + p.why);
   need(/のまま続けます/.test(rowOf().next) && !/一番上の段階/.test(rowOf().next) && /回数が範囲の上限に届いたら、上限のまま続けます/.test(viewPlan()), "提案タブが、上限のまま続ける設定と合わない: " + rowOf().next);
@@ -241,6 +267,8 @@ setTimeout(() => {
   need(keep.pair.off === true && keep.prog.step === 2 && keep.prog.first === "harder", "sanitize: 正しい値を落とした");
   const keep2 = sanitizeState({sessions: {}, tune: {prog: {step: 0, need: 3, jump: 2, first: "stay", updatedAt: 4}}}).tune.prog;
   need(keep2.step === 0 && keep2.need === 3 && keep2.jump === 2 && keep2.first === "stay", "sanitize: 増え方の正しい値を落とした " + JSON.stringify(keep2));
+  const keep3 = sanitizeState({sessions: {}, tune: {prog: {jump: 0, first: "keep", updatedAt: 4}}}).tune.prog;
+  need(keep3.jump === 0 && keep3.first === "keep", "sanitize: 重くしない・やり方を変えないを落とした " + JSON.stringify(keep3));
   if(typeof mergeState === "function"){
     const A = {sessions: {}, tune: {pref: {map: {curl: 1}, updatedAt: 10}, gap: {map: {quads: 2}, updatedAt: 5}}};
     const B = {sessions: {}, tune: {gap: {map: {}, updatedAt: 20}, pair: {off: true, updatedAt: 1}}};
@@ -253,19 +281,25 @@ setTimeout(() => {
 
   /* ---- 7. 画面 ---- */
   reset({pref: {map: {deadlift: 1, curl: -1}, updatedAt: 1}, gap: {map: {quads: 2}, updatedAt: 1}, pair: {off: true, updatedAt: 1}, prog: {step: 2, updatedAt: 1}});
+  /* 2026-10-11 本人の要望で、設定のシートから提案タブへ移した。設定のシートには残っていないこと */
   tab = "today";
   openSettings();
-  const q = k => sheetInner.querySelector('select[data-tune="' + k + '"]');
-  const all = Array.from(sheetInner.querySelectorAll("select[data-tune]"));
+  need(!sheetInner.querySelector("select[data-tune]") && !sheetInner.querySelector("[data-act=exoff]") && !!sheetInner.querySelector("[data-settings]"), "設定のシートに、提案タブへ移した項目が残っている");
+  closeSettings(); sheet.classList.remove("on");
+  tab = "plan"; render();
+  const planView = document.getElementById("view");      /* この節の中では、提案タブの中身を見る */
+  const q = k => planView.querySelector('select[data-tune="' + k + '"]');
+  const all = Array.from(planView.querySelectorAll("select[data-tune]"));
+  need(planView.querySelectorAll("[data-act=exoff]").length === EX.length, "提案タブに「メニューに入れない種目」の押しボタンがそろっていない");
   const pats = PATTERN_ORDER.filter(pat => EX.some(e => !e.base && patternOf(e.id) === pat));
   need(all.length === 5 + Object.keys(MUSCLES).length + pats.length, "設定の選択の数が違う: " + all.length);
   need(EX.filter(e => !e.base).every(e => pats.includes(patternOf(e.id))), "出やすさの一覧に出ない種目がある");
   const shownOk = () => q("pair").value === (pairOn() ? "1" : "0") && q("step").value === String(progGain("w")) && q("first").value === progFirst() && q("need").value === String(progNeed()) && q("jump").value === String(progJump())
     && Object.keys(MUSCLES).every(m => q("gap:" + m).value === String(recoverGap(m))) && pats.every(pat => q("pref:" + pat).value === String(patPref(pat)));
   need(shownOk(), "設定の選択の値が、読み出しの関数と合わない");
-  need(!!sheetInner.querySelector("[data-act=tunereset]"), "変えた設定があるのに「初めの設定に戻す」が出ない");
+  need(!!planView.querySelector("[data-act=tunereset]"), "変えた設定があるのに「初めの設定に戻す」が出ない");
   Object.keys(MUSCLES).forEach(m => {
-    const was = sheetInner.querySelector(`[data-gapwas="${m}"]`);
+    const was = planView.querySelector(`[data-gapwas="${m}"]`);
     need(!!was === (recoverGap(m) !== recoverGapDefault(m)) && (!was || was.textContent.includes(recoverGapLabel(recoverGapDefault(m)))), "回復の日数の「初めの設定は」の行が違う: " + m);
   });
   const pick = (k, v) => { const el = q(k); el.value = v; el.dispatchEvent(new Event("change")); };
@@ -274,10 +308,14 @@ setTimeout(() => {
   const before = s.plan.map(x => x.ex).join(",");
   pick("pair", "1");
   need(pairOn() && shownOk(), "選択を変えても反対の部位が戻らない・設定の表示が古い");
-  pick("need", "3"); pick("jump", "2"); pick("step", "0"); pick("first", "stay");
-  need(progNeed() === 3 && progJump() === 2 && progGain("w") === 0 && progFirst() === "stay" && shownOk(), "増え方の選択を変えた値が入らない・設定の表示が古い: " + JSON.stringify(state.tune.prog));
+  pick("need", "3"); pick("jump", "2"); pick("step", "0"); pick("first", "keep");
+  need(progNeed() === 3 && progJump() === 2 && progGain("w") === 0 && progFirst() === "keep" && shownOk(), "増え方の選択を変えた値が入らない・設定の表示が古い: " + JSON.stringify(state.tune.prog));
+  need(/回数は変えません/.test((planView.querySelector("[data-jumpnote]") || {}).textContent || ""), "回数を増やさないときの、重さの添え書きが違う");
+  pick("jump", "0");
+  need(progJump() === 0 && state.tune.prog.jump === 0 && !planView.querySelector("[data-jumpnote]") && q("first").options.length === 2 && shownOk(), "重くしないを選んだ値が入らない・表示が古い: " + JSON.stringify(state.tune.prog));
   pick("need", "1"); pick("jump", "1");
-  need(!("need" in state.tune.prog) && !("jump" in state.tune.prog) && state.tune.prog.step === 0 && state.tune.prog.first === "stay", "増え方: 初めの設定と同じ値を持ったまま・ほかの値が消えた " + JSON.stringify(state.tune.prog));
+  need(!("need" in state.tune.prog) && !("jump" in state.tune.prog) && state.tune.prog.step === 0 && state.tune.prog.first === "keep", "増え方: 初めの設定と同じ値を持ったまま・ほかの値が消えた " + JSON.stringify(state.tune.prog));
+  need(planView.querySelectorAll("[data-act=tunereset]").length === 2, "「初めの設定に戻す」が、変えたカードの数だけ出ていない");
   pick("gap:glutes", "1"); pick("pref:hinge", "-1"); pick("step", "1"); pick("first", "harder");
   need(recoverGap("glutes") === 1 && patPref("hinge") === -1 && progGain("w") === 1 && progFirst() === "harder" && shownOk(), "選択を変えた値が入らない・設定の表示が古い");
   need(state.tune.prog.step === undefined && state.tune.prog.first === "harder", "増え方: 初めの設定と同じ値を持ったまま");
@@ -289,11 +327,12 @@ setTimeout(() => {
   out.replanned = before !== session(TODAY).plan.map(x => x.ex).join(",");
   pick("gap:glutes", String(recoverGapDefault("glutes")));
   need(!("glutes" in state.tune.gap.map), "回復の日数: 初めの設定と同じ値を持ったまま");
-  ACTIONS.tunereset();
+  ACTIONS.tunereset(planView.querySelector('[data-act=tunereset][data-part="prog"]'));
+  need(tuneIsDefault("prog") && patPref("hinge") === -1 && !planView.querySelector('[data-act=tunereset][data-part="prog"]') && !!planView.querySelector('[data-act=tunereset][data-part="menu"]'), "「目標の上げ方」だけを戻せない");
+  ACTIONS.tunereset(planView.querySelector('[data-act=tunereset][data-part="menu"]'));
   need(!tuneChanged() && pairOn() && recoverGap("quads") === recoverGapDefault("quads") && patPref("deadlift") === 0 && progFirst() === "heavier" && shownOk(), "「初めの設定に戻す」で戻らない");
-  need(!sheetInner.querySelector("[data-act=tunereset]"), "初めの設定なのに「初めの設定に戻す」が出ている");
-  need(document.documentElement.scrollWidth <= document.documentElement.clientWidth, "設定のシートで横にはみ出す");
-  closeSettings();
+  need(!planView.querySelector("[data-act=tunereset]"), "初めの設定なのに「初めの設定に戻す」が出ている");
+  need(document.documentElement.scrollWidth <= document.documentElement.clientWidth, "提案タブで横にはみ出す");
   /* 記録のある日は、メインの記録を残したまま組み直す */
   reset(null);
   fixPlan(session(TODAY));
