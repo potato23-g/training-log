@@ -81,7 +81,7 @@ function todayAdvice(item, sug){
   if(!n){
     if(p.snap !== undefined) return {level:"gear", short:"持ち方変更",
       text: "前回の " + kgText(p.snap) + " は、今登録しているダンベルでは作れません。今日は" + optText(p.opt) + "にしています。"};
-    if(p.change === "heavier") return {level:"harder", short:"一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
+    if(p.change === "heavier") return {level:"harder", short: p.steps === 2 ? "2段重く" : "一段重く", text: p.why + "。重すぎたら重量の − で戻せます。"};
     if(p.change === "lighter") return {level:"easier", warn:true, short:"一段軽く", text: p.why + "。"};
     if(p.change === "stepped-up") return {level:"harder", short:"段階を上げた", text: p.why + "。"};
     if(p.change === "stepped-down") return {level:"easier", short:"段階を下げた", text: p.why + "。"};

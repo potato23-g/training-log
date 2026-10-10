@@ -183,12 +183,12 @@ function progressFor(item){
         res.why = "前回は全部のセットで目標に届きました。目標は同じ" + u + "数のまま続けます";
       }else if(nt <= rr.hi){
         res.target = nt; res.change = "up";
-        res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします（" + rr.hi + u + "に届いたら次の段階へ）";
+        res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします" + (progFirst() === "stay" ? "" : "（" + rr.hi + u + "に届いたら次の段階へ）");
       }else{
         /* 幅の上限に届いた → 一段上へ */
         const way = nextUp(item, cur, opts), nx = way.opt, nxt = way.item;
         if(nx){
-          res.opt = nx; res.target = rr.lo; res.change = "heavier";
+          res.opt = nx; res.target = rr.lo; res.change = "heavier"; res.steps = way.steps;
           res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届いたので、ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重くします。" + rr.lo + u + "から始めます";
         }else{
           if(way.stay){

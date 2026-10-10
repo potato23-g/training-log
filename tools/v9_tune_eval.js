@@ -212,7 +212,7 @@ setTimeout(() => {
   need(p.change === "top" && p.stay && p.target === rr.hi && !p.next && /上限のまま続けます/.test(p.why) && !/一番上の段階/.test(p.why), "上限のまま続ける設定で、先へ進んだ: " + p.change + " " + p.why);
   need(/のまま続けます/.test(rowOf().next) && !/一番上の段階/.test(rowOf().next) && /回数が範囲の上限に届いたら、上限のまま続けます/.test(viewPlan()), "提案タブが、上限のまま続ける設定と合わない: " + rowOf().next);
   p = after(stay, "goblet", rr.lo);
-  need(p.target === rr.lo + 1 && /届いたあとは、上限のまま続けます/.test(rowOf().next), "上限のまま続ける設定で、上限までの行が違う: " + rowOf().next);
+  need(p.target === rr.lo + 1 && !/次の段階/.test(p.why) && /届いたあとは、上限のまま続けます/.test(rowOf().next), "上限のまま続ける設定で、上限までの行が違う: " + rowOf().next);
   /* 2段重く: 上がり幅が目安に収まれば2段、収まらなければ一段 */
   const jump2 = {prog: {jump: 2, updatedAt: 1}};
   const one = after(null, "goblet", rr.hi), i0 = optionIndex(gopts, defaultOptionFor(gb));
@@ -220,7 +220,7 @@ setTimeout(() => {
   const far = gopts[i0 + 2], fits = !!far && (far.key <= gopts[i0].key * PROG.jumpRatio * PROG.jumpRatio || far.key - gopts[i0].key <= PROG.jumpKg * 2);
   need(one.change === "heavier" && Math.abs(one.w - gopts[i0 + 1].total) < 0.01 && /一段重くします/.test(one.why), "初めの設定で、一段重くならない");
   need(fits, "検査の前提: 2段上の重さが目安に収まる");
-  need(p.change === "heavier" && Math.abs(p.w - far.total) < 0.01 && /2段重くします/.test(p.why), "2段重くする設定で、2段重くならない: " + p.w + " " + p.why);
+  need(p.change === "heavier" && Math.abs(p.w - far.total) < 0.01 && /2段重くします/.test(p.why) && p.steps === 2 && one.steps === 1, "2段重くする設定で、2段重くならない: " + p.w + " " + p.why);
   p = after(jump2, "goblet", rr.lo);
   need(/ダンベルを2段重く（/.test(rowOf().next) && rowOf().next.includes(far.text) && /無理なく重くできれば2段（重すぎるときは一段）重く/.test(viewPlan()), "提案タブが、2段重くする設定と合わない: " + rowOf().next);
   reset(jump2, [{kg: 5, n: 1}, {kg: 7, n: 1}, {kg: 20, n: 1}]);
