@@ -156,14 +156,14 @@ setTimeout(() => {
   p = after(hardFirst, "goblet", rr.hi);
   need(p.change === "harder" && p.next && itemLevel(p.next) > itemLevel(catalogItem("goblet")), "難しいやり方を先にする設定で、難しいやり方へ進まない: " + p.change);
   /* 提案タブの行は、今日やるやり方（進んだ先）で出る */
-  need(itemKey(rowOf().item) === itemKey(p.next) && /一段難しいやり方に進み、/.test(viewPlan()), "提案タブが、難しいやり方を先にする進み方と合わない: " + itemName(rowOf().item));
+  need(itemKey(rowOf().item) === itemKey(p.next) && /一段難しいやり方に進みます。難しいやり方が無いときは、/.test(viewPlan()), "提案タブが、難しいやり方を先にする進み方と合わない: " + itemName(rowOf().item));
   const gb = catalogItem("goblet"), gopts = itemOptions(gb);
   need(itemKey(nextUp(gb, defaultOptionFor(gb), gopts).item || {ex: ""}) === itemKey(p.next), "次に進む先（nextUp）が、目標の決め方と違う");
   need(patternNext("squat") && itemKey(patternNext("squat")) === itemKey(p.next), "難しいやり方を先にする設定が、メニューで選ぶやり方に効いていない");
   p = after({prog: {step: 2, first: "harder", updatedAt: 1}}, "goblet", rr.lo);
   need(p.target === rr.lo + 2, "増やす数と進み方を両方変えると、増やす数が効かない");
   need(/次は2回（秒の種目は10秒）増やします/.test(viewPlan()), "提案タブの説明の増やす数が設定と違う");
-  /* 続けて何回届いたら上げるか・増やさない・上限のまま・2段重く（2026-10-11）。
+  /* 続けて何回届いたら上げるか・増やさない・上限のまま・二段重く（2026-10-11）。
      days: 新しい順に [目標, 重さの段（省けば初めの持ち方）]。どの日も全部のセットで目標どおり */
   const afterDays = (tune, exId, days) => {
     reset(tune, adj);
@@ -203,7 +203,7 @@ setTimeout(() => {
   const zero = {prog: {step: 0, updatedAt: 1}};
   /* 回数・重さ・やり方は別々に選べる（2026-10-11）。回数だけ増やさない: 目標に届いたら、回数はそのままで重くする */
   p = after(zero, "goblet", rr.lo + 1);
-  need(p.change === "heavier" && p.target === rr.lo + 1 && p.opt && /全部のセットで目標に届いたので、ダンベルを一段重くします。回数は同じ/.test(p.why) && progGain("w") === 0 && progGain("t") === 0,
+  need(p.change === "heavier" && p.target === rr.lo + 1 && p.opt && /全部のセットで目標に届いたので、ダンベルを一段重くします。回数は\d+回のままです/.test(p.why) && progGain("w") === 0 && progGain("t") === 0,
     "回数を増やさない設定で、目標に届いても重くしない・回数が変わった: " + p.change + " " + p.target + " " + p.why);
   need(/あと1回のトレーニングで、ダンベルを一段重く/.test(rowOf().next) && /回数は増やさずに、持っているダンベルで無理なく重くできれば重く/.test(viewPlan()), "提案タブが、回数を増やさない設定と合わない: " + rowOf().next);
   p = afterDays({prog: {step: 0, need: 2, updatedAt: 1}}, "goblet", [[rr.lo]]);
@@ -214,7 +214,7 @@ setTimeout(() => {
   /* 全部増やさない: 同じ目標のまま */
   const none = {prog: {step: 0, jump: 0, first: "keep", updatedAt: 1}};
   p = after(none, "goblet", rr.lo);
-  need(p.target === rr.lo && p.change === "hold" && !p.next && /同じ回数のまま/.test(p.why), "全部増やさない設定で、目標が変わった: " + p.target + " " + p.change);
+  need(p.target === rr.lo && p.change === "hold" && !p.next && /目標は変えずに続けます/.test(p.why), "全部増やさない設定で、目標が変わった: " + p.target + " " + p.change);
   need(rowOf().next === "目標は" + rr.lo + "回のまま続けます" && /回数は増やさず、同じ目標で続けます/.test(viewPlan()), "提案タブが、全部増やさない設定と合わない: " + rowOf().next);
   /* 重さだけ増やさない: 回数は増え、上限に届いたら難しいやり方へ */
   const noKg = {prog: {jump: 0, updatedAt: 1}};
@@ -226,7 +226,7 @@ setTimeout(() => {
   /* やり方だけ変えない: 重くできるうちは重く、できなくなったら上限のまま */
   const noWay = {prog: {first: "keep", updatedAt: 1}};
   p = after(noWay, "goblet", rr.hi);
-  need(p.change === "heavier" && /無理なく重くできるときに重くします。/.test(viewPlan()), "やり方を変えない設定で、重くしない: " + p.change);
+  need(p.change === "heavier" && /無理なく重くできれば重くします。/.test(viewPlan()), "やり方を変えない設定で、重くしない: " + p.change);
   reset(noWay, [{kg: 5, n: 1}]);
   const lone = itemOptions(gb);
   need(nextUp(gb, lone[lone.length - 1], lone).stay === true && !nextUp(gb, lone[lone.length - 1], lone).item, "やり方を変えない設定で、重くできないときに難しいやり方へ進む");
@@ -239,19 +239,19 @@ setTimeout(() => {
   need(/のまま続けます/.test(rowOf().next) && !/一番上の段階/.test(rowOf().next) && /回数が範囲の上限に届いたら、上限のまま続けます/.test(viewPlan()), "提案タブが、上限のまま続ける設定と合わない: " + rowOf().next);
   p = after(stay, "goblet", rr.lo);
   need(p.target === rr.lo + 1 && !/次の段階/.test(p.why) && /届いたあとは、上限のまま続けます/.test(rowOf().next), "上限のまま続ける設定で、上限までの行が違う: " + rowOf().next);
-  /* 2段重く: 上がり幅が目安に収まれば2段、収まらなければ一段 */
+  /* 二段重く: 上がり幅が目安に収まれば二段、収まらなければ一段 */
   const jump2 = {prog: {jump: 2, updatedAt: 1}};
   const one = after(null, "goblet", rr.hi), i0 = optionIndex(gopts, defaultOptionFor(gb));
   p = after(jump2, "goblet", rr.hi);
   const far = gopts[i0 + 2], fits = !!far && (far.key <= gopts[i0].key * PROG.jumpRatio * PROG.jumpRatio || far.key - gopts[i0].key <= PROG.jumpKg * 2);
   need(one.change === "heavier" && Math.abs(one.w - gopts[i0 + 1].total) < 0.01 && /一段重くします/.test(one.why), "初めの設定で、一段重くならない");
-  need(fits, "検査の前提: 2段上の重さが目安に収まる");
-  need(p.change === "heavier" && Math.abs(p.w - far.total) < 0.01 && /2段重くします/.test(p.why) && p.steps === 2 && one.steps === 1, "2段重くする設定で、2段重くならない: " + p.w + " " + p.why);
+  need(fits, "検査の前提: 二段上の重さが目安に収まる");
+  need(p.change === "heavier" && Math.abs(p.w - far.total) < 0.01 && /二段重くします/.test(p.why) && p.steps === 2 && one.steps === 1, "二段重くする設定で、二段重くならない: " + p.w + " " + p.why);
   p = after(jump2, "goblet", rr.lo);
-  need(/ダンベルを2段重く（/.test(rowOf().next) && rowOf().next.includes(far.text) && /無理なく重くできれば2段（重すぎるときは一段）重く/.test(viewPlan()), "提案タブが、2段重くする設定と合わない: " + rowOf().next);
+  need(/ダンベルを二段重くします。次の重さは「/.test(rowOf().next) && rowOf().next.includes(far.text) && /無理なく重くできれば二段（重すぎるときは一段）重く/.test(viewPlan()), "提案タブが、二段重くする設定と合わない: " + rowOf().next);
   reset(jump2, [{kg: 5, n: 1}, {kg: 7, n: 1}, {kg: 20, n: 1}]);
   const fo = itemOptions(gb), fw = nextUp(gb, fo[0], fo);
-  need(fo.length >= 3 && fw.opt && fw.steps === 1 && optionIndex(fo, fw.opt) === 1, "2段上が重すぎるのに、一段にしない: " + JSON.stringify(fo.map(o => o.key)) + " " + JSON.stringify(fw.steps));
+  need(fo.length >= 3 && fw.opt && fw.steps === 1 && optionIndex(fo, fw.opt) === 1, "二段上が重すぎるのに、一段にしない: " + JSON.stringify(fo.map(o => o.key)) + " " + JSON.stringify(fw.steps));
 
   /* ---- 6. 保存 ---- */
   const dirty = sanitizeState({sessions: {}, tune: {

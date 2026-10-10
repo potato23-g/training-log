@@ -101,7 +101,7 @@ function sameWeight(a, b){
 
 /* 回数の範囲の上限に届いたとき、次に進む先: {opt, steps}=ダンベルを重く（steps 段）/ {item}=一段難しいやり方 /
    {stay}=本人が重さもやり方も上げないことにしている（残った方に先が無いときも）/ {}=今の道具では一番上。
-   2段重くする設定（rules.js の progJump）のときは、上がり幅が一段ぶんの目安の2回ぶんに収まれば2段、収まらなければ一段。
+   二段重くする設定（rules.js の progJump）のときは、上がり幅が一段ぶんの目安の2回ぶんに収まれば二段、収まらなければ一段。
    初めの設定は、無理なく重くできれば重く、できなければ難しいやり方。本人が「難しいやり方を先に」を選んでいれば逆の順
    （rules.js の progFirst）。提案タブの「次の段階まで」もここから作る */
 function nextUp(item, cur, opts){
@@ -178,7 +178,7 @@ function progressFor(item){
       const nt = ev.target < rr.hi ? Math.min(rr.hi, ev.target + step) : ev.target + Math.max(step, 1);
       if(run < res.need){
         res.run = run; res.change = "hold";
-        res.why = "前回は全部のセットで目標に届きました。あと" + (res.need - run) + "回続けて届いたら、次へ進みます";
+        res.why = "前回は全部のセットで目標に届きました。あと" + (res.need - run) + "回続けて届いたら、目標を上げます";
       }else if(step && nt <= rr.hi){
         res.target = nt; res.change = "up";
         res.why = "前回は全部のセットで目標に届いたので、" + (nt - ev.target) + u + "増やします" + (nextUp(item, cur, opts).stay ? "" : "（" + rr.hi + u + "に届いたら次の段階へ）");
@@ -189,11 +189,11 @@ function progressFor(item){
         const keepT = step ? rr.hi : ev.target;
         if(nx){
           res.opt = nx; res.target = step ? rr.lo : ev.target; res.change = "heavier"; res.steps = way.steps;
-          res.why = head + "ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重くします。" + (step ? rr.lo + u + "から始めます" : u + "数は同じ" + ev.target + u + "です");
+          res.why = head + "ダンベルを" + (way.steps === 2 ? "二段" : "一段") + "重くします。" + (step ? rr.lo + u + "から始めます" : u + "数は" + ev.target + u + "のままです");
         }else{
           if(way.stay && !step && ev.target < rr.hi){
             res.change = "hold"; res.stay = true;
-            res.why = "前回は全部のセットで目標に届きました。目標は同じ" + u + "数のまま続けます";
+            res.why = "前回は全部のセットで目標に届きました。目標は変えずに続けます";
           }else if(way.stay){
             res.target = keepT; res.change = "top"; res.stay = true;
             res.why = u + "数が範囲の上限（" + rr.hi + u + "）に届きました。上限のまま続けます";

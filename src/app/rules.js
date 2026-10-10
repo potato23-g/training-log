@@ -141,7 +141,7 @@ function pairOn(){ const p = tunePart("pair"); return !(p && p.off === true); }
 function progGain(kind){ const p = tunePart("prog"), s = p ? p.step : 1, n = s === 0 || s === 2 || s === 3 ? s : 1; return (kind === "t" ? 5 : 1) * n; }
 /* 2026-10-11 本人の要望（決めた回数をやり切ったら何段階上げるか・上げないかを細かく選びたい）で足した3つ:
    progNeed = 同じやり方・同じ重さ・同じ目標で、続けて何回、全部のセットが目標に届いたら上げるか（1〜3。初めの設定は1）
-   progJump = ダンベルを何段ずつ重くするか（0=重くしない / 1 / 2。2段が重すぎるときは一段: progress.js の nextUp）
+   progJump = ダンベルを何段ずつ重くするか（0=重くしない / 1 / 2。二段が重すぎるときは一段: progress.js の nextUp）
    progGain が 0 = 回数は増やさない（目標に届いたら、回数はそのままで重さ・やり方を上げる）。
    回数・重さ・やり方は別々に選べる（2026-10-11 本人の要望: 回数も重さも別々に、増やさないこともできるように）。
    10-11 00:12 の版が保存した first:"stay"（上限のまま続ける）は、重くしない・やり方も変えない、として読む */
@@ -319,7 +319,7 @@ function recoverGroups(){
 }
 /* 「中3日」「連日でもよい」 */
 function recoverGapLabel(g){ return g ? "中" + g + "日" : "連日でもよい"; }
-const RECOVER_NOTE = "空けるのは、その部位をメインで" + RECOVER_PRIMARY + "セット以上やったとき。1日に" + RECOVER_HEAVY + "セット以上なら、空ける日を1日増やします";
+const RECOVER_NOTE = "日数を空けるのは、その部位をメインで" + RECOVER_PRIMARY + "セット以上鍛えたときです。1日に" + RECOVER_HEAVY + "セット以上鍛えたときは、空ける日数を1日増やします";
 /* 「中3日: 大腿四頭筋・大殿筋…／…／連日でもよい: 腹直筋…」（提案タブの説明用） */
 function recoverGapText(){
   return recoverGroups().map(g => recoverGapLabel(g.gap) + ": " + g.muscles.map(m => MUSCLES[m]).join("・")).join("／")

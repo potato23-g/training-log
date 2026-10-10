@@ -25,10 +25,10 @@ const PATTERN_NAME = {squat:"しゃがむ", lunge:"横に踏み出す", hinge:"�
 function progRuleText(){
   const need = progNeed(), step = progGain("w"), jump = progJump(), first = progFirst();
   const when = (need > 1 ? "同じやり方・同じ重さで、" + need + "回続けて" : "前回の同じやり方で、") + "全部のセットが目標に届いたら、";
-  const two = jump === 2 ? "2段（重すぎるときは一段）" : "";
+  const two = jump === 2 ? "二段（重すぎるときは一段）" : "";
   const up = jump && first === "heavier" ? "持っているダンベルで無理なく重くできれば" + two + "重く、できなければ同じ動きの一段難しいやり方に進みます"
-           : jump && first === "harder" ? "同じ動きの一段難しいやり方に進み、難しいやり方が無ければ、持っているダンベルで無理なく重くできるときに" + two + "重くします"
-           : jump ? "持っているダンベルで無理なく重くできるときに" + two + "重くします"
+           : jump && first === "harder" ? "同じ動きの一段難しいやり方に進みます。難しいやり方が無いときは、持っているダンベルで無理なく重くできれば" + two + "重くします"
+           : jump ? "持っているダンベルで無理なく重くできれば" + two + "重くします"
            : first !== "keep" ? "同じ動きの一段難しいやり方に進みます" : "";
   if(!step) return up ? when + "回数は増やさずに、" + up + "。" : "全部のセットが目標に届いても、回数は増やさず、同じ目標で続けます。";
   return when + "次は" + step + "回（秒の種目は" + progGain("t") + "秒）増やします。回数が範囲の上限に届いたら、" + (up || "上限のまま続けます") + "。";
@@ -53,7 +53,7 @@ function ladderRows(){
       const nx = way.opt, heavier = !!nx, up = way.item || null;
       /* 今日を含めて、上限の回をやり切るまでの回数（目標を上げるのに続けて何回要るか: p.need。今の目標でもう届いた回: p.run） */
       const left = Math.max(0, p.step ? Math.ceil((p.hi - p.target) / p.step) : 0) * p.need + (p.need - p.run);
-      next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを" + (way.steps === 2 ? "2段" : "一段") + "重く（" + nx.text + "）"
+      next = heavier ? "あと" + left + "回のトレーニングで、ダンベルを" + (way.steps === 2 ? "二段" : "一段") + "重くします。次の重さは「" + nx.text + "」"
            : up ? "あと" + left + "回のトレーニングで「" + itemName(up) + "」へ"
            : way.stay ? "あと" + left + "回のトレーニングで" + u + "数が範囲の上限（" + p.hi + u + "）に届きます。届いたあとは、上限のまま続けます"
            : !p.step ? "今の道具では、この動きの一番上の段階です" + tip

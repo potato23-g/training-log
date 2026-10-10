@@ -213,19 +213,18 @@ function tuneSel(key, cur, opts){
 function progCard(){
   const step = progGain("w"), jump = progJump(), first = progFirst();
   const jumpNote = !jump ? "" : (step ? "回数が範囲の上限に届いたら重くして、回数は範囲の下限から始め直します。" : "目標に届いたら重くします。回数は変えません。")
-                 + (jump === 2 ? "2段では重すぎるときは、一段だけ重くします。" : "");
+                 + (jump === 2 ? "二段では重すぎるときは、一段だけ重くします。" : "");
   /* 重くしないときは、やり方を「重くする前に」「重くできないときに」で分ける意味が無いので、進むか変えないかだけを出す */
   const ways = jump ? [["keep", "進まない"], ["heavier", "重くできなくなったら進む"], ["harder", "重くする前に進む"]]
                     : [["keep", "進まない"], [first === "harder" ? "harder" : "heavier", "進む"]];
   return `<h3 class="sec">${PROG_HEAD}</h3>
   <div class="card">
-    <p class="lastline" style="margin-top:0">全部のセットで目標に届いたあと、次の目標をどう上げるかを選べます。</p>
-    <div class="fld tunefld"><label>上げるタイミング</label>
-      ${tuneSel("need", progNeed(), [[1, "目標に届いたら、次の回から上げる"], [2, "2回続けて届いたら上げる"], [3, "3回続けて届いたら上げる"]])}</div>
+    <div class="fld tunefld" style="margin-top:0"><label>目標を上げるタイミング（全部のセットで目標に届いたら）</label>
+      ${tuneSel("need", progNeed(), [[1, "1回届いたら、次の回から上げる"], [2, "2回続けて届いたら上げる"], [3, "3回続けて届いたら上げる"]])}</div>
     <div class="fld tunefld"><label>回数</label>
       ${tuneSel("step", step, [[0, "増やさない"], [1, "1回ずつ増やす（秒の種目は5秒ずつ）"], [2, "2回ずつ増やす（秒の種目は10秒ずつ）"], [3, "3回ずつ増やす（秒の種目は15秒ずつ）"]])}</div>
     <div class="fld tunefld"><label>ダンベルの重さ</label>
-      ${tuneSel("jump", jump, [[0, "重くしない"], [1, "一段ずつ重くする"], [2, "2段ずつ重くする"]])}
+      ${tuneSel("jump", jump, [[0, "重くしない"], [1, "一段ずつ重くする"], [2, "二段ずつ重くする"]])}
       ${jumpNote ? `<p class="lastline" data-jumpnote="1" style="margin:4px 0 0">${jumpNote}</p>` : ""}</div>
     <div class="fld tunefld"><label>同じ動きの、一段難しいやり方へ</label>
       ${tuneSel("first", first, ways)}</div>
@@ -283,10 +282,10 @@ function wireTune(root){
         tuneApplied(false, progGain("w") ? "回数を" + progGain("w") + "回ずつ増やすようにしました" : "回数を増やさないようにしました");
       }else if(kind === "need"){
         setProg("need", +v);
-        tuneApplied(false, progNeed() > 1 ? progNeed() + "回続けて届いたら上げるようにしました" : "目標に届いたら、次の回から上げるようにしました");
+        tuneApplied(false, progNeed() > 1 ? progNeed() + "回続けて届いたら上げるようにしました" : "1回届いたら、次の回から上げるようにしました");
       }else if(kind === "jump"){
         setProg("jump", +v);
-        tuneApplied(false, !progJump() ? "ダンベルを重くしないようにしました" : progJump() === 2 ? "ダンベルを2段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
+        tuneApplied(false, !progJump() ? "ダンベルを重くしないようにしました" : progJump() === 2 ? "ダンベルを二段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
       }else if(kind === "first"){
         setProg("first", v);
         tuneApplied(false, progFirst() === "keep" ? "難しいやり方へ進まないようにしました" : !progJump() ? "一段難しいやり方へ進むようにしました"
