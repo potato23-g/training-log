@@ -59,13 +59,35 @@ const SHORT_MAX = {sets:9, exercises:3, minutes:20};
 const DELOAD_MAX = {sets:9, exercises:3, minutes:30};
 function buildPlan(){
   if(planMemo) return planMemo;
-  const LIM = planShort ? SHORT_MAX : (deloadOn(TODAY) ? DELOAD_MAX : SESSION_MAX);
+  /* ふつうの日（20分で組むとき・軽い週でない）の種目数の上限は、頻度に合わせる（rules.js の sessionCap） */
+  const normal = !planShort && !deloadOn(TODAY), cap = normal ? sessionCap() : 0;
+  const LIM = planShort ? SHORT_MAX : !normal ? DELOAD_MAX : {sets: SESSION_MAX.sets, exercises: cap, minutes: SESSION_MAX.minutes};
   const week = loadMap(1, 6);              /* 直近7日 = 1〜6日前 + 今日の分 */
   /* 回復の途中の部位（部位ごとの日数。rules.js の RECOVER_GAP）と、今日「筋肉痛」と選んだ部位は主役にしない */
   const rest = {};
   Object.keys(MUSCLES).forEach(m => rest[m] = recovering(m));
   soreToday().forEach(m => rest[m] = true);
   const touched = patternsYesterday();
+  /* 回復が終わってから日が空いた部位（rules.js の readyIdleDays）。その部位をメインで鍛える種目を先に入れる
+     （2026-10-11 本人の指摘: 回復が終わっているのに何日も出ない部位が無いほうがよい）。
+     ・補助で使う分だけで1日の上限に届く部位（腹直筋・前腕・上腕三頭筋・脊柱起立筋）は、1日の上限をメインで鍛えた分だけで見る
+     ・1週間の上限（WEEK_MAX）は変えない。補助で使った分だけで、1種目足すと1週間の上限を超える部位は、先に入れる部位にしない
+       （rules.js の staleRoom。もう十分に使っている）
+     ・本人が「少なめに入れる」にした動きは、このためには入れない（staleOk）
+     ・記録が1週間ぶん無いうちは、先に入れる部位を作らない */
+  /* 先に入れる順: 空いた日数が長い部位から。週の目標に届いていない部位は、足りないセット数 ÷ lackDiv 日ぶん長く空いたものとして数える
+     （空いた日数だけで並べると、補助でよく使う部位が先に入り、広背筋・大腿四頭筋が週の目標に届かなくなった） */
+  const staleRank = m => readyIdleDays(m) + Math.max(0, WEEK_TARGET - (week[m] || 0)) / PLAN_EVEN.lackDiv;
+  const staleOk = (c, m) => EXMAP[c.ex].p.includes(m) && exPref(c.ex) >= 0;
+  const staleOn = normal && firstRecordDaysAgo(28) >= 7;
+  const canStale = m => !rest[m] && staleRoom(m) && catalog().some(c => staleOk(c, m));
+  /* 回復に日数がかかる部位（中 slowGap 日以上）は、鍛えられる日が少ない。回復が終わっていて週の目標に届いていなければ、
+     空いた日数に関わらずいちばん先に入れる（上半身の種目が先に枠を埋めると、大腿四頭筋が1種目で止まり、週の目標に届かなくなった） */
+  const slow = !staleOn ? [] : Object.keys(MUSCLES).filter(m => recoverGap(m) >= PLAN_EVEN.slowGap && (week[m] || 0) < WEEK_TARGET && !recovering(m) && canStale(m))
+    .sort((a, b) => (week[a] || 0) - (week[b] || 0));
+  const staleAll = slow.concat(!staleOn ? [] : Object.keys(MUSCLES).filter(m => !slow.includes(m) && readyIdleDays(m) >= PLAN_EVEN.readyDays && canStale(m))
+    .sort((a, b) => staleRank(b) - staleRank(a) || (PLAN_WEIGHT[b] || 0) - (PLAN_WEIGHT[a] || 0)).slice(0, PLAN_EVEN.staleMax));
+  const staleSet = new Set(staleAll);
   /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕）だけが主役の動きは、昨日やっていても続けてよい */
   const daily = ex => ex.p.every(m => recoverGap(m) === 0);
   const today = {}, plan = [];
@@ -98,6 +120,9 @@ function buildPlan(){
     return (PLAN_WEIGHT[m] || 0) * (under + over * 0.15);
   };
   const gain = c => { const add = exLoad(c.ex, c.sets || 3); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
+  /* 部位 m を今日メインで鍛えるセット数（記録したぶんと、メニューに入れたぶん） */
+  const primToday = m => doneToday.reduce((a, e) => a + (EXMAP[e.ex].p.includes(m) ? e.sets.length : 0), 0)
+    + plan.reduce((a, p) => { if(!EXMAP[p.ex].p.includes(m)) return a; const d = doneToday.find(e => e.ex === p.ex); return a + Math.max(0, (p.sets || SETS_PER_EXERCISE) - (d ? d.sets.length : 0)); }, 0);
   /* その組み方を今日のメニューに入れられない理由（入れられるなら ""）。"rest:glutes" のように、理由と部位を返す */
   const why = c => {
     const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n), pat = patternOf(c.ex);
@@ -117,7 +142,7 @@ function buildPlan(){
          メインで鍛える種目が1つも入らなかった（本人の指摘。このときは連日でもよい部位を補助で使う分だけを外した）
        ・2026-10-05: 僧帽筋でも同じことが起きていた。ロウやファーマーズウォークをやった日はサイドレイズ・リアレイズが入らず、
          肩の横・後ろが週の目標に届かなかったので、どの部位でも補助で使う分では外さないことにした */
-    const dayOver = ex.p.find(m => (today[m] || 0) + add[m] > dayMax(m));
+    const dayOver = ex.p.find(m => (staleSet.has(m) ? primToday(m) : (today[m] || 0)) + add[m] > dayMax(m));
     if(dayOver) return "day:" + dayOver;                                            /* 1日の上限 */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目で一緒にメインで鍛える部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
@@ -242,9 +267,13 @@ function buildPlan(){
       /* 組み直し: 残す種目を先に入れる */
       (planKeep || []).forEach(keepIn);
       /* 0. first の部位は、その部位をメインで鍛える種目を先に1つずつ入れる（前の部位の種目でもう使うなら入れない） */
-      first.forEach(u => { if(!(today[u] > 0)) fill(0.01, Math.min(plan.length + 1, LIM.exercises), c => EXMAP[c.ex].p.includes(u), true); });
+      first.forEach(u => {
+        const st = staleSet.has(u);
+        if(st ? primToday(u) > 0 : today[u] > 0) return;
+        fill(st ? -1 : 0.01, Math.min(plan.length + 1, LIM.exercises), c => st ? staleOk(c, u) : EXMAP[c.ex].p.includes(u), true);
+      });
       /* 「よく出す」にした動きは、回復と上限の範囲で入れられる日は先に入れる（20分で組むとき・軽い週は、価値の順だけ） */
-      if(LIM === SESSION_MAX) fill(0, LIM.exercises, c => exPref(c.ex) > 0);
+      if(normal) fill(0, LIM.exercises, c => exPref(c.ex) > 0);
       fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
       /* 2. メインで鍛える部位が週の目標に届いていない種目は、価値が小さくても入れる（2026-10-05 本人の要望: 種目が増えてもよいので
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
@@ -267,14 +296,14 @@ function buildPlan(){
        組み直して、あふれた種目の部位が新しく入らなくなったら、その部位も足してもう一度（first は増えるだけなので、部位の数で止まる）。
        先に入れる順は、重みの大きい部位から。筋肉痛と選んだ部位は入れない（rest）。
        20分で組むとき・軽い週（どちらも3種目）は、これまでどおり価値の順だけで組む */
-    const unused = LIM !== SESSION_MAX ? [] : Object.keys(MUSCLES).filter(m => unusedSoFar(m) && !rest[m])
+    const unused = !normal ? [] : Object.keys(MUSCLES).filter(m => unusedSoFar(m) && !rest[m] && !staleSet.has(m))
                                                .sort((a, b) => (PLAN_WEIGHT[b] || 0) - (PLAN_WEIGHT[a] || 0));
-    let first = [];
+    let first = staleAll.slice();
     for(;;){
       compose(first);
       const left = unused.filter(u => !(today[u] > 0) && !first.includes(u));
       if(!left.length) break;
-      first = unused.filter(u => first.includes(u) || left.includes(u));
+      first = staleAll.concat(unused.filter(u => first.includes(u) || left.includes(u)));
     }
   }
 

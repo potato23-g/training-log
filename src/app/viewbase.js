@@ -391,9 +391,10 @@ function render(){
     else if(tab==="ex") v.innerHTML = viewEx();
     else if(tab==="body") v.innerHTML = viewBody();
     else if(tab==="hist") v.innerHTML = viewHist();
+    else if(tab==="set") v.innerHTML = viewSet();
     else v.innerHTML = viewPlan();
   }catch(e){
-    v.innerHTML = `<div class="banner"><b>この画面を表示できませんでした。</b>記録の中に読めないものがあるかもしれません。ほかのタブは使えます。右上の ⚙ からバックアップの保存と復元ができます。
+    v.innerHTML = `<div class="banner"><b>この画面を表示できませんでした。</b>記録の中に読めないものがあるかもしれません。ほかのタブは使えます。「設定」タブでバックアップの保存と復元ができます。
       <p class="lastline">${esc(e && e.message || e)}</p></div>`;
     try{ console.error(e); }catch(x){}
   }

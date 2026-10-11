@@ -96,7 +96,7 @@ header h1{white-space:nowrap}
 /* ---- tabs ---- */
 nav.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);margin-bottom:20px;overflow-x:auto}
 nav.tabs button{
-  background:none;border:none;padding:10px 14px;font-size:14px;font-weight:600;
+  flex:1 1 auto;background:none;border:none;padding:10px 6px;font-size:14px;font-weight:600;
   color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;
 }
 nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--muscle)}
@@ -314,7 +314,6 @@ textarea{min-height:64px;resize:vertical}
 .ladder:last-child{border-bottom:none}
 .ladder .lk{font-size:11.5px;color:var(--ink-2);margin:0}
 .ladder .ln{margin:2px 0 0;font-size:14px}
-.setbtn{font-size:14px;padding:3px 9px}
 /*INLINE-CSS-FILE:src/app/views.css*/
 </style>
 </head>
@@ -324,8 +323,6 @@ textarea{min-height:64px;resize:vertical}
     <h1>トレーニング記録</h1>
     <span class="date num" id="todayLabel"></span>
     <button class="themebtn" id="updBtn" title="新しい版が出ていれば取り込みます">更新</button>
-    <button class="themebtn" id="themeBtn">表示</button>
-    <button class="themebtn setbtn" id="setBtn" title="ダンベル・知らせ方・同期・バックアップ" aria-label="設定">⚙</button>
   </header>
 
   <div class="shell">
@@ -335,6 +332,7 @@ textarea{min-height:64px;resize:vertical}
       <button role="tab" data-tab="body" aria-selected="false">からだ</button>
       <button role="tab" data-tab="hist" aria-selected="false">履歴</button>
       <button role="tab" data-tab="plan" aria-selected="false">提案</button>
+      <button role="tab" data-tab="set" aria-selected="false">設定</button>
     </nav>
     <main id="view" class="view-today"></main>
   </div>

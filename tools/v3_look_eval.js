@@ -38,9 +38,8 @@
   }
   if(look === "settings"){
     T.reset([{kg:5, n:2}]);
-    /* 設定は右上⚙のシート（openSettings）に移った。以前はページ内の見出しへスクロールしていたが、
-       その見出し文言「休憩おわり」はもう無い（今は「休憩の終わりを知らせる」でシートの中） */
-    openSettings();
+    /* 設定は「設定」タブ（2026-10-11 に右上⚙のシートからタブへ移した） */
+    switchTab("set");
     const hs = T.qa("h3.sec").filter(h => /休憩の終わりを知らせる/.test(h.textContent));
     if(hs[0]) hs[0].scrollIntoView({block: "start"});
   }

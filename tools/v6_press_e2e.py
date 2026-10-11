@@ -13,7 +13,7 @@ JS から el.click() を呼ぶ検査では、押してから離すまでのあ�
   5 指の弾みの二重押し（同じ数字で0.4秒以内）は1セットだけ
   6 数字を変えた直後の2回目は、すぐ押しても入る
   6b ボタンが画面の下のほうにあるとき、記録のあとに出る休憩の帯がボタンを隠さない
-  7 設定のシートで入力している最中に同期の描き直しが来ても、入力が消えない
+  7 設定タブで入力している最中に同期の描き直しが来ても、入力が消えない
 最後に「N passed, M failed」を出す（check_all.py が読む）。
 """
 import json
@@ -39,7 +39,6 @@ SETUP = r"""
   catalogMemo = null; planMemo = null; resetProg();
   const s = session(TODAY); s.plan = [catalogItem("curl")]; s.planAt = Date.now();
   planMemo = null; resetProg();
-  if(typeof closeSettings === "function") closeSettings();
   if(typeof stopRest === "function") stopRest();
   tab = "today"; openEx = "curl"; render();
   for(const k in lastAddAt) delete lastAddAt[k];
@@ -184,19 +183,19 @@ def main():
         ok(ev(SETS) == 2, "帯が出たあとも、続けて押すと2セット入る: " + str(ev(SETS)))
         cdp.call("Emulation.setDeviceMetricsOverride", width=390, height=844, deviceScaleFactor=1, mobile=False)
 
-        # 7 設定のシートで入力中に同期の描き直しが来ても、入力が消えない
+        # 7 設定タブで入力中に同期の描き直しが来ても、入力が消えない
         ev(SETUP)
-        has_sheet = ev('typeof openSettings === "function" && (openSettings(), !!document.getElementById("syncRepo"))')
+        has_sheet = ev('typeof viewSet === "function" && (switchTab("set"), !!document.getElementById("syncRepo"))')
         if has_sheet:
             ev('(() => { const i = document.getElementById("syncRepo"); i.focus(); i.value = "someone/half-typed"; syncSafeRender(); return true; })()')
             ok(ev('document.getElementById("syncRepo").value') == "someone/half-typed",
-               "設定のシートで入力している最中の同期の描き直しで、入力が消えない")
+               "設定タブで入力している最中の同期の描き直しで、入力が消えない")
             ev('document.activeElement && document.activeElement.blur(); true')
             time.sleep(0.6)
             ok(ev("syncRenderPending") is False, "入力欄から離れると、待たせていた描き直しが済む")
-            ev('closeSettings(); true')
+            ev('switchTab("today"); true')
         else:
-            ok(False, "設定のシートにリポジトリの入力欄が無い（検査の前提が崩れた）")
+            ok(False, "設定タブにリポジトリの入力欄が無い（検査の前提が崩れた）")
 
         try:
             cdp.call("Browser.close")

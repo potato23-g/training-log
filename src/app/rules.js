@@ -399,6 +399,46 @@ function stepItem(item, dir){
          メニュー作りはその種目を入れてよい（2026-10-05 本人の判断。筋肉痛と選んだ部位があるときは入れないので空）。
          今日の記録は数えない: 数えると、その種目を1セットやったところでカードの説明が入れ替わってしまう */
 const UNUSED_DAYS = 7;
+/* 2026-10-11 本人の指摘（メニューの数が多い日と少ない日の差が大きい。回復が終わっているのに何日も出ない部位が無いほうがよい）。
+   readyDays: 回復が終わってから、メインで鍛えないまま過ぎた日数がこれ以上の部位は、その部位をメインで鍛える種目を先に入れる
+              （planner.js の buildPlan の stale）。1回に先に入れるのは staleMax 部位まで（長く空いた順）
+   lackDiv: 先に入れる順の決め方（buildPlan の staleRank）
+   slowGap: 回復の日数がこれ以上の部位は、回復が終わっていて週の目標に届いていなければ、空いた日数に関わらずいちばん先に入れる
+   1週間の上限（WEEK_MAX）は変えない。1種目足すと超える部位は、先に入れる部位にしない（下の staleRoom）
+   weekEx・capAdd・capMin: 1回の種目数の上限を、トレーニングの頻度に合わせる（下の sessionCap） */
+const PLAN_EVEN = {readyDays: 1, staleMax: 4, lackDiv: 2, slowGap: 3, weekEx: 38, capAdd: 1, capMin: 6};
+/* 部位 m をメインで鍛える種目を1つ足しても、補助で使った分も含めた直近7日の量が1週間の上限に収まるか */
+function staleRoom(m){ return muscleLoadBetween(m, 0, 6) + SETS_PER_EXERCISE <= WEEK_MAX; }
+/* 部位 m をメインで RECOVER_PRIMARY セット以上鍛えた最後の日が何日前か（今日は数えない。4週間のうちに無ければ Infinity） */
+function lastPrimaryDaysAgo(m){
+  for(let d = 1; d <= 28; d++) if(primaryLoadBetween(m, d, d) >= RECOVER_PRIMARY) return d;
+  return Infinity;
+}
+/* 直近 within 日のうちで、いちばん古い記録が何日前か（無ければ 0）。
+   それより前の記録は見ない（何か月も前に1回だけ行った記録で、空いた日数や頻度が変わらないように） */
+function firstRecordDaysAgo(within){
+  const d = sortedDates().reverse().find(k => k < TODAY && daysBetween(k, TODAY) <= within && (state.sessions[k].entries || []).some(e => e.sets && e.sets.length));
+  return d ? daysBetween(d, TODAY) : 0;
+}
+/* 回復が終わってから、メインで鍛えないまま過ぎた日数（今日は数えない）。回復の途中は 0。
+   4週間のうちにメインで鍛えた記録が無い部位は、4週間のうちのいちばん古い記録からの日数 */
+function readyIdleDays(m){
+  if(recovering(m)) return 0;
+  const d = lastPrimaryDaysAgo(m);
+  if(d === Infinity) return firstRecordDaysAgo(28);
+  return Math.max(0, d - 1 - recoverGap(m));
+}
+/* 1回の種目数の上限。毎日のように行う人は、部位の回復がそろった日に種目が集まり、次の日からは少ない日が続くので、
+   直近2週間の頻度から「1週間に要る種目数 ÷ 週の回数」に近い数までにして、入りきらない種目を次の日へ回す。
+   記録が1週間ぶん無いうち・週4回以下は SESSION_MAX のまま */
+function sessionCap(){
+  const age = firstRecordDaysAgo(14);
+  if(age < 7) return SESSION_MAX.exercises;
+  const n = sessionsBetween(1, age).filter(s => (s.entries || []).some(e => e.sets && e.sets.length)).length;
+  if(!n) return SESSION_MAX.exercises;
+  const perWeek = n / age * 7;
+  return Math.max(PLAN_EVEN.capMin, Math.min(SESSION_MAX.exercises, Math.ceil(PLAN_EVEN.weekEx / perWeek) + PLAN_EVEN.capAdd));
+}
 /* 昨日までの UNUSED_DAYS-1 日に、その部位を1セットも使えていないか（補助で使った分も数える）。
    exRest の unused と、メニュー作りが先に種目を入れる部位（planner.js の buildPlan）が、どちらもこれで決める */
 function unusedSoFar(m){ return muscleLoadBetween(m, 1, UNUSED_DAYS - 1) <= 0; }

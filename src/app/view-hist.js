@@ -2,8 +2,8 @@
 function viewHist(){
   const dates = sortedDates().filter(d=> (state.sessions[d].entries||[]).some(e=>e.sets.length));
   const addDayRow = `<div class="rowbtns"><button data-act="addpastday">記録していない日を追加</button></div>`;
-  /* 記録がない端末でも、共有の接続とバックアップからの復元はできる（右上の ⚙ の設定のシート） */
-  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、右上の ⚙ の「スマホとPCで記録を共有」か「バックアップから復元」から取り込めます。</div>
+  /* 記録がない端末でも、共有の接続とバックアップからの復元はできる（設定タブ） */
+  if(!dates.length) return `<div class="empty">まだ記録がありません。<br>「今日」タブから最初の1セットを記録してください。<br>別の端末の記録を使う場合は、「設定」タブの「スマホとPCで記録を共有」か「バックアップから復元」から取り込めます。</div>
     ${addDayRow}`;
 
   const streakDays = dates.length;

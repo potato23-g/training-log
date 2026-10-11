@@ -146,7 +146,7 @@ if(updBtn) updBtn.onclick = async ()=>{
 
 /* アドレスバーの色（<meta name="theme-color">）を、今のテーマに合わせる。
    自動（テーマを固定していない）ときは、ライト/ダークそれぞれの media 付きタグが
-   OSの設定に追従するのでそのまま。「表示」ボタンで固定したときは、両方のタグの中身を
+   OSの設定に追従するのでそのまま。設定タブの「画面の色」で固定したときは、両方のタグの中身を
    固定した側の色に揃える（どちらの media に一致してもその色になる） */
 function applyThemeColorMeta(){
   try{
@@ -165,26 +165,37 @@ function applyThemeColorMeta(){
     }
   }catch(e){}
 }
-const themeBtn = document.getElementById("themeBtn");
+/* 画面の色（"" = 端末に合わせる・"light"・"dark"）。この端末だけの設定 */
+function themeNow(){
+  const t = document.documentElement.getAttribute("data-theme");
+  return t === "dark" || t === "light" ? t : "";
+}
+function setTheme(next){
+  if(next === "dark" || next === "light") document.documentElement.setAttribute("data-theme", next);
+  else{ next = ""; document.documentElement.removeAttribute("data-theme"); }
+  try{ next ? localStorage.setItem("trainlog.theme", next) : localStorage.removeItem("trainlog.theme"); }catch(e){}
+  applyThemeColorMeta();
+  figThemeChanged(); render();
+}
 (function(){
   let t = null;
   try{ t = localStorage.getItem("trainlog.theme"); }catch(e){}
-  if(t) document.documentElement.setAttribute("data-theme", t);
+  if(t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
   applyThemeColorMeta();
-  themeBtn.onclick = ()=>{
-    const cur = document.documentElement.getAttribute("data-theme");
-    const next = cur==="dark" ? "light" : (cur==="light" ? "" : "dark");
-    if(next) document.documentElement.setAttribute("data-theme", next);
-    else document.documentElement.removeAttribute("data-theme");
-    try{ next ? localStorage.setItem("trainlog.theme", next) : localStorage.removeItem("trainlog.theme"); }catch(e){}
-    applyThemeColorMeta();
-    figThemeChanged(); render();
-  };
 })();
 
-/* ---- 設定のシート（右上の ⚙） ----
-   ダンベルの登録・1日の区切り・休憩の知らせ方・同期・バックアップを1か所にまとめる */
-let settingsOpen = false;
+/* ---- 設定タブ ----
+   ダンベルの登録・1日の区切り・休憩の知らせ方・画面の色・同期・バックアップを1か所にまとめる。
+   2026-10-11 本人の要望で、右上の ⚙ のシートをタブにし、ヘッダーの「表示」ボタンもここへ入れた */
+function themeCard(){
+  const now = themeNow();
+  const opts = [["", "端末に合わせる"], ["light", "明るい"], ["dark", "暗い"]]
+    .map(([v, t]) => `<option value="${v}"${v === now ? " selected" : ""}>${t}</option>`).join("");
+  return `<h3 class="sec">画面の色</h3>
+  <div class="card">
+    <div class="fld"><label for="themeSel">画面の色</label><select id="themeSel">${opts}</select></div>
+  </div>`;
+}
 function dayStartCard(){
   const h = dayStartHour();
   const opts = [0, 1, 2, 3, 4, 5, 6].map(v => `<option value="${v}"${v === h ? " selected" : ""}>${v === 0 ? "夜中の0時" : "朝" + v + "時"}</option>`).join("");
@@ -202,7 +213,7 @@ function exOffBody(){
     <div class="sorechips">${order.map(e => `<button class="sorechip${exOn(e.id) ? "" : " on"}" data-act="exoff" data-ex="${e.id}" aria-pressed="${!exOn(e.id)}">${esc(e.name)}</button>`).join("")}</div>`;
 }
 /* 提案タブの「目標の上げ方」「メニューの組み方」（rules.js の state.tune と exOff）。
-   2026-10-11 本人の要望で、設定のシートから提案タブへ移した（設定のシートに残すのは、道具・1日の区切り・休憩の合図・同期・バックアップ）。
+   2026-10-11 本人の要望で、設定から提案タブへ移した（設定タブに残すのは、道具・1日の区切り・休憩の合図・同期・バックアップ）。
    値はどれも rules.js の関数（progNeed・progGain・progJump・progFirst・pairOn・recoverGap・patPref・exOn）から読む。
    長い一覧は畳んでおく（開いたかどうかは、描き直しても保つ） */
 const PROG_HEAD = "目標の上げ方", MENU_HEAD = "メニューの組み方", PREF_HEAD = "種目を入れる頻度";
@@ -308,47 +319,27 @@ ACTIONS.tunereset = el => {
   else{ setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); }
   tuneApplied(!prog, "「" + (prog ? PROG_HEAD : MENU_HEAD) + "」を初めの設定に戻しました");
 };
-function settingsHTML(){
-  return `<h4 data-settings="1">設定</h4>
+function viewSet(){
+  return `<div data-settings="1">
     ${gearCard()}
     ${dayStartCard()}
     ${settingsCard()}
+    ${themeCard()}
     ${typeof syncCard === "function" ? syncCard() : ""}
     ${typeof backupCard === "function" ? backupCard() : ""}
-    <div class="rowbtns"><button data-close="1">閉じる</button></div>`;
+  </div>`;
 }
-function wireSettings(){
-  wireActs(sheetInner);
-  wireInputs(sheetInner);
-  if(typeof wireGearCard === "function") wireGearCard(sheetInner);
-  if(typeof syncWire === "function") syncWire(sheetInner);
-  const sel = sheetInner.querySelector("#dayStartSel");
+/* 設定タブの入力欄（押しボタン・同期の入力欄は events.js の wire がほかのタブと同じに結ぶ） */
+function wireSettings(v){
+  if(!v.querySelector("[data-settings]")) return;
+  if(typeof wireGearCard === "function") wireGearCard(v);
+  const sel = v.querySelector("#dayStartSel");
   if(sel) sel.onchange = ()=>{
     PREF.set("dayStart", +sel.value);
     if(rollDay()) setStatus("1日の区切りを変えたので、今日のメニューを切り替えました");
     render();
   };
-  const close = sheetInner.querySelector("[data-close]");
-  if(close) close.onclick = closeSettings;
+  const th = v.querySelector("#themeSel");
+  if(th) th.onchange = () => setTheme(th.value);
 }
-function openSettings(){
-  settingsOpen = true;
-  sheetInner.innerHTML = settingsHTML();
-  wireSettings();
-  sheet.classList.add("on");
-}
-/* 設定を変えると画面を描き直すので、そのときシートの中身も今の設定で描き直す（スクロール位置は保つ） */
-function refreshSettings(){
-  /* シートが閉じた・ほかの中身（貼り付けて復元など）に替わったときは描き直さない */
-  if(!sheet.classList.contains("on") || !sheetInner.querySelector("[data-settings]")){ settingsOpen = false; return; }
-  const y = sheetInner.scrollTop;
-  sheetInner.innerHTML = settingsHTML();
-  wireSettings();
-  sheetInner.scrollTop = y;
-}
-function closeSettings(){
-  settingsOpen = false;
-  sheet.classList.remove("on");
-}
-const setBtn = document.getElementById("setBtn");
-if(setBtn) setBtn.onclick = openSettings;
+WIRES.push(wireSettings);

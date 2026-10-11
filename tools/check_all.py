@@ -486,6 +486,8 @@ def main():
     run_browser("v7_restin_eval.js", "v7_restin_eval.js", judge_empty_arrays("fails", "silent", "mismatch", "neverIncluded"), timeout=240)
     run_browser("v8_off_pair_eval.js", "v8_off_pair_eval.js", judge_empty_arrays("fails"), timeout=240)
     run_browser("v9_tune_eval.js", "v9_tune_eval.js", judge_empty_arrays("fails"), timeout=240)
+    # 日ごとの種目数の差と、回復が終わっているのに出ない部位（2026-10-11）
+    run_browser("v10_even_eval.js", "v10_even_eval.js", judge_empty_arrays("fails"), timeout=240)
     run_browser("v3_dayroll_eval.js", "v3_dayroll_eval.js", judge_smoke)
     run_browser("v3_update_eval.js", "v3_update_eval.js", judge_smoke, needs_common=True)
     run_browser_2phase("v3_persist_eval.js", "v3_persist_eval.js")

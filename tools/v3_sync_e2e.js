@@ -13,17 +13,17 @@
   };
   localStorage.setItem("trainlog.sync.api", "http://127.0.0.1:8799");
   const connect = async () => {
-    openSettings();                                      /* 同期のカードは右上 ⚙ の設定のシートにある */
+    switchTab("set");                                    /* 同期のカードは設定タブにある */
     T.q("#syncRepo").value = "tester/training-log-data";
     T.q("#syncToken").value = "e2e-token";
     T.click('[data-sync="connect"]');
     r.connected = await until(() => syncLoadConfig() && /同期しました/.test(syncStatusText), 20000);
     r.connectStatus = syncStatusText;
-    closeSettings();
+    switchTab("today");
   };
 
   if(window.__phase === "form"){
-    openSettings();
+    switchTab("set");
     const d = T.q("details"); if(d) d.open = true;
     r.card = !!T.q('[data-sync="connect"]');
   }

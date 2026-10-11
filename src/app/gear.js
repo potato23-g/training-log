@@ -445,7 +445,7 @@ function adjStep(i, field, d){
 ACTIONS.adjstep = el => adjStep(+el.dataset.i, el.dataset.f, +el.dataset.d);
 ACTIONS.adjdel = el => { const it = gearItems(); it.splice(+el.dataset.i, 1); setGearItems(it); render(); };
 ACTIONS.adjadd = () => { const it = gearItems(); it.push({adj:true, min:2, max:24, step:2, n:2}); setGearItems(it); render(); };
-/* 可変式の行の入力欄（min/max/step/本数・「,」区切りの一覧）。設定シートが開くたびに shell.js から呼ぶ。
+/* 可変式の行の入力欄（min/max/step/本数・「,」区切りの一覧）。設定タブを描くたびに shell.js から呼ぶ。
    ここも readGearItem の検査を通ったときだけ反映する（adjStep と同じ理由） */
 function wireGearCard(root){
   root.querySelectorAll('input[id^="adj_"]').forEach(inp => {

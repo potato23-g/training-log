@@ -575,8 +575,7 @@ function syncUpdateStatusEl(text){
 }
 
 /* 編集中の入力を巻き戻さないための安全な再描画。
-   INPUT/TEXTAREA/SELECT にフォーカスがあれば、focusout まで待つ。画面（#view）の中だけでなく、
-   設定のシートの入力欄（リポジトリ名・鍵・ダンベル）も見る（描き直すと設定のシートも作り直すため）。
+   INPUT/TEXTAREA/SELECT にフォーカスがあれば、focusout まで待つ（設定タブのリポジトリ名・鍵・ダンベルの入力欄も同じ）。
    focusout のあとの render() は、ボタンを押している最中なら画面側（viewbase.js）が click のあとまで待たせる */
 function syncIsEditableFocus(){
   try{

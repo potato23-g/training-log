@@ -6,7 +6,7 @@
   const btn = document.getElementById("updBtn");
   out.exists = !!btn;
   out.label = btn ? btn.textContent : "";
-  out.themeLabel = document.getElementById("themeBtn") ? document.getElementById("themeBtn").textContent : "";
+  out.themeLabel = document.getElementById("themeBtn") ? document.getElementById("themeBtn").textContent : "";   /* 「表示」ボタンは 2026-10-11 に設定タブへ移した */
   const status = () => document.getElementById("status").textContent;
 
   /* 1) すでに最新のとき */

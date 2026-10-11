@@ -66,7 +66,6 @@ SETUP = r"""
   catalogMemo = null; planMemo = null; resetProg();
   const s = session(TODAY); s.plan = [catalogItem("curl")]; s.planAt = Date.now();
   planMemo = null; resetProg();
-  if(typeof closeSettings === "function") closeSettings();
   stopRest();
   tab = "today"; openEx = "curl"; render();
   for(const k in lastAddAt) delete lastAddAt[k];

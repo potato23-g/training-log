@@ -42,9 +42,8 @@ function wire(){
     });
   }
   if(typeof syncWire === "function") syncWire(v);
-  if(settingsOpen) refreshSettings();
 }
-/* data-act のボタン。画面（#view）と設定のシートの両方で使う */
+/* data-act のボタン。画面（#view）とシートの両方で使う */
 function wireActs(root){
   root.querySelectorAll("[data-act]").forEach(el=>{ el.onclick = (ev)=> onAct(el, ev); });
 }

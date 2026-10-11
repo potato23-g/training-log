@@ -9,7 +9,7 @@
    5. 増え方: 2回ずつ増やす設定では目標が2回増え、上限のひとつ手前からは上限で止まる（飛び越えて次の段階へ進まない）。
       上限に届いたときの進み方（重くする／難しいやり方）が設定どおりで、提案タブの「次の段階まで」と説明文も同じ
    6. 保存: 形の合わない値は sanitizeState で落ちる。まとまりごとに新しい方が残る（mergeState）
-   7. 画面（提案タブ。設定のシートには残っていない）: 選択の値が、どれも読み出しの関数と同じ。選択を変えると保存され、今日のメニューが組み直る。
+   7. 画面（提案タブ。設定タブには残っていない。設定はタブの1つで、画面の色もそこで選ぶ）: 選択の値が、どれも読み出しの関数と同じ。選択を変えると保存され、今日のメニューが組み直る。
       「初めの設定に戻す」で全部戻る */
 setTimeout(() => {
   const out = {fails: [], counts: {}};
@@ -117,7 +117,7 @@ setTimeout(() => {
   need(groups[0].gap === 5 && groups[0].muscles.join() === "quads" && groups.find(g => g.gap === 0).muscles.includes("chest"), "回復の目安のまとまり（recoverGroups）が設定と違う");
   need(recoverGapText().indexOf("中5日: " + MUSCLES.quads) === 0, "提案タブの説明が設定と違う: " + recoverGapText().slice(0, 30));
   let chestStreak = 0;
-  const cLog = run({gap: {map: {chest: 0}, updatedAt: 1}}, "毎日", 14);
+  const cLog = run({gap: {map: {chest: 0}, updatedAt: 1}}, "毎日", 28);
   cLog.forEach((r, i) => { if(i && [r, cLog[i - 1]].every(x => x.plan.some(k => EXMAP[k.split("|")[0]].p.includes("chest")))) chestStreak++; });
   need(chestStreak > 0, "胸を連日でもよいにしても、続けて入る日が無い");
   reset({gap: {map: {quads: 9, glutes: -1, hams: 1.5, chest: "0"}, updatedAt: 1}});
@@ -281,12 +281,25 @@ setTimeout(() => {
 
   /* ---- 7. 画面 ---- */
   reset({pref: {map: {deadlift: 1, curl: -1}, updatedAt: 1}, gap: {map: {quads: 2}, updatedAt: 1}, pair: {off: true, updatedAt: 1}, prog: {step: 2, updatedAt: 1}});
-  /* 2026-10-11 本人の要望で、設定のシートから提案タブへ移した。設定のシートには残っていないこと */
-  tab = "today";
-  openSettings();
-  need(!sheetInner.querySelector("select[data-tune]") && !sheetInner.querySelector("[data-act=exoff]") && !!sheetInner.querySelector("[data-settings]"), "設定のシートに、提案タブへ移した項目が残っている");
-  closeSettings(); sheet.classList.remove("on");
-  tab = "plan"; render();
+  /* 2026-10-11 本人の要望で、設定から提案タブへ移した。設定タブには残っていないこと */
+  switchTab("set");
+  const setView = document.getElementById("view");
+  need(!setView.querySelector("select[data-tune]") && !setView.querySelector("[data-act=exoff]") && !!setView.querySelector("[data-settings]"), "設定タブに、提案タブへ移した項目が残っている");
+  /* 設定はタブの1つ。右上の「表示」と ⚙ は無く、画面の色は設定タブで選ぶ（2026-10-11 本人の要望） */
+  need(!document.getElementById("themeBtn") && !document.getElementById("setBtn") && !!document.querySelector('nav.tabs [data-tab="set"][aria-selected="true"]'), "設定がタブになっていない・右上にボタンが残っている");
+  need(!!setView.querySelector("#dayStartSel") && !!setView.querySelector("#themeSel") && !!setView.querySelector("#syncRepo") && !!setView.querySelector("[data-act=testalert]") && setView.querySelectorAll("h3.sec").length >= 6, "設定タブに出ていないカードがある");
+  const thSel = () => document.getElementById("themeSel");
+  const thPick = v => { thSel().value = v; thSel().dispatchEvent(new Event("change", {bubbles: true})); };
+  const th0 = themeNow();
+  thPick("dark");
+  need(document.documentElement.getAttribute("data-theme") === "dark" && thSel() && thSel().value === "dark" && tab === "set", "画面の色で「暗い」を選んでも変わらない・設定タブから離れた");
+  thPick("light");
+  need(document.documentElement.getAttribute("data-theme") === "light" && thSel().value === "light", "画面の色で「明るい」を選んでも変わらない");
+  thPick("");
+  need(!document.documentElement.hasAttribute("data-theme") && thSel().value === "", "画面の色で「端末に合わせる」を選んでも戻らない");
+  setTheme(th0);
+  need(document.documentElement.scrollWidth <= document.documentElement.clientWidth, "設定タブで横にはみ出す");
+  tab = "plan"; switchTab("plan");
   const planView = document.getElementById("view");      /* この節の中では、提案タブの中身を見る */
   const q = k => planView.querySelector('select[data-tune="' + k + '"]');
   const all = Array.from(planView.querySelectorAll("select[data-tune]"));
@@ -338,10 +351,8 @@ setTimeout(() => {
   fixPlan(session(TODAY));
   const first = session(TODAY).plan[0];
   doAll([first]);
-  openSettings();
   pick("pref:" + patternOf(first.ex), "-1");
   need(todayItems().some(it => it.ex === first.ex), "設定を変えたら、記録した種目が今日のメニューから消えた");
-  closeSettings();
   delete state.tune; fresh();
 
   out.failCount = out.fails.length;
