@@ -37,6 +37,27 @@ ACTIONS.refetchall = () => {
 ACTIONS.dismissproblem = () => { STORE_PROBLEM = null; render(); };
 ACTIONS.dismissfail = () => { storeFailMsg = ""; render(); };
 
+/* 今日の進み具合（終えた種目の数と、残りのおよその時間）。メニューがある日だけ出す（2026-10-11 本人の要望） */
+function dayProgress(items){
+  if(!items.length) return "";
+  const done = items.filter(it => isDoneToday(it.ex)).length;
+  const left = items.reduce((a, it) => {
+    const e = entryFor(TODAY, it.ex, false), n = e ? e.sets.length : 0, t = it.sets || SETS_PER_EXERCISE;
+    return a + (n >= t ? 0 : itemMinutes(it) * (t - n) / t);
+  }, 0);
+  return `<div class="dayprog" data-dayprog="1"><span>今日 <b class="num">${done} / ${items.length}</b> 種目</span>
+    <span>${done >= items.length ? "" : "残り 約" + Math.max(1, Math.round(left)) + "分"}</span>
+    <i><i style="width:${Math.round(done / items.length * 100)}%"></i></i></div>`;
+}
+/* 「次の種目」のカードの「この内容で記録」。種目のカードを開いてから、そのカードの「記録」と同じ処理（addSet）で入れる。
+   押した直後はカードが開いて行の位置が変わるので、同じ場所を続けて押しても種目の見出し（開け閉め）が反応しないようにする */
+let heroRecAt = 0;
+ACTIONS.herorec = el => {
+  openEx = el.dataset.ex; editEx = null;
+  render();
+  addSet(el.dataset.ex);
+  heroRecAt = Date.now();
+};
 function viewToday(){
   const all = todayItems(), items = all.filter(it => !it.skip), skipped = all.filter(it => it.skip);
   const s = session(TODAY);
@@ -74,8 +95,10 @@ function viewToday(){
     const inner = ex.kind==="w"
       ? `<div class="bigset"><span class="v num">${wShown(next, sug.w)}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">${perArm(next.ex) ? "kg（片手）・回" : "kg・回"}${next.side?"・左右":""}</span></div>`
       : `<div class="bigset"><span class="v num">${sug.r}</span><span class="u">${ex.kind==="t"?"秒":"回"}${next.side?"・左右":""}</span></div>`;
+    /* このカードからそのまま記録できる（2026-10-11 本人の要望。押すと下の種目のカードが開き、この目標で1セット入る） */
     hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${esc(itemName(next))}</h2>${inner}
+      <div class="herorec"><button class="addbtn" data-act="herorec" data-ex="${next.ex}">この内容で記録</button></div>
       ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
       <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
       ${dl && dl.active ? `<p class="sub">軽めの週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
@@ -99,7 +122,7 @@ function viewToday(){
   /* 反対の部位どうしで隣に並んだ種目（rules.js の menuPairs）。両方終わった組は出さない */
   const pairLine = menuPairs(items).filter(p => !p.every(it => isDoneToday(it.ex)))
     .map(p => `<p class="skipped">${esc(itemName(p[0]))}と${esc(itemName(p[1]))}: 反対の部位を使う種目です。1セットずつ交互に行えます。</p>`).join("");
-  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + `
+  return storeBanners() + menuNote + deloadAsk + dayProgress(items) + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>

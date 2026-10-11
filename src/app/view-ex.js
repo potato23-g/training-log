@@ -1,4 +1,17 @@
 /* ---------- 種目 ---------- */
+/* 「やり方」に足す文。解説の「準備」「どこまで動かすか」（DETAIL の setup・rom）のうち、やり方の手順にまだ書かれていない文だけを出す
+   （2026-10-11 本人の要望: 「準備」「どこまで動かすか」は、必要な部分だけ「やり方」に入れる）。
+   手順と同じ内容かどうかは、文の中の2文字の並びが手順にどれだけ出てくるかで見る（半分以上なら同じ内容として出さない）。
+   「それ以上は…」のように前の文を受ける文が残るときは、「どこまで動かすか」は全文を出す */
+function howExtra(id){
+  const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
+  const grams = s => { const t = s.replace(/[、。・\s（）「」]/g, ""), o = []; for(let i = 0; i + 1 < t.length; i++) o.push(t.slice(i, i + 2)); return o; };
+  const how = new Set(grams(exHow(id).join("")));
+  const fresh = x => { const g = grams(x); return g.length >= 5 && g.filter(k => how.has(k)).length / g.length < 0.5; };
+  const parts = t => (t || "").split("。").map(x => x.trim()).filter(Boolean);
+  const rom = parts(d.rom), romNew = rom.filter(fresh);
+  return parts(d.setup).filter(fresh).concat(romNew.some(x => /^(それ|そこ)/.test(x)) ? [rom.join("。")] : romNew).map(x => x + "。");
+}
 function viewEx(){
   const ex = EXMAP[refEx], bid = baseOf(refEx), d = DETAIL[refEx] || DETAIL[bid] || {}, hs = houseOf(refEx);
   const refItem = itemOf(refEx);
@@ -8,6 +21,7 @@ function viewEx(){
   const opts = EX.map(e=>`<option value="${e.id}" ${e.id===refEx?"selected":""}>${e.name}</option>`).join("");
   const chips = ex.p.map(m=>`<span class="chip p">${MUSCLES[m]}</span>`).join("")
     + (ex.s||[]).map(m=>`<span class="chip s">${MUSCLES[m]}</span>`).join("");
+  const extra = howExtra(refEx);
   const kindLabel = ex.kind==="w" ? "ダンベル" : (ex.kind==="t" ? "時間で計測" : "自重");
 
   const left = `
@@ -31,22 +45,10 @@ function viewEx(){
 
   const right = `
     ${ex.variant?`<div class="card"><h4>両脚版との違い</h4><p style="margin:0;font-size:14px">${ex.variant}</p></div>`:""}
-    ${d.why?`<div class="card"><h4>この種目を入れる理由</h4><p style="margin:0;font-size:14px">${gearText(d.why)}</p></div>`:""}
-    ${d.setup?`<div class="card"><h4>準備</h4><p style="margin:0;font-size:14px">${gearText(d.setup)}</p></div>`:""}
     <div class="card">
       <h4>やり方</h4>
       <ol class="steps">${exHow(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ol>
-    </div>
-    <div class="card">
-      <h4>呼吸とテンポ</h4>
-      ${d.breath?`<p style="margin:0 0 6px;font-size:14px"><b>呼吸</b>　${d.breath}</p>`:""}
-      ${d.tempo?`<p style="margin:0;font-size:14px"><b>テンポ</b>　${d.tempo}</p>`:""}
-    </div>
-    ${d.rom?`<div class="card"><h4>どこまで動かすか</h4><p style="margin:0;font-size:14px">${d.rom}</p></div>`:""}
-    ${d.feel?`<div class="card"><h4>効いているかの判断</h4><p style="margin:0;font-size:14px">${d.feel}</p></div>`:""}
-    <div class="card">
-      <h4>よくある間違い</h4>
-      <ul class="plain">${exNg(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ul>
+      ${extra.length ? `<ul class="plain howextra">${extra.map(x=>`<li>${gearText(x)}</li>`).join("")}</ul>` : ""}
     </div>
     <div class="card">
       <h4>きつい／簡単すぎる場合</h4>
@@ -62,10 +64,7 @@ function viewEx(){
       <ol class="steps">${exUp(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ol>
       ${hs.up?`<p style="margin:6px 0 0;font-size:14px"><b>日用品を使う</b>　${hs.up}</p>`:""}
     </div>
-    <div class="card">
-      <h4 class="warn">中止する合図</h4>
-      <p style="margin:0;font-size:14px">関節（膝・腰・肩）に鋭い痛みが走ったら、その種目はその場で中止してください。翌日以降にくる筋肉痛とは別物です。痛みが数日続く場合は、整形外科を受診してください。</p>
-    </div>`;
+`;
 
   return `<div class="card"><select id="exSel">${opts}</select></div>
     <div class="splitcols"><div>${left}</div><div>${right}</div></div>`;

@@ -320,13 +320,14 @@ ACTIONS.tunereset = el => {
   tuneApplied(!prog, "「" + (prog ? PROG_HEAD : MENU_HEAD) + "」を初めの設定に戻しました");
 };
 function viewSet(){
+  /* 縦に長いものは、初めは閉じておく（ダンベルを登録していないうちは、登録を促す文が見えるように開いておく） */
   return `<div data-settings="1">
-    ${gearCard()}
+    ${foldSec("gear", gearCard(), !state.gear)}
     ${dayStartCard()}
-    ${settingsCard()}
+    ${foldSec("alert", settingsCard())}
     ${themeCard()}
-    ${typeof syncCard === "function" ? syncCard() : ""}
-    ${typeof backupCard === "function" ? backupCard() : ""}
+    ${typeof syncCard === "function" ? foldSec("sync", syncCard()) : ""}
+    ${typeof backupCard === "function" ? foldSec("backup", backupCard()) : ""}
   </div>`;
 }
 /* 設定タブの入力欄（押しボタン・同期の入力欄は events.js の wire がほかのタブと同じに結ぶ） */

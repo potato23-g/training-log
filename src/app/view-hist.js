@@ -24,7 +24,7 @@ function viewHist(){
       <p class="lastline">直近7日で ${last7} 回。</p>
     </div>
     <h3 class="sec">種目ごとの推移</h3>
-    <p class="lastline" style="margin-top:0">線は日ごとの一番よいセット。重いほど、同じ重さなら回数が多いほど上。<span style="color:var(--muscle)">●</span>は自己ベストの日</p>
+    <p class="lastline" style="margin-top:0">点は日ごとの一番よいセット。<span style="color:var(--muscle)">●</span>は自己ベストの日</p>
     ${trendCards(dates)}
     <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
@@ -77,7 +77,7 @@ function trendCards(dates){
     for(const st of lastDaySets){ pr = prMessage(g.ex, g.label, st, last.d); if(pr) break; }
     return `<div class="card">
       <h4>${esc(itemName({ex:g.ex, label:g.label}))}</h4>
-      ${sparkSVG(points)}
+      ${trendChart(points, ex.kind, {ex:g.ex, label:g.label})}
       <p class="lastline" style="margin-top:4px">最高セット <b>${esc(setTextFor({ex:g.ex, label:g.label}, best))}</b></p>
       ${growth ? `<p class="lastline" style="margin-top:2px">${esc(growth)}</p>` : ""}
       ${pr ? `<p class="lastline" style="margin-top:2px;color:var(--muscle)"><b>${esc(pr)}</b>　${esc(fmtDate(last.d))}</p>` : ""}
@@ -107,9 +107,9 @@ function dailyMaxPoints(rows, exId, label, kind){
   return dates.map((d, i)=>{
     const st = bests[i], r = st.r || 0;
     const pr = byDate[d].some(x => !!prMessage(exId, label, x, d));
-    if(kind !== "w") return {d, v:r, pr, text:r + (kind === "t" ? "秒" : "回")};
+    if(kind !== "w") return {d, v:r, r, pr, text:r + (kind === "t" ? "秒" : "回")};
     const frac = rHi > rLo ? 0.9 * (r - rLo) / (rHi - rLo) : 0.45;
-    return {d, v:rungOf(st.w) + frac, pr, text:kgFor(item, st.w || 0) + "×" + r + "回"};
+    return {d, v:rungOf(st.w) + frac, r, w:wShown(item, st.w || 0), pr, text:kgFor(item, st.w || 0) + "×" + r + "回"};
   });
 }
 /* 同じ重さでの回数の伸び（最初にその重さを使った日→最近使った日、それぞれ最高回数で比べる）。
@@ -135,23 +135,35 @@ function repGrowth(rows, kind, item){
   const unit = kind === "t" ? "秒" : "回";
   return unit + "　" + from + unit + " → " + to + unit;
 }
-/* 小さな折れ線（SVG、外部ライブラリなし）。pr の点は大きい丸で強調する */
-function sparkSVG(points){
+/* 種目ごとのグラフ（SVG、外部ライブラリなし。2026-10-11 本人の要望: 日付と、回数や重さのグラフに）。
+   横は日付（日数の間隔どおり）、縦は数字そのもの。ダンベルの種目は、上に重さ・下に回数の2段を同じ日付でそろえて並べる
+   （重さは腕の種目なら片手あたり）。回数・秒の種目は1段。点は日ごとの一番よいセットで、pr の点は大きい丸 */
+function trendChart(points, kind, item){
   if(!points.length) return `<p class="lastline" style="margin:4px 0">まだ記録がありません。</p>`;
-  const W = 300, H = 54, padX = 8, padY = 9;
-  const vals = points.map(p=>p.v);
-  const vmin = Math.min(...vals), vmax = Math.max(...vals);
-  const span = Math.max(1, vmax - vmin);
-  const n = points.length;
-  const x = i => n===1 ? W/2 : padX + (W - padX*2) * i / (n-1);
-  const y = v => H - padY - (H - padY*2) * (v - vmin) / span;
-  const line = points.map((p,i)=>x(i).toFixed(1)+","+y(p.v).toFixed(1)).join(" ");
-  const dots = points.map((p,i)=>{
-    const cx = x(i).toFixed(1), cy = y(p.v).toFixed(1);
-    return `<circle cx="${cx}" cy="${cy}" r="${p.pr?3.6:2.2}" class="${p.pr?"prdot":"trenddot"}"><title>${esc(fmtDate(p.d))}　${esc(p.text || String(p.v))}${p.pr ? "　自己ベスト" : ""}</title></circle>`;
+  const W = 320, L = 34, R = 10, PH = 62, GAP = 32, TOP = 16, BOT = 18;
+  const t = points.map(p => asDate(p.d).getTime()), t0 = t[0], t1 = t[t.length - 1];
+  const x = i => t1 > t0 ? L + (W - L - R) * (t[i] - t0) / (t1 - t0) : (L + W - R) / 2;
+  const md = d => { const a = asDate(d); return (a.getMonth() + 1) + "/" + a.getDate(); };
+  const num = v => String(Math.round(v * 10) / 10);
+  const rows = (kind === "w" ? [{key: "w", name: (perArm(item.ex) ? "重さ（片手）" : "重さ") + " kg"}] : [])
+    .concat([{key: "r", name: kind === "t" ? "秒" : "回数"}]);
+  const H = TOP + rows.length * PH + (rows.length - 1) * GAP + BOT;
+  const panels = rows.map((row, k) => {
+    const top = TOP + k * (PH + GAP), vals = points.map(p => p[row.key] || 0);
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo;
+    const y = v => span ? top + PH - PH * (v - lo) / span : top + PH / 2;
+    const line = points.map((p, i) => x(i).toFixed(1) + "," + y(vals[i]).toFixed(1)).join(" ");
+    const dots = points.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(vals[i]).toFixed(1)}" r="${p.pr ? 3.6 : 2.2}" class="${p.pr ? "prdot" : "trenddot"}"><title>${esc(fmtDate(p.d))}　${esc(p.text || "")}${p.pr ? "　自己ベスト" : ""}</title></circle>`).join("");
+    const ticks = span ? [[hi, top], [lo, top + PH]] : [[lo, top + PH / 2]];
+    return `<text x="${L}" y="${top - 6}" class="charthead">${esc(row.name)}</text>
+      ${ticks.map(([v, yy]) => `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="chartgrid"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end" class="charttick">${num(v)}</text>`).join("")}
+      <polyline points="${line}" class="trendpath"/>${dots}`;
   }).join("");
-  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="重さと回数の推移">
-    <polyline points="${line}" class="trendpath"/>${dots}
+  const yb = H - 4;
+  const xl = t1 > t0 ? `<text x="${L}" y="${yb}" class="charttick">${md(points[0].d)}</text><text x="${W - R}" y="${yb}" text-anchor="end" class="charttick">${md(points[points.length - 1].d)}</text>`
+                     : `<text x="${(L + W - R) / 2}" y="${yb}" text-anchor="middle" class="charttick">${md(points[0].d)}</text>`;
+  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${kind === "w" ? "日付ごとの重さと回数" : kind === "t" ? "日付ごとの秒数" : "日付ごとの回数"}">
+    ${panels}${xl}
   </svg>`;
 }
 /* 自己ベストの判定。同じ ex・組み方の中で、date・set より前の記録とだけ比べる。

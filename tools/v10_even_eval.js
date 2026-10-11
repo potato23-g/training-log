@@ -1,9 +1,10 @@
 /* 日ごとの種目数の差と、「回復が終わっているのに出ない部位」の検査（2026-10-11 本人の指摘）。
    dist/local/training-log.html の中で動かす。fails が空で合格。
    42日ぶん全部こなして、8日目からを数える（可変式ダンベル 2〜20kg）。
-   1. 毎日: 種目数のいちばん多い日と少ない日の差が 4 以内（直す前は 3〜10 で 7）。毎日は 7、週5回は 9 種目を超えない
-      （週5回は、直す前が 3〜10、直した後が 2〜9。多い日は減ったが、3日続けた3日目に回復の途中の部位が多く、
-      少ない日が残るので、差は縮んでいない）。
+   1. 毎日: 35日のうち、3種目以下の日は2日まで（直す前は同じ数え方で 4日）、5種目以上の日が8割以上（初めは 3〜10、1回目の直しで 3〜7。
+      「組み直しても3種目」と指摘されて、少ない日に入れられる種目を足すようにした。回復・昨日と同じ動き・1週間の上限で
+      入れられる種目が無い日は、少ないまま残る）。
+      毎日は 7、週5回は 9 種目を超えず、週5回は 5 種目より少ない日が無い。
       1回の上限は SESSION_MAX を超えない
    2. どの頻度でも、回復が終わっているのに、その部位をメインで鍛える種目がメニューに無い日が続くのは、
       毎日・週5回で 4日まで、1日おき・週4回・週3回で 6日まで（直す前は、同じ数え方で前腕・脊柱起立筋が 5〜14日）。
@@ -75,7 +76,9 @@ setTimeout(() => {
     const lo = Math.min(...r.counts), hi = Math.max(...r.counts);
     const worst = Object.keys(r.maxIdle).sort((a, b) => r.maxIdle[b] - r.maxIdle[a])[0];
     out.rows[name] = {counts: r.counts.join(" "), idle: worst ? MUSCLES[worst] + r.maxIdle[worst] : "", total: Math.round(r.total), cap: r.cap};
-    if(name === "毎日") need(hi - lo <= 4, name + ": 種目数の差が大きい（" + lo + "〜" + hi + "）");
+    const few = r.counts.filter(c => c <= 3).length, usual = r.counts.filter(c => c >= 5).length;
+    if(name === "毎日") need(few <= 2 && usual >= r.counts.length * 0.8, name + ": 種目の少ない日が多い（3種目以下 " + few + "日・5種目以上 " + usual + "日 / " + r.counts.length + "日）");
+    if(name === "週5") need(lo >= 5, name + ": 種目の少ない日がある（" + lo + "〜" + hi + "）");
     if(name === "毎日" || name === "週5") need(hi <= (name === "毎日" ? 7 : 9), name + ": 種目数の多い日が減っていない（" + lo + "〜" + hi + "）");
     Object.keys(r.maxIdle).forEach(m => need(r.maxIdle[m] <= LIMIT[name], name + ": " + MUSCLES[m] + "が、回復が終わっているのに " + r.maxIdle[m] + "日出ない"));
     need(r.early, name + ": 記録が1週間ぶん無いうちに、1回の上限を下げた");

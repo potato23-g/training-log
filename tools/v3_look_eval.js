@@ -40,7 +40,8 @@
     T.reset([{kg:5, n:2}]);
     /* 設定は「設定」タブ（2026-10-11 に右上⚙のシートからタブへ移した） */
     switchTab("set");
-    const hs = T.qa("h3.sec").filter(h => /休憩の終わりを知らせる/.test(h.textContent));
+    foldOpen.alert = true; render();
+    const hs = T.qa("h3.sec, details[data-fold] > summary").filter(h => /休憩の終わりを知らせる/.test(h.textContent));
     if(hs[0]) hs[0].scrollIntoView({block: "start"});
   }
   if(look === "plan"){

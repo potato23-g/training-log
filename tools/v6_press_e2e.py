@@ -185,7 +185,7 @@ def main():
 
         # 7 設定タブで入力中に同期の描き直しが来ても、入力が消えない
         ev(SETUP)
-        has_sheet = ev('typeof viewSet === "function" && (switchTab("set"), !!document.getElementById("syncRepo"))')
+        has_sheet = ev('typeof viewSet === "function" && (foldOpen.sync = true, switchTab("set"), !!document.getElementById("syncRepo"))')
         if has_sheet:
             ev('(() => { const i = document.getElementById("syncRepo"); i.focus(); i.value = "someone/half-typed"; syncSafeRender(); return true; })()')
             ok(ev('document.getElementById("syncRepo").value') == "someone/half-typed",
@@ -196,6 +196,20 @@ def main():
             ev('switchTab("today"); true')
         else:
             ok(False, "設定タブにリポジトリの入力欄が無い（検査の前提が崩れた）")
+
+        # 8 「次の種目」のカードの「この内容で記録」（2026-10-11）。本物の押下で1セット入り、カードが開く。
+        #   同じ場所をすぐもう一度押しても、下から上がってきた種目の見出しが反応してカードが閉じない
+        ev(SETUP)
+        ev('openEx = null; render(); window.scrollTo(0, 0); true')
+        HERO = """(() => { const b = document.querySelector('[data-act="herorec"]'); if(!b) return null;
+  const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()"""
+        pos = ev(HERO)
+        ok(pos is not None, "カードを開いていないとき、「次の種目」に記録ボタンがある")
+        if pos:
+            press(cdp, pos[0], pos[1])
+            ok(ev(SETS) == 1 and ev("openEx") == "curl", "「この内容で記録」を押すと1セット入り、その種目のカードが開く: " + str(ev(SETS)))
+            press(cdp, pos[0], pos[1], after=0.3)
+            ok(ev("openEx") == "curl" and ev(SETS) <= 2, "同じ場所をすぐもう一度押しても、カードが閉じない")
 
         try:
             cdp.call("Browser.close")

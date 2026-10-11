@@ -64,24 +64,6 @@ function ladderRows(){
   return out;
 }
 
-/* 大きな部位が長期間ゼロに近い＝メニュー全体の見直しサイン */
-function balanceSuggestions(){
-  const BIG = ["quads","glutes","hams","lats"];
-  const load30 = muscleLoad(30);
-  const out = [];
-  BIG.forEach(m=>{
-    const v = load30[m] || 0;
-    if(v <= 2){
-      const cands = EX.filter(e=>e.p.includes(m) && exOn(e.id)).slice(0,3).map(e=>e.name);
-      out.push({kind:"balance", muscle:m,
-        title: MUSCLES[m] + "：直近30日でほぼ使えていません",
-        body: cands.length ? "候補: " + cands.join("、") : "",
-        why: "有効セット数 " + v.toFixed(1) + "（大きい筋肉なので、優先して入れたい部位です）"});
-    }
-  });
-  return out;
-}
-
 /* 軽い週のカード（勧めるとき・軽い週のあいだ） */
 function deloadCard(){
   const d = deloadAdvice();
@@ -103,8 +85,8 @@ function viewPlan(){
   const total = sortedDates().filter(d=>(state.sessions[d].entries||[]).some(e=>e.sets.length)).length;
   if(total < 1){
     return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段階と、次の段階までの回数がここに出ます。</div>
-    ${progCard()}
-    ${menuCard()}`;
+    ${foldSec("prog", progCard())}
+    ${foldSec("menu", menuCard())}`;
   }
   const rows = ladderRows();
   /* 見出しは動きのまとまりごとに1回（同じまとまりの種目が続くあいだは出さない） */
@@ -117,29 +99,17 @@ function viewPlan(){
         <p class="lastline" style="margin-top:0">${esc(r.next)}</p>
       </div>`).join("")}
     </div>` : "";
-  const balance = balanceSuggestions();
-  const balanceCards = balance.length
-    ? balance.map(s=>`<div class="card">
-        <h4>${esc(s.title)}</h4>
-        ${s.body ? `<p style="margin:0 0 6px;font-size:14px">${esc(s.body)}</p>` : ""}
-        <p class="lastline" style="margin-top:0">${esc(s.why)}</p>
-      </div>`).join("")
-    : `<div class="card"><p style="margin:0;font-size:14px">直近30日、主要な部位はひと通り使えています。</p></div>`;
-
+  /* 「部位のバランス」は、からだタブで同じことがもっと詳しく分かるのでやめた。各項目は初めは閉じておく（2026-10-11 本人の要望） */
   return `
     ${deloadCard()}
-    <h3 class="sec">動きごとの今の段階</h3>
-    ${ladder}
-    <h3 class="sec">部位のバランス</h3>
-    ${balanceCards}
-    ${progCard()}
-    ${menuCard()}
-    <div class="card">
-      <h4>この提案の仕組み</h4>
+    ${fold("ladder", "動きごとの今の段階", ladder)}
+    ${foldSec("prog", progCard())}
+    ${foldSec("menu", menuCard())}
+    ${fold("rule", "この提案の仕組み", `<div class="card">
       <p style="margin:0;font-size:14px">${progRuleText()}</p>
       <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
       <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。週5回以上行っているときは、日ごとの種目数の差が小さくなるように、1回の種目数を少なくします${sessionCap() < SESSION_MAX.exercises ? "（いまは" + sessionCap() + "種目まで）" : ""}。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。回復が終わってから日が空いた部位は、その部位をメインで鍛える種目を先に入れます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。上の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
       ${pairOn() ? `<p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は、回復と上限の範囲で入れられるかぎり入れて、隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>` : ""}
       <p class="lastline">${esc(recoverGapText())}</p>
-    </div>`;
+    </div>`)}`;
 }

@@ -50,6 +50,7 @@ function wireActs(root){
 function onAct(el, ev){
   const a = el.dataset.act;
   if(a==="toggle"){
+    if(Date.now() - heroRecAt < 500) return;
     openEx = (openEx===el.dataset.ex)?null:el.dataset.ex;
     render();
     /* 開いた種目の見出しを画面の上に合わせ、入力と「記録」が見えるようにする */

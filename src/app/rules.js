@@ -405,8 +405,12 @@ const UNUSED_DAYS = 7;
    lackDiv: 先に入れる順の決め方（buildPlan の staleRank）
    slowGap: 回復の日数がこれ以上の部位は、回復が終わっていて週の目標に届いていなければ、空いた日数に関わらずいちばん先に入れる
    1週間の上限（WEEK_MAX）は変えない。1種目足すと超える部位は、先に入れる部位にしない（下の staleRoom）
-   weekEx・capAdd・capMin: 1回の種目数の上限を、トレーニングの頻度に合わせる（下の sessionCap） */
-const PLAN_EVEN = {readyDays: 1, staleMax: 4, lackDiv: 2, slowGap: 3, weekEx: 38, capAdd: 1, capMin: 6};
+   weekEx・capAdd・capMin: 1回の種目数の上限を、トレーニングの頻度に合わせる（下の sessionCap）
+   floorGap: 上限を下げている人は、上限のこれだけ手前までは、入れられる種目を足す（buildPlan の 3'）。
+             floorFast は、足してよい種目の決め方（buildPlan の lightOnly）。毎日・84日の試算: 3種目以下の日が 11日 → 4日、5〜7種目の日が 67日。
+             1回の上限を 7→6 に下げるともっとそろうが、大腿四頭筋と内転筋が週の目標の検査（v5_balance_eval.js）に届かなかったので下げていない。
+             入れられる種目が無い日は少ないまま残る: 回復・昨日と同じ動き・1週間の上限の決まりは変えていない） */
+const PLAN_EVEN = {readyDays: 1, staleMax: 4, lackDiv: 2, slowGap: 3, weekEx: 38, capAdd: 1, capMin: 6, floorGap: 1, floorFast: 1};
 /* 部位 m をメインで鍛える種目を1つ足しても、補助で使った分も含めた直近7日の量が1週間の上限に収まるか */
 function staleRoom(m){ return muscleLoadBetween(m, 0, 6) + SETS_PER_EXERCISE <= WEEK_MAX; }
 /* 部位 m をメインで RECOVER_PRIMARY セット以上鍛えた最後の日が何日前か（今日は数えない。4週間のうちに無ければ Infinity） */

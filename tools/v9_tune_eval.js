@@ -287,7 +287,7 @@ setTimeout(() => {
   need(!setView.querySelector("select[data-tune]") && !setView.querySelector("[data-act=exoff]") && !!setView.querySelector("[data-settings]"), "設定タブに、提案タブへ移した項目が残っている");
   /* 設定はタブの1つ。右上の「表示」と ⚙ は無く、画面の色は設定タブで選ぶ（2026-10-11 本人の要望） */
   need(!document.getElementById("themeBtn") && !document.getElementById("setBtn") && !!document.querySelector('nav.tabs [data-tab="set"][aria-selected="true"]'), "設定がタブになっていない・右上にボタンが残っている");
-  need(!!setView.querySelector("#dayStartSel") && !!setView.querySelector("#themeSel") && !!setView.querySelector("#syncRepo") && !!setView.querySelector("[data-act=testalert]") && setView.querySelectorAll("h3.sec").length >= 6, "設定タブに出ていないカードがある");
+  need(!!setView.querySelector("#dayStartSel") && !!setView.querySelector("#themeSel") && !!setView.querySelector("#syncRepo") && !!setView.querySelector("[data-act=testalert]") && setView.querySelectorAll("h3.sec, details[data-fold] > summary").length >= 6, "設定タブに出ていないカードがある");
   const thSel = () => document.getElementById("themeSel");
   const thPick = v => { thSel().value = v; thSel().dispatchEvent(new Event("change", {bubbles: true})); };
   const th0 = themeNow();
