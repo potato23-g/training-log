@@ -29,7 +29,7 @@ function wire(){
   }
   /* からだタブで部位を選んでいるとき、ボタンや図の部位でないところを押すと、選ぶ前の表示に戻る（画面の端の余白も含める） */
   document.onclick = tab !== "body" ? null : e => {
-    if(!selMuscle || e.target.closest("button, a, input, select, textarea, summary, label, .rg")) return;
+    if(!selMuscle || e.target.closest("button, a, input, select, textarea, summary, label, .rg, #sheet")) return;
     selMuscle = null; render();
   };
   if(tab==="body"){
