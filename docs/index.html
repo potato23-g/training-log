@@ -5844,7 +5844,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-11 17:27";
+const BUILD_VERSION = "2026-10-11 17:32";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -7106,12 +7106,8 @@ const UNUSED_DAYS = 7;
    lackDiv: 先に入れる順の決め方（buildPlan の staleRank）
    slowGap: 回復の日数がこれ以上の部位は、回復が終わっていて週の目標に届いていなければ、空いた日数に関わらずいちばん先に入れる
    1週間の上限（WEEK_MAX）は変えない。1種目足すと超える部位は、先に入れる部位にしない（下の staleRoom）
-   weekEx・capAdd・capMin: 1回の種目数の上限を、トレーニングの頻度に合わせる（下の sessionCap）
-   floorGap: 上限を下げている人は、上限のこれだけ手前までは、入れられる種目を足す（buildPlan の 3'）。
-             floorFast は、足してよい種目の決め方（buildPlan の lightOnly）。毎日・84日の試算: 3種目以下の日が 11日 → 4日、5〜7種目の日が 67日。
-             1回の上限を 7→6 に下げるともっとそろうが、大腿四頭筋と内転筋が週の目標の検査（v5_balance_eval.js）に届かなかったので下げていない。
-             入れられる種目が無い日は少ないまま残る: 回復・昨日と同じ動き・1週間の上限の決まりは変えていない） */
-const PLAN_EVEN = {readyDays: 1, staleMax: 4, lackDiv: 2, slowGap: 3, weekEx: 38, capAdd: 1, capMin: 6, floorGap: 1, floorFast: 1};
+   weekEx・capAdd・capMin: 1回の種目数の上限を、トレーニングの頻度に合わせる（下の sessionCap） */
+const PLAN_EVEN = {readyDays: 1, staleMax: 4, lackDiv: 2, slowGap: 3, weekEx: 38, capAdd: 1, capMin: 6};
 /* 部位 m をメインで鍛える種目を1つ足しても、補助で使った分も含めた直近7日の量が1週間の上限に収まるか */
 function staleRoom(m){ return muscleLoadBetween(m, 0, 6) + SETS_PER_EXERCISE <= WEEK_MAX; }
 /* 部位 m をメインで RECOVER_PRIMARY セット以上鍛えた最後の日が何日前か（今日は数えない。4週間のうちに無ければ Infinity） */
@@ -7444,10 +7440,6 @@ function buildPlan(){
   const staleAll = slow.concat(!staleOn ? [] : Object.keys(MUSCLES).filter(m => !slow.includes(m) && readyIdleDays(m) >= PLAN_EVEN.readyDays && canStale(m))
     .sort((a, b) => staleRank(b) - staleRank(a) || (PLAN_WEIGHT[b] || 0) - (PLAN_WEIGHT[a] || 0)).slice(0, PLAN_EVEN.staleMax));
   const staleSet = new Set(staleAll);
-  /* 種目の少ない日に足してよい部位（下の compose の 3'） */
-  const heavyWith = new Set();
-  catalog().forEach(c => { const p = EXMAP[c.ex].p; if(p.some(m => recoverGap(m) > PLAN_EVEN.floorFast)) p.forEach(m => heavyWith.add(m)); });
-  const lightOnly = m => !heavyWith.has(m);
   /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕）だけが主役の動きは、昨日やっていても続けてよい */
   const daily = ex => ex.p.every(m => recoverGap(m) === 0);
   const today = {}, plan = [];
@@ -7639,14 +7631,6 @@ function buildPlan(){
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
       fill(0.01, LIM.exercises, c => EXMAP[c.ex].p.some(m => lack(m) > 0));
       fill(0.2, Math.min(3, LIM.exercises));   /* 3. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
-      /* 3'. 毎日のように行う人（1回の上限を頻度に合わせて下げている人）は、種目の少ない日を作らない（2026-10-11 本人の指摘:
-             組み直しても3種目で、連日できる部位ばかりだった）。脚・胸・背中の回復が同じ日に重なると、残りの部位は
-             週の目標に届いていて価値が小さく、入れられるのに入らなかった。上限の floorGap 手前までは、回復と
-             1日・1週間の上限の範囲で入れられる種目を足す（「少なめに入れる」にした動きは足さない）。
-             足すのは、回復の早い部位（中 floorFast 日まで）だけをメインで鍛える種目で、その部位が、回復に日数のかかる部位と
-             いっしょにメインで鍛えられる種目を持たないもの（lightOnly）。大殿筋や内転筋・上腕三頭筋の種目を足すと、次の日に
-             スクワット・ランジ・腕立て伏せが回復の途中で入らなくなり、大腿四頭筋が週の目標に届かなくなった */
-      if(normal && cap < SESSION_MAX.exercises) fill(0, Math.max(3, cap - PLAN_EVEN.floorGap), c => exPref(c.ex) >= 0 && EXMAP[c.ex].p.every(lightOnly));
       /* 4. 反対の部位の相手がいない種目には、入れられるかぎり相手を足す（2026-10-09 本人の指摘: 上腕二頭筋と上腕三頭筋を
             同じ日に出せるのに出なかった。できる限り入れる）。それまでは並べ替えの値を少し上げるだけ（PAIR_PREF）で、
             相手の部位が週の目標に届いている日は、入れられるのに入らなかった。
