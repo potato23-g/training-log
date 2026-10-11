@@ -88,10 +88,6 @@ function buildPlan(){
   const staleAll = slow.concat(!staleOn ? [] : Object.keys(MUSCLES).filter(m => !slow.includes(m) && readyIdleDays(m) >= PLAN_EVEN.readyDays && canStale(m))
     .sort((a, b) => staleRank(b) - staleRank(a) || (PLAN_WEIGHT[b] || 0) - (PLAN_WEIGHT[a] || 0)).slice(0, PLAN_EVEN.staleMax));
   const staleSet = new Set(staleAll);
-  /* 種目の少ない日に足してよい部位（下の compose の 3'） */
-  const heavyWith = new Set();
-  catalog().forEach(c => { const p = EXMAP[c.ex].p; if(p.some(m => recoverGap(m) > PLAN_EVEN.floorFast)) p.forEach(m => heavyWith.add(m)); });
-  const lightOnly = m => !heavyWith.has(m);
   /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕）だけが主役の動きは、昨日やっていても続けてよい */
   const daily = ex => ex.p.every(m => recoverGap(m) === 0);
   const today = {}, plan = [];
@@ -283,14 +279,6 @@ function buildPlan(){
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
       fill(0.01, LIM.exercises, c => EXMAP[c.ex].p.some(m => lack(m) > 0));
       fill(0.2, Math.min(3, LIM.exercises));   /* 3. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
-      /* 3'. 毎日のように行う人（1回の上限を頻度に合わせて下げている人）は、種目の少ない日を作らない（2026-10-11 本人の指摘:
-             組み直しても3種目で、連日できる部位ばかりだった）。脚・胸・背中の回復が同じ日に重なると、残りの部位は
-             週の目標に届いていて価値が小さく、入れられるのに入らなかった。上限の floorGap 手前までは、回復と
-             1日・1週間の上限の範囲で入れられる種目を足す（「少なめに入れる」にした動きは足さない）。
-             足すのは、回復の早い部位（中 floorFast 日まで）だけをメインで鍛える種目で、その部位が、回復に日数のかかる部位と
-             いっしょにメインで鍛えられる種目を持たないもの（lightOnly）。大殿筋や内転筋・上腕三頭筋の種目を足すと、次の日に
-             スクワット・ランジ・腕立て伏せが回復の途中で入らなくなり、大腿四頭筋が週の目標に届かなくなった */
-      if(normal && cap < SESSION_MAX.exercises) fill(0, Math.max(3, cap - PLAN_EVEN.floorGap), c => exPref(c.ex) >= 0 && EXMAP[c.ex].p.every(lightOnly));
       /* 4. 反対の部位の相手がいない種目には、入れられるかぎり相手を足す（2026-10-09 本人の指摘: 上腕二頭筋と上腕三頭筋を
             同じ日に出せるのに出なかった。できる限り入れる）。それまでは並べ替えの値を少し上げるだけ（PAIR_PREF）で、
             相手の部位が週の目標に届いている日は、入れられるのに入らなかった。
