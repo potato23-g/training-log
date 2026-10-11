@@ -6,7 +6,8 @@
    3. 種目タブ: 消した見出しが出ない。「やり方」の下に足す文（howExtra）は、準備・どこまで動かすか（DETAIL）の文だけで、
       手順（how）と同じ文は足さない
    4. 履歴タブ: 種目ごとのグラフは、ダンベルの種目は重さと回数の2段、回数の種目は1段。点の数は記録した日数 × 段の数。
-      日付と目盛りが出る。腕の種目は片手の重さ */
+      日付と目盛りが出る。腕の種目は片手の重さ
+   5. 今日タブの進み具合の1行は、下へ送っても画面の上に残る。からだタブで選んだ部位は、もう一度選ぶか、ほかの場所を押すと戻る */
 setTimeout(() => {
   const out = {fails: []};
   const need = (cond, msg) => { if(!cond) out.fails.push(msg); };
@@ -101,6 +102,35 @@ setTimeout(() => {
     need(ticks.includes(String(wShown(item, 12))) && ticks.includes(String(wShown(item, 20))) && ticks.includes("10") && ticks.includes("12"), "グラフの目盛りが、記録した重さ・回数と違う: " + ticks.join());
     need(perArm("curl") === /片手/.test(heads(curl)[0]), "片手の重さの書き方が、種目の持ち方と違う");
     need(curl.querySelectorAll(".prdot").length >= 2 && /最高セット/.test(curl.textContent), "自己ベストの点・最高セットが出ていない");
+  }
+
+  /* 5. 進み具合の1行は、下へ送っても画面の上に残る。からだタブで選んだ部位は、もう一度選ぶか、ほかの場所を押すと戻る */
+  switchTab("today");
+  const dp = view().querySelector("[data-dayprog]");
+  need(!!dp && getComputedStyle(dp).position === "sticky", "進み具合の1行が、上に固定されていない");
+  if(dp && document.documentElement.scrollHeight > innerHeight + 200){
+    scrollTo(0, 400);
+    const top = dp.getBoundingClientRect().top;
+    need(scrollY > 200 && top > -1 && top < 60, "下へ送ると、進み具合の1行が画面の上に残らない: " + Math.round(top));
+    out.stickyTop = Math.round(top);
+    scrollTo(0, 0);
+  }
+  switchTab("body");
+  const mb = () => view().querySelector("[data-act=selmuscle]");
+  need(!!mb(), "からだタブに、部位を選ぶ行が無い");
+  if(mb()){
+    const m = mb().dataset.m;
+    mb().click();
+    need(selMuscle === m, "部位を選べない");
+    view().querySelector("[data-act=selmuscle][data-m=" + m + "]").click();
+    need(selMuscle === null, "同じ部位をもう一度選んでも戻らない");
+    mb().click();
+    view().querySelector("h4").click();
+    need(selMuscle === null, "ほかの場所を押しても、選んだ部位が戻らない");
+    mb().click();
+    const other = Array.from(view().querySelectorAll("[data-act=selmuscle]")).find(el => el.dataset.m !== m);
+    if(other){ other.click(); need(selMuscle === other.dataset.m, "選んでいるときに別の部位を押すと、その部位に切り替わらない"); }
+    selMuscle = null;
   }
 
   out.failCount = out.fails.length;

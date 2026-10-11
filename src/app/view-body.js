@@ -139,5 +139,5 @@ function muscleBarCard(load, days){
     <div class="mbars">${rows}</div>
   </div>`;
 }
-ACTIONS.selmuscle = el => { selMuscle = el.dataset.m; render(); };
+ACTIONS.selmuscle = el => { selMuscle = selMuscle === el.dataset.m ? null : el.dataset.m; render(); };
 

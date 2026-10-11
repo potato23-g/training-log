@@ -12,7 +12,8 @@ details.fold>summary::-webkit-details-marker{display:none}
 details.fold>summary::after{content:"＋";margin-left:auto;padding-left:10px;color:var(--ink-2);font-weight:400}
 details.fold[open]>summary::after{content:"−"}
 details.fold[open]>summary{margin-bottom:10px}
-.dayprog{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:13px;color:var(--ink-2);margin:0 2px 12px}
+.dayprog{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:13px;color:var(--ink-2);margin:0 -2px 12px;
+  position:sticky;top:0;z-index:5;background:var(--paper);padding:calc(8px + env(safe-area-inset-top)) 4px 8px}
 .dayprog b{color:var(--ink);font-size:15px}
 .dayprog>i{flex-basis:100%;height:4px;border-radius:2px;background:var(--rule);overflow:hidden;display:block}
 .dayprog>i>i{display:block;height:100%;background:var(--muscle)}

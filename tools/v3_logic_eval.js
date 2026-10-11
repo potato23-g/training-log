@@ -43,8 +43,9 @@
     Object.keys(primDay).forEach(m => { if(primDay[m] > dayMax(m)) out.dayCapViolations.push({day, m, load: primDay[m]}); });
     Object.keys(dayLoad).forEach(m => { if(dayLoad[m] > (out.dayLoadMax[m] || 0)) out.dayLoadMax[m] = dayLoad[m]; });
     if(setsToday > SESSION_MAX.sets || plan.length > SESSION_MAX.exercises) out.sessionCapViolations.push({day, sets: setsToday, exercises: plan.length});
-    /* 週の上限: 保証しているのは各種目の主役（p[0]）の部位だけ。大殿筋・腹直筋・僧帽筋などは補助で使う分が上限を超えることがある */
-    plan.forEach(it => { const m = EXMAP[it.ex].p[0], total = muscleLoadBetween(m, 1, 6) + (dayLoad[m] || 0);
+    /* 週の上限: 各種目の主役（p[0]）の部位を、メインで鍛えた分だけで見る（2026-10-11 本人の判断: 補助で使う分は無いものとして
+       あつかってよい。それまでは補助で使った分も足した量で見ていた） */
+    plan.forEach(it => { const m = EXMAP[it.ex].p[0], total = primaryLoadBetween(m, 1, 6) + (primDay[m] || 0);
       if(total > WEEK_MAX) out.weekCapViolations.push({day, ex: it.ex, m, total}); });
     out.days.push(plan.map(it => itemName(it) + "×" + (it.sets || 3)).join(" / ") || "（休み）");
     /* その日のメニューを全部こなしたことにする */

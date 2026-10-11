@@ -88,6 +88,8 @@ function buildPlan(){
   const staleAll = slow.concat(!staleOn ? [] : Object.keys(MUSCLES).filter(m => !slow.includes(m) && readyIdleDays(m) >= PLAN_EVEN.readyDays && canStale(m))
     .sort((a, b) => staleRank(b) - staleRank(a) || (PLAN_WEIGHT[b] || 0) - (PLAN_WEIGHT[a] || 0)).slice(0, PLAN_EVEN.staleMax));
   const staleSet = new Set(staleAll);
+  const weekPMemo = {};
+  const weekP = m => (m in weekPMemo ? weekPMemo[m] : (weekPMemo[m] = primaryLoadBetween(m, 1, 6)));   /* 直近6日にメインで鍛えたセット数 */
   /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕）だけが主役の動きは、昨日やっていても続けてよい */
   const daily = ex => ex.p.every(m => recoverGap(m) === 0);
   const today = {}, plan = [];
@@ -142,11 +144,14 @@ function buildPlan(){
          メインで鍛える種目が1つも入らなかった（本人の指摘。このときは連日でもよい部位を補助で使う分だけを外した）
        ・2026-10-05: 僧帽筋でも同じことが起きていた。ロウやファーマーズウォークをやった日はサイドレイズ・リアレイズが入らず、
          肩の横・後ろが週の目標に届かなかったので、どの部位でも補助で使う分では外さないことにした */
-    const dayOver = ex.p.find(m => (staleSet.has(m) ? primToday(m) : (today[m] || 0)) + add[m] > dayMax(m));
+    /* 2026-10-11 本人の判断: 1日・1週間の上限は、メインで鍛えた分だけで見る（補助で使った分は数えない）。
+       補助の分まで数えると、腹直筋・僧帽筋・前腕・上腕三頭筋・ふくらはぎは補助だけで上限に届き、脚・胸・背中の回復が
+       重なった日に、入れられる種目が連日できる部位の3種目ほどしか残らなかった */
+    const dayOver = ex.p.find(m => primToday(m) + add[m] > dayMax(m));
     if(dayOver) return "day:" + dayOver;                                            /* 1日の上限 */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目で一緒にメインで鍛える部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
-    const weekOver = ex.p.find(m => (week[m] || 0) + (today[m] || 0) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4));
+    const weekOver = ex.p.find(m => weekP(m) + primToday(m) + add[m] > (m === ex.p[0] ? WEEK_MAX : WEEK_MAX + 4));
     if(weekOver) return "week:" + weekOver;
     if(!planRelax && (plan.length >= LIM.exercises || sets + n > LIM.sets)) return "full";
     if(!planRelax && minutes + mins(c) > LIM.minutes) return "time";
@@ -259,7 +264,13 @@ function buildPlan(){
   }else{
     /* first は、ほかの種目より先に種目を入れておく部位（下の説明）。組み直すたびに、今日の記録だけを数えた状態へ戻す */
     const start = {today: Object.assign({}, today), sets, minutes};
-    const compose = first => {
+    const slowIn = u => {
+      const n = plan.length, to = Math.min(n + 1, LIM.exercises);
+      fill(-1, to, c => staleOk(c, u) && exPref(c.ex) > 0, true);      /* 「よく出す」にした動きがあれば、それを先に */
+      if(plan.length === n) fill(-1, to, c => staleOk(c, u) && EXMAP[c.ex].p[0] === u, true);
+      if(plan.length === n) fill(-1, to, c => staleOk(c, u), true);
+    };
+    const compose = (first, tight) => {
       plan.length = 0; sets = start.sets; minutes = start.minutes;
       Object.keys(today).forEach(m => delete today[m]);
       Object.assign(today, start.today);
@@ -269,11 +280,19 @@ function buildPlan(){
       /* 0. first の部位は、その部位をメインで鍛える種目を先に1つずつ入れる（前の部位の種目でもう使うなら入れない） */
       first.forEach(u => {
         const st = staleSet.has(u);
-        if(st ? primToday(u) > 0 : today[u] > 0) return;
+        if(st && !tight ? primToday(u) > 0 : today[u] > 0) return;
+        /* 回復に日数がかかる部位（slow）は、その部位を狙う種目（主働筋の先頭）を先に探す */
+        if(st && !tight && slow.includes(u)){ slowIn(u); return; }
         fill(st ? -1 : 0.01, Math.min(plan.length + 1, LIM.exercises), c => st ? staleOk(c, u) : EXMAP[c.ex].p.includes(u), true);
       });
-      /* 「よく出す」にした動きは、回復と上限の範囲で入れられる日は先に入れる（20分で組むとき・軽い週は、価値の順だけ） */
+      /* 0'. 回復に日数がかかる部位（slow）は鍛えられる日が少ないので、ひと通り入れたあとで、2種目め（RECOVER_HEAVY セットまで）も
+             先に入れる（2026-10-11: 上限をメインで鍛えた分だけで見るようにしたら、回復の早い部位の種目が枠を埋め、
+             大腿四頭筋・広背筋が週の目標に届かなくなった）。first に入っている部位だけ */
+      const more = () => first.forEach(u => { if(slow.includes(u) && recoverGap(u) >= PLAN_EVEN.twoGap && primToday(u) < RECOVER_HEAVY) slowIn(u); });
+      /* 「よく出す」にした動きは、回復と上限の範囲で入れられる日は先に入れる（20分で組むとき・軽い週は、価値の順だけ）。
+         slow の2種目めより先（2種目めが1日の上限を使い切ると、「よく出す」の動きが入らない） */
       if(normal) fill(0, LIM.exercises, c => exPref(c.ex) > 0);
+      if(!tight) more();
       fill(1, LIM.exercises);                  /* 1. 週の目標から遠い部位を多く埋める種目から順に（部位の大小は重みで少しだけ） */
       /* 2. メインで鍛える部位が週の目標に届いていない種目は、価値が小さくても入れる（2026-10-05 本人の要望: 種目が増えてもよいので
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
@@ -298,15 +317,23 @@ function buildPlan(){
        20分で組むとき・軽い週（どちらも3種目）は、これまでどおり価値の順だけで組む */
     const unused = !normal ? [] : Object.keys(MUSCLES).filter(m => unusedSoFar(m) && !rest[m] && !staleSet.has(m))
                                                .sort((a, b) => (PLAN_WEIGHT[b] || 0) - (PLAN_WEIGHT[a] || 0));
-    let first = staleAll.slice();
+    /* 先に入れる部位のうち、7日使えていない部位をいちばん先にする */
+    const staleFirst = staleAll.filter(unusedSoFar).concat(staleAll.filter(m => !unusedSoFar(m)));
+    let first = staleFirst.slice();
     for(;;){
       compose(first);
       const left = unused.filter(u => !(today[u] > 0) && !first.includes(u));
       if(!left.length) break;
       /* 7日使えていない部位を、回復後に空いた部位より先に入れる（1回の上限を下げた人で、先に入れる部位が上限より多い日に、
          7日使えていない部位が入らなかった） */
-      first = unused.filter(u => first.includes(u) || left.includes(u)).concat(staleAll);
+      first = staleAll.filter(unusedSoFar).concat(unused.filter(u => first.includes(u) || left.includes(u)), staleAll.filter(m => !unusedSoFar(m)));
     }
+    /* それでも、7日使えていない部位が種目数の上限で入りきらなかった日（しばらく休んだあとなど、使えていない部位が多い日）は、
+       部位を1つでも多く使うほうを優先して組み直す: 補助で使う部位も「使った」と数え、slow の2種目めは入れない。
+       使える部位が増えないなら、元の組み方のまま */
+    const missing = () => unused.concat(staleAll.filter(unusedSoFar)).filter(u => !(today[u] > 0)).length;
+    const miss0 = normal && plan.length >= LIM.exercises ? missing() : 0;
+    if(miss0){ compose(first, true); if(missing() >= miss0) compose(first); }
   }
 
   /* 組み終わってから、あとから入れた種目の補助ぶんで週の上限を超えた部位がないか確かめる。
@@ -314,7 +341,7 @@ function buildPlan(){
   const trim = () => {
     let cut = 0;
     for(let guard = 0; guard < 12; guard++){
-      const over = Object.keys(today).find(m => (week[m] || 0) + today[m] > WEEK_MAX
+      const over = Object.keys(today).find(m => weekP(m) + primToday(m) > WEEK_MAX
                                             && plan.some(p => EXMAP[p.ex].p[0] === m && !p.seed));
       if(!over) break;
       const i = plan.findIndex(p => EXMAP[p.ex].p[0] === over && !p.seed);

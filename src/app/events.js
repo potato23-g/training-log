@@ -27,13 +27,19 @@ function wire(){
     const w = {}; ex.p.forEach(m=>w[m]=1); (ex.s||[]).forEach(m=>{ if(!w[m]) w[m]=0.45; });
     paintFigs(v.querySelector("#refFig"), w, 1);
   }
+  /* からだタブで部位を選んでいるとき、ボタンや図の部位でないところを押すと、選ぶ前の表示に戻る（画面の端の余白も含める） */
+  document.onclick = tab !== "body" ? null : e => {
+    if(!selMuscle || e.target.closest("button, a, input, select, textarea, summary, label, .rg")) return;
+    selMuscle = null; render();
+  };
   if(tab==="body"){
     const load = muscleLoad(bodyDays);
     const max = Math.max(1, ...Object.values(load));
     paintFigs(v, load, max);
     v.querySelectorAll("svg.fig .rg").forEach(el=>{
       if(selMuscle && el.getAttribute("data-m")===selMuscle) el.classList.add("sel");
-      const pick = ()=>{ selMuscle = el.getAttribute("data-m"); render(); };
+      /* 選んでいる部位をもう一度選ぶと、選ぶ前の表示に戻る */
+      const pick = ()=>{ const m = el.getAttribute("data-m"); selMuscle = selMuscle === m ? null : m; render(); };
       el.onclick = pick;
       /* 読み上げ・キーボードだけの操作でも選べるように（role・tabindex・aria-labelはbodyfig.js側、C15） */
       el.onkeydown = (e)=>{
