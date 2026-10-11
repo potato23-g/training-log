@@ -329,6 +329,20 @@ textarea{min-height:64px;resize:vertical}
 /* 提案タブの「目標の上げ方」「メニューの組み方」: 見出し付きの選択・畳んだ一覧・名前＋選択の行 */
 .tunefld{margin-top:12px}
 .tunefld label{font-size:13px;font-weight:600;color:var(--ink-2)}
+details.fold{margin:14px 0 0}
+details.fold>summary{min-height:48px;display:flex;align-items:center;cursor:pointer;font-size:14px;font-weight:700;color:var(--ink);
+  list-style:none;padding:0 14px;background:var(--panel);border:1px solid var(--rule);border-radius:4px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::after{content:"＋";margin-left:auto;padding-left:10px;color:var(--ink-2);font-weight:400}
+details.fold[open]>summary::after{content:"−"}
+details.fold[open]>summary{margin-bottom:10px}
+.dayprog{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:13px;color:var(--ink-2);margin:0 2px 12px}
+.dayprog b{color:var(--ink);font-size:15px}
+.dayprog>i{flex-basis:100%;height:4px;border-radius:2px;background:var(--rule);overflow:hidden;display:block}
+.dayprog>i>i{display:block;height:100%;background:var(--muscle)}
+.herorec{margin:12px 0 4px}
+.herorec .addbtn{width:100%}
+.howextra{margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)}
 details.tune{border-top:1px solid var(--rule);margin-top:12px}
 details.tune summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:600;font-size:15px;list-style:none}
 details.tune summary::-webkit-details-marker{display:none}
@@ -394,7 +408,10 @@ details.tune[open] summary::after{content:"−"}
 table.hist tbody tr{cursor:pointer}
 table.hist tbody tr:active td{background:var(--panel-2)}
 table.hist td{padding:9px 6px}
-.trendline{width:100%;height:54px;display:block;margin:8px 0 2px}
+.trendline{width:100%;height:auto;display:block;margin:8px 0 2px}
+.charthead{font-size:10.5px;fill:var(--ink-2);font-weight:700}
+.charttick{font-size:10.5px;fill:var(--ink-3);font-variant-numeric:tabular-nums}
+.chartgrid{stroke:var(--rule);stroke-width:1}
 .trendpath{stroke:var(--muscle);stroke-width:2;fill:none;opacity:.85}
 .trenddot{fill:var(--panel);stroke:var(--muscle);stroke-width:1.6}
 .prdot{fill:var(--muscle);stroke:var(--muscle)}
@@ -4303,6 +4320,19 @@ const DEFAULT_PROGRAM = ["goblet","rdl","row","ohp","deadbug"];
    ============================================================ */
 const ACTIONS = {};
 const WIRES = [];
+/* 折りたたみ（2026-10-11 本人の要望: 提案タブの各項目と、設定タブの縦に長い項目は、初めは閉じておく）。
+   開いたかどうかは foldOpen に覚え、描き直しても開いたままにする（アプリを開き直すと閉じた状態に戻る） */
+const foldOpen = {};
+function fold(id, title, body, defOpen){
+  const on = id in foldOpen ? foldOpen[id] : !!defOpen;
+  return `<details class="fold" data-fold="${id}"${on ? " open" : ""}><summary>${title}</summary>${body}</details>`;
+}
+/* 「<h3 class="sec">見出し</h3> 中身」の形のカードを、見出しを押して開く形にする */
+function foldSec(id, html, defOpen){
+  const m = /^\s*<h3 class="sec">([\s\S]*?)<\/h3>/.exec(html);
+  return m ? fold(id, m[1], html.slice(m[0].length), defOpen) : html;
+}
+WIRES.push(v => v.querySelectorAll("details[data-fold]").forEach(d => { d.ontoggle = () => { foldOpen[d.dataset.fold] = d.open; }; }));
 /* ============================================================
    外から入ってくるデータの確かめと、画面に出すときのエスケープ
    同期（GitHub）・バックアップの取り込み・端末の保存データの読み込みは、どれも sanitizeState() を通す。
@@ -5814,7 +5844,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-11 15:25";
+const BUILD_VERSION = "2026-10-11 17:27";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -7076,8 +7106,12 @@ const UNUSED_DAYS = 7;
    lackDiv: 先に入れる順の決め方（buildPlan の staleRank）
    slowGap: 回復の日数がこれ以上の部位は、回復が終わっていて週の目標に届いていなければ、空いた日数に関わらずいちばん先に入れる
    1週間の上限（WEEK_MAX）は変えない。1種目足すと超える部位は、先に入れる部位にしない（下の staleRoom）
-   weekEx・capAdd・capMin: 1回の種目数の上限を、トレーニングの頻度に合わせる（下の sessionCap） */
-const PLAN_EVEN = {readyDays: 1, staleMax: 4, lackDiv: 2, slowGap: 3, weekEx: 38, capAdd: 1, capMin: 6};
+   weekEx・capAdd・capMin: 1回の種目数の上限を、トレーニングの頻度に合わせる（下の sessionCap）
+   floorGap: 上限を下げている人は、上限のこれだけ手前までは、入れられる種目を足す（buildPlan の 3'）。
+             floorFast は、足してよい種目の決め方（buildPlan の lightOnly）。毎日・84日の試算: 3種目以下の日が 11日 → 4日、5〜7種目の日が 67日。
+             1回の上限を 7→6 に下げるともっとそろうが、大腿四頭筋と内転筋が週の目標の検査（v5_balance_eval.js）に届かなかったので下げていない。
+             入れられる種目が無い日は少ないまま残る: 回復・昨日と同じ動き・1週間の上限の決まりは変えていない） */
+const PLAN_EVEN = {readyDays: 1, staleMax: 4, lackDiv: 2, slowGap: 3, weekEx: 38, capAdd: 1, capMin: 6, floorGap: 1, floorFast: 1};
 /* 部位 m をメインで鍛える種目を1つ足しても、補助で使った分も含めた直近7日の量が1週間の上限に収まるか */
 function staleRoom(m){ return muscleLoadBetween(m, 0, 6) + SETS_PER_EXERCISE <= WEEK_MAX; }
 /* 部位 m をメインで RECOVER_PRIMARY セット以上鍛えた最後の日が何日前か（今日は数えない。4週間のうちに無ければ Infinity） */
@@ -7410,6 +7444,10 @@ function buildPlan(){
   const staleAll = slow.concat(!staleOn ? [] : Object.keys(MUSCLES).filter(m => !slow.includes(m) && readyIdleDays(m) >= PLAN_EVEN.readyDays && canStale(m))
     .sort((a, b) => staleRank(b) - staleRank(a) || (PLAN_WEIGHT[b] || 0) - (PLAN_WEIGHT[a] || 0)).slice(0, PLAN_EVEN.staleMax));
   const staleSet = new Set(staleAll);
+  /* 種目の少ない日に足してよい部位（下の compose の 3'） */
+  const heavyWith = new Set();
+  catalog().forEach(c => { const p = EXMAP[c.ex].p; if(p.some(m => recoverGap(m) > PLAN_EVEN.floorFast)) p.forEach(m => heavyWith.add(m)); });
+  const lightOnly = m => !heavyWith.has(m);
   /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕）だけが主役の動きは、昨日やっていても続けてよい */
   const daily = ex => ex.p.every(m => recoverGap(m) === 0);
   const today = {}, plan = [];
@@ -7601,6 +7639,14 @@ function buildPlan(){
             目標に届くように）。1 だけだと、目標まであと3セットほどの部位は価値が1に届かず、どの部位も週7〜9セットで止まっていた */
       fill(0.01, LIM.exercises, c => EXMAP[c.ex].p.some(m => lack(m) > 0));
       fill(0.2, Math.min(3, LIM.exercises));   /* 3. 3種目に満たない日は、回復と上限の範囲で軽めの種目も足す */
+      /* 3'. 毎日のように行う人（1回の上限を頻度に合わせて下げている人）は、種目の少ない日を作らない（2026-10-11 本人の指摘:
+             組み直しても3種目で、連日できる部位ばかりだった）。脚・胸・背中の回復が同じ日に重なると、残りの部位は
+             週の目標に届いていて価値が小さく、入れられるのに入らなかった。上限の floorGap 手前までは、回復と
+             1日・1週間の上限の範囲で入れられる種目を足す（「少なめに入れる」にした動きは足さない）。
+             足すのは、回復の早い部位（中 floorFast 日まで）だけをメインで鍛える種目で、その部位が、回復に日数のかかる部位と
+             いっしょにメインで鍛えられる種目を持たないもの（lightOnly）。大殿筋や内転筋・上腕三頭筋の種目を足すと、次の日に
+             スクワット・ランジ・腕立て伏せが回復の途中で入らなくなり、大腿四頭筋が週の目標に届かなくなった */
+      if(normal && cap < SESSION_MAX.exercises) fill(0, Math.max(3, cap - PLAN_EVEN.floorGap), c => exPref(c.ex) >= 0 && EXMAP[c.ex].p.every(lightOnly));
       /* 4. 反対の部位の相手がいない種目には、入れられるかぎり相手を足す（2026-10-09 本人の指摘: 上腕二頭筋と上腕三頭筋を
             同じ日に出せるのに出なかった。できる限り入れる）。それまでは並べ替えの値を少し上げるだけ（PAIR_PREF）で、
             相手の部位が週の目標に届いている日は、入れられるのに入らなかった。
@@ -7625,7 +7671,9 @@ function buildPlan(){
       compose(first);
       const left = unused.filter(u => !(today[u] > 0) && !first.includes(u));
       if(!left.length) break;
-      first = staleAll.concat(unused.filter(u => first.includes(u) || left.includes(u)));
+      /* 7日使えていない部位を、回復後に空いた部位より先に入れる（1回の上限を下げた人で、先に入れる部位が上限より多い日に、
+         7日使えていない部位が入らなかった） */
+      first = unused.filter(u => first.includes(u) || left.includes(u)).concat(staleAll);
     }
   }
 
@@ -7876,6 +7924,27 @@ ACTIONS.refetchall = () => {
 ACTIONS.dismissproblem = () => { STORE_PROBLEM = null; render(); };
 ACTIONS.dismissfail = () => { storeFailMsg = ""; render(); };
 
+/* 今日の進み具合（終えた種目の数と、残りのおよその時間）。メニューがある日だけ出す（2026-10-11 本人の要望） */
+function dayProgress(items){
+  if(!items.length) return "";
+  const done = items.filter(it => isDoneToday(it.ex)).length;
+  const left = items.reduce((a, it) => {
+    const e = entryFor(TODAY, it.ex, false), n = e ? e.sets.length : 0, t = it.sets || SETS_PER_EXERCISE;
+    return a + (n >= t ? 0 : itemMinutes(it) * (t - n) / t);
+  }, 0);
+  return `<div class="dayprog" data-dayprog="1"><span>今日 <b class="num">${done} / ${items.length}</b> 種目</span>
+    <span>${done >= items.length ? "" : "残り 約" + Math.max(1, Math.round(left)) + "分"}</span>
+    <i><i style="width:${Math.round(done / items.length * 100)}%"></i></i></div>`;
+}
+/* 「次の種目」のカードの「この内容で記録」。種目のカードを開いてから、そのカードの「記録」と同じ処理（addSet）で入れる。
+   押した直後はカードが開いて行の位置が変わるので、同じ場所を続けて押しても種目の見出し（開け閉め）が反応しないようにする */
+let heroRecAt = 0;
+ACTIONS.herorec = el => {
+  openEx = el.dataset.ex; editEx = null;
+  render();
+  addSet(el.dataset.ex);
+  heroRecAt = Date.now();
+};
 function viewToday(){
   const all = todayItems(), items = all.filter(it => !it.skip), skipped = all.filter(it => it.skip);
   const s = session(TODAY);
@@ -7913,8 +7982,10 @@ function viewToday(){
     const inner = ex.kind==="w"
       ? `<div class="bigset"><span class="v num">${wShown(next, sug.w)}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">${perArm(next.ex) ? "kg（片手）・回" : "kg・回"}${next.side?"・左右":""}</span></div>`
       : `<div class="bigset"><span class="v num">${sug.r}</span><span class="u">${ex.kind==="t"?"秒":"回"}${next.side?"・左右":""}</span></div>`;
+    /* このカードからそのまま記録できる（2026-10-11 本人の要望。押すと下の種目のカードが開き、この目標で1セット入る） */
     hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${esc(itemName(next))}</h2>${inner}
+      <div class="herorec"><button class="addbtn" data-act="herorec" data-ex="${next.ex}">この内容で記録</button></div>
       ${sug.opt ? `<p class="sub">${esc(sug.opt.text)}</p>` : ""}
       <p class="sub">${esc(sug.src)}${sug.why ? "　→　" + esc(sug.why) : ""}</p>
       ${dl && dl.active ? `<p class="sub">軽めの週（${esc(fmtDate(dl.until))}まで）: 1回の種目を3つまでにしています。</p>` : ""}
@@ -7938,7 +8009,7 @@ function viewToday(){
   /* 反対の部位どうしで隣に並んだ種目（rules.js の menuPairs）。両方終わった組は出さない */
   const pairLine = menuPairs(items).filter(p => !p.every(it => isDoneToday(it.ex)))
     .map(p => `<p class="skipped">${esc(itemName(p[0]))}と${esc(itemName(p[1]))}: 反対の部位を使う種目です。1セットずつ交互に行えます。</p>`).join("");
-  return storeBanners() + menuNote + deloadAsk + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + `
+  return storeBanners() + menuNote + deloadAsk + dayProgress(items) + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
@@ -8998,6 +9069,19 @@ function exRow(item){
   </div>`;
 }
 /* ---------- 種目 ---------- */
+/* 「やり方」に足す文。解説の「準備」「どこまで動かすか」（DETAIL の setup・rom）のうち、やり方の手順にまだ書かれていない文だけを出す
+   （2026-10-11 本人の要望: 「準備」「どこまで動かすか」は、必要な部分だけ「やり方」に入れる）。
+   手順と同じ内容かどうかは、文の中の2文字の並びが手順にどれだけ出てくるかで見る（半分以上なら同じ内容として出さない）。
+   「それ以上は…」のように前の文を受ける文が残るときは、「どこまで動かすか」は全文を出す */
+function howExtra(id){
+  const d = DETAIL[id] || DETAIL[baseOf(id)] || {};
+  const grams = s => { const t = s.replace(/[、。・\s（）「」]/g, ""), o = []; for(let i = 0; i + 1 < t.length; i++) o.push(t.slice(i, i + 2)); return o; };
+  const how = new Set(grams(exHow(id).join("")));
+  const fresh = x => { const g = grams(x); return g.length >= 5 && g.filter(k => how.has(k)).length / g.length < 0.5; };
+  const parts = t => (t || "").split("。").map(x => x.trim()).filter(Boolean);
+  const rom = parts(d.rom), romNew = rom.filter(fresh);
+  return parts(d.setup).filter(fresh).concat(romNew.some(x => /^(それ|そこ)/.test(x)) ? [rom.join("。")] : romNew).map(x => x + "。");
+}
 function viewEx(){
   const ex = EXMAP[refEx], bid = baseOf(refEx), d = DETAIL[refEx] || DETAIL[bid] || {}, hs = houseOf(refEx);
   const refItem = itemOf(refEx);
@@ -9007,6 +9091,7 @@ function viewEx(){
   const opts = EX.map(e=>`<option value="${e.id}" ${e.id===refEx?"selected":""}>${e.name}</option>`).join("");
   const chips = ex.p.map(m=>`<span class="chip p">${MUSCLES[m]}</span>`).join("")
     + (ex.s||[]).map(m=>`<span class="chip s">${MUSCLES[m]}</span>`).join("");
+  const extra = howExtra(refEx);
   const kindLabel = ex.kind==="w" ? "ダンベル" : (ex.kind==="t" ? "時間で計測" : "自重");
 
   const left = `
@@ -9030,22 +9115,10 @@ function viewEx(){
 
   const right = `
     ${ex.variant?`<div class="card"><h4>両脚版との違い</h4><p style="margin:0;font-size:14px">${ex.variant}</p></div>`:""}
-    ${d.why?`<div class="card"><h4>この種目を入れる理由</h4><p style="margin:0;font-size:14px">${gearText(d.why)}</p></div>`:""}
-    ${d.setup?`<div class="card"><h4>準備</h4><p style="margin:0;font-size:14px">${gearText(d.setup)}</p></div>`:""}
     <div class="card">
       <h4>やり方</h4>
       <ol class="steps">${exHow(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ol>
-    </div>
-    <div class="card">
-      <h4>呼吸とテンポ</h4>
-      ${d.breath?`<p style="margin:0 0 6px;font-size:14px"><b>呼吸</b>　${d.breath}</p>`:""}
-      ${d.tempo?`<p style="margin:0;font-size:14px"><b>テンポ</b>　${d.tempo}</p>`:""}
-    </div>
-    ${d.rom?`<div class="card"><h4>どこまで動かすか</h4><p style="margin:0;font-size:14px">${d.rom}</p></div>`:""}
-    ${d.feel?`<div class="card"><h4>効いているかの判断</h4><p style="margin:0;font-size:14px">${d.feel}</p></div>`:""}
-    <div class="card">
-      <h4>よくある間違い</h4>
-      <ul class="plain">${exNg(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ul>
+      ${extra.length ? `<ul class="plain howextra">${extra.map(x=>`<li>${gearText(x)}</li>`).join("")}</ul>` : ""}
     </div>
     <div class="card">
       <h4>きつい／簡単すぎる場合</h4>
@@ -9061,10 +9134,7 @@ function viewEx(){
       <ol class="steps">${exUp(refEx).map(x=>`<li>${gearText(x)}</li>`).join("")}</ol>
       ${hs.up?`<p style="margin:6px 0 0;font-size:14px"><b>日用品を使う</b>　${hs.up}</p>`:""}
     </div>
-    <div class="card">
-      <h4 class="warn">中止する合図</h4>
-      <p style="margin:0;font-size:14px">関節（膝・腰・肩）に鋭い痛みが走ったら、その種目はその場で中止してください。翌日以降にくる筋肉痛とは別物です。痛みが数日続く場合は、整形外科を受診してください。</p>
-    </div>`;
+`;
 
   return `<div class="card"><select id="exSel">${opts}</select></div>
     <div class="splitcols"><div>${left}</div><div>${right}</div></div>`;
@@ -9280,24 +9350,6 @@ function ladderRows(){
   return out;
 }
 
-/* 大きな部位が長期間ゼロに近い＝メニュー全体の見直しサイン */
-function balanceSuggestions(){
-  const BIG = ["quads","glutes","hams","lats"];
-  const load30 = muscleLoad(30);
-  const out = [];
-  BIG.forEach(m=>{
-    const v = load30[m] || 0;
-    if(v <= 2){
-      const cands = EX.filter(e=>e.p.includes(m) && exOn(e.id)).slice(0,3).map(e=>e.name);
-      out.push({kind:"balance", muscle:m,
-        title: MUSCLES[m] + "：直近30日でほぼ使えていません",
-        body: cands.length ? "候補: " + cands.join("、") : "",
-        why: "有効セット数 " + v.toFixed(1) + "（大きい筋肉なので、優先して入れたい部位です）"});
-    }
-  });
-  return out;
-}
-
 /* 軽い週のカード（勧めるとき・軽い週のあいだ） */
 function deloadCard(){
   const d = deloadAdvice();
@@ -9319,8 +9371,8 @@ function viewPlan(){
   const total = sortedDates().filter(d=>(state.sessions[d].entries||[]).some(e=>e.sets.length)).length;
   if(total < 1){
     return `<div class="empty">記録がまだありません。記録すると、動きごとの今の段階と、次の段階までの回数がここに出ます。</div>
-    ${progCard()}
-    ${menuCard()}`;
+    ${foldSec("prog", progCard())}
+    ${foldSec("menu", menuCard())}`;
   }
   const rows = ladderRows();
   /* 見出しは動きのまとまりごとに1回（同じまとまりの種目が続くあいだは出さない） */
@@ -9333,31 +9385,19 @@ function viewPlan(){
         <p class="lastline" style="margin-top:0">${esc(r.next)}</p>
       </div>`).join("")}
     </div>` : "";
-  const balance = balanceSuggestions();
-  const balanceCards = balance.length
-    ? balance.map(s=>`<div class="card">
-        <h4>${esc(s.title)}</h4>
-        ${s.body ? `<p style="margin:0 0 6px;font-size:14px">${esc(s.body)}</p>` : ""}
-        <p class="lastline" style="margin-top:0">${esc(s.why)}</p>
-      </div>`).join("")
-    : `<div class="card"><p style="margin:0;font-size:14px">直近30日、主要な部位はひと通り使えています。</p></div>`;
-
+  /* 「部位のバランス」は、からだタブで同じことがもっと詳しく分かるのでやめた。各項目は初めは閉じておく（2026-10-11 本人の要望） */
   return `
     ${deloadCard()}
-    <h3 class="sec">動きごとの今の段階</h3>
-    ${ladder}
-    <h3 class="sec">部位のバランス</h3>
-    ${balanceCards}
-    ${progCard()}
-    ${menuCard()}
-    <div class="card">
-      <h4>この提案の仕組み</h4>
+    ${fold("ladder", "動きごとの今の段階", ladder)}
+    ${foldSec("prog", progCard())}
+    ${foldSec("menu", menuCard())}
+    ${fold("rule", "この提案の仕組み", `<div class="card">
       <p style="margin:0;font-size:14px">${progRuleText()}</p>
       <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
       <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。週5回以上行っているときは、日ごとの種目数の差が小さくなるように、1回の種目数を少なくします${sessionCap() < SESSION_MAX.exercises ? "（いまは" + sessionCap() + "種目まで）" : ""}。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。回復が終わってから日が空いた部位は、その部位をメインで鍛える種目を先に入れます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。上の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
       ${pairOn() ? `<p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は、回復と上限の範囲で入れられるかぎり入れて、隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>` : ""}
       <p class="lastline">${esc(recoverGapText())}</p>
-    </div>`;
+    </div>`)}`;
 }
 /* ---------- 履歴 ---------- */
 function viewHist(){
@@ -9385,7 +9425,7 @@ function viewHist(){
       <p class="lastline">直近7日で ${last7} 回。</p>
     </div>
     <h3 class="sec">種目ごとの推移</h3>
-    <p class="lastline" style="margin-top:0">線は日ごとの一番よいセット。重いほど、同じ重さなら回数が多いほど上。<span style="color:var(--muscle)">●</span>は自己ベストの日</p>
+    <p class="lastline" style="margin-top:0">点は日ごとの一番よいセット。<span style="color:var(--muscle)">●</span>は自己ベストの日</p>
     ${trendCards(dates)}
     <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
@@ -9438,7 +9478,7 @@ function trendCards(dates){
     for(const st of lastDaySets){ pr = prMessage(g.ex, g.label, st, last.d); if(pr) break; }
     return `<div class="card">
       <h4>${esc(itemName({ex:g.ex, label:g.label}))}</h4>
-      ${sparkSVG(points)}
+      ${trendChart(points, ex.kind, {ex:g.ex, label:g.label})}
       <p class="lastline" style="margin-top:4px">最高セット <b>${esc(setTextFor({ex:g.ex, label:g.label}, best))}</b></p>
       ${growth ? `<p class="lastline" style="margin-top:2px">${esc(growth)}</p>` : ""}
       ${pr ? `<p class="lastline" style="margin-top:2px;color:var(--muscle)"><b>${esc(pr)}</b>　${esc(fmtDate(last.d))}</p>` : ""}
@@ -9468,9 +9508,9 @@ function dailyMaxPoints(rows, exId, label, kind){
   return dates.map((d, i)=>{
     const st = bests[i], r = st.r || 0;
     const pr = byDate[d].some(x => !!prMessage(exId, label, x, d));
-    if(kind !== "w") return {d, v:r, pr, text:r + (kind === "t" ? "秒" : "回")};
+    if(kind !== "w") return {d, v:r, r, pr, text:r + (kind === "t" ? "秒" : "回")};
     const frac = rHi > rLo ? 0.9 * (r - rLo) / (rHi - rLo) : 0.45;
-    return {d, v:rungOf(st.w) + frac, pr, text:kgFor(item, st.w || 0) + "×" + r + "回"};
+    return {d, v:rungOf(st.w) + frac, r, w:wShown(item, st.w || 0), pr, text:kgFor(item, st.w || 0) + "×" + r + "回"};
   });
 }
 /* 同じ重さでの回数の伸び（最初にその重さを使った日→最近使った日、それぞれ最高回数で比べる）。
@@ -9496,23 +9536,35 @@ function repGrowth(rows, kind, item){
   const unit = kind === "t" ? "秒" : "回";
   return unit + "　" + from + unit + " → " + to + unit;
 }
-/* 小さな折れ線（SVG、外部ライブラリなし）。pr の点は大きい丸で強調する */
-function sparkSVG(points){
+/* 種目ごとのグラフ（SVG、外部ライブラリなし。2026-10-11 本人の要望: 日付と、回数や重さのグラフに）。
+   横は日付（日数の間隔どおり）、縦は数字そのもの。ダンベルの種目は、上に重さ・下に回数の2段を同じ日付でそろえて並べる
+   （重さは腕の種目なら片手あたり）。回数・秒の種目は1段。点は日ごとの一番よいセットで、pr の点は大きい丸 */
+function trendChart(points, kind, item){
   if(!points.length) return `<p class="lastline" style="margin:4px 0">まだ記録がありません。</p>`;
-  const W = 300, H = 54, padX = 8, padY = 9;
-  const vals = points.map(p=>p.v);
-  const vmin = Math.min(...vals), vmax = Math.max(...vals);
-  const span = Math.max(1, vmax - vmin);
-  const n = points.length;
-  const x = i => n===1 ? W/2 : padX + (W - padX*2) * i / (n-1);
-  const y = v => H - padY - (H - padY*2) * (v - vmin) / span;
-  const line = points.map((p,i)=>x(i).toFixed(1)+","+y(p.v).toFixed(1)).join(" ");
-  const dots = points.map((p,i)=>{
-    const cx = x(i).toFixed(1), cy = y(p.v).toFixed(1);
-    return `<circle cx="${cx}" cy="${cy}" r="${p.pr?3.6:2.2}" class="${p.pr?"prdot":"trenddot"}"><title>${esc(fmtDate(p.d))}　${esc(p.text || String(p.v))}${p.pr ? "　自己ベスト" : ""}</title></circle>`;
+  const W = 320, L = 34, R = 10, PH = 62, GAP = 32, TOP = 16, BOT = 18;
+  const t = points.map(p => asDate(p.d).getTime()), t0 = t[0], t1 = t[t.length - 1];
+  const x = i => t1 > t0 ? L + (W - L - R) * (t[i] - t0) / (t1 - t0) : (L + W - R) / 2;
+  const md = d => { const a = asDate(d); return (a.getMonth() + 1) + "/" + a.getDate(); };
+  const num = v => String(Math.round(v * 10) / 10);
+  const rows = (kind === "w" ? [{key: "w", name: (perArm(item.ex) ? "重さ（片手）" : "重さ") + " kg"}] : [])
+    .concat([{key: "r", name: kind === "t" ? "秒" : "回数"}]);
+  const H = TOP + rows.length * PH + (rows.length - 1) * GAP + BOT;
+  const panels = rows.map((row, k) => {
+    const top = TOP + k * (PH + GAP), vals = points.map(p => p[row.key] || 0);
+    const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo;
+    const y = v => span ? top + PH - PH * (v - lo) / span : top + PH / 2;
+    const line = points.map((p, i) => x(i).toFixed(1) + "," + y(vals[i]).toFixed(1)).join(" ");
+    const dots = points.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(vals[i]).toFixed(1)}" r="${p.pr ? 3.6 : 2.2}" class="${p.pr ? "prdot" : "trenddot"}"><title>${esc(fmtDate(p.d))}　${esc(p.text || "")}${p.pr ? "　自己ベスト" : ""}</title></circle>`).join("");
+    const ticks = span ? [[hi, top], [lo, top + PH]] : [[lo, top + PH / 2]];
+    return `<text x="${L}" y="${top - 6}" class="charthead">${esc(row.name)}</text>
+      ${ticks.map(([v, yy]) => `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="chartgrid"/><text x="${L - 6}" y="${yy + 4}" text-anchor="end" class="charttick">${num(v)}</text>`).join("")}
+      <polyline points="${line}" class="trendpath"/>${dots}`;
   }).join("");
-  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="重さと回数の推移">
-    <polyline points="${line}" class="trendpath"/>${dots}
+  const yb = H - 4;
+  const xl = t1 > t0 ? `<text x="${L}" y="${yb}" class="charttick">${md(points[0].d)}</text><text x="${W - R}" y="${yb}" text-anchor="end" class="charttick">${md(points[points.length - 1].d)}</text>`
+                     : `<text x="${(L + W - R) / 2}" y="${yb}" text-anchor="middle" class="charttick">${md(points[0].d)}</text>`;
+  return `<svg class="trendline" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${kind === "w" ? "日付ごとの重さと回数" : kind === "t" ? "日付ごとの秒数" : "日付ごとの回数"}">
+    ${panels}${xl}
   </svg>`;
 }
 /* 自己ベストの判定。同じ ex・組み方の中で、date・set より前の記録とだけ比べる。
@@ -9821,6 +9873,7 @@ function wireActs(root){
 function onAct(el, ev){
   const a = el.dataset.act;
   if(a==="toggle"){
+    if(Date.now() - heroRecAt < 500) return;
     openEx = (openEx===el.dataset.ex)?null:el.dataset.ex;
     render();
     /* 開いた種目の見出しを画面の上に合わせ、入力と「記録」が見えるようにする */
@@ -10658,13 +10711,14 @@ ACTIONS.tunereset = el => {
   tuneApplied(!prog, "「" + (prog ? PROG_HEAD : MENU_HEAD) + "」を初めの設定に戻しました");
 };
 function viewSet(){
+  /* 縦に長いものは、初めは閉じておく（ダンベルを登録していないうちは、登録を促す文が見えるように開いておく） */
   return `<div data-settings="1">
-    ${gearCard()}
+    ${foldSec("gear", gearCard(), !state.gear)}
     ${dayStartCard()}
-    ${settingsCard()}
+    ${foldSec("alert", settingsCard())}
     ${themeCard()}
-    ${typeof syncCard === "function" ? syncCard() : ""}
-    ${typeof backupCard === "function" ? backupCard() : ""}
+    ${typeof syncCard === "function" ? foldSec("sync", syncCard()) : ""}
+    ${typeof backupCard === "function" ? foldSec("backup", backupCard()) : ""}
   </div>`;
 }
 /* 設定タブの入力欄（押しボタン・同期の入力欄は events.js の wire がほかのタブと同じに結ぶ） */
