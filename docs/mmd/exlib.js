@@ -108,6 +108,11 @@ const hang = (sg, o = {}) => c => {
            bar: g === 'n' ? V(0, 0, 1) : g === 'p' ? V(-sg, 0, 0) : V(sg, 0, 0), db: o.db !== false };
 };
 const hangBoth = (o = {}) => ({ handL: hang(1, o), handR: hang(-1, o) });
+// 何も持たない手を体の横に垂らす
+const hangFree = sg => hang(sg, { out: 1.0, db: false });
+// 反対の腕のひじ E に手を添える（片手だけで行う組み方）
+const onElbow = (sg, E, off, t = {}) => c => ({ pos: E.clone().add(c.c(sg * off[0], off[1], off[2])), pole: c.c(...(t.po || [sg * 0.5, -0.5, -0.7])),
+                                        palm: c.c(...(t.pa || [0, 0.5, -0.85])), fingers: c.c(...(t.fi || [-sg, 0.1, -0.25])), hand: 'relax' });
 
 // 両手ではさむ。g = { top: 手のひらの間の中心, X: 左右の向き, F: 指の向き, h: 中心から手首までの左右の幅 }
 const clasp = (sg, g, c) => ({
@@ -168,7 +173,7 @@ export const EXLIB = {
   // ゴブレットスクワット: ダンベルを縦にして胸の前で抱える。足は肩幅よりやや広く、つま先は少し外。太ももが床と平行かそれ以下まで。
   goblet: {
     name: 'ゴブレットスクワット', fixed: FEET,
-    pose: (u, k, m) => ({
+    pose: (u, k, m, v = {}) => ({
       pelvis: [34 * u, 0, 0], chest: [24 * u, 0, 0], head: [-8 * u, 0, 0],
       pin: pinHip(lerp(10.55, 5.75, u), m.legL.H.z + lerp(0, -2.3, u)), ...feet(3.0, 0, 15), ...gobletHold(),
     }),
@@ -234,13 +239,14 @@ export const EXLIB = {
   // ダンベルショルダープレス: ダンベルを肩の高さ、耳の横あたりに構え、真上に押し上げて肘を伸ばしきる。
   ohp: {
     name: 'ダンベルショルダープレス', fixed: FEET,
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const hand = sg => c => {
         const S = sg > 0 ? c.shL : c.shR;
         const w = Math.pow(u, 3);
         return { pos: V(S.x + sg * lerp(1.78, 1.1, w), S.y + lerp(1.14, 4.38, u), S.z + lerp(0.4, 0.1, u)),
                  pole: V(sg * 0.5, -0.85, 0.05), bar: V(-sg, 0, 0), db: true };
       };
+      if (v.one) return { ...feet(1.66), shrugR: 14 * u, handL: hangFree(1), handR: hand(-1) };
       return { ...feet(1.66), shrugL: 14 * u, shrugR: 14 * u, handL: hand(1), handR: hand(-1) };
     },
   },
@@ -248,10 +254,11 @@ export const EXLIB = {
   // サイドレイズ: 肘をわずかに曲げて固定し、肩の高さまで真横に上げる。
   lateral: {
     name: 'サイドレイズ', fixed: FEET, tempo: [1.3, 0.4, 2.4, 0.5],
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
+      const eb = (v.short ? 62 : 12) * D;
       const hand = sg => c => {
         const ph = lerp(14, 86, u) * D, ud = V(sg * Math.sin(ph), -Math.cos(ph), 0);
-        return { ...armFK(c, sg, ud, ud.clone().multiplyScalar(Math.cos(12 * D)).addScaledVector(Z, Math.sin(12 * D)), V(0, 0, -1)), bar: Z, db: true };
+        return { ...armFK(c, sg, ud, ud.clone().multiplyScalar(Math.cos(eb)).addScaledVector(Z, Math.sin(eb)), V(0, 0, -1)), bar: Z, db: true };
       };
       return { ...feet(1.66), shrugL: 6 * u, shrugR: 6 * u, handL: hand(1), handR: hand(-1) };
     },
@@ -260,37 +267,42 @@ export const EXLIB = {
   // ダンベルフロアプレス: 仰向けで膝を立てる。肘が床につくまで下ろし（上腕は体幹から 45 度）、真上へ上げる。
   floorpress: {
     name: 'ダンベルフロアプレス', cam: { alt: 14 },
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const hand = sg => c => {
         const S = sg > 0 ? c.shL : c.shR;
         const top = S.clone().add(V(sg * 0.3, 4.5, 0.15));
         const bot = S.clone().addScaledVector(V(sg * 0.69, -0.21, 0.69), m.armL.L1).add(V(0, m.armL.L2, 0));
         return { pos: mix(top, bot, u), pole: V(sg * 0.69, -0.35, 0.69), bar: V(-sg, 0, 0), db: true };
       };
-      return { ...supine(), ...kneesUp(), handL: hand(1), handR: hand(-1) };
+      return { ...supine(), ...kneesUp(), handL: v.one ? armsFloor(1) : hand(1), handR: hand(-1) };
     },
   },
 
   // 腕立て伏せ: 手は肩幅よりやや広く、指先はやや外向き。頭からかかとまで一直線。胸が床に近づくまで。
   pushup: {
     name: '腕立て伏せ', cam: { alt: 12 }, fixed: ['左手首', '右手首'],
-    pose: (u, k, m) => {
-      const top = plankLine(4.75, TOE_ANK, 13.96), L = plankLine(lerp(4.75, 2.15, u), TOE_ANK, 13.96);
-      return { baseQ: Qx(L.th), pin: pinSh(0, lerp(4.75, 2.15, u), L.z), head: [-8, 0, 0],
-               footL: toeStand(1), footR: toeStand(-1), handL: palmFloor(1, 1.85, top.z - 0.25), handR: palmFloor(-1, 1.85, top.z - 0.25) };
+    pose: (u, k, m, v = {}) => {
+      // deep: 床に置いたダンベルの柄を握る。手首が高くなるぶん、上では肩も高く、下では胸が手より下まで下りる
+      const hi = v.deep ? 5.75 : 4.75, lo = v.deep ? 2.35 : 2.15;
+      const top = plankLine(hi, TOE_ANK, 13.96), L = plankLine(lerp(hi, lo, u), TOE_ANK, 13.96);
+      const grip = sg => c => ({ pos: [sg * 2.0, 1.72, top.z - 0.25], pole: V(sg * 0.6, 0.3, -1), g: V(0, -1, 0), bar: V(-sg, 0, 0), db: true });
+      return { baseQ: Qx(L.th), pin: pinSh(0, lerp(hi, lo, u), L.z), head: [-8, 0, 0],
+               footL: toeStand(1), footR: toeStand(-1),
+               handL: v.deep ? grip(1) : palmFloor(1, 1.85, top.z - 0.25), handR: v.deep ? grip(-1) : palmFloor(-1, 1.85, top.z - 0.25) };
     },
   },
 
   // ダンベルカール: 肘を体側に固定し、前腕だけを巻き上げる。下では肘を伸ばしきる。
   curl: {
     name: 'ダンベルカール', fixed: FEET,
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const hand = sg => c => {
         const ud = V(sg * 0.24, -0.97, 0), th = lerp(4, 132, u) * D, w = Math.min(1, u / 0.7);
         const fd = N(ud).multiplyScalar(Math.cos(th)).addScaledVector(V(sg * 0.14, 0, 1).normalize(), Math.sin(th));
         const a = ss(w) * 90 * D;      // 握りを、親指が前（手のひらが体向き）から手のひらが上へ、前腕のまわりに回す
         return { ...armFK(c, sg, ud, fd, V(0, 0, -1)), bar: V(sg * Math.sin(a), Math.sin(th) * Math.cos(a), Math.cos(th) * Math.cos(a)), db: true };
       };
+      if (v.one) return { ...feet(1.66), handR: hand(-1), handL: c => onElbow(1, hand(-1)(c).E, v.off || [1.05, -0.25, 0.75], v)(c) };
       return { ...feet(1.66), handL: hand(1), handR: hand(-1) };
     },
   },
@@ -298,7 +310,19 @@ export const EXLIB = {
   // トライセプスエクステンション: ダンベルを両手で持って頭の後ろに構え、肘の位置を固定したまま腕を真上に伸ばす。
   triext: {
     name: 'トライセプスエクステンション', fixed: FEET,
-    pose: (u, k, m) => ({
+    pose: (u, k, m, v = {}) => v.one ? (() => {
+      // 右手だけで持ち、上腕は耳の横で立てたまま、ひじだけを曲げ伸ばしする。左手は右ひじの外側に添える
+      const arm = c => {
+        const ud = c.c(-0.2, 0.97, 0.1), th = lerp(118, 4, u) * D;
+        const fd = N(ud).multiplyScalar(Math.cos(th)).addScaledVector(c.c(0.42, 0, -0.9).normalize(), Math.sin(th));
+        return armFK(c, -1, ud, fd, c.c(-0.4, 0, 1));
+      };
+      return {
+        ...feet(1.66), shrugR: 14,
+        handR: c => ({ ...arm(c), bar: c.c(1, 0, 0), db: true }),
+        handL: c => ({ pos: arm(c).E.clone().add(c.c(0.55, -0.75, 0.75)), pole: c.c(0.3, -1, 0.6), palm: c.c(-0.6, 0.3, -0.75), fingers: c.c(-0.75, 0.55, -0.35), hand: 'relax' }),
+      };
+    })() : ({
       ...feet(1.66), shrugL: 12, shrugR: 12,
       free: c => {
         const th = lerp(115, 0, u) * D, f = c.c(0, Math.cos(th), -Math.sin(th));
@@ -313,25 +337,31 @@ export const EXLIB = {
   // プランク: 肘を肩の真下につき、つま先で支える。頭からかかとまで一直線。
   plank: {
     name: 'プランク', cam: { alt: 12 }, tempo: [2, 2, 2, 2],
-    pose: (u, k, m) => {
-      const L = plankLine(2.9, TOE_ANK, 13.96);
-      const hand = sg => c => { const S = sg > 0 ? c.shL : c.shR; return { pos: [S.x, 0.6, S.z + 2.3], pole: V(0, -1, -0.3), palm: V(0, -1, 0), fingers: Z, hand: 'flat' }; };
-      return { baseQ: Qx(L.th), pin: pinSh(0, 2.9, L.z), head: [-8, 0, 0], footL: toeStand(1), footR: toeStand(-1), handL: hand(1), handR: hand(-1) };
+    sag: true,
+    pose: (u, k, m, v = {}) => {
+      const L = plankLine(2.9, TOE_ANK, 13.96), w = v.w || 0;
+      const hand = sg => c => { const S = sg > 0 ? c.shL : c.shR; return { pos: [S.x, 0.6, L.z + 2.3], pole: V(0, -1, -0.3), palm: V(0, -1, 0), fingers: Z, hand: 'flat' }; };
+      // 腰が落ちるときも、つま先は床の同じ場所に残す（feetAt = まっすぐなときの足首）
+      const foot = sg => c => ({ ...toeStand(sg)(c), ...(v.feetAt ? { pos: v.feetAt[sg > 0 ? 'L' : 'R'] } : {}) });
+      const lift = c => ({ pos: c.hipL.clone().add(c.w(0, -9.39 * Math.cos(15 * D), -9.39 * Math.sin(15 * D))), toe: c.w(0, -0.94, 0.34), up: c.w(0, 0.34, 0.94), pole: V(0, -1, 0) });
+      return { baseQ: Qx(L.th), pelvis: [11 * w, 0, 0], chest: [-11 * w, 0, 0], pin: pinSh(0, 2.9, L.z + (v.sz != null ? v.sz : -0.35) * w), head: [-8 + 6 * w, 0, 0],
+               footL: v.leg ? lift : foot(1), footR: foot(-1), handL: hand(1), handR: hand(-1) };
     },
   },
 
   // デッドバグ: 仰向けで両腕を天井に、股関節と膝を 90 度に。右腕と左脚をゆっくり伸ばし、戻して反対側。
   deadbug: {
     name: 'デッドバグ', alt: true, cam: { alt: 14 }, tempo: [1.8, 0.5, 1.5, 0.4],
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const armS = k ? 1 : -1, legS = -armS;
       const hand = sg => c => {
         const S = sg > 0 ? c.shL : c.shR, t = sg === armS ? u : 0, a = lerp(0, 68, t) * D;
         const d = V(sg * lerp(0.05, 0.32, t), Math.cos(a), -Math.sin(a)).normalize();
+        if (v.db) return { pos: S.clone().addScaledVector(d, 4.5), pole: V(sg * 0.5, 0, 1), g: d, bar: V(0, -Math.sin(a), -Math.cos(a)), db: true };
         return { pos: S.clone().addScaledVector(d, 4.5), pole: V(sg * 0.5, 0, 1), palm: V(-sg, 0, 0), fingers: d, hand: 'relax' };
       };
       const foot = sg => c => {
-        const H = sg > 0 ? c.hipL : c.hipR, t = sg === legS ? u : 0;
+        const H = sg > 0 ? c.hipL : c.hipR, t = (sg === legS && !v.half) ? u : 0;
         return { pos: H.clone().add(mix(V(0, m.legL.L1, m.legL.L2), V(0, 1.5, 9.2), t)), pole: V(0, 1, -0.2), toe: Y, up: V(0, 0, -1) };
       };
       return { ...supine(), handL: hand(1), handR: hand(-1), footL: foot(1), footR: foot(-1) };
@@ -342,21 +372,36 @@ export const EXLIB = {
   // 腰は床につけたまま（骨盤はわずかに後ろへ傾くだけ）。背骨の丸めは 55° ほど。
   crunch: {
     name: '腹筋（クランチ）', cam: { alt: 14 }, fixed: FEET, tempo: [1.4, 0.5, 1.6, 0.4],
-    pose: (u, k, m) => ({ baseQ: Qx(-90), pin: pinHip(SUP_SH + 0.44 + 0.08 * u, SUP_Z + 4.57), ...kneesUp(), pelvis: [9 * u, 0, 0], chest: [64 * u, 0, 0], head: [10 + 14 * u, 0, 0],
-                          handL: atEar(1), handR: atEar(-1) }),
+    pose: (u, k, m, v = {}) => {
+      const body = { baseQ: Qx(-90), pin: pinHip(SUP_SH + 0.44 + 0.08 * u, SUP_Z + 4.57), ...kneesUp(), pelvis: [9 * u, 0, 0], chest: [64 * u, 0, 0], head: [10 + 14 * u, 0, 0] };
+      // db: ダンベルを横にして胸の上で抱える
+      if (v.db) return { ...body, free: c => {
+        const P = mid(c.shL, c.shR).add(c.c(0, v.cy != null ? v.cy : -1.5, v.cz != null ? v.cz : 1.75));
+        return { pos: P, axis: c.c(1, 0, 0), top: P, X: c.c(1, 0, 0), F: c.c(0, 0.25, 0.97).normalize(), h: 1.46, pole: sg => c.c(sg, -0.6, -0.4) };
+      }, ...claspBoth };
+      // arms: 腕は体の横。肩が浮くぶん、手は床の上を頭のほうへ少し滑る
+      const side = sg => c => {
+        const S = sg > 0 ? c.shL : c.shR, len = (m.armL.L1 + m.armL.L2) * 0.97, dy = S.y - 0.42;
+        return { pos: [S.x + sg * 1.1, 0.42, S.z + Math.sqrt(Math.max(1, len * len - 1.21 - dy * dy))], pole: V(sg * 0.6, -0.8, 0), palm: V(0, -1, 0), fingers: Z, hand: 'flat' };
+      };
+      if (v.arms) return { ...body, handL: side(1), handR: side(-1) };
+      return { ...body, handL: atEar(1), handR: atEar(-1) };
+    },
   },
 
   // サイドプランク: 横向きで肘を肩の真下につき、腰を持ち上げて頭から足まで一直線。
   sideplank: {
-    name: 'サイドプランク', tempo: [2, 2, 2, 2], cam: { alt: 12, yaw0: -78 },
-    pose: (u, k, m) => {
+    name: 'サイドプランク', tempo: [2, 2, 2, 2], cam: { alt: 12, yaw0: -78 }, sag: true,
+    pose: (u, k, m, v = {}) => {
       const aY = 1.42, sh = 2.95, half = m.armL.S.x;
       const th = Math.acos((sh - aY) / Math.hypot(13.96, half)) - Math.atan2(half, 13.96);     // 体の線の傾き（Z まわり）
-      const foot = sg => c => ({ pos: (sg > 0 ? c.hipL : c.hipR).clone().add(c.w(0, -9.39, 0)), toe: Z, up: c.w(0, 1, 0), pole: Z });
+      const w = v.w || 0;
+      const foot = sg => c => ({ pos: v.feetAt ? v.feetAt[sg > 0 ? 'L' : 'R'] : (sg > 0 ? c.hipL : c.hipR).clone().add(c.w(0, -9.39, 0)), toe: Z, up: c.w(0, 1, 0), pole: Z });
+      const lift = c => ({ pos: c.hipL.clone().add(c.w(9.39 * Math.sin(26 * D), -9.39 * Math.cos(26 * D), 0)), toe: Z, up: c.w(0.44, 0.9, 0), pole: Z });
       return {
-        baseQ: Qz(th / D), pin: pinSh(-13.96 * Math.sin(th) + 6, aY + 13.96 * Math.cos(th), 0),
-        footL: foot(1), footR: foot(-1),
-        handR: c => ({ pos: [c.shR.x, 0.6, c.shR.z + 2.3], pole: V(0, -1, -0.1), palm: V(0, -1, 0), fingers: Z, hand: 'flat' }),
+        baseQ: Qz(th / D), pelvis: [0, 0, -10 * w], chest: [0, 0, 10 * w], head: [0, 0, -6 * w], pin: pinSh(-13.96 * Math.sin(th) + 6 + (v.sx != null ? v.sx : 0.35) * w, aY + 13.96 * Math.cos(th), 0),
+        footL: v.leg ? lift : foot(1), footR: foot(-1),
+        handR: c => ({ pos: [c.shR.x - (v.sx != null ? v.sx : 0.35) * w, 0.6, c.shR.z + 2.3], pole: V(0, -1, -0.1), palm: V(0, -1, 0), fingers: Z, hand: 'flat' }),
         handL: onHip(1),
       };
     },
@@ -365,12 +410,13 @@ export const EXLIB = {
   // カーフレイズ: 段差のふちにつま先を乗せ、かかとを下げてから限界まで背伸びする。
   calf: {
     name: 'カーフレイズ', props: { step: [0, 0.65, 2] }, air: true, touch: [['toeL', 1.3, 0.3], ['toeR', 1.3, 0.3]],
-    pose: (u, k, m) => {
-      const a = lerp(-18, 38, u), pz = m.legL.A.z + m.toeFwd;
-      const f = sg => c => heelUp(m, sg, sg * 0.83, pz, a, { gy: 1.3 });
-      const an = heelUp(m, 1, 0.83, pz, a, { gy: 1.3 }).pos;
+    pose: (u, k, m, v = {}) => {
+      // floor: 段差を使わない。かかとは床までしか下がらない
+      const gy = v.floor ? 0 : 1.3, a = Math.max(v.floor ? 0 : -18, lerp(-18, 38, u)), pz = m.legL.A.z + m.toeFwd;
+      const f = sg => c => heelUp(m, sg, sg * 0.83, pz, a, { gy });
+      const an = heelUp(m, 1, 0.83, pz, a, { gy }).pos;
       return { pin: pinHip(an.y + m.legL.H.y - m.legL.A.y, an.z + m.legL.H.z - m.legL.A.z), footL: f(1), footR: f(-1), ...hangBoth(),
-               props: { step: [0, 0.65, pz + 1.3] } };
+               ...(v.floor ? {} : { props: { step: [0, 0.65, pz + 1.3] } }) };
     },
   },
 
@@ -379,7 +425,8 @@ export const EXLIB = {
   // u は 1 周（左右 1 歩ずつ）。左足は u = 0 でかかとから着き、STANCE まで床の上、そのあと前へ振り出す。右足は半周ずれる。
   farmer: {
     name: 'ファーマーズウォーク', cycle: 1.0,
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
+      const w = v.w || 0;
       const STRIDE = 8, STANCE = 0.62, S = STRIDE * STANCE, L = m.legL, w2 = 2 * Math.PI;
       const foot = sg => c => {
         const p = (u + (sg > 0 ? 0 : 0.5)) % 1, x = sg * 0.8, z0 = L.A.z + 0.25;
@@ -396,10 +443,10 @@ export const EXLIB = {
       const ph = w2 * (u - 0.06), yaw = -5 * Math.cos(w2 * u);
       return {
         scroll: u * STRIDE,
-        pelvis: [2, yaw, 2.5 * Math.sin(ph)], chest: [3, -0.4 * yaw, 0], head: [-2, 0.4 * yaw, 0],
+        pelvis: [2, yaw, 2.5 * Math.sin(ph)], chest: [3 + 5 * w, -0.4 * yaw, 0], head: [-2 + 8 * w, 0.4 * yaw, 0],
         pin: pinHip(L.ankleH + 9.0 - 0.2 * Math.cos(2 * ph), L.H.z + 0.25, 0.2 * Math.sin(ph)),
-        footL: foot(1), footR: foot(-1),
-        handL: hang(1, { out: 1.15, fwd: -0.3 * Math.cos(w2 * u) }), handR: hang(-1, { out: 1.15, fwd: 0.3 * Math.cos(w2 * u) }),
+        footL: foot(1), footR: foot(-1), shrugL: (v.one ? 0 : 24) * w, shrugR: 24 * w,
+        handL: hang(1, { out: 1.15, fwd: -0.3 * Math.cos(w2 * u), db: !v.one }), handR: hang(-1, { out: 1.15, fwd: 0.3 * Math.cos(w2 * u) }),
         props: { lane: [0, 0.02, 0] },
       };
     },
@@ -429,7 +476,12 @@ export const EXLIB = {
   // ヒップリフト: 仰向けで膝を立て、かかとは尻から 30 cm ほど。肩・腰・膝が一直線になるまで尻を持ち上げる。
   bridge: {
     name: 'ヒップリフト', cam: { alt: 14 }, fixed: FEET, tempo: [1.3, 1.2, 1.5, 0.5],
-    pose: (u, k, m) => ({ ...supine(30 * u), ...kneesUp(SUP_Z + 7.9), handL: armsFloor(1), handR: armsFloor(-1) }),
+    pose: (u, k, m, v = {}) => {
+      // one: 左脚を伸ばして浮かせる。上では、右の太ももと同じ傾きにそろう
+      const e = lerp(30, 50, u) * D;
+      const up = c => ({ pos: c.hipL.clone().add(V(0, 9.39 * Math.sin(e), 9.39 * Math.cos(e))), pole: V(0, 1, 0), toe: V(0, Math.cos(e), -Math.sin(e)), up: V(0, Math.sin(e), Math.cos(e)).negate() });
+      return { ...supine(30 * u), ...kneesUp(SUP_Z + 7.9), ...(v.one ? { footL: up } : {}), handL: armsFloor(1), handR: armsFloor(-1) };
+    },
   },
 
   // 膝つき腕立て伏せ: 膝を床につき、手は肩幅よりやや広く。頭から膝までを一直線に。
@@ -460,27 +512,27 @@ export const EXLIB = {
   // フロアトライセプスエクステンション: 仰向けで上腕を床に垂直に立て、肘だけを曲げてダンベルを耳の横へ下ろす。
   skull: {
     name: 'フロアトライセプスエクステンション', cam: { alt: 14 },
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const hand = sg => c => {
         const ud = V(sg * 0.3, 0.954, 0), th = lerp(3, 110, u) * D;
         const fd = N(ud).multiplyScalar(Math.cos(th)).addScaledVector(V(0, 0, -1), Math.sin(th)).add(V(sg * 0.22 * Math.sin(th), 0, 0));
         const td = N(ud).multiplyScalar(-Math.sin(th)).addScaledVector(V(0, 0, -1), Math.cos(th));
         return { ...armFK(c, sg, ud, fd, V(0, 0, 1)), bar: td, db: true };
       };
-      return { ...supine(), ...kneesUp(), handL: hand(1), handR: hand(-1) };
+      return { ...supine(), ...kneesUp(), handL: v.one ? armsFloor(1) : hand(1), handR: hand(-1) };
     },
   },
 
   // フロントレイズ: ダンベルを体の前に持ち、手のひらを下に。肘を軽く曲げた角度のまま、肩の高さまで前に上げる。
   front: {
     name: 'フロントレイズ', fixed: FEET, tempo: [1.3, 0.4, 2.4, 0.5],
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const hand = sg => c => {
         const ph = lerp(25, 90, u) * D, ud = V(sg * 0.04, -Math.cos(ph), Math.sin(ph));
         const fd = N(ud).multiplyScalar(Math.cos(10 * D)).addScaledVector(V(0, Math.sin(ph), Math.cos(ph)), Math.sin(10 * D));
         return { ...armFK(c, sg, ud, fd, V(0, -Math.sin(ph), -Math.cos(ph))), bar: V(-sg, 0, 0), db: true };
       };
-      return { ...feet(1.66), handL: hand(1), handR: hand(-1) };
+      return { ...feet(1.66), handL: v.one ? hangFree(1) : hand(1), handR: hand(-1) };
     },
   },
 
@@ -502,9 +554,13 @@ export const EXLIB = {
   // シーテッドカーフレイズ: 椅子に浅く座り、かかとは膝の真下。ダンベルを膝の少し上に縦に置いて両手で押さえ、かかとを持ち上げる。
   calfseat: {
     name: 'シーテッドカーフレイズ', props: { bench: [0, 2.7, -1.9, 90] }, dbOk: ['太もも'], tempo: [1.0, 1.2, 1.4, 0.5],
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const a = lerp(0, 38, u), pz = m.legL.L1 + m.toeFwd;
-      const f = sg => c => heelUp(m, sg, sg * 0.83, pz, a, { pole: V(0, 1, 0.3) });
+      const f = sg => c => heelUp(m, sg, sg * 0.83, pz, (v.single && sg > 0) ? 0 : a, { pole: V(0, 1, 0.3) });
+      if (v.single) {
+        const on = sg => c => ({ pos: c.kneeR.clone().add(V(0, v.ky != null ? v.ky : 2.4, sg > 0 ? -0.45 : -1.95)), pole: V(...(v.po || [0, -1, 0])), bar: V(-sg, 0, 0), db: true });
+        return { pelvis: [6, 0, 0], chest: [22, -8, 0], head: [-6, 4, 0], pin: pinHip(m.legL.ankleH + m.legL.L2 + 0.05, 0), footL: f(1), footR: f(-1), handL: on(1), handR: on(-1) };
+      }
       return {
         pelvis: [6, 0, 0], chest: [16, 0, 0], head: [-4, 0, 0], pin: pinHip(m.legL.ankleH + m.legL.L2 + 0.05, 0), footL: f(1), footR: f(-1),
         free: c => {
@@ -538,11 +594,13 @@ export const EXLIB = {
   // スライディングレッグカール: 尻を浮かせたまま、かかとをタオルの上で滑らせて膝を伸ばし、引き寄せて戻す。
   slidecurl: {
     name: 'スライディングレッグカール', props: { towel: [0, 0.03, 5] }, cam: { alt: 14 }, tempo: [1.8, 0.4, 1.6, 0.5],
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const z = SUP_Z + lerp(7.9, 13.3, u), t = lerp(0, 50, u) * D, y = m.legL.ankleH + 0.12 * u;
       const foot = sg => c => ({ pos: [sg * 0.83, y, z], pole: Y, toe: V(0, Math.sin(t), Math.cos(t)), up: V(0, Math.cos(t), -Math.sin(t)) });
-      return { ...supine(lerp(30, 15, u)), footL: foot(1), footR: foot(-1), handL: armsFloor(1), handR: armsFloor(-1),
-               props: { towel: [0, 0.03, z - 0.3] } };
+      // one: 左脚は曲げたまま浮かせて止め、右脚だけを滑らせる
+      const held = c => ({ pos: c.hipL.clone().add(V(0, 3.4, 4.6)), pole: V(0, 1, 0.2), toe: V(0, 0.5, 0.87), up: V(0, 0.87, -0.5) });
+      return { ...supine(lerp(30, 15, u)), footL: v.one ? held : foot(1), footR: foot(-1), handL: armsFloor(1), handR: armsFloor(-1),
+               props: { towel: [v.one ? -0.83 : 0, 0.03, z - 0.3] } };
     },
   },
 
@@ -564,13 +622,18 @@ export const EXLIB = {
   // ロシアンツイスト: 床に座って膝を曲げ、上体を少し後ろに倒す。手を体の前で合わせ、体幹をひねって片側の床へ近づける。
   twist: {
     name: 'ロシアンツイスト', alt: true, tempo: [0.9, 0.3, 0.9, 0.1],
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const s = k ? -1 : 1, yaw = s * 42 * u;
       const foot = sg => c => ({ pos: [sg * 0.9, m.legL.ankleH, 6.0], pole: Y, toe: Z });
       const G = c => ({ top: mid(c.shL, c.shR).add(c.c(s * 0.6 * u, -1.3 - 1.3 * u, 3.1 - 0.3 * u)), X: c.c(1, 0, 0), F: c.c(0, -0.25, 0.97), h: 0.14, hand: 'flat',
                         pole: sg => c.c(sg * 0.7, -0.7, -0.2) });
-      return { pelvis: [-28, 0, 0], chest: Qx(-32).multiply(Qy(yaw)), head: [8, -yaw * 0.35, 0], pin: pinHip(1.2, 0),
-               footL: foot(1), footR: foot(-1), handL: c => clasp(1, G(c), c), handR: c => clasp(-1, G(c), c) };
+      const body = { pelvis: [-28, 0, 0], chest: Qx(-32).multiply(Qy(yaw)), head: [8, -yaw * 0.35, 0], pin: pinHip(1.2, 0), footL: foot(1), footR: foot(-1) };
+      // db: ダンベルを縦にして、上のプレートを両手ではさむ。太ももに当たらないよう、手だけのときより少し上で持つ
+      if (v.db) return { ...body, free: c => {
+        const ax = c.c(0, 0.94, 0.34), top = G(c).top.clone().add(c.c(0, v.ty != null ? v.ty : 2.0, v.tz != null ? v.tz : 0.1));
+        return { pos: top.clone().addScaledVector(ax, -1), axis: ax, top, X: c.c(1, 0, 0), F: c.c(0, 0.6, 0.8).normalize(), h: 0.78, pole: sg => c.c(sg * 0.5, -1, 0) };
+      }, ...claspBoth };
+      return { ...body, handL: c => clasp(1, G(c), c), handR: c => clasp(-1, G(c), c) };
     },
   },
 
@@ -593,10 +656,11 @@ export const EXLIB = {
   // リアレイズ: 上体を床と平行近くまで倒し、腕を真下に垂らす。肘の角度を変えずに、肩の高さまで真横へ開く。
   rear: {
     name: 'リアレイズ', fixed: FEET, tempo: [1.3, 0.4, 2.4, 0.5],
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
+      const eb = (v.short ? 62 : 14) * D;
       const hand = sg => c => {
         const ph = lerp(14, 84, u) * D, ud = V(sg * Math.sin(ph), -Math.cos(ph), 0);
-        return { ...armFK(c, sg, ud, ud.clone().multiplyScalar(Math.cos(14 * D)).addScaledVector(Z, Math.sin(14 * D)), V(0, 0, -1)), bar: Z, db: true };
+        return { ...armFK(c, sg, ud, ud.clone().multiplyScalar(Math.cos(eb)).addScaledVector(Z, Math.sin(eb)), V(0, 0, -1)), bar: Z, db: true };
       };
       return { ...bentOver(m, 76), handL: hand(1), handR: hand(-1) };
     },
@@ -605,25 +669,32 @@ export const EXLIB = {
   // ヒップアブダクション: 横向きに寝て、下の脚は膝を軽く曲げる。上の脚は膝を伸ばし、斜め後ろ上へ上げる。
   abduct: {
     name: 'ヒップアブダクション', cam: { alt: 14, yaw0: -78 }, tempo: [1.2, 0.4, 2.0, 0.3],
-    pose: (u, k, m) => ({
-      base: 'sideL', hips: [0, 1.65, 0], chest: [0, 0, 8], head: [0, 0, 14],
-      footR: c => ({ pos: [c.hipR.x + 8.5, 0.7, c.hipR.z + 2.0], pole: Z, toe: V(0.2, 0, 1), up: V(-1, 0, 0.2) }),
-      footL: c => { const ph = lerp(2, 38, u) * D, b = 10 * D, d = V(Math.cos(ph) * Math.cos(b), Math.sin(ph), -Math.sin(b) * Math.cos(ph));
-                    return { pos: c.hipL.clone().addScaledVector(d, 9.39), pole: Z, toe: Z, up: d.clone().negate() }; },
-      handR: c => ({ pos: [c.shR.x - 4.3, 0.85, c.shR.z + 0.8], pole: V(0, 0.4, 1), palm: Y, fingers: V(-1, 0, 0.1), hand: 'relax' }),
-      handL: onHip(1),
-    }),
+    pose: (u, k, m, v = {}) => {
+      const ph = lerp(2, 38, u) * D, b = 10 * D, d = V(Math.cos(ph) * Math.cos(b), Math.sin(ph), -Math.sin(b) * Math.cos(ph));
+      const n = V(-Math.sin(ph), Math.cos(ph), 0);      // 太ももの上側（上げた脚に垂直で、上を向く）
+      return {
+        base: 'sideL', hips: [0, 1.65, 0], chest: [0, 0, 8], head: [0, 0, 14],
+        footR: c => ({ pos: [c.hipR.x + 8.5, 0.7, c.hipR.z + 2.0], pole: Z, toe: V(0.2, 0, 1), up: V(-1, 0, 0.2) }),
+        // bent: 上の脚の膝を 90 度に曲げたまま上げる（すねは後ろへ）
+        footL: c => v.bent ? { pos: c.hipL.clone().addScaledVector(d, m.legL.L1).add(V(0, 0, -m.legL.L2 * 0.995)), pole: d, toe: d, up: Z }
+                           : { pos: c.hipL.clone().addScaledVector(d, 9.39), pole: Z, toe: Z, up: d.clone().negate() },
+        handR: c => ({ pos: [c.shR.x - 4.3, 0.85, c.shR.z + 0.8], pole: V(0, 0.4, 1), palm: Y, fingers: V(-1, 0, 0.1), hand: 'relax' }),
+        // db: 太ももの付け根寄りにダンベルを寝かせ、上の手で押さえる
+        handL: v.db ? c => ({ pos: c.hipL.clone().addScaledVector(d, v.as != null ? v.as : 0).addScaledVector(n, v.an != null ? v.an : 1.72).add(V(0, 0, v.az != null ? v.az : -0.75)), pole: V(...(v.po || [1, 0.5, -0.5])), g: V(...(v.g || [0, -1, 0])), bar: d.clone().negate(), db: true }) : onHip(1),
+      };
+    },
   },
 
   // ハンマーカール: 親指が前を向くように縦に握り、手首の向きを変えずに肘を曲げて巻き上げる。
   hammer: {
     name: 'ハンマーカール', fixed: FEET,
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const hand = sg => c => {
         const ud = N(V(sg * 0.24, -0.97, 0)), th = lerp(4, 125, u) * D;
         const fd = ud.clone().multiplyScalar(Math.cos(th)).addScaledVector(Z, Math.sin(th));
         return { ...armFK(c, sg, ud, fd, V(0, 0, -1)), bar: ud.clone().multiplyScalar(-Math.sin(th)).addScaledVector(Z, Math.cos(th)), db: true };
       };
+      if (v.one) return { ...feet(1.66), handR: hand(-1), handL: c => onElbow(1, hand(-1)(c).E, v.off || [1.05, -0.25, 0.75], v)(c) };
       return { ...feet(1.66), handL: hand(1), handR: hand(-1) };
     },
   },
@@ -644,10 +715,16 @@ export const EXLIB = {
   // バックエクステンション: うつ伏せで脚は腰幅。手は耳の横、肘は横に開く。骨盤とつま先を床につけたまま、みぞおちが離れるところまで。
   backext: {
     name: 'バックエクステンション', cam: { alt: 14 }, tempo: [1.2, 0.5, 2.0, 0.4],
-    pose: (u, k, m) => {
+    pose: (u, k, m, v = {}) => {
       const foot = sg => c => { const H = sg > 0 ? c.hipL : c.hipR, y = 1.5;
         return { pos: [H.x, y, H.z - Math.sqrt(9.39 ** 2 - (y - H.y) ** 2)], toe: V(0, -0.57, -0.82), up: V(0, -0.82, 0.57), pole: V(0, -1, 0) }; };
-      return { base: 'prone', hips: [0, 0.8, 0], chest: [-40 * u, 0, 0], head: [8 * u, 0, 0], footL: foot(1), footR: foot(-1), handL: atEar(1), handR: atEar(-1) };
+      // arms: 腕は体の横。下では床に置き、起こすときは上体と一緒に床から浮かせる
+      const side = sg => c => {
+        const S = sg > 0 ? c.shL : c.shR, len = (m.armL.L1 + m.armL.L2) * 0.97, y = 0.5 + 1.3 * u, dy = S.y - y;
+        return { pos: [S.x + sg * 1.25, y, S.z - Math.sqrt(Math.max(1, len * len - 1.56 - dy * dy))], pole: V(sg * 0.7, 0.7, 0), palm: Y, fingers: V(0, 0, -1), hand: 'relax' };
+      };
+      return { base: 'prone', hips: [0, 0.8, 0], chest: [-40 * u, 0, 0], head: [8 * u, 0, 0], footL: foot(1), footR: foot(-1),
+               handL: v.arms ? side(1) : atEar(1), handR: v.arms ? side(-1) : atEar(-1) };
     },
   },
 
@@ -682,5 +759,63 @@ for (const id of ['floorpress', 'deadbug', 'crunch', 'bridge', 'fly', 'skull', '
 EXLIB.hipthrust.bedY = BENCH_H;      // 頭は台の上
 // 腕を床に置く種目: ふくらんだ袖は床でつぶれるので、ひじのまわりだけ深めに許す
 for (const id of ['bridge', 'slidecurl']) EXLIB[id].soft = { match: /ひじ|腕捩|手捩/, sink: 0.7 };
+
+// ---------------------------------------------------------------- 組み方ごとの動き
+// トレーニング記録アプリの動きの id（src/motions_f.js）と同じ名前。base = もとの種目、v = pose に渡す違い、props = 道具の差し替え。
+// ここに無い id（goblet_hold・sumo_shallow など）は、止める時間や深さだけが違う。姿勢はもとの種目のままで、進み具合 u の動かし方だけが変わる。
+export const VAR = {
+  goblet_box: { base: 'goblet', props: { bench: [0, 2.7, -6.1, 90] } },
+  slidecurl_one: { base: 'slidecurl', v: { one: true } },
+  twist_db: { base: 'twist', v: { db: true } },
+  ohp_one: { base: 'ohp', v: { one: true } },
+  front_one: { base: 'front', v: { one: true } },
+  farmer_one: { base: 'farmer', v: { one: true } },
+  curl_one: { base: 'curl', v: { one: true } },
+  hammer_one: { base: 'hammer', v: { one: true } },
+  crunch_db: { base: 'crunch', v: { db: true }, dbOk: ['胴'] },
+  crunch_arms: { base: 'crunch', v: { arms: true }, soft: { match: /ひじ|腕捩|手捩/, sink: 0.7 } },
+  floorpress_one: { base: 'floorpress', v: { one: true }, soft: { match: /ひじ|腕捩|手捩/, sink: 0.7 } },
+  triext_one: { base: 'triext', v: { one: true } },
+  skull_one: { base: 'skull', v: { one: true }, soft: { match: /ひじ|腕捩|手捩/, sink: 0.7 } },
+  deadbug_half: { base: 'deadbug', v: { half: true } },
+  deadbug_db: { base: 'deadbug', v: { db: true } },
+  calf_floor: { base: 'calf', v: { floor: true }, props: {}, touch: [['toeL', 0, 0.3], ['toeR', 0, 0.3]] },
+  bridge_one: { base: 'bridge', v: { one: true }, fixed: ['右足首'] },
+  plank_leg: { base: 'plank', v: { leg: true } },
+  sideplank_leg: { base: 'sideplank', v: { leg: true } },
+  lateral_short: { base: 'lateral', v: { short: true } },
+  rear_short: { base: 'rear', v: { short: true } },
+  calfseat_single: { base: 'calfseat', v: { single: true } },
+  abduct_db: { base: 'abduct', v: { db: true } },
+  abduct_bent: { base: 'abduct', v: { bent: true } },
+  backext_arms: { base: 'backext', v: { arms: true } },
+  pushup_deep: { base: 'pushup', v: { deep: true } },
+};
+// id → 種目（もとの種目に、組み方の違いを重ねたもの）。無ければ null
+const made = {};
+export function resolve(id) {
+  if (EXLIB[id]) return EXLIB[id];
+  if (made[id]) return made[id];
+  const d = VAR[id] || { base: String(id).replace(/_[a-z]+$/, '') }, b = EXLIB[d.base];
+  if (!b || d.base === id) return null;
+  const { base, v, ...over } = d;
+  return (made[id] = { ...b, ...over, id, base, v: v || {}, _box: null, _fit: null });
+}
+// 姿勢を当てる。opt = { w: 悪い例の度合い（0〜1）, dbn: 描くダンベルの数（1 なら左手のぶんを描かない） }
+export function poseEx(rig, props, ex, u, k, opt = {}) {
+  const v = { ...(ex.v || {}), ...(opt.v || {}), w: opt.w || 0 };
+  if (ex.sag && v.w > 0) {      // 腰が落ちる: つま先は、まっすぐなときの場所に残す
+    rig.pose(ex.pose(u, k, rig.m, { ...v, w: 0 }));
+    v.feetAt = { L: rig.wp('左足首'), R: rig.wp('右足首') };
+  }
+  const spec = ex.pose(u, k, rig.m, v);
+  if (opt.dbn === 1 && spec.handL && spec.handR) {
+    const hl = spec.handL;
+    spec.handL = c => { const h = hl(c); return h.db ? { ...h, db: false } : h; };
+  }
+  const d = rig.pose(spec);
+  props.update(spec, rig);
+  return d;
+}
 
 export { lerp, ss, D, feet };

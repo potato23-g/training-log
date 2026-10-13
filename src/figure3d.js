@@ -367,7 +367,7 @@
       ground.material.opacity = theme.shadow;
     }
 
-    /* 「よくある崩れ」の場面は体の色を警告色に寄せる */
+    /* 悪い例を見せる場面は体の色を警告色に寄せる */
     function phaseWrong(motion, t) {
       let w = false;
       (motion.phases || []).forEach((p) => { if (t >= p.t) w = !!p.wrong; });

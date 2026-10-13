@@ -33,7 +33,11 @@ def embed_common(src, target):
     """保存層の差し替えと <!--INLINE:...--> の展開、版の日時の埋め込み。全ターゲット共通。"""
     # 本体のスクリプトは役割ごとに src/app/*.js へ分けてある。書いてある位置へそのまま埋め戻す（版の日時の置換より先に）
     src = re.sub(r'/\*INLINE-(?:JS|CSS)-FILE:(.+?)\*/', lambda m: file_body(m.group(1)), src)
-    src = src.replace('"__MMD__"', '"./mmd/"' if target == 'site' and os.path.isdir(os.path.join(ROOT, 'docs', 'mmd', 'model')) else '""')
+    has_model = target == 'site' and os.path.isdir(os.path.join(ROOT, 'docs', 'mmd', 'model'))
+    stills = os.path.join(ROOT, 'docs', 'mmd', 'stills', 'index.json')
+    src = src.replace('"__MMD__"', '"./mmd/"' if has_model else '""')
+    # キャラクターの止まった姿（tools/make_stills.py が描いた画像）の一覧。無ければ、図はすべて線の図になる
+    src = src.replace('"__MMD_STILLS__"', io.open(stills, encoding='utf-8').read().strip() if has_model and os.path.isfile(stills) else 'null')
     src = src.replace('"__BUILD__"', '"%s"' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
     store = 'src/store-local.js' if target in ('local', 'site') else 'src/store-artifact.js'
     src = src.replace('/*INLINE-JS:STORE*/', read(store))

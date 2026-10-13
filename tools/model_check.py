@@ -1,4 +1,4 @@
-"""モデルの動き（docs/mmd/）の通し検査。docs/ を http で配り、ヘッドレスのブラウザで実際に再生する。
+"""キャラクターの図（docs/mmd/）の通し検査。docs/ を http で配り、ヘッドレスのブラウザで実際に再生する。
 
   python tools/build.py site
   python tools/model_check.py

@@ -1,18 +1,24 @@
-// 「動きを再生」で出すモデル。骨の仕組みは exrig.js、種目の中身は exlib.js、髪と服は exphys.js・exskirt.js。
-// アプリ（src/app/viewbase.js）が、再生を押したときに初めて読み込む。
-//   const p = await create({ bg, dark });  p.set(id);  p.frame(dt, az) → 1 回の動きの進み具合（0〜1）
+// キャラクターの図。骨の仕組みは exrig.js、種目と組み方の姿勢は exlib.js、髪と服は exphys.js・exskirt.js。
+// いつ・どこまで動くか（進み具合 u、左右の番 k、悪い例の度合い w）はアプリが線の図の時間割から決めて渡す。ここでは時間を持たない。
+//   const p = await create();  p.set(id, { dbn }, a);  p.frame(dt, az, a);  p.still(id, { dbn }, a)
 import * as THREE from './vendor/three/three.module.js';
 import { MMDLoader } from './vendor/jsm/loaders/MMDLoader.js';
 import { MMDPhysics } from './vendor/jsm/animation/MMDPhysics.js';
 import { OutlineEffect } from './vendor/jsm/effects/OutlineEffect.js';
 import { ExRig } from './exrig.js';
-import { EXLIB, phaseAt, makeProps } from './exlib.js';
+import { EXLIB, resolve, poseEx, makeProps } from './exlib.js';
 import { tunePhysics, softenJoints, Calm, TUNE } from './exphys.js';
 import { Skirt } from './exskirt.js';
 
 const HERE = new URL('./', import.meta.url);
 const YAW = 35, FOV = 35, HAIR_FLOOR = -0.45;
-const FRAME = ['頭先', '頭', '首', '下半身', '左手首', '右手首', '左中指１', '右中指１', '左ひじ', '右ひじ', '左ひざ', '右ひざ', '左足首', '右足首', '左つま先', '右つま先'];
+// 枠取りに使う点（骨の名前 → まわりに取る余白）。頭は帽子と髪のぶん広く取る
+const FRAME = { '頭先': 1.5, '頭': 2.1, '首': 1.6, '上半身2': 1.9, '下半身': 1.9, '左手首': 0.9, '右手首': 0.9, '左中指１': 0.8, '右中指１': 0.8, '左ひじ': 1.2, '右ひじ': 1.2,
+                '左ひざ': 0.9, '右ひざ': 0.9, '左足首': 1.0, '右足首': 1.0, '左つま先': 0.9, '右つま先': 0.9 };
+// 枠の形。寝る種目は横長、立つ種目は縦長
+// 床に寝る・伏せる種目は、頭や足の側からだと体の線が見えないので、真横に近い向きから見る（向きに足す角度）
+const SIDE = { pushup: 35, pushupknee: 35, plank: 35, backext: 35, bridge: 35, slidecurl: 35, crunch: 35, floorpress: 35, skull: 35, deadbug: 35 };
+const SHAPES = { t: [720, 960], s: [840, 840], w: [960, 660], x: [960, 500] };
 
 let ammoReady = null;
 function loadAmmo() {
@@ -64,30 +70,25 @@ function addFloor(ph) {
   };
 }
 
-export const has = id => !!EXLIB[id];
+export const has = id => !!resolve(id);
 
-export async function create(opt = {}) {
+export async function create() {
   const [, mesh] = await Promise.all([loadAmmo(), loadModel()]);
-  let W = 600, H = 800;
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(1); renderer.setSize(W, H, false);
+  let W = SHAPES.t[0], H = SHAPES.t[1];
+  // 背景は透かす（明るい表示でも暗い表示でも、置いた場所の色がそのまま出る）
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(1); renderer.setSize(W, H, false); renderer.setClearColor(0x000000, 0);
   const canvas = renderer.domElement;
   const effect = new OutlineEffect(renderer);
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color();
-  const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 200);
+  const camera = new THREE.PerspectiveCamera(FOV, W / H, 0.1, 400);
   scene.add(new THREE.AmbientLight(0xffffff, 1.4));
   const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(3, 10, 8); scene.add(key);
-  const grid = new THREE.GridHelper(60, 30); grid.material.vertexColors = false; scene.add(grid);
-  // 床は向こうが透けない板にする（床より下へ垂れた布を見せない）
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial());
-  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.03; ground.material.userData.outlineParameters = { visible: false }; scene.add(ground);
-  const setTheme = t => {
-    const bg = new THREE.Color(t.bg || (t.dark ? '#1b1d22' : '#e6e6df'));
-    scene.background.copy(bg); ground.material.color.copy(bg);
-    grid.material.color.copy(bg).lerp(new THREE.Color(t.dark ? 0xffffff : 0x000000), t.dark ? 0.14 : 0.16);
-  };
-  setTheme(opt);
+  const grid = new THREE.GridHelper(60, 30, 0x7d8590, 0x7d8590);
+  grid.material.transparent = true; grid.material.opacity = 0.3; grid.material.depthWrite = false; scene.add(grid);
+  // 床は、色を塗らずに奥行きだけを書く板にする（床より下へ垂れた布を隠す）
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({ colorWrite: false }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.03; ground.renderOrder = -1; ground.material.userData.outlineParameters = { visible: false }; scene.add(ground);
 
   scene.add(mesh);
   const fm = mesh.material[0];
@@ -95,8 +96,8 @@ export async function create(opt = {}) {
   const rig = new ExRig(mesh);
   const props = makeProps(scene, rig, grid);
   const blinkIdx = 'まばたき' in mesh.morphTargetDictionary ? mesh.morphTargetDictionary['まばたき'] : -1;
-  let cur = EXLIB[Object.keys(EXLIB)[0]], T = 0;
-  const applyPose = (u, k) => { const spec = cur.pose(u, k, rig.m); rig.pose(spec); props.update(spec, rig); };
+  let cur = EXLIB[Object.keys(EXLIB)[0]], opt = {}, T = 0, side = 0;
+  const applyPose = a => poseEx(rig, props, cur, a.u || 0, a.k || 0, { w: a.w || 0, dbn: opt.dbn });
   props.show(cur.props || {});
 
   // 物理は初めの姿勢のまま作る（剛体の置き場所が、骨が回っていない前提で決まるため）
@@ -106,71 +107,100 @@ export async function create(opt = {}) {
   const calm = new Calm(mesh);
   const floor = addFloor(physics);
   physics.warmup(60);
-  applyPose(0, 0);
+  applyPose({});
   const skirtM = new Skirt(rig, mesh.geometry.userData.MMD, props, { passive: !TUNE.ownSkirt });
   const skirt = TUNE.ownSkirt ? skirtM : null;
   if (skirt) rig.coatGap = (p, r) => skirtM.gap(p, r);
 
-  // 体と道具が動く範囲を測る。指で回しても全体が入るように、横は回したときのいちばん広い幅で見る
-  function measure() {
-    const box = new THREE.Box3();
-    for (const k of (cur.alt ? [0, 1] : [0])) for (const u of [0, 0.5, 1]) {
-      applyPose(u, k);
-      for (const n of FRAME) if (rig.b[n]) box.expandByPoint(rig.wp(n));
-      for (const s of ['L', 'R', 'F']) { const d = rig.dbWorld(s); if (d.vis) { box.expandByPoint(d.c.clone().addScaledVector(d.ax, 1.2)); box.expandByPoint(d.c.clone().addScaledVector(d.ax, -1.2)); } }
+  // ---- 枠取り。1 回の動きのあいだに体と道具が通る点を覚えておき、今の向きから見てちょうど収まる所にカメラを置く
+  function collect() {
+    const pts = [], add = (p, r) => pts.push([p.x, p.y, p.z, r]);
+    const us = cur.cycle ? [0, 0.25, 0.5, 0.75] : [0, 0.5, 1];
+    for (const w of ((cur.sag || cur.cycle) ? [0, 1] : [0])) for (const k of (cur.alt ? [0, 1] : [0])) for (const u of us) {
+      applyPose({ u, k, w });
+      for (const n in FRAME) if (rig.b[n]) add(rig.wp(n), FRAME[n]);
+      for (const s of ['L', 'R', 'F']) { const d = rig.dbWorld(s); if (d.vis) { add(d.c.clone().addScaledVector(d.ax, 1.1), 0.75); add(d.c.clone().addScaledVector(d.ax, -1.1), 0.75); } }
+      const h = rig.wp('下半身'); add(new THREE.Vector3(h.x, 0.4, h.z), 0.4);      // 床（台に乗る種目でも、床までを枠に入れる）
     }
-    box.expandByScalar(1.3);
-    box.min.y = Math.min(box.min.y, 0);
-    const s = box.getSize(new THREE.Vector3());
-    return { c: box.getCenter(new THREE.Vector3()), hw: Math.hypot(s.x, s.z) / 2, hh: s.y / 2 };
+    return pts;
+  }
+  const cR = new THREE.Vector3(), cU = new THREE.Vector3(), cD = new THREE.Vector3(), cT = new THREE.Vector3();
+  function view(az) {
+    const c = Object.assign({ alt: 8, yaw0: 0 }, cur.cam);
+    const yaw = (c.yaw0 + YAW + side + az) * Math.PI / 180, alt = c.alt * Math.PI / 180;
+    cD.set(Math.sin(yaw) * Math.cos(alt), Math.sin(alt), Math.cos(yaw) * Math.cos(alt));
+    cR.set(0, 1, 0).cross(cD).normalize(); cU.copy(cD).cross(cR);
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (const p of cur._pts) {
+      const x = p[0] * cR.x + p[1] * cR.y + p[2] * cR.z, y = p[0] * cU.x + p[1] * cU.y + p[2] * cU.z, z = p[0] * cD.x + p[1] * cD.y + p[2] * cD.z;
+      x0 = Math.min(x0, x - p[3]); x1 = Math.max(x1, x + p[3]); y0 = Math.min(y0, y - p[3]); y1 = Math.max(y1, y + p[3]); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+    }
+    return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, cz: (z0 + z1) / 2, hw: (x1 - x0) / 2, hh: (y1 - y0) / 2 };
   }
   function setCam(az) {
-    const c = Object.assign({ alt: 8, yaw0: 0 }, cur.cam), f = cur._fit;
-    const yaw = (c.yaw0 + YAW + az) * Math.PI / 180, alt = c.alt * Math.PI / 180;
-    const tf = Math.tan(FOV / 2 * Math.PI / 180);
-    const hh = f.hh * Math.cos(alt) + f.hw * Math.sin(alt);
-    const dist = Math.max(hh / tf, f.hw / (tf * W / H)) * 1.02 + f.hw * 0.5;
-    camera.position.set(f.c.x + Math.sin(yaw) * Math.cos(alt) * dist, f.c.y + Math.sin(alt) * dist, f.c.z + Math.cos(yaw) * Math.cos(alt) * dist);
-    camera.lookAt(f.c);
+    const b = view(az), tf = Math.tan(FOV / 2 * Math.PI / 180), asp = W / H;
+    // 手前にある点ほど大きく写るので、点ごとに要る距離を出して、いちばん遠いものに合わせる
+    let dist = 0;
+    for (const p of cur._pts) {
+      const x = p[0] * cR.x + p[1] * cR.y + p[2] * cR.z - b.cx, y = p[0] * cU.x + p[1] * cU.y + p[2] * cU.z - b.cy, z = p[0] * cD.x + p[1] * cD.y + p[2] * cD.z - b.cz;
+      dist = Math.max(dist, (Math.abs(x) + p[3]) / (tf * asp) + z, (Math.abs(y) + p[3]) / tf + z);
+    }
+    dist *= 1.03;
+    cT.set(0, 0, 0).addScaledVector(cR, b.cx).addScaledVector(cU, b.cy).addScaledVector(cD, b.cz);
+    camera.position.copy(cT).addScaledVector(cD, dist);
+    camera.up.set(0, 1, 0); camera.lookAt(cT);
   }
-  function set(id) {
-    if (!EXLIB[id]) return false;
-    cur = EXLIB[id];
+  const settle = (a, n) => { physics.reset(); for (let i = 0; i < n; i++) { applyPose(a); physics.update(1 / 60); } if (skirt) skirt.reseed(); calm.reset(); };
+  let shown = '';
+  function set(id, o, a) {
+    const ex = resolve(id);
+    if (!ex) return false;
+    o = o || {}; a = a || {};
+    const key = id + '|' + (o.dbn || '');
+    if (key === shown) return true;
+    shown = key; cur = ex; opt = { dbn: o.dbn || 0 }; side = SIDE[EXLIB[id] ? id : ex.base] || 0;
     props.show(cur.props || {});
-    T = 0;
     floor(cur.floor !== false, cur.bedY || 0);
-    if (!cur._fit) cur._fit = measure();
-    // 寝る種目は横長、立つ種目は縦長の枠にする
-    const wide = cur._fit.hw / cur._fit.hh > 1.15, w = wide ? 800 : 600, h = wide ? 600 : 800;
-    if (w !== W) { W = w; H = h; renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
     mesh.skeleton.pose();      // 前の種目の布の形を持ちこまない
-    applyPose(0, 0);
-    physics.reset(); for (let i = 0; i < 30; i++) physics.update(1 / 60);
-    if (skirt) skirt.reseed();
-    calm.reset();
+    if (!cur._pts) {
+      cur._pts = collect();
+      const b = view(0), r = b.hw / b.hh;
+      cur._shape = r > 1.9 ? 'x' : r > 1.2 ? 'w' : r > 0.8 ? 's' : 't';
+      mesh.skeleton.pose();
+    }
+    const sz = SHAPES[cur._shape];
+    if (sz[0] !== W || sz[1] !== H) { W = sz[0]; H = sz[1]; renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); }
+    applyPose(a);
+    settle(a, 30);
     return true;
   }
-  function step(dt) {
-    // 遅い端末でも動きの速さは変えない（1 秒に 15 コマまで）。布は 1 回に進める時間を抑える
+  // 1 コマ進めて描く。dt は前のコマからの秒（髪と服を進めるのに使う）
+  function frame(dt, az, a) {
+    // 遅い端末でも動きの速さは変えない。髪と服は、1 回に進める時間を抑える
     dt = Math.min(1 / 15, Math.max(0, dt));
     const ds = Math.min(dt, 0.05);
     T += dt;
-    const ph = phaseAt(cur, T);
-    applyPose(ph.u, ph.k);
+    applyPose(a || {});
     physics.update(dt);
     if (skirt) skirt.update(ds);
     calm.update(ds);
     // まばたきだけ残す（目の骨は動かさない）
     if (blinkIdx >= 0) { const p = (T % 4.3) / 0.16; mesh.morphTargetInfluences[blinkIdx] = p < 1 ? Math.sin(p * Math.PI) : 0; }
-    if (cur.cycle) return (T / cur.cycle) % 1;
-    const tp = cur.tempo || [1.6, 0.4, 1.3, 0.5], per = tp[0] + tp[1] + tp[2] + tp[3];
-    return (T % per) / per;
-  }
-  function frame(dt, az) {
-    const u = step(dt);
     setCam(az || 0);
     effect.render(scene, camera);
-    return u;
   }
-  return { canvas, has, set, step, frame, setTheme, rig, get skirt() { return skirtM; }, dispose() { try { renderer.dispose(); } catch (e) {} } };
+  // 止まった姿を描く（髪と服が落ち着くまで待ってから）。描いた canvas を返す
+  function still(id, o, a) {
+    shown = '';
+    if (!set(id, o, a)) return null;
+    shown = '';
+    settle(a || {}, 80);
+    if (blinkIdx >= 0) mesh.morphTargetInfluences[blinkIdx] = 0;
+    setCam(0);
+    effect.render(scene, camera);
+    return canvas;
+  }
+  return { canvas, has, set, frame, still, shape: () => cur._shape, size: () => [W, H], rig, get skirt() { return skirtM; },
+           dispose() { try { renderer.dispose(); } catch (e) {} } };
 }
+export { SHAPES };

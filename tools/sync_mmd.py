@@ -6,6 +6,7 @@
 - import の 'three'・'three/addons/' は相対パスに書き換える（importmap を使わずに済ませる）
 - 画像は PMX が読むものだけを、一辺 1024 に縮めて写す（もとは 4096。スマホの描画メモリに収まらない）
 docs/mmd/player.js は src/mmd/player.js から build.py（site）が写す。
+写したあとは、止まった姿の画像を描き直す: build.py site → make_stills.py → build.py site
 """
 import io
 import os
@@ -50,10 +51,9 @@ def put(path):
 
 
 if os.path.isdir(DST):
-    keep = os.path.join(DST, 'player.js')
     for name in os.listdir(DST):
         p = os.path.join(DST, name)
-        if p == keep:
+        if name in ('player.js', 'stills'):      # stills は tools/make_stills.py が描き直す
             continue
         shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
 
