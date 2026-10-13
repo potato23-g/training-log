@@ -191,9 +191,13 @@ function themeCard(){
   const now = themeNow();
   const opts = [["", "端末に合わせる"], ["light", "明るい"], ["dark", "暗い"]]
     .map(([v, t]) => `<option value="${v}"${v === now ? " selected" : ""}>${t}</option>`).join("");
+  const kind = figKind();
+  const figs = [["model", "キャラクター"], ["line", "線の図"]]
+    .map(([v, t]) => `<option value="${v}"${v === kind ? " selected" : ""}>${t}</option>`).join("");
   return `<h3 class="sec">画面の色</h3>
   <div class="card">
     <div class="fld"><label for="themeSel">画面の色</label><select id="themeSel">${opts}</select></div>
+    ${MMD_BASE ? `<div class="fld"><label for="figSel">動きの再生</label><select id="figSel">${figs}</select></div>` : ""}
   </div>`;
 }
 function dayStartCard(){
@@ -342,5 +346,7 @@ function wireSettings(v){
   };
   const th = v.querySelector("#themeSel");
   if(th) th.onchange = () => setTheme(th.value);
+  const fg = v.querySelector("#figSel");
+  if(fg) fg.onchange = () => setFigKind(fg.value);
 }
 WIRES.push(wireSettings);

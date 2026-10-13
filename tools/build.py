@@ -33,6 +33,7 @@ def embed_common(src, target):
     """保存層の差し替えと <!--INLINE:...--> の展開、版の日時の埋め込み。全ターゲット共通。"""
     # 本体のスクリプトは役割ごとに src/app/*.js へ分けてある。書いてある位置へそのまま埋め戻す（版の日時の置換より先に）
     src = re.sub(r'/\*INLINE-(?:JS|CSS)-FILE:(.+?)\*/', lambda m: file_body(m.group(1)), src)
+    src = src.replace('"__MMD__"', '"./mmd/"' if target == 'site' and os.path.isdir(os.path.join(ROOT, 'docs', 'mmd', 'model')) else '""')
     src = src.replace('"__BUILD__"', '"%s"' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
     store = 'src/store-local.js' if target in ('local', 'site') else 'src/store-artifact.js'
     src = src.replace('/*INLINE-JS:STORE*/', read(store))
@@ -119,7 +120,20 @@ elif TARGET == 'site':
     io.open(index_path, 'w', encoding='utf-8', newline='\n').write(src)
 
     version = hashlib.sha1(src.encode('utf-8')).hexdigest()[:10]
-    sw = read('src/service-worker.js').replace('__CACHE_VERSION__', version)
+    # モデルの動き（docs/mmd/。モデルと three.js は tools/sync_mmd.py が写したもの）。
+    # 保存（キャッシュ）はアプリ本体と分け、中身が変わったときだけ入れ替える
+    mmd_dir = os.path.join(out_dir, 'mmd')
+    mmd_version = 'none'
+    if os.path.isdir(os.path.join(mmd_dir, 'model')):
+        shutil.copyfile(os.path.join(ROOT, 'src', 'mmd', 'player.js'), os.path.join(mmd_dir, 'player.js'))
+        h = hashlib.sha1()
+        for base, dirs, files in os.walk(mmd_dir):
+            dirs.sort()
+            for f in sorted(files):
+                h.update(os.path.relpath(os.path.join(base, f), mmd_dir).replace(os.sep, '/').encode('utf-8'))
+                h.update(open(os.path.join(base, f), 'rb').read())
+        mmd_version = h.hexdigest()[:10]
+    sw = read('src/service-worker.js').replace('__CACHE_VERSION__', version).replace('__MMD_VERSION__', mmd_version)
     io.open(os.path.join(out_dir, 'service-worker.js'), 'w', encoding='utf-8', newline='\n').write(sw)
 
     shutil.copyfile(os.path.join(ROOT, 'src', 'manifest.json'), os.path.join(out_dir, 'manifest.json'))

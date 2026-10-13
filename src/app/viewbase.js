@@ -215,6 +215,80 @@ function bindFigDrag(c){
   c.addEventListener("pointerup", end);
   c.addEventListener("pointercancel", end);
 }
+/* ---------- モデルの動き ----------
+   公開版（GitHub Pages）だけ。モデルと動きは docs/mmd/ に別ファイルで置いてあり、「動きを再生」を押したときに初めて読む。
+   出せるのは基本のやり方の40種目。組み方ごとの動き・ダンベルを減らして描く図・読み込めなかったときは、線の図で再生する */
+const MMD_BASE = "__MMD__";       /* build.py が site のときだけ "./mmd/" を入れる。ほかの版では空 */
+let MMD = null, mmdLoading = null, mmdFailAt = 0, mmdShown = null;
+function figKind(){
+  let k = null;
+  try{ k = localStorage.getItem("trainlog.fig"); }catch(e){}
+  return k === "line" ? "line" : "model";
+}
+function setFigKind(k){
+  try{ k === "line" ? localStorage.setItem("trainlog.fig", "line") : localStorage.removeItem("trainlog.fig"); }catch(e){}
+  stopAnim(); render();
+}
+function mmdTheme(){
+  let bg = "";
+  try{ bg = getComputedStyle(document.documentElement).getPropertyValue("--panel-2").trim(); }catch(e){}
+  return {dark: figDark(), bg: /^#[0-9a-f]{6}$/i.test(bg) ? bg : ""};
+}
+function mmdCan(id, dbn){
+  return !!MMD_BASE && figKind() === "model" && !dbn && !!EXMAP[id] && (!mmdFailAt || Date.now() - mmdFailAt > 60000);
+}
+function mmdDrop(){
+  stopAnim();
+  if(MMD){ try{ MMD.dispose(); }catch(e){} }
+  MMD = null; mmdShown = null;
+}
+function mmdLoad(){
+  if(MMD) return Promise.resolve(MMD);
+  if(!mmdLoading){
+    mmdLoading = import(new URL(MMD_BASE + "player.js", location.href).href)
+      .then(m => m.create(mmdTheme()))
+      .then(p => {
+        p.canvas.className = "figcanvas";
+        bindFigDrag(p.canvas);
+        /* 描画の土台が失われたら手放し、次に再生するときに作り直す */
+        p.canvas.addEventListener("webglcontextlost", (e)=>{ e.preventDefault(); if(MMD === p) mmdDrop(); }, false);
+        mmdLoading = null;
+        return (MMD = p);
+      }, e => { mmdLoading = null; throw e; });
+  }
+  return mmdLoading;
+}
+function playModel(id, wrap){
+  const slot = wrap.querySelector(".figslot");
+  const phase = slot.querySelector(".figphase");
+  const bar = slot.querySelector(".figbar span");
+  playSlot = slot;
+  playBtn = wrap.querySelector('[data-act="play"]');
+  if(playBtn) playBtn.textContent = "停止";
+  playingId = id;
+  if(!MMD && phase) phase.textContent = "読み込み中…";
+  mmdLoad().then(p => {
+    if(playingId !== id || playSlot !== slot) return;
+    if(phase) phase.textContent = "";
+    if(mmdShown !== id){ p.set(id); mmdShown = id; }     /* 描き直しで再生し直すときは、動きを頭に戻さない */
+    const img = slot.querySelector(".figstill");
+    if(img) img.style.display = "none";
+    slot.insertBefore(p.canvas, slot.firstChild);
+    if(bar) bar.parentNode.style.display = "block";
+    let last = performance.now();
+    const tick = (now)=>{
+      animRAF = requestAnimationFrame(tick);
+      const u = p.frame((now - last) / 1000, -(figAz[id] || 0));
+      last = now;
+      if(bar) bar.style.width = (u * 100).toFixed(1) + "%";
+    };
+    animRAF = requestAnimationFrame(tick);
+  }).catch(() => {
+    /* 読めなかった: しばらくは線の図で再生する */
+    mmdFailAt = Date.now();
+    if(playingId === id && playSlot === slot){ stopAnim(); togglePlay(id); }
+  });
+}
 function motionOf(id){
   if(typeof MOTION === "undefined") return null;
   return MOTION.motions[id] || MOTION.motions[baseOf(id)] || null;
@@ -299,6 +373,7 @@ function stopAnim(){
   animRAF = null;
   if(playSlot){
     if(FIG && FIG.canvas && FIG.canvas.parentNode === playSlot) playSlot.removeChild(FIG.canvas);
+    if(MMD && MMD.canvas.parentNode === playSlot) playSlot.removeChild(MMD.canvas);
     const img = playSlot.querySelector(".figstill");
     if(img) img.style.display = "";
     const ph = playSlot.querySelector(".figphase");
@@ -311,10 +386,12 @@ function stopAnim(){
 }
 function togglePlay(id){
   const wrap = document.querySelector('[data-dia="' + id + '"]');
-  const f = figInit(), m = motionOf(id);
-  if(!wrap || !f || !m) return;
+  if(!wrap) return;
   if(playingId === id){ stopAnim(); return; }
   stopAnim();
+  if(mmdCan(id, +(wrap.dataset.db || 0))){ playModel(id, wrap); return; }
+  const f = figInit(), m = motionOf(id);
+  if(!f || !m) return;
   figSize(f, m);
   const slot = wrap.querySelector(".figslot");
   const img = slot.querySelector(".figstill");
@@ -345,6 +422,7 @@ function togglePlay(id){
 function figThemeChanged(){
   Object.keys(figShots).forEach(k => delete figShots[k]);
   if(FIG) FIG.setTheme(figDark() ? "dark" : "light");
+  if(MMD) MMD.setTheme(mmdTheme());
 }
 
 /* ---------- 押している最中は描き直さない ----------

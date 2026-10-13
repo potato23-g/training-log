@@ -1,6 +1,9 @@
 /* トレーニング記録 — オフラインキャッシュ
-   ビルド時に 82a217fd51 を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
-const CACHE_NAME = 'trainlog-82a217fd51';
+   ビルド時に a9fcf8acdb を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
+const CACHE_NAME = 'trainlog-a9fcf8acdb';
+/* モデルの動き（./mmd/ 以下。14MBほど）は別の保存に分ける。使ったときに初めて保存し、
+   アプリ本体を更新しても消さない。中身が変わったとき（7178c68d2c が変わる）だけ入れ替える */
+const MODEL_CACHE = 'trainmodel-7178c68d2c';
 const PRECACHE = [
   './',
   './index.html',
@@ -27,7 +30,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((names) => Promise.all(names.filter((n) => n !== CACHE_NAME && n.indexOf('trainlog-') === 0).map((n) => caches.delete(n))))
+      .then((names) => Promise.all(names.filter((n) => (n !== CACHE_NAME && n.indexOf('trainlog-') === 0) || (n !== MODEL_CACHE && n.indexOf('trainmodel-') === 0)).map((n) => caches.delete(n))))
       .then(() => self.clients.claim())
   );
 });
@@ -47,6 +50,17 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== location.origin) return;
   if (url.searchParams.has('__check')) return;
+
+  /* モデルの動き: 保存があればそれだけを使う（裏で取り直さない。開くたびに14MBを読み直さないため） */
+  if (url.pathname.indexOf('/mmd/') >= 0) {
+    event.respondWith(
+      caches.open(MODEL_CACHE).then((cache) => cache.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
+        if (res && res.ok) event.waitUntil(cache.put(event.request, res.clone()));
+        return res;
+      })))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
