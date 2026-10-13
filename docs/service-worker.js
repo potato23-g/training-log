@@ -1,9 +1,9 @@
 /* トレーニング記録 — オフラインキャッシュ
-   ビルド時に a9fcf8acdb を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
-const CACHE_NAME = 'trainlog-a9fcf8acdb';
+   ビルド時に 487e3d409e を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
+const CACHE_NAME = 'trainlog-487e3d409e';
 /* モデルの動き（./mmd/ 以下。14MBほど）は別の保存に分ける。使ったときに初めて保存し、
-   アプリ本体を更新しても消さない。中身が変わったとき（7178c68d2c が変わる）だけ入れ替える */
-const MODEL_CACHE = 'trainmodel-7178c68d2c';
+   アプリ本体を更新しても消さない。中身が変わったとき（59f17f56d4 が変わる）だけ入れ替える */
+const MODEL_CACHE = 'trainmodel-59f17f56d4';
 const PRECACHE = [
   './',
   './index.html',
@@ -51,10 +51,11 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== location.origin) return;
   if (url.searchParams.has('__check')) return;
 
-  /* モデルの動き: 保存があればそれだけを使う（裏で取り直さない。開くたびに14MBを読み直さないため） */
+  /* モデルの動き: 保存があればそれだけを使う（裏で取り直さない。開くたびに14MBを読み直さないため）。
+     取りに行くときはブラウザの控えを使わない（前の版のファイルが混ざったまま保存されないように） */
   if (url.pathname.indexOf('/mmd/') >= 0) {
     event.respondWith(
-      caches.open(MODEL_CACHE).then((cache) => cache.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
+      caches.open(MODEL_CACHE).then((cache) => cache.match(event.request).then((cached) => cached || fetch(new Request(event.request, { cache: 'reload' })).then((res) => {
         if (res && res.ok) event.waitUntil(cache.put(event.request, res.clone()));
         return res;
       })))

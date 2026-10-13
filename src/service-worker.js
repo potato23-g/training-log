@@ -51,10 +51,11 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== location.origin) return;
   if (url.searchParams.has('__check')) return;
 
-  /* モデルの動き: 保存があればそれだけを使う（裏で取り直さない。開くたびに14MBを読み直さないため） */
+  /* モデルの動き: 保存があればそれだけを使う（裏で取り直さない。開くたびに14MBを読み直さないため）。
+     取りに行くときはブラウザの控えを使わない（前の版のファイルが混ざったまま保存されないように） */
   if (url.pathname.indexOf('/mmd/') >= 0) {
     event.respondWith(
-      caches.open(MODEL_CACHE).then((cache) => cache.match(event.request).then((cached) => cached || fetch(event.request).then((res) => {
+      caches.open(MODEL_CACHE).then((cache) => cache.match(event.request).then((cached) => cached || fetch(new Request(event.request, { cache: 'reload' })).then((res) => {
         if (res && res.ok) event.waitUntil(cache.put(event.request, res.clone()));
         return res;
       })))

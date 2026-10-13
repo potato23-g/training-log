@@ -151,13 +151,15 @@ export async function create(opt = {}) {
     return true;
   }
   function step(dt) {
-    dt = Math.min(0.05, Math.max(0, dt));
+    // 遅い端末でも動きの速さは変えない（1 秒に 15 コマまで）。布は 1 回に進める時間を抑える
+    dt = Math.min(1 / 15, Math.max(0, dt));
+    const ds = Math.min(dt, 0.05);
     T += dt;
     const ph = phaseAt(cur, T);
     applyPose(ph.u, ph.k);
     physics.update(dt);
-    if (skirt) skirt.update(dt);
-    calm.update(dt);
+    if (skirt) skirt.update(ds);
+    calm.update(ds);
     // まばたきだけ残す（目の骨は動かさない）
     if (blinkIdx >= 0) { const p = (T % 4.3) / 0.16; mesh.morphTargetInfluences[blinkIdx] = p < 1 ? Math.sin(p * Math.PI) : 0; }
     if (cur.cycle) return (T / cur.cycle) % 1;

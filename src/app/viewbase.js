@@ -235,6 +235,9 @@ function mmdTheme(){
   return {dark: figDark(), bg: /^#[0-9a-f]{6}$/i.test(bg) ? bg : ""};
 }
 function mmdCan(id, dbn){
+  /* 「よくある崩れ」を見せる動きは線の図にしか無いので、そちらで再生する */
+  const m = motionOf(id);
+  if(m && (m.phases || []).some(p => p.wrong)) return false;
   return !!MMD_BASE && figKind() === "model" && !dbn && !!EXMAP[id] && (!mmdFailAt || Date.now() - mmdFailAt > 60000);
 }
 function mmdDrop(){
@@ -270,7 +273,7 @@ function playModel(id, wrap){
   mmdLoad().then(p => {
     if(playingId !== id || playSlot !== slot) return;
     if(phase) phase.textContent = "";
-    if(mmdShown !== id){ p.set(id); mmdShown = id; }     /* 描き直しで再生し直すときは、動きを頭に戻さない */
+    if(mmdShown !== id){ if(!p.set(id)) throw new Error("no motion"); mmdShown = id; }     /* 描き直しで再生し直すときは、動きを頭に戻さない */
     const img = slot.querySelector(".figstill");
     if(img) img.style.display = "none";
     slot.insertBefore(p.canvas, slot.firstChild);
@@ -278,6 +281,7 @@ function playModel(id, wrap){
     let last = performance.now();
     const tick = (now)=>{
       animRAF = requestAnimationFrame(tick);
+      if(now - last < 33) return;
       const u = p.frame((now - last) / 1000, -(figAz[id] || 0));
       last = now;
       if(bar) bar.style.width = (u * 100).toFixed(1) + "%";
