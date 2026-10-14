@@ -12,6 +12,8 @@ import { Skirt } from './exskirt.js';
 
 const HERE = new URL('./', import.meta.url);
 const YAW = 35, FOV = 35, HAIR_FLOOR = -0.45;
+// 回したときにはみ出さないよう引く距離の上限（初めの向きでぴったり収めた距離の何倍まで）
+const TURN_MAX = 1.12;
 // 枠取りに使う点（骨の名前 → まわりに取る余白）。頭は帽子と髪のぶん広く取る
 const FRAME = { '頭先': 1.5, '頭': 2.1, '首': 1.6, '上半身2': 1.9, '下半身': 1.9, '左手首': 0.9, '右手首': 0.9, '左中指１': 0.8, '右中指１': 0.8, '左ひじ': 1.2, '右ひじ': 1.2,
                 '左ひざ': 0.9, '右ひざ': 0.9, '左足首': 1.0, '右足首': 1.0, '左つま先': 0.9, '右つま先': 0.9 };
@@ -125,30 +127,53 @@ export async function create() {
     return pts;
   }
   const cR = new THREE.Vector3(), cU = new THREE.Vector3(), cD = new THREE.Vector3(), cT = new THREE.Vector3();
-  function view(az) {
+  const keyAt = key.position.clone();
+  function axes(yawDeg) {
     const c = Object.assign({ alt: 8, yaw0: 0 }, cur.cam);
-    const yaw = (c.yaw0 + YAW + side + az) * Math.PI / 180, alt = c.alt * Math.PI / 180;
+    const yaw = (c.yaw0 + YAW + side + yawDeg) * Math.PI / 180, alt = c.alt * Math.PI / 180;
     cD.set(Math.sin(yaw) * Math.cos(alt), Math.sin(alt), Math.cos(yaw) * Math.cos(alt));
     cR.set(0, 1, 0).cross(cD).normalize(); cU.copy(cD).cross(cR);
-    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
-    for (const p of cur._pts) {
-      const x = p[0] * cR.x + p[1] * cR.y + p[2] * cR.z, y = p[0] * cU.x + p[1] * cU.y + p[2] * cU.z, z = p[0] * cD.x + p[1] * cD.y + p[2] * cD.z;
-      x0 = Math.min(x0, x - p[3]); x1 = Math.max(x1, x + p[3]); y0 = Math.min(y0, y - p[3]); y1 = Math.max(y1, y + p[3]); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
-    }
-    return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, cz: (z0 + z1) / 2, hw: (x1 - x0) / 2, hh: (y1 - y0) / 2 };
   }
-  function setCam(az) {
-    const b = view(az), tf = Math.tan(FOV / 2 * Math.PI / 180), asp = W / H;
-    // 手前にある点ほど大きく写るので、点ごとに要る距離を出して、いちばん遠いものに合わせる
+  // 中心 o から見て、全部の点が枠に収まる距離。ずらし (sx, sy) は、枠の中で中心をどこに置くか
+  function need(o, sx, sy) {
+    const tf = Math.tan(FOV / 2 * Math.PI / 180), asp = W / H;
     let dist = 0;
     for (const p of cur._pts) {
-      const x = p[0] * cR.x + p[1] * cR.y + p[2] * cR.z - b.cx, y = p[0] * cU.x + p[1] * cU.y + p[2] * cU.z - b.cy, z = p[0] * cD.x + p[1] * cD.y + p[2] * cD.z - b.cz;
+      const dx = p[0] - o.x, dy = p[1] - o.y, dz = p[2] - o.z;
+      const x = dx * cR.x + dy * cR.y + dz * cR.z - sx, y = dx * cU.x + dy * cU.y + dz * cU.z - sy, z = dx * cD.x + dy * cD.y + dz * cD.z;
       dist = Math.max(dist, (Math.abs(x) + p[3]) / (tf * asp) + z, (Math.abs(y) + p[3]) / tf + z);
     }
-    dist *= 1.03;
-    cT.set(0, 0, 0).addScaledVector(cR, b.cx).addScaledVector(cU, b.cy).addScaledVector(cD, b.cz);
-    camera.position.copy(cT).addScaledVector(cD, dist);
-    camera.up.set(0, 1, 0); camera.lookAt(cT);
+    return dist;
+  }
+  // 回す軸と距離を、種目ごとに 1 回だけ決める。回すのは人と台（カメラと光を、軸のまわりに同じだけ回すのと同じ見え方）。
+  // 距離はどの向きでも変えない（回しても大きさが変わらない）。初めの向きでぴったり収め、ほかの向きではみ出す所だけ少し引く
+  function fit() {
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (const p of cur._pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1] - p[3]); y1 = Math.max(y1, p[1] + p[3]); z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]); }
+    const o = new THREE.Vector3((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    axes(0);
+    let d0 = need(o, 0, 0), dm = d0;
+    for (let a = 15; a < 360; a += 15) { axes(a); dm = Math.max(dm, need(o, 0, 0)); }
+    cur._cam = { o, dist: Math.min(dm, d0 * TURN_MAX) * 1.03 };
+  }
+  function view0() {
+    axes(0);
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (const p of cur._pts) {
+      const x = p[0] * cR.x + p[1] * cR.y + p[2] * cR.z, y = p[0] * cU.x + p[1] * cU.y + p[2] * cU.z;
+      x0 = Math.min(x0, x - p[3]); x1 = Math.max(x1, x + p[3]); y0 = Math.min(y0, y - p[3]); y1 = Math.max(y1, y + p[3]);
+    }
+    return { hw: (x1 - x0) / 2, hh: (y1 - y0) / 2 };
+  }
+  function setCam(az) {
+    if (!cur._cam) fit();
+    axes(az);
+    const { o, dist } = cur._cam;
+    camera.position.copy(o).addScaledVector(cD, dist);
+    camera.up.set(0, 1, 0); camera.lookAt(o);
+    // 光も同じだけ回す（人と台を回したときと同じ当たり方）
+    const r = (az) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+    key.position.set(keyAt.x * c + keyAt.z * s, keyAt.y, -keyAt.x * s + keyAt.z * c);
   }
   const settle = (a, n) => { physics.reset(); for (let i = 0; i < n; i++) { applyPose(a); physics.update(1 / 60); } if (skirt) skirt.reseed(); calm.reset(); };
   let shown = '';
@@ -161,10 +186,10 @@ export async function create() {
     shown = key; cur = ex; opt = { dbn: o.dbn || 0 }; side = SIDE[EXLIB[id] ? id : ex.base] || 0;
     props.show(cur.props || {});
     floor(cur.floor !== false, cur.bedY || 0);
+    if (!cur._pts) cur._pts = collect();
     mesh.skeleton.pose();      // 前の種目の布の形を持ちこまない
-    if (!cur._pts) {
-      cur._pts = collect();
-      const b = view(0), r = b.hw / b.hh;
+    if (!cur._shape) {
+      const b = view0(), r = b.hw / b.hh;
       cur._shape = r > 1.9 ? 'x' : r > 1.2 ? 'w' : r > 0.8 ? 's' : 't';
       mesh.skeleton.pose();
     }

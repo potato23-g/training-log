@@ -15,7 +15,7 @@ export class Skirt {
   constructor(rig, raw, props, opt) {
     const mesh = this.mesh = rig.mesh, bones = mesh.skeleton.bones, rw = rig.rw;
     this.rig = rig; this.props = props;
-    this.o = Object.assign({ sub: 6, iter: 3, g: -98, drag: 1.8, vmax: 55, margin: 0.13, mu: 0.45, muSlick: 0.02, arms: false, bend: 0.0004, ring: 0.0005, shear: 0.004, comp: 0.006, vcomp: 1, floor: 0, slit: [0.8, 1.6, 2.6, 3.8, 5, 6, 7] }, opt);
+    this.o = Object.assign({ sub: 6, iter: 3, g: -98, drag: 1.8, vmax: 55, margin: 0.13, mu: 0.45, muSlick: 0.02, arms: false, hem: 0.65, bend: 0.0004, ring: 0.0005, shear: 0.004, comp: 0.006, vcomp: 1, floor: 0, slit: [0.8, 1.6, 2.6, 3.8, 5, 6, 7] }, opt);
     const bone = n => bones.find(b => b.name === n), body = n => raw.rigidBodies.find(b => b.name === n);
     this.root = bone('Skirt_Root'); this.rootRest = rw['Skirt_Root'].clone();
     const n = this.n = (R + 1) * C;
@@ -52,6 +52,8 @@ export class Skirt {
     for (let r = 1; r <= R; r++) for (let c = 0; c < C; c++) if (linked(c)) S.push([[id(r, c), id(r, c + 1)], [0.5, 0.5]]);
     for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) if (linked(c)) S.push([[id(r, c), id(r, c + 1), id(r + 1, c), id(r + 1, c + 1)], [0.25, 0.25, 0.25, 0.25]]);
     this.S = S;
+    // 床との当たりを、すそほど高めに取る。点のあいだの布の面とフリルは点より外へ出るので、点だけを床の上に置いても面が床へ刺さる
+    this.lift = Float32Array.from(S, ([I]) => { const r = Math.max(...I.map(i => Math.floor(i / C))); return r >= R ? o.hem : r === R - 1 ? o.hem * 0.6 : o.hem * 0.3; });
     this.cn = new Float64Array(n * 3); this.cv = new Float64Array(n * 3); this.ch = new Uint8Array(n);
 
     // 当たる相手（体）。もとの物理の「骨に従う剛体」から取る。脚は、見た目の太さを頂点から測る。
@@ -91,6 +93,19 @@ export class Skirt {
         for (let k = 0; k <= K; k++) { const d = bins[k].sort((u, w) => u - w); if (d.length > 8) col.prof[k] = Math.min(r0 * 2.2, Math.max(r0 * 0.7, d[Math.floor(d.length * 0.95)])); }
         col.rmax = Math.max(...col.prof);
       }
+    }
+    // 腰まわり（下半身・足の付け根）も、見た目の太さを頂点から測る（ショートパンツのふくらみが、剛体の幅より外へ出てコートを突き抜けるため）
+    for (const col of this.cols) {
+      if (!col.bone || !/^下半身/.test(col.name)) continue;
+      const A = col.ra, ab = col.rb.clone().sub(A), L2 = ab.lengthSq(), r0 = col.prof[0], bins = Array.from({ length: K + 1 }, () => []), q = V();
+      for (let i = 0; i < pos.count; i++) {
+        if (dn[i] !== col.bone.name) continue;
+        q.fromBufferAttribute(pos, i); const t = L2 > 1e-9 ? q.clone().sub(A).dot(ab) / L2 : 0; if (t < -0.1 || t > 1.1) continue;
+        const d = q.distanceTo(A.clone().addScaledVector(ab, Math.min(1, Math.max(0, t)))); if (d > r0 * 2.5) continue;
+        bins[Math.min(K, Math.max(0, Math.round(t * K)))].push(d);
+      }
+      for (let k = 0; k <= K; k++) { const d = bins[k].sort((u, w) => u - w); if (d.length > 8) col.prof[k] = Math.max(r0, d[Math.floor(d.length * 0.95)]); }
+      col.rmax = Math.max(...col.prof);
     }
     // 道具とダンベル
     this.dbs = ['L', 'R', 'F'].map(s => { const c = mk('db' + s, null, V(), V(), 0.62); c.morph = false; c.db = s; c.slick = true; c.outer = 1; return c; });
@@ -163,7 +178,7 @@ export class Skirt {
     const boxes = this.boxes.filter(b => b.m.visible).map(b => ({ c: b.m.position, cs: Math.cos(b.m.rotation.y), sn: Math.sin(b.m.rotation.y), h: b.h }));
     // 腕とダンベルは、いつも布の外にある。布を体のほうへ押すだけにする（内側から外へは押し出さない）
     const e = this.M.elements, c0x = e[12], c0y = e[13], c0z = e[14], al = Math.hypot(e[4], e[5], e[6]) || 1, adx = e[4] / al, ady = e[5] / al, adz = e[6] / al;
-    const m = o.margin, fy = o.floor + m * 0.6, S = this.S, con = this.con, cn = this.cn, cv = this.cv, ch = this.ch;
+    const m = o.margin, fy = o.floor + m * 0.6, lift = this.lift, S = this.S, con = this.con, cn = this.cn, cv = this.cv, ch = this.ch;
     for (let s = 0; s < ns; s++) {
       const al = (s + 1) / ns;
       cols.forEach((c, k) => { for (let a = 0; a < 3; a++) { ca[k * 3 + a] = c.pa.getComponent(a) + (c.a.getComponent(a) - c.pa.getComponent(a)) * al; cb[k * 3 + a] = c.pb.getComponent(a) + (c.b.getComponent(a) - c.pb.getComponent(a)) * al; } });
@@ -220,7 +235,7 @@ export class Skirt {
             else if (ex <= ez) { const sx = Math.sign(lx) * ex; push(sx * b.cs, 0, -sx * b.sn, -1, 0); }
             else { const sz = Math.sign(lz) * ez; push(sz * b.sn, 0, sz * b.cs, -1, 0); }
           }
-          if (qy < fy) push(0, fy - qy, 0, -1, 0);
+          if (qy < fy + lift[s2]) push(0, fy + lift[s2] - qy, 0, -1, 0);
         }
       }
       for (let i = 0; i < n; i++) {
