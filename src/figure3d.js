@@ -160,20 +160,22 @@
       Object.keys(f.b).forEach((n) => { pts.push(f.b[n].pos); pts.push(f.b[n].tip); });
       (f.dumbbells || []).forEach((d) => pts.push(d.pos));
     }
-    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, w1 = -1e9;
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, w0 = 1e9, w1 = -1e9;
     const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
     pts.forEach((p) => {
       const u = dot(p, right), v = dot(p, up), w = dot(p, fwd);
       if (u < u0) u0 = u; if (u > u1) u1 = u;
       if (v < v0) v0 = v; if (v > v1) v1 = v;
-      if (w > w1) w1 = w;
+      if (w < w0) w0 = w; if (w > w1) w1 = w;
     });
     const pad = view.pad === undefined ? 0.16 : view.pad;
     const halfU = (u1 - u0) / 2 * (1 + pad) + 0.06, halfV = (v1 - v0) / 2 * (1 + pad) + 0.06;
     const ty = Math.tan(FOV * Math.PI / 360);
-    const dist = Math.max(halfV / ty, halfU / (ty * aspect)) + 0.55;
+    /* 回す軸は体の奥行きの真ん中に置く（奥の端を軸にすると、回したときに近づいたり遠のいたりして大きさが変わる）。
+       カメラの位置は奥の端を見ていたときと同じになるよう、そのぶん距離を縮める（初めの見え方は変わらない） */
+    const cw = (w0 + w1) / 2;
+    const dist = Math.max(halfV / ty, halfU / (ty * aspect)) + 0.55 - (w1 - cw);
     const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
-    const cw = w1 - 0;
     const shape = { halfU, halfV };
     const target = [right[0] * cu + up[0] * cv + fwd[0] * cw,
                     right[1] * cu + up[1] * cv + fwd[1] * cw,
