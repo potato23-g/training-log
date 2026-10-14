@@ -117,7 +117,8 @@ setTimeout(() => {
   need(groups[0].gap === 5 && groups[0].muscles.join() === "quads" && groups.find(g => g.gap === 0).muscles.includes("chest"), "回復の目安のまとまり（recoverGroups）が設定と違う");
   need(recoverGapText().indexOf("中5日: " + MUSCLES.quads) === 0, "提案タブの説明が設定と違う: " + recoverGapText().slice(0, 30));
   let chestStreak = 0;
-  const cLog = run({gap: {map: {chest: 0}, updatedAt: 1}}, "毎日", 28);
+  /* 56日（2026-10-14 チンニングを足したら、28日では胸の種目が1日おきに並んで、連日の場面が出なかった） */
+  const cLog = run({gap: {map: {chest: 0}, updatedAt: 1}}, "毎日", 56);
   cLog.forEach((r, i) => { if(i && [r, cLog[i - 1]].every(x => x.plan.some(k => EXMAP[k.split("|")[0]].p.includes("chest")))) chestStreak++; });
   need(chestStreak > 0, "胸を連日でもよいにしても、続けて入る日が無い");
   reset({gap: {map: {quads: 9, glutes: -1, hams: 1.5, chest: "0"}, updatedAt: 1}});

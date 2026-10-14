@@ -57,6 +57,7 @@ const MDRV = {
   goblet: ["pelvis.y", 0.95, 0.41], sumo: ["pelvis.y", 0.95, 0.41], split: ["pelvis.y", 0.90, 0.61], splitfloor: ["pelvis.y", 0.90, 0.61],
   sidelunge: ["pelvis.z", 0, 0.18, 1],
   rdl: ["pelvis.pitch", 5, 82], rdl1: ["pelvis.pitch", 5, 82], deadlift: ["pelvis.pitch", 3, 66],
+  chinning: ["pelvis.y", 0.98, 1.48],
   hipthrust: ["pelvis.pitch", -30, -95], bridge: ["pelvis.pitch", -88, -116], slidecurl: ["shankR.flex", 116, 40], sissy: ["shankR.flex", 4, 90],
   calf: ["footPitch", 22, -36], calfseat: ["footPitch", 0, -32], abduct: ["thighL.abd", 0, 35], adduct: ["thighR.abd", 5, -3],
   row: ["forearmR.flex", 6, 112], row2: ["forearmR.flex", 8, 116], pullover: ["upperarmR.flex", 88, 163], shrug: ["clavR.elev", -4, 14],

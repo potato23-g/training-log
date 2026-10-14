@@ -72,12 +72,13 @@ document.querySelectorAll("nav.tabs button").forEach(b=>{
    floor : これより下に体の点は行けない
    hold  : 何がどこに接しているかの説明
    ============================================================ */
-/* 接地の説明（新しい図解でもそのまま使う） */
+/* 接地の説明（新しい図解でもそのまま使う）。head は見出し（無ければ「接地」。ぶら下がる種目は「支え」） */
 const PHYS = {
   goblet:{hold:"両足は床につけたまま。ダンベルは胸の前で両手で支える"},
   rdl:{hold:"両足は床につけたまま。ダンベルは両手で体の前に持つ"},
   rdl1:{hold:"片足だけが床。ダンベルは体の前に持つ"},
   deadlift:{hold:"両足は床につけたまま。ダンベルは両手に1つずつ、体の横に持つ"},
+  chinning:{head:"支え", hold:"両手でバーを握ってぶら下がる。膝を曲げて、足は床から浮かせておく"},
   split:{hold:"前足は床、後ろ足の甲をベッドに乗せる。ダンベルは両手に1つずつ"},
   hipthrust:{hold:"肩甲骨をベッドの縁に当て、足裏は床。ダンベルは骨盤の上に置いて手で支える"},
   row:{hold:"片手と片膝を椅子に乗せ、反対の足は床。ダンベルは垂らした手に1つ"},
@@ -160,6 +161,7 @@ const DIANOTE = {
   adduct: "骨盤は床に垂直のまま、前に出した下の脚だけを上げる。高く上げる必要はなく、床から10〜15cmで十分。",
   backext: "骨盤は床につけたまま、腰から胸の順に起こす。あごは引いたまま、首だけを反らさない。",
   deadlift: "背中はまっすぐのまま、膝と股関節を一緒に曲げる。ダンベルはすねの外側に沿って、すねの半ばまで下ろす。",
+  chinning: "肘を体の横へ引き下ろす。あごがバーの高さに来たら、腕を伸ばしきるまでゆっくり下りる。脚は振らない。",
 };
 
 let FIG = null, animRAF = null, playingId = null, playSlot = null, playBtn = null;
@@ -280,9 +282,9 @@ function diaHTML(id, compact, item, opt){
   const dbn = (useDb && figDb && useDb < figDb) ? useDb : null;
   const dbNote = (useDb && figDb && useDb > figDb)
     ? `<p class="dianote">図は1つで持つ形です。今日は「${esc(opt.how)}」で行ってください。</p>` : "";
-  const hold = ((PHYS[mo] || PHYS[id] || PHYS[baseOf(id)] || {}).hold) || "";
+  const ph = PHYS[mo] || PHYS[id] || PHYS[baseOf(id)] || {}, hold = ph.hold || "";
   const note = DIANOTE[id] || DIANOTE[baseOf(id)] || "";
-  const tail = (hold ? `<p class="diahold"><b>接地</b>　${hold}</p>` : "")
+  const tail = (hold ? `<p class="diahold"><b>${ph.head || "接地"}</b>　${hold}</p>` : "")
              + (compact || !note ? "" : `<p class="dianote">${note}</p>`);
   if(!m) return `<div class="dia">${tail}</div>`;
   /* キャラクターで出すときは、公開前に描いておいた画像を使う。読めなければ画面ごと線の図に切り替わる（mmdFail） */

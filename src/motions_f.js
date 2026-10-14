@@ -169,6 +169,18 @@
   insertHold('rdl', 'rdl_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('rdl1', 'rdl1_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('deadlift', 'deadlift_hold', 3.4, 2, '一番下で2秒止める');
+  insertHold('chinning', 'chinning_hold', 1.5, 1.6, '上で2秒止める');   /* 元の一瞬止める0.4秒と合わせて2秒 */
+  /* 下りるだけ（ネガティブ）: 足で跳んで（台を使って）あごがバーの高さまで上がり、5秒かけて腕を伸ばしきるまで下りる。
+     ぶら下がる姿勢と握りは標準と同じで、時間の配分だけが違う（ACE は台・跳び上がりで上へ行く補助を挙げている） */
+  (function () {
+    const b = M.motions.chinning, C = M.CHIN;
+    M.register({
+      id: 'chinning_neg', view: clone(b.view), props: clone(b.props), hands: clone(b.hands), base: clone(b.base),
+      phases: [{ t: 0, label: '跳んで上がる 0.8秒' }, { t: 0.8, label: 'あごがバーの高さ' }, { t: 1.2, label: 'ゆっくり下りる 5秒' }],
+      keys: [{ t: 0, hold: true, d: clone(C.bottom) }, { t: 0.8, hold: true, d: clone(C.top) },
+             { t: 1.2, hold: true, d: clone(C.top) }, { t: 6.2, hold: true, d: clone(C.bottom) }]
+    });
+  })();
   insertHold('split', 'split_hold', 3.0, 2, '一番下で2秒止める');
   insertHold('splitfloor', 'splitfloor_hold', 3.0, 2, '一番下で2秒止める');
   /* row の t=0 はもともと「腕を垂らした位置」で0.4秒の場面（秒数なし）。

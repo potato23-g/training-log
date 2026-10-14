@@ -294,6 +294,36 @@ const CHECKS = {
       ['膝と股関節を同時に伸ばして立つ', `膝が股関節より先に伸びた割合の最大 ${(lag * 100).toFixed(0)}%`, lag < 0.25]
     ];
   },
+  chinning: (m) => {
+    const bar = (m.props || []).find((p) => p.id === 'bar'), H = (bar.min[1] + bar.max[1]) / 2;
+    const bottom = findT(m, (fr) => -fr.b.pelvis.pos[1]), top = findT(m, (fr) => fr.b.pelvis.pos[1]);
+    const elbow = (fr) => angWith(V.sub(fr.b.forearmR.pos, fr.b.upperarmR.pos), V.sub(fr.b.handR.pos, fr.b.forearmR.pos));
+    const gR = M.at(bottom.fr, 'handR', M.HAND.grip), gL = M.at(bottom.fr, 'handL', M.HAND.grip);
+    const wide = (Math.abs(gR[2] - gL[2]) - Math.abs(bottom.fr.b.upperarmR.pos[2] - bottom.fr.b.upperarmL.pos[2])) / 2;
+    const chin = M.at(top.fr, 'head', [0.08, 0, 0])[1] - H;
+    const tb = top.fr.b, elbowDown = tb.upperarmR.pos[1] - tb.forearmR.pos[1];
+    /* 1周を通して: 頭とバーのすき間・足と床のすき間・体幹の傾き（反動で揺らさない） */
+    const T = M.cycleTime(m);
+    let headGap = 9, footGap = 9, sway = 0;
+    for (let i = 0; i <= 60; i++) {
+      const fr = at(m, T * i / 60), caps = M.capsules(fr), hc = caps.find((c) => c.bone === 'head');
+      for (let k = 0; k <= 10; k++) {
+        const p = V.lerp(hc.a, hc.b, k / 10);
+        headGap = Math.min(headGap, Math.hypot(p[0] - (bar.min[0] + bar.max[0]) / 2, p[1] - H) - hc.r);
+      }
+      caps.forEach((c) => { if (!/hand|arm/.test(c.bone)) footGap = Math.min(footGap, Math.min(c.a[1], c.b[1]) - c.r); });
+      sway = Math.max(sway, 90 - fromHoriz(dir(fr, 'spineT')));
+    }
+    return [
+      ['肩幅より少し広く握る', `握りは肩より外へ片側 ${(wide * 100).toFixed(0)}cm`, wide > 0.02 && wide < 0.15],
+      ['下は腕を伸ばしきる', `一番下の肘の曲がり ${elbow(bottom.fr).toFixed(0)}°`, elbow(bottom.fr) <= 15],
+      ['上はあごがバーの高さまで', `あごはバーより ${(chin * 100).toFixed(0)}cm 上`, chin >= -0.02],
+      ['肘を体の横へ引き下ろす（上で肘は肩より下）', `一番上で肘は肩より ${(elbowDown * 100).toFixed(0)}cm 下`, elbowDown > 0.05],
+      ['頭はバーに当たらない', `頭とバーのすき間 最小 ${(headGap * 100).toFixed(0)}cm`, headGap > 0.02],
+      ['足は床に着かない（ぶら下がる）', `足と床のすき間 最小 ${(footGap * 100).toFixed(0)}cm`, footGap > 0.02],
+      ['体を揺らさない（体幹はほぼ垂直）', `体幹の傾き 最大 ${sway.toFixed(0)}°`, sway <= 15]
+    ];
+  },
   rdl1: (m) => {
     const deepest = findT(m, (fr) => -fr.b.handR.pos[1]);
     const back = fromHoriz(dir(deepest.fr, 'spineT'));

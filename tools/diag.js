@@ -38,6 +38,7 @@ for (const id of ids) {
         const below = c.r * 0.35 - (p[1] - 0);   /* カプセル半径の一部まで許容 */
         if (p[1] - c.r < -0.012) { const d = c.r - p[1]; if (d > floor) { floor = d; floorAt = c.bone + '@' + t.toFixed(2); } }
         (m.props || []).forEach((bx) => {
+          if (bx.grip && /^hand/.test(c.bone)) return;   /* 握る道具（懸垂バー）は手が包むので、手だけは食い込みに数えない */
           const pen = boxPen(p, bx, c.r * 0.55);
           if (pen > prop) { prop = pen; propAt = c.bone + '/' + bx.id + '@' + t.toFixed(2); }
         });

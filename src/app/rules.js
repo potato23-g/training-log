@@ -1,7 +1,7 @@
 /* ---------- 今日 ---------- */
 const REST = {split:120, goblet:120, sumo:120, splitfloor:120, rdl:120, rdl1:120, hipthrust:105, bridge:90,
               row:105, row2:105, ohp:105, pushup:105, pushupknee:105, floorpress:105, fly:90,
-              sidelunge:120, slidecurl:90, pullover:90, deadlift:120};
+              sidelunge:120, slidecurl:90, pullover:90, deadlift:120, chinning:120};
 function restFor(item){
   const ex = EXMAP[item.ex];
   if(ex.kind === "t") return 60;
@@ -56,7 +56,7 @@ const PATTERN = {
   goblet:"squat", sumo:"sumo", splitfloor:"splitsq", split:"splitsq", sidelunge:"lunge", sissy:"kneeext",
   rdl:"hinge", rdl1:"hinge", deadlift:"deadlift", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct", adduct:"adduct",
   pushupknee:"hpush", pushup:"hpush", floorpress:"floorpress", fly:"fly",
-  row:"pull", row2:"row2", pullover:"pullover", ohp:"vpush", farmer:"carry", shrug:"shrug",
+  row:"pull", row2:"row2", pullover:"pullover", chinning:"vpull", ohp:"vpush", farmer:"carry", shrug:"shrug",
   lateral:"raise", front:"fraise", rear:"rear", curl:"curl", hammer:"hammer", triext:"ext", skull:"skull",
   calf:"calf", calfseat:"calf", backext:"backext", plank:"abs", deadbug:"deadbug", crunch:"crunch",
   sideplank:"side", sidebend:"sidebend", twist:"twist"
@@ -64,11 +64,11 @@ const PATTERN = {
 /* 動きのまとまり: 種目を選ぶシートと履歴の種目選びの見出し（picker.js の PATTERN_HEAD）、提案タブの「動きごとの今の段階」の
    見出し（view-plan.js の PATTERN_NAME）、軽い週を勧める判定（progress.js の deloadAdvice）に使う。
    書いていない動きは、その動きだけのまとまり。メニュー作りには使わない */
-const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", deadlift:"hinge", floorpress:"hpush", row2:"pull", hammer:"curl", skull:"ext",
+const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", deadlift:"hinge", floorpress:"hpush", row2:"pull", vpull:"pull", hammer:"curl", skull:"ext",
                        deadbug:"abs", crunch:"abs", sidebend:"side"};
 function groupOf(pat){ return PATTERN_GROUP[pat] || pat; }
 /* メニューに並べる順（大きい動きを先に、体幹は最後に）。同じまとまりの動きは続けて並べる */
-const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","deadlift","legcurl","hpush","floorpress","fly","pull","row2","pullover",
+const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","deadlift","legcurl","hpush","floorpress","fly","pull","row2","vpull","pullover",
                        "vpush","bridge","abduct","adduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull",
                        "calf","backext","abs","deadbug","crunch","side","sidebend","twist"];
 /* まとまりの並び（PATTERN_ORDER に出てくる順） */

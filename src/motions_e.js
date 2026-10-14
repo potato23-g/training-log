@@ -597,4 +597,38 @@
     ]
   });
 
+  /* ---------------- チンニング（懸垂） ----------------
+     順手（手のひらが前）で、肩幅より少し広く握ってぶら下がる。腕を伸ばしきった位置から、肘を体の横へ引き下ろすように
+     体を引き上げ、あごがバーの高さまで来たら少し止めて、ゆっくり腕を伸ばしきるまで下りる（ACE・NASM。notes/form-sources.md）。
+     両手はバーの握る点に固定し（手のIK）、骨盤の高さと前後だけを動かす。頭はバーの後ろを通る（上で頭とバーの間 約7cm）。
+     膝は曲げて、一番下でも足が床に着かないようにする。バーの高さ 2.12m は、腕を伸ばしきったときに足が床から約6cm浮く高さ */
+  const CHIN_H = 2.12, CHIN_W = 0.25;
+  const CHIN_BAR = { type: 'box', id: 'bar', grip: true, min: [-0.016, CHIN_H - 0.016, -0.62], max: [0.016, CHIN_H + 0.016, 0.62], label: '懸垂バー' };
+  const chinPost = (s) => ({ type: 'box', id: 'post' + (s > 0 ? 'R' : 'L'), min: [-0.05, 0, s > 0 ? 0.62 : -0.68], max: [0.05, CHIN_H + 0.12, s > 0 ? 0.68 : -0.62], label: '柱' });
+  const chinHand = (s) => ({ at: [0, CHIN_H, s * CHIN_W], local: HAND.grip, pitch: 0, yaw: 0, roll: s > 0 ? 170 : 190,
+                             pins: [HAND.grip], pole: [0.15, -1, s * 0.3] });
+  const chinBottom = { 'pelvis.y': 0.98, 'pelvis.x': -0.02, 'spineT.flex': 0, 'neck.flex': 0 };
+  const chinTop = { 'pelvis.y': 1.48, 'pelvis.x': -0.14, 'spineT.flex': -5, 'neck.flex': -4 };
+  M.CHIN = { bottom: chinBottom, top: chinTop };
+  M.register({
+    id: 'chinning',
+    view: { az: 40, el: 6, dist: 3.6, target: [0, 1.3, 0] },
+    props: [CHIN_BAR, chinPost(1), chinPost(-1)],
+    hands: { R: chinHand(1), L: chinHand(-1) },
+    phases: [
+      { t: 0, label: '引き上げる 1.5秒' }, { t: 1.5, label: 'あごがバーの高さ' }, { t: 1.9, label: '下りる 3秒' }
+    ],
+    base: {
+      'pelvis.z': 0, 'pelvis.pitch': 0, 'spineL.flex': 0, 'spineC.flex': 0, 'head.flex': 0,
+      'thighR.flex': 12, 'thighL.flex': 12, 'thighR.abd': 2, 'thighL.abd': 2,
+      'shankR.flex': 70, 'shankL.flex': 70, 'footR.flex': -20, 'footL.flex': -20
+    },
+    keys: [
+      { t: 0.0, hold: true, d: chinBottom },
+      { t: 1.5, hold: true, d: chinTop },
+      { t: 1.9, hold: true, d: chinTop },
+      { t: 4.9, hold: true, d: chinBottom }
+    ]
+  });
+
 })(typeof window !== 'undefined' ? window : globalThis);

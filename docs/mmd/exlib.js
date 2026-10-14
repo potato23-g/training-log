@@ -44,7 +44,13 @@ export function makeProps(scene, rig, grid) {
     towel: box(5, 0.06, 2.6, 0xcbd5e1),
     pole: new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 26, 16), mat(0x6b7280)),
     lane: new THREE.Group(),                 // 歩く種目の床の目印（床と一緒に後ろへ流す）
+    bar: new THREE.Group(),                  // 懸垂バー（置き場所はバーの中心。柱は床まで）
   };
+  {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 11.6, 16), mat(0x9ca3af));
+    b.rotation.z = Math.PI / 2; P.bar.add(b);
+    for (const x of [-5.6, 5.6]) { const p = box(0.7, CHIN.y + 0.9, 0.7, 0x4b5563); p.position.set(x, (0.9 - CHIN.y) / 2, 0); P.bar.add(p); }
+  }
   for (let i = -12; i <= 12; i++) for (const x of [-3.4, 3.4]) { const b = box(1.2, 0.04, 0.22, 0x64748b); b.position.set(x, 0, i * 2); P.lane.add(b); }
   for (const k in P) { P[k].visible = false; scene.add(P[k]); }
   return {
@@ -168,6 +174,9 @@ const palmFloor = (sg, x, z, out = 0.2) => c => ({ pos: [sg * x, 0.42, z], pole:
 // 上体を倒して立つ（ベントオーバーロウ・リアレイズ）
 const bentOver = (m, pitch) => ({ pelvis: [pitch, 0, 0], chest: [pitch + 3, 0, 0], head: [-12, 0, 0],
                                   pin: pinHip(m.legL.ankleH + Math.sqrt(legLen(m, 34) ** 2 - 2.2 ** 2), m.legL.A.z - 2.2), ...feet(1.66) });
+
+// 懸垂バー。x = 握る所（体の中心から）、y = バーの高さ、z = 前後、sy0/sy1 = 一番下・一番上の肩の高さ、back = 上で肩をバーより後ろへ引く分
+const CHIN = { x: 2.5, y: 20.2, z: 1.5, sy0: 20.2 - 5.25, sy1: 20.2 - 1.0, back: 2.4 };
 
 export const EXLIB = {
   // ゴブレットスクワット: ダンベルを縦にして胸の前で抱える。足は肩幅よりやや広く、つま先は少し外。太ももが床と平行かそれ以下まで。
@@ -751,6 +760,27 @@ export const EXLIB = {
       pelvis: [56 * u, 0, 0], chest: [62 * u, 0, 0], head: [-14 * u, 0, 0],
       ...feet(1.66), ...hangBoth(),
     }),
+  },
+
+  // チンニング（懸垂）: 手のひらを前に向けて肩幅より少し広く握り、腕を伸ばしきってぶら下がる。膝は曲げて足を浮かせる。
+  // 肘を体の横へ引き下ろして、あごがバーの高さまで上がる。バーの高さは、この体の腕の長さから決める（腕を伸ばしたとき足が床から浮く）。
+  // この体は頭が大きいので、上では体を少し後ろへ倒し、バーを顔の前に通す。
+  chinning: {
+    name: 'チンニング（懸垂）', props: { bar: [0, CHIN.y, CHIN.z] }, air: true, tempo: [1.5, 0.4, 3.0, 0.3],
+    pose: (u, k, m) => {
+      const L = m.legL, th = 12 * D, kn = 70 * D, bk = 1 - (1 - u) * (1 - u);      // bk: 頭がバーに近づく前に、肩を早めに後ろへ引く
+      const foot = sg => c => ({ pos: (sg > 0 ? c.hipL : c.hipR).clone().add(c.p(0, -(L.L1 * Math.cos(th) + L.L2 * Math.cos(kn - th)) * 0.998, L.L1 * Math.sin(th) - L.L2 * Math.sin(kn - th))),
+                                 pole: c.p(0, 0, 1), toe: c.p(0, -0.98, 0.21), up: c.p(0, 0.21, 0.98) });
+      // 手首は、握る所（バーの中心）から指の向きと手のひらの向きへ戻した所。上がるにつれて、手はバーのまわりを少し回る（指が前へ倒れる）
+      const ga = lerp(0, 35, u) * D, g = V(0, Math.cos(ga), Math.sin(ga)), palm = V(0, -Math.sin(ga), Math.cos(ga));
+      const hand = sg => c => ({ pos: V(sg * CHIN.x, CHIN.y, CHIN.z).addScaledVector(g, -m.armL.hand * 0.92).addScaledVector(palm, -0.27),
+                                 pole: c.c(sg * 0.6, -1, -0.3), g, bar: V(-sg, 0, 0), hand: 'grip' });
+      return {
+        pelvis: [lerp(0, -8, u), 0, 0], chest: [lerp(0, -14, u), 0, 0], head: [lerp(0, -10, u), 0, 0],
+        pin: pinSh(0, lerp(CHIN.sy0, CHIN.sy1, u), lerp(CHIN.z - 0.4, CHIN.z - CHIN.back, bk)),
+        footL: foot(1), footR: foot(-1), handL: hand(1), handR: hand(-1),
+      };
+    },
   },
 };
 

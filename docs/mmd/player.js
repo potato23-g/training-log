@@ -124,6 +124,9 @@ export async function create() {
       for (const s of ['L', 'R', 'F']) { const d = rig.dbWorld(s); if (d.vis) { add(d.c.clone().addScaledVector(d.ax, 1.1), 0.75); add(d.c.clone().addScaledVector(d.ax, -1.1), 0.75); } }
       const h = rig.wp('下半身'); add(new THREE.Vector3(h.x, 0.4, h.z), 0.4);      // 床（台に乗る種目でも、床までを枠に入れる）
     }
+    // 懸垂バーは両端の柱まで入れる（回したときに柱が切れないように）
+    const bar = cur.props && cur.props.bar;
+    if (bar) for (const x of [-5.6, 5.6]) for (const y of [0.4, bar[1] + 0.9]) add(new THREE.Vector3(bar[0] + x, y, bar[2]), 0.5);
     return pts;
   }
   const cR = new THREE.Vector3(), cU = new THREE.Vector3(), cD = new THREE.Vector3(), cT = new THREE.Vector3();

@@ -36,6 +36,9 @@ const WANT = {
   rdl1: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '立位: 手のひらは太ももの側' }],
   deadlift: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '立位: 手のひらは体の側' },
              { t: 3.4, hand: 'handR', to: [0, 0, -1], label: '一番下: 手のひらはすねの側' }],
+  /* ACE/NASM: 順手（手のひらは前）。ぶら下がりも一番上も同じ握り */
+  chinning: [{ t: 0, hand: 'handR', to: [1, 0, 0], label: 'ぶら下がり: 手のひらは前（順手）' },
+             { t: 1.5, hand: 'handR', to: [1, 0, 0], label: '一番上: 手のひらは前（順手）' }],
   /* ACE: ダンベルは腰の真横、ニュートラル */
   farmer: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' }],
   calf: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '手のひらは太ももの側' }],
