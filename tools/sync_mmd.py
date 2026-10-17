@@ -53,7 +53,7 @@ def put(path):
 if os.path.isdir(DST):
     for name in os.listdir(DST):
         p = os.path.join(DST, name)
-        if name in ('player.js', 'stills'):      # stills は tools/make_stills.py が描き直す
+        if name in ('player.js', 'stills', 'body'):      # stills は tools/make_stills.py、body は tools/make_bodyfig.py が描き直す
             continue
         shutil.rmtree(p) if os.path.isdir(p) else os.remove(p)
 
