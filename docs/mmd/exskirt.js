@@ -15,7 +15,7 @@ export class Skirt {
   constructor(rig, raw, props, opt) {
     const mesh = this.mesh = rig.mesh, bones = mesh.skeleton.bones, rw = rig.rw;
     this.rig = rig; this.props = props;
-    this.o = Object.assign({ sub: 6, iter: 3, g: -98, drag: 1.8, vmax: 55, margin: 0.13, mu: 0.45, muSlick: 0.02, arms: false, hem: 0.65, bend: 0.0004, ring: 0.0005, shear: 0.004, comp: 0.006, vcomp: 1, floor: 0, pmax: 0.06, slit: [0.8, 1.6, 2.6, 3.8, 5, 6, 7] }, opt);
+    this.o = Object.assign({ sub: 6, iter: 3, g: -98, drag: 1.8, vmax: 55, margin: 0.13, mu: 0.45, muSlick: 0.02, arms: false, hem: 0.65, bend: 0.0004, ring: 0.0005, shear: 0.004, comp: 0.006, vcomp: 1, floor: 0, pmax: 0.06, pmaxB: 0.2, slit: [0.8, 1.6, 2.6, 3.8, 5, 6, 7] }, opt);
     const bone = n => bones.find(b => b.name === n), body = n => raw.rigidBodies.find(b => b.name === n);
     this.root = bone('Skirt_Root'); this.rootRest = rw['Skirt_Root'].clone();
     const n = this.n = (R + 1) * C;
@@ -54,7 +54,7 @@ export class Skirt {
     this.S = S;
     // 床との当たりを、すそほど高めに取る。点のあいだの布の面とフリルは点より外へ出るので、点だけを床の上に置いても面が床へ刺さる
     this.lift = Float32Array.from(S, ([I]) => { const r = Math.max(...I.map(i => Math.floor(i / C))); return r >= R ? o.hem : r === R - 1 ? o.hem * 0.6 : o.hem * 0.3; });
-    this.cn = new Float64Array(n * 3); this.cv = new Float64Array(n * 3); this.ch = new Uint8Array(n); this.pinch = new Uint8Array(n);
+    this.cn = new Float64Array(n * 3); this.cv = new Float64Array(n * 3); this.ch = new Uint8Array(n); this.bn = new Float64Array(n * 3); this.fn = new Float64Array(n * 3);
 
     // 当たる相手（体）。もとの物理の「骨に従う剛体」から取る。脚は、見た目の太さを頂点から測る。
     this.cols = [];
@@ -178,7 +178,7 @@ export class Skirt {
     const boxes = this.boxes.filter(b => b.m.visible).map(b => ({ c: b.m.position, cs: Math.cos(b.m.rotation.y), sn: Math.sin(b.m.rotation.y), h: b.h }));
     // 腕とダンベルは、いつも布の外にある。布を体のほうへ押すだけにする（内側から外へは押し出さない）
     const e = this.M.elements, c0x = e[12], c0y = e[13], c0z = e[14], al = Math.hypot(e[4], e[5], e[6]) || 1, adx = e[4] / al, ady = e[5] / al, adz = e[6] / al;
-    const m = o.margin, fy = o.floor + m * 0.6, lift = this.lift, S = this.S, con = this.con, cn = this.cn, cv = this.cv, ch = this.ch, pinch = this.pinch;
+    const m = o.margin, fy = o.floor + m * 0.6, lift = this.lift, S = this.S, con = this.con, cn = this.cn, cv = this.cv, ch = this.ch, bn = this.bn, fn = this.fn;
     for (let s = 0; s < ns; s++) {
       const al = (s + 1) / ns;
       cols.forEach((c, k) => { for (let a = 0; a < 3; a++) { ca[k * 3 + a] = c.pa.getComponent(a) + (c.a.getComponent(a) - c.pa.getComponent(a)) * al; cb[k * 3 + a] = c.pb.getComponent(a) + (c.b.getComponent(a) - c.pb.getComponent(a)) * al; } });
@@ -191,7 +191,7 @@ export class Skirt {
         p[j] = x[j]; p[j + 1] = x[j + 1]; p[j + 2] = x[j + 2];
         x[j] += vx * h; x[j + 1] += vy * h; x[j + 2] += vz * h;
       }
-      ch.fill(0); pinch.fill(0);
+      ch.fill(0); bn.fill(0); fn.fill(0);
       for (let it = 0; it < o.iter; it++) {
         for (let k = 0; k < con.length; k++) {
           const e = con[k], i = e[0] * 3, j = e[1] * 3, wi = w[e[0]], wj = w[e[1]], ws = wi + wj; if (ws === 0) continue;
@@ -205,11 +205,11 @@ export class Skirt {
           for (let k = 0; k < I.length; k++) { const j = I[k] * 3; qx += x[j] * Wt[k]; qy += x[j + 1] * Wt[k]; qz += x[j + 2] * Wt[k]; py0 += p[j + 1] * Wt[k]; if (w[I[k]]) den += Wt[k] * Wt[k]; }
           if (den === 0) continue;
           const push = (px, py, pz, k3, t) => {
-            // 深く入りこんだ所を一度に押し出さない（脚や台の角に押されたすそが、1コマで跳ねた）。床は上限なし
-            if (o.pmax && (k3 >= 0 || px || pz)) { const l = Math.hypot(px, py, pz); if (l > o.pmax) { const k = o.pmax / l; px *= k; py *= k; pz *= k; } }
+            // 深く入りこんだ所を一度に押し出さない（脚や台の角に押されたすそが、1コマで跳ねた）。床は上限なし。体は台より大きく（小さいと脚に押されたすそが追いつけず、空中に残って脚が布を通り抜けた）
+            const cap = k3 >= 0 ? o.pmaxB : px || pz ? o.pmax : 0; if (cap) { const l = Math.hypot(px, py, pz); if (l > cap) { const k = cap / l; px *= k; py *= k; pz *= k; } }
             for (let k = 0; k < I.length; k++) { const i = I[k]; if (!w[i]) continue; const f = Wt[k] / den, j = i * 3; x[j] += px * f; x[j + 1] += py * f; x[j + 2] += pz * f;
-              pinch[i] |= k3 >= 0 ? (cols[k3 / 3].outer || cols[k3 / 3].slick ? 0 : 2) : 1;
-              const l = Math.hypot(px, py, pz) || 1; ch[i] = k3 >= 0 && (cols[k3 / 3].outer || cols[k3 / 3].slick) ? 2 : 1; cn[j] = px / l; cn[j + 1] = py / l; cn[j + 2] = pz / l;
+              const l = Math.hypot(px, py, pz) || 1;
+              if (k3 < 0) { fn[j] += px / l; fn[j + 1] += py / l; fn[j + 2] += pz / l; } else if (!cols[k3 / 3].outer && !cols[k3 / 3].slick) { bn[j] += px / l; bn[j + 1] += py / l; bn[j + 2] += pz / l; } ch[i] = k3 >= 0 && (cols[k3 / 3].outer || cols[k3 / 3].slick) ? 2 : 1; cn[j] = px / l; cn[j + 1] = py / l; cn[j + 2] = pz / l;
               if (k3 >= 0) for (let a = 0; a < 3; a++) cv[j + a] = va[k3 + a] + (vb[k3 + a] - va[k3 + a]) * t; else cv[j] = cv[j + 1] = cv[j + 2] = 0; }
             qx += px; qy += py; qz += pz;
           };
@@ -250,7 +250,13 @@ export class Skirt {
       for (let i = 0; i < n; i++) {
         if (w[i] === 0) continue; const j = i * 3;
         let vx = (x[j] - p[j]) / h, vy = (x[j + 1] - p[j + 1]) / h, vz = (x[j + 2] - p[j + 2]) / h;
-        if (pinch[i] === 3) { v[j] = v[j + 1] = v[j + 2] = 0; continue; }   // 床（台）と体にはさまれた点は、押し合いの分を速さにしない（横に寝る種目で、下になった側のすそが毎コマはね回った）
+        // 床（台）と体に逆向きから押された点（はさまれた点）は、はさむ向きの速さを消す。重力とすべる向きは残す
+        // （横に寝る種目で、下になった側のすそが押し合いを毎コマ速さにしてはね回った。速さを丸ごと0にすると、脚に触れたすそが空中で止まった）
+        const bl = Math.hypot(bn[j], bn[j + 1], bn[j + 2]), fl = Math.hypot(fn[j], fn[j + 1], fn[j + 2]);
+        if (bl && fl && (bn[j] * fn[j] + bn[j + 1] * fn[j + 1] + bn[j + 2] * fn[j + 2]) / (bl * fl) < -0.3) {
+          const ax = fn[j] / fl - bn[j] / bl, ay = fn[j + 1] / fl - bn[j + 1] / bl, az = fn[j + 2] / fl - bn[j + 2] / bl, al = Math.hypot(ax, ay, az), d = (vx * ax + vy * ay + vz * az) / (al * al), k = 1 - o.mu;
+          v[j] = (vx - ax * d) * k; v[j + 1] = (vy - ay * d) * k; v[j + 2] = (vz - az * d) * k; continue;
+        }
         if (ch[i]) {                                  // 触れている相手に対するすべりを減らす。押し返された分は速さにしない（はね返ると、脚とダンベルにはさまれた所が震える）
           const rx = vx - cv[j], ry = vy - cv[j + 1], rz = vz - cv[j + 2], vn = 0, k = 1 - (ch[i] === 2 ? o.muSlick : o.mu);   // 腕とダンベルはよくすべる（布を引きずって後ろへ回さない）
           const dn = rx * cn[j] + ry * cn[j + 1] + rz * cn[j + 2];
