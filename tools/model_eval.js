@@ -83,10 +83,10 @@
     tab('からだ'); await W(300);
     const emaParts = parts(), emaOn = !!document.querySelector('svg.fig.ema') && mmdOn();
     const mask = document.querySelector('svg.fig.ema mask image');
-    const maskOk = mask ? await fetch(mask.getAttribute('href')).then(r => r.ok).catch(() => false) : false;
+    const maskOk = !!mask && /^data:image\/png;base64,/.test(mask.getAttribute('href'));
     setFigKind('line'); await W(200);
     ok('からだの図: キャラクターを選べば素体', emaOn);
-    ok('からだの図: 素体のシルエットの画像が読める', maskOk);
+    ok('からだの図: 素体のシルエットの画像は埋め込み（オフラインでも出る）', maskOk);
     ok('からだの図: 線の図を選べば線の図。部位の組は同じ: ' + parts() + ' / ' + emaParts,
        !document.querySelector('svg.fig.ema') && document.querySelectorAll('svg.fig').length === 2 && parts() === emaParts);
     setFigKind('model'); await W(200);

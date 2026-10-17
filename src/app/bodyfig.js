@@ -12,14 +12,14 @@ function addRgA11y(svg){
 }
 /* キャラクターの素体の図（tools/make_bodyfig.py が描いた docs/mmd/body/）。build.py が site のときだけ形を入れる。ほかの版では null。
    種目の図と同じく mmdOn() のときだけ使う（図はすべてキャラクターか、すべて線の図のどちらか）。
-   シルエットは形だけ使い（mask）、色は線の図と同じ CSS で塗る。部位は .rg の path なので、塗り方・押したときの動きは同じ */
+   シルエットは build.py が埋め込んだ画像を形だけ使い（mask。オフラインでも読める）、色は線の図と同じ CSS で塗る。部位は .rg の path なので、塗り方・押したときの動きは同じ */
 const MMD_BODY = "__MMD_BODY__";
 function bodyEma(){ return !!MMD_BODY && typeof MMD_BODY === "object" && typeof mmdOn === "function" && mmdOn(); }
 function emaFig(side){
   const o = MMD_BODY[side], [w, h] = MMD_BODY.vb, id = "bm" + side;
   return `
 <svg class="fig ema" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${side === "front" ? "正面" : "背面"}の筋肉図">
- <defs><mask id="${id}"><image href="${MMD_BASE}body/${side}.png" width="${w}" height="${h}"/></mask></defs>
+ <defs><mask id="${id}"><image href="${o.img}" width="${w}" height="${h}"/></mask></defs>
  <rect class="nt" width="${w}" height="${h}" mask="url(#${id})"/>
  <g mask="url(#${id})">
 ${o.regions.map(([m, d]) => `  <path class="rg" data-m="${m}" d="${d}"/>`).join("")}

@@ -9,6 +9,8 @@
 """
 import datetime
 import hashlib
+import json
+import base64
 import io
 import os
 import re
@@ -40,7 +42,14 @@ def embed_common(src, target):
     src = src.replace('"__MMD_STILLS__"', io.open(stills, encoding='utf-8').read().strip() if has_model and os.path.isfile(stills) else 'null')
     # からだの図（tools/make_bodyfig.py が描いたキャラクターの素体と部位の形）。無ければ、からだの図は線の図のまま
     body = os.path.join(ROOT, 'docs', 'mmd', 'body', 'fig.json')
-    src = src.replace('"__MMD_BODY__"', io.open(body, encoding='utf-8').read().strip() if has_model and os.path.isfile(body) else 'null')
+    # シルエットの画像は埋め込む（モデルの保存は使ったときに初めて入るので、読めないとオフラインで図ごと消える）
+    body_json = 'null'
+    if has_model and os.path.isfile(body):
+        fig = json.load(io.open(body, encoding='utf-8'))
+        for side in ('front', 'back'):
+            fig[side]['img'] = 'data:image/png;base64,' + base64.b64encode(open(os.path.join(os.path.dirname(body), side + '.png'), 'rb').read()).decode('ascii')
+        body_json = json.dumps(fig, ensure_ascii=False, separators=(',', ':'))
+    src = src.replace('"__MMD_BODY__"', body_json)
     src = src.replace('"__BUILD__"', '"%s"' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
     store = 'src/store-local.js' if target in ('local', 'site') else 'src/store-artifact.js'
     src = src.replace('/*INLINE-JS:STORE*/', read(store))
