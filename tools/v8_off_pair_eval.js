@@ -10,9 +10,11 @@
       残っていないこと。今日タブの一行が menuPairs の組の数だけ出ること。組が1つもできなければ、この検査は決まりを通っていない
    5. できる限り入れる（2026-10-09）: 相手のいない種目があるのに、反対の部位の動きが「入れられる」のまま入っていない日が無いこと
       （planWhy の理由が ""）。並びは組の数が一番多いこと（menuPairs の数 = pairMates の数）。
-      「メニューを組み直す」「おまかせで1種目追加」「種目を選んで追加」の後も、反対の部位どうしが離れたまま残らないこと */
+      「メニューを組み直す」「おまかせで1種目追加」「種目を選んで追加」の後も、反対の部位どうしが離れたまま残らないこと
+   6. 回復まであと1日の相手（2026-10-17・rules.js の nearReady）: 回復の途中の部位を使う種目は、7日使えていない部位のためか、
+      反対の部位の相手（あと1日・昨日は鍛えていない）のときだけ入る。どちらも restIncluded が理由を返す。相手として入る日が一度はある */
 setTimeout(() => {
-  const out = {fails: [], pairs: 0, sessions: 0, seat: 0};
+  const out = {fails: [], pairs: 0, sessions: 0, seat: 0, early: 0};
   const need = (cond, msg) => { if(!cond) out.fails.push(msg); };
   const shiftKey = (k, n) => { const d = new Date(k + "T00:00:00"); d.setDate(d.getDate() + n);
     return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
@@ -73,6 +75,17 @@ setTimeout(() => {
           /* やさしく／難しく */
           plan.forEach(it => [-1, 1].forEach(dir => { const s = stepItem(it, dir); need(!s || s.ex === it.ex || exOn(s.ex), "持ち替え先に外した種目: " + (s && s.ex)); }));
           fixPlan(session(TODAY));
+          plan.forEach(it => {
+            const r = exRest(it.ex);
+            if(!r || !r.left) return;
+            const inc = restIncluded(it);
+            need(!!inc, "回復の途中の部位を使う種目が、理由なしに入った: " + it.ex + "（" + name + "・" + day + "日目）");
+            if(inc && inc.pair){
+              if(!off.length) out.early++;
+              need(inc.resting.every(x => x.left === 1 && primaryLoadBetween(x.m, 1, 1) < RECOVER_PRIMARY) && plan.some(o => opposite(o.ex, it.ex)),
+                "回復まであと1日でない部位・相手のいない種目を早めた: " + it.ex + "（" + name + "・" + day + "日目）");
+            }
+          });
           doAll(plan);
         }
         nextDay();
@@ -81,6 +94,8 @@ setTimeout(() => {
   });
   need(out.seat > 0, "カーフレイズを外しても、座って行う方が一度も入らなかった");
   need(out.pairs > 0, "反対の部位どうしの組が一度もできなかった");
+  need(out.early > 0, "回復まであと1日の部位を、反対の部位の相手として入れた日が一度もない");
+  need(restIncludedText({pair: true, resting: [{m: "chest", left: 1}]}) === "胸は回復まであと1日ですが、反対の部位の種目と同じ日にそろえるために入れています。", "相手として早めたときの文が違う");
 
   /* ---- 2. 画面 ---- */
   reset(["rdl", "pushup", "adduct"]);

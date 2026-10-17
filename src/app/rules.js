@@ -461,10 +461,24 @@ function exRest(exId){
 function restIncluded(item){
   if(item.manual || item.extra || item.skip) return null;
   const r = exRest(item.ex);
-  return r && r.left && r.unused.length ? r : null;
+  if(r && r.left && r.unused.length) return r;
+  /* 反対の部位の相手として、回復まであと1日の部位を使う種目を入れたとき（planner.js の pairFill。nearReady） */
+  if(nearReady(r) && todayItems().some(o => !o.skip && opposite(o.ex, item.ex))) return Object.assign({pair: true}, r);
+  return null;
 }
-/* 「大腿四頭筋を7日以上使えていないので、回復の途中の部位（大殿筋はあと2日）があっても入れています。」 */
+/* 2026-10-17 本人の判断（案2）: 反対の部位の相手がいない種目には、回復まであと1日の部位を使う種目でも相手として入れる。
+   「あと1日」で、昨日はその部位をメインで鍛えていない（中1日以上は空いている）ときだけ。連日にはしない。筋肉痛の部位は入れない。
+   胸と広背筋のように回復の日が1日ずれたまま交互になり続けるのを、1日早めてそろえる。
+   脚（下半身）は入れない（脚の回復の日数は変えない＝本人の判断）。中1日の部位も入れない（あと1日になるのは量の多い日の翌々日だけで、そろえる役に立たない） */
+const NEAR_READY_NOT = ["quads", "glutes", "hams", "adductors", "gmed", "calves"];
+function nearReady(r){
+  return !!r && !r.sore.length && r.resting.length > 0
+    && r.resting.every(x => x.left === 1 && recoverGap(x.m) >= 2 && !NEAR_READY_NOT.includes(x.m) && primaryLoadBetween(x.m, 1, 1) < RECOVER_PRIMARY);
+}
+/* 「大腿四頭筋を7日以上使えていないので、回復の途中の部位（大殿筋はあと2日）があっても入れています。」
+   「胸は回復まであと1日ですが、反対の部位の種目と同じ日にそろえるために入れています。」 */
 function restIncludedText(r){
+  if(r.pair) return r.resting.map(x => MUSCLES[x.m]).join("・") + "は回復まであと1日ですが、反対の部位の種目と同じ日にそろえるために入れています。";
   return r.unused.map(m => MUSCLES[m]).join("・") + "を" + UNUSED_DAYS + "日以上使えていないので、回復の途中の部位（"
        + recoverDaysText(r.resting) + "）があっても入れています。";
 }

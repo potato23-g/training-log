@@ -137,7 +137,7 @@ function buildPlan(){
     if(after && !after.some(pt => donePattern.has(pt) || plan.some(p => patternOf(p.ex) === pt))) return "after";   /* 仕上げの動きは、先に組む動きがある日だけ */
     if(!gearReady(c.ex, c)) return "gear";                                          /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
     const tired = ex.p.find(m => rest[m]);
-    if(tired && !overdue(c.ex)) return "rest:" + tired;                             /* 回復の途中・筋肉痛の部位が主役 */
+    if(tired && !overdue(c.ex) && !(early && nearReady(c.ex in restMemo ? restMemo[c.ex] : (restMemo[c.ex] = exRest(c.ex))))) return "rest:" + tired;                            /* 回復の途中・筋肉痛の部位が主役 */
     /* 1日・1週間の上限は、その種目がメインで鍛える部位について見る。補助で使うだけの部位の量では外さない
        （その部位の量そのものには、ほかの種目の補助で使った分も数える）。
        ・2026-10-04: スクワットとランジはどれも腹直筋を補助で使うので、腹筋の種目を多くやった日・週は、大腿四頭筋と内転筋を
@@ -168,6 +168,7 @@ function buildPlan(){
      入れた種目には、今日タブの行の印・種目カード・種目の下の1行に、入れたことと理由が出る（rules.js の restIncluded） */
   const starved = {};                      /* 部位 → 回復の途中の部位を使わない種目が、今日は無い（メニューが変わるたびに消す） */
   const restMemo = {};                     /* exRest は記録だけで決まるので、組んでいるあいだ使い回す */
+  let early = false;                       /* 反対の部位の相手を探しているあいだだけ true（下の pairFill） */
   const THERE = ["", "full", "time", "skip"];
   const declined = m => !!planSkip && catalog().some(k => planSkip.has(patternOf(k.ex)) && EXMAP[k.ex].p.includes(m));
   const overdue = exId => {
@@ -233,13 +234,17 @@ function buildPlan(){
     }
   };
   /* 反対の部位の相手がいない種目に、入れられるかぎり相手を足す（下の compose の 4） */
+  /* 相手を探すときだけ、回復まであと1日の部位を使う種目も入れてよい（rules.js の nearReady） */
   const pairFill = () => {
-    for(;;){
-      const lone = unpaired(plan), n = plan.length;
-      if(!lone.length) return;
-      fill(0, n + 1, c => lone.some(a => opposite(a.ex, c.ex)));
-      if(plan.length === n) return;
-    }
+    early = true;
+    try{
+      for(;;){
+        const lone = unpaired(plan), n = plan.length;
+        if(!lone.length) return;
+        fill(0, n + 1, c => lone.some(a => opposite(a.ex, c.ex)));
+        if(plan.length === n) return;
+      }
+    }finally{ early = false; }
   };
   /* 残す種目（おまかせ追加・組み直し）を入れる。記録済みのセットは上で数えたので、残りのセットの分だけ足す */
   const keepIn = it => {

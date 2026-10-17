@@ -42,7 +42,9 @@ setTimeout(() => {
         const step = lastTrain < 0 ? 1 : day - lastTrain;
         need(plan.length <= SESSION_MAX.exercises, name + ": 1回の種目数が上限を超えた（" + day + "日目 " + plan.length + "）");
         plan.forEach(it => {
-          need(EXMAP[it.ex].p.every(m => ready[m]), name + ": 回復の途中の部位をメインで鍛える種目が入った（" + day + "日目 " + it.ex + "）");
+          /* 反対の部位の相手として、回復まであと1日の部位を使う種目は入ってよい（2026-10-17。rules.js の nearReady） */
+          const pairEarly = nearReady(exRest(it.ex)) && plan.some(o => opposite(o.ex, it.ex));
+          need(pairEarly || EXMAP[it.ex].p.every(m => ready[m]), name + ": 回復の途中の部位をメインで鍛える種目が入った（" + day + "日目 " + it.ex + "）");
           pats[patternOf(it.ex)] = (pats[patternOf(it.ex)] || 0) + 1;
         });
         /* メニューを全部行ったあとでも、その部位の種目を1つ足せるか（補助で使う分も含めた1週間の上限） */
