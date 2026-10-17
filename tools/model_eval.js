@@ -1,7 +1,8 @@
 /* キャラクターの図（公開版だけ）の通し検査。tools/model_check.py が docs/ を配って流す。
    1) 線の図の動きすべてに、キャラクターの姿勢・時間割・止まった姿の画像がそろっている（1 つでも欠けたら落とす）
    2) キャラクターを選んでいるあいだは、止まった姿も再生もキャラクターだけ。線の図を選べば線の図だけ
-   3) 再生 → 描き直しても続く → 停止、を実際に押して確かめる */
+   3) 再生 → 描き直しても続く → 停止、を実際に押して確かめる
+   4) からだの図も同じ選び方（mmdOn）で、キャラクターの素体か線の図か */
 (async () => {
   const W = ms => new Promise(r => setTimeout(r, ms));
   const out = {pass: 0, fail: []};
@@ -77,6 +78,18 @@
     mmdFail(); await W(100);
     ok('読めなかったときは、すべて線の図', !mmdOn() && !document.querySelector('.figstill[data-model]') && !!document.querySelector('.figstill'));
     mmdOff = false; render();
+    /* ---- からだの図も、種目の図と同じ選び方（mmdOn）でキャラクターか線の図か。部位はどちらも同じ組 */
+    const parts = () => [...new Set([...document.querySelectorAll('svg.fig .rg')].map(e => e.getAttribute('data-m')))].sort().join(',');
+    tab('からだ'); await W(300);
+    const emaParts = parts(), emaOn = !!document.querySelector('svg.fig.ema') && mmdOn();
+    const mask = document.querySelector('svg.fig.ema mask image');
+    const maskOk = mask ? await fetch(mask.getAttribute('href')).then(r => r.ok).catch(() => false) : false;
+    setFigKind('line'); await W(200);
+    ok('からだの図: キャラクターを選べば素体', emaOn);
+    ok('からだの図: 素体のシルエットの画像が読める', maskOk);
+    ok('からだの図: 線の図を選べば線の図。部位の組は同じ: ' + parts() + ' / ' + emaParts,
+       !document.querySelector('svg.fig.ema') && document.querySelectorAll('svg.fig').length === 2 && parts() === emaParts);
+    setFigKind('model'); await W(200);
     tab('設定'); await W(300);
     ok('設定で図を選べる', !!document.querySelector('#figSel'));
     out.caches = await caches.keys();

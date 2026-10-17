@@ -197,7 +197,7 @@ function themeCard(){
   return `<h3 class="sec">画面の色</h3>
   <div class="card">
     <div class="fld"><label for="themeSel">画面の色</label><select id="themeSel">${opts}</select></div>
-    ${MMD_BASE && MMD_STILLS ? `<div class="fld"><label for="figSel">種目の図</label><select id="figSel">${figs}</select></div>` : ""}
+    ${MMD_BASE && MMD_STILLS ? `<div class="fld"><label for="figSel">図の見た目</label><select id="figSel">${figs}</select></div>` : ""}
   </div>`;
 }
 function dayStartCard(){

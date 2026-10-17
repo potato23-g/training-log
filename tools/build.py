@@ -38,6 +38,9 @@ def embed_common(src, target):
     src = src.replace('"__MMD__"', '"./mmd/"' if has_model else '""')
     # キャラクターの止まった姿（tools/make_stills.py が描いた画像）の一覧。無ければ、図はすべて線の図になる
     src = src.replace('"__MMD_STILLS__"', io.open(stills, encoding='utf-8').read().strip() if has_model and os.path.isfile(stills) else 'null')
+    # からだの図（tools/make_bodyfig.py が描いたキャラクターの素体と部位の形）。無ければ、からだの図は線の図のまま
+    body = os.path.join(ROOT, 'docs', 'mmd', 'body', 'fig.json')
+    src = src.replace('"__MMD_BODY__"', io.open(body, encoding='utf-8').read().strip() if has_model and os.path.isfile(body) else 'null')
     src = src.replace('"__BUILD__"', '"%s"' % datetime.datetime.now().strftime('%Y-%m-%d %H:%M'))
     store = 'src/store-local.js' if target in ('local', 'site') else 'src/store-artifact.js'
     src = src.replace('/*INLINE-JS:STORE*/', read(store))

@@ -91,6 +91,7 @@ v4_update_e2e.py が固定で使う 8871/9479番ポートも念のため空け�
 - `cdp_shot.py` — ヘッドレスEdgeをCDPで操作してPNGを撮る共通基盤。他の全ブラウザ内検査が使う
 - `mock_github.py` — 同期テスト用の偽GitHub APIサーバー
 - `make_icons.py` — PWAアイコン一式を `docs/icons` に生成
+- `make_bodyfig.py` — からだの図のキャラクター版（素体のシルエットと部位の形）を `docs/mmd/body/` に描く。中身は `bodyfig_make.js`。`build.py site` の後に回し、もう一度 `build.py site` で形をアプリに入れる。`--preview 見本.jpg` で塗った見本も書く
 - `pose_fit.js` — 狙いの姿勢（関節の向き・位置）から関節角を逆算する、新しい種目の姿勢作成補助（`bun pose_fit.js <仕様ファイル.js>`）
 - `contact.html` — 全種目のコンタクトシート（複数姿勢を並べたPNG）を作る目視確認ページ
 - `review.sh` — `contact.html` を4枚に分けて撮って `shots/` に保存する
