@@ -228,6 +228,16 @@ function buildPlan(){
         if(g * (pr < 0 ? EX_PREF_FACTOR[pr] : 1) >= need && (!byPattern[pat] || f > byPattern[pat].f))
           byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1) * EX_PREF_FACTOR[pr]};
       });
+      /* 反対の部位の相手を探すとき（pairFill）は、同じまとまりの動き（ダンベルカールとハンマーカールなど）のうち、
+         しばらくやっていない方を相手にする（2026-10-17: 相手を広げたら、毎日やる場合にカールばかりが相手になり、ハンマーカールが出なくなった） */
+      if(early){
+        const byGroup = {};
+        Object.keys(byPattern).forEach(p => {
+          const g = groupOf(p), o = byGroup[g], idle = patternIdleDays(p);
+          if(!o || idle > o.idle || (idle === o.idle && byPattern[p].v > o.x.v)) byGroup[g] = {idle, x: byPattern[p], p};
+        });
+        Object.keys(byPattern).forEach(p => { if(byGroup[groupOf(p)].p !== p) delete byPattern[p]; });
+      }
       const best = Object.keys(byPattern).map(p => byPattern[p]).sort((a, b) => b.v - a.v)[0];
       if(!best) return;
       take(best.c);

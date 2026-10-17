@@ -358,6 +358,14 @@ function itemLevel(it){
    種目ではなく動きで見る（種目だけで見ると、同じ動きの中で別の種目に入れ替わってしまう）。
    1〜2セットだけ手を付けた動きは数えない（少しやっただけなら回復などを考えなくてよい: 2026-10-02 本人の要望。
    部位の回復の日数 recoverDaysLeft も、主役で RECOVER_PRIMARY セット以上やった日だけを数えている） */
+/* その動きを最後にやってから何日か（今日より前の記録で。28日より前か、やっていなければ 99） */
+function patternIdleDays(pat){
+  for(let ago = 1; ago <= 28; ago++){
+    const s = state.sessions[addDays(TODAY, -ago)];
+    if(s && (s.entries || []).some(e => e.sets.length && EXMAP[e.ex] && patternOf(e.ex) === pat)) return ago;
+  }
+  return 99;
+}
 function patternsYesterday(){
   const n = {};
   for(const d of sortedDates()){
@@ -469,11 +477,10 @@ function restIncluded(item){
 /* 2026-10-17 本人の判断（案2）: 反対の部位の相手がいない種目には、回復まであと1日の部位を使う種目でも相手として入れる。
    「あと1日」で、昨日はその部位をメインで鍛えていない（中1日以上は空いている）ときだけ。連日にはしない。筋肉痛の部位は入れない。
    胸と広背筋のように回復の日が1日ずれたまま交互になり続けるのを、1日早めてそろえる。
-   脚（下半身）は入れない（脚の回復の日数は変えない＝本人の判断）。中1日の部位も入れない（あと1日になるのは量の多い日の翌々日だけで、そろえる役に立たない） */
-const NEAR_READY_NOT = ["quads", "glutes", "hams", "adductors", "gmed", "calves"];
+   同じ日の本人の指示「足も含め全てでできるだけ対になるように」で、脚を含むすべての部位に当てはめる */
 function nearReady(r){
   return !!r && !r.sore.length && r.resting.length > 0
-    && r.resting.every(x => x.left === 1 && recoverGap(x.m) >= 2 && !NEAR_READY_NOT.includes(x.m) && primaryLoadBetween(x.m, 1, 1) < RECOVER_PRIMARY);
+    && r.resting.every(x => x.left === 1 && primaryLoadBetween(x.m, 1, 1) < RECOVER_PRIMARY);
 }
 /* 「大腿四頭筋を7日以上使えていないので、回復の途中の部位（大殿筋はあと2日）があっても入れています。」
    「胸は回復まであと1日ですが、反対の部位の種目と同じ日にそろえるために入れています。」 */
