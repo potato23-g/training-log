@@ -15,7 +15,7 @@ export class Skirt {
   constructor(rig, raw, props, opt) {
     const mesh = this.mesh = rig.mesh, bones = mesh.skeleton.bones, rw = rig.rw;
     this.rig = rig; this.props = props;
-    this.o = Object.assign({ sub: 6, iter: 3, g: -98, drag: 1.8, vmax: 55, margin: 0.13, mu: 0.45, muSlick: 0.02, arms: false, hem: 0.65, bend: 0.0004, ring: 0.0005, shear: 0.004, comp: 0.006, vcomp: 1, floor: 0, pmax: 0.12, pmaxB: 0.2, slit: [0.8, 1.6, 2.6, 3.8, 5, 6, 7] }, opt);
+    this.o = Object.assign({ sub: 6, iter: 3, g: -98, drag: 1.8, vmax: 55, margin: 0.13, mu: 0.45, muPin: 0.8, muSlick: 0.02, arms: false, hem: 0.65, bend: 0.0004, ring: 0.0005, shear: 0.004, comp: 0.006, vcomp: 1, floor: 0, pmax: 0.12, pmaxB: 0.2, slit: [0.8, 1.6, 2.6, 3.8, 5, 6, 7] }, opt);
     const bone = n => bones.find(b => b.name === n), body = n => raw.rigidBodies.find(b => b.name === n);
     this.root = bone('Skirt_Root'); this.rootRest = rw['Skirt_Root'].clone();
     const n = this.n = (R + 1) * C;
@@ -257,15 +257,16 @@ export class Skirt {
         // 床（台）と体に逆向きから押された点（はさまれた点）は、はさむ向きの速さを消す。重力とすべる向きは残す
         // （横に寝る種目で、下になった側のすそが押し合いを毎コマ速さにしてはね回った。速さを丸ごと0にすると、脚に触れたすそが空中で止まった）
         const bl = Math.hypot(bn[j], bn[j + 1], bn[j + 2]), fl = Math.hypot(fn[j], fn[j + 1], fn[j + 2]);
+        // はさまれた点の摩擦は muPin（ふつうの mu 0.45 だと、両脚と床にはさまれたすそが脚の上げ下げのたびに 4cm ほど弾けた）
         // 体の2か所（両脚など）に逆向きから押された点は、はさむ向き（最後に押された向き）の動きを消し、位置も前のコマ＋その速さに戻す
         // （骨盤の球を小さくしたら、横に寝る種目ですそが両脚にはさまれ、重なった脚の当たりの間で位置が毎コマ入れ替わった。速さだけ消しても位置は跳ねる）
         if (ba[i] >= 2 && bl < ba[i] * 0.5) {
-          const d = vx * cn[j] + vy * cn[j + 1] + vz * cn[j + 2], k = 1 - o.mu;
+          const d = vx * cn[j] + vy * cn[j + 1] + vz * cn[j + 2], k = 1 - o.muPin;
           v[j] = (vx - cn[j] * d) * k; v[j + 1] = (vy - cn[j + 1] * d) * k; v[j + 2] = (vz - cn[j + 2] * d) * k;
           x[j] = p[j] + v[j] * h; x[j + 1] = p[j + 1] + v[j + 1] * h; x[j + 2] = p[j + 2] + v[j + 2] * h; continue;
         }
         if (bl && fl && (bn[j] * fn[j] + bn[j + 1] * fn[j + 1] + bn[j + 2] * fn[j + 2]) / (bl * fl) < -0.3) {
-          const ax = fn[j] / fl - bn[j] / bl, ay = fn[j + 1] / fl - bn[j + 1] / bl, az = fn[j + 2] / fl - bn[j + 2] / bl, al = Math.hypot(ax, ay, az), d = (vx * ax + vy * ay + vz * az) / (al * al), k = 1 - o.mu;
+          const ax = fn[j] / fl - bn[j] / bl, ay = fn[j + 1] / fl - bn[j + 1] / bl, az = fn[j + 2] / fl - bn[j + 2] / bl, al = Math.hypot(ax, ay, az), d = (vx * ax + vy * ay + vz * az) / (al * al), k = 1 - o.muPin;
           v[j] = (vx - ax * d) * k; v[j + 1] = (vy - ay * d) * k; v[j + 2] = (vz - az * d) * k; continue;
         }
         if (ch[i]) {                                  // 触れている相手に対するすべりを減らす。押し返された分は速さにしない（はね返ると、脚とダンベルにはさまれた所が震える）
