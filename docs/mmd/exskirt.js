@@ -54,7 +54,7 @@ export class Skirt {
     this.S = S;
     // 床との当たりを、すそほど高めに取る。点のあいだの布の面とフリルは点より外へ出るので、点だけを床の上に置いても面が床へ刺さる
     this.lift = Float32Array.from(S, ([I]) => { const r = Math.max(...I.map(i => Math.floor(i / C))); return r >= R ? o.hem : r === R - 1 ? o.hem * 0.6 : o.hem * 0.3; });
-    this.cn = new Float64Array(n * 3); this.cv = new Float64Array(n * 3); this.ch = new Uint8Array(n); this.bn = new Float64Array(n * 3); this.fn = new Float64Array(n * 3);
+    this.cn = new Float64Array(n * 3); this.cv = new Float64Array(n * 3); this.ch = new Uint8Array(n); this.bn = new Float64Array(n * 3); this.fn = new Float64Array(n * 3); this.ba = new Float64Array(n);
 
     // 当たる相手（体）。もとの物理の「骨に従う剛体」から取る。脚は、見た目の太さを頂点から測る。
     this.cols = [];
@@ -182,7 +182,7 @@ export class Skirt {
     const boxes = this.boxes.filter(b => b.m.visible).map(b => ({ c: b.m.position, cs: Math.cos(b.m.rotation.y), sn: Math.sin(b.m.rotation.y), h: b.h }));
     // 腕とダンベルは、いつも布の外にある。布を体のほうへ押すだけにする（内側から外へは押し出さない）
     const e = this.M.elements, c0x = e[12], c0y = e[13], c0z = e[14], al = Math.hypot(e[4], e[5], e[6]) || 1, adx = e[4] / al, ady = e[5] / al, adz = e[6] / al;
-    const m = o.margin, fy = o.floor + m * 0.6, lift = this.lift, S = this.S, con = this.con, cn = this.cn, cv = this.cv, ch = this.ch, bn = this.bn, fn = this.fn;
+    const m = o.margin, fy = o.floor + m * 0.6, lift = this.lift, S = this.S, con = this.con, cn = this.cn, cv = this.cv, ch = this.ch, bn = this.bn, fn = this.fn, ba = this.ba;
     for (let s = 0; s < ns; s++) {
       const al = (s + 1) / ns;
       cols.forEach((c, k) => { for (let a = 0; a < 3; a++) { ca[k * 3 + a] = c.pa.getComponent(a) + (c.a.getComponent(a) - c.pa.getComponent(a)) * al; cb[k * 3 + a] = c.pb.getComponent(a) + (c.b.getComponent(a) - c.pb.getComponent(a)) * al; } });
@@ -195,7 +195,7 @@ export class Skirt {
         p[j] = x[j]; p[j + 1] = x[j + 1]; p[j + 2] = x[j + 2];
         x[j] += vx * h; x[j + 1] += vy * h; x[j + 2] += vz * h;
       }
-      ch.fill(0); bn.fill(0); fn.fill(0);
+      ch.fill(0); bn.fill(0); fn.fill(0); ba.fill(0);
       for (let it = 0; it < o.iter; it++) {
         for (let k = 0; k < con.length; k++) {
           const e = con[k], i = e[0] * 3, j = e[1] * 3, wi = w[e[0]], wj = w[e[1]], ws = wi + wj; if (ws === 0) continue;
@@ -213,8 +213,8 @@ export class Skirt {
             const cap = k3 >= 0 ? o.pmaxB : px || pz ? o.pmax : 0; if (cap) { const l = Math.hypot(px, py, pz); if (l > cap) { const k = cap / l; px *= k; py *= k; pz *= k; } }
             for (let k = 0; k < I.length; k++) { const i = I[k]; if (!w[i]) continue; const f = Wt[k] / den, j = i * 3; x[j] += px * f; x[j + 1] += py * f; x[j + 2] += pz * f;
               const l = Math.hypot(px, py, pz) || 1;
-              if (k3 < 0) { fn[j] += px / l; fn[j + 1] += py / l; fn[j + 2] += pz / l; } else if (!cols[k3 / 3].outer && !cols[k3 / 3].slick) { bn[j] += px / l; bn[j + 1] += py / l; bn[j + 2] += pz / l; } ch[i] = k3 >= 0 && (cols[k3 / 3].outer || cols[k3 / 3].slick) ? 2 : 1; cn[j] = px / l; cn[j + 1] = py / l; cn[j + 2] = pz / l;
-              if (k3 >= 0) for (let a = 0; a < 3; a++) cv[j + a] = va[k3 + a] + (vb[k3 + a] - va[k3 + a]) * t; else cv[j] = cv[j + 1] = cv[j + 2] = 0; }
+              if (k3 < 0) { fn[j] += px / l; fn[j + 1] += py / l; fn[j + 2] += pz / l; } else if (!cols[k3 / 3].outer && !cols[k3 / 3].slick) { bn[j] += px / l; bn[j + 1] += py / l; bn[j + 2] += pz / l; ba[i]++; } ch[i] = k3 >= 0 && (cols[k3 / 3].outer || cols[k3 / 3].slick) ? 2 : 1; cn[j] = px / l; cn[j + 1] = py / l; cn[j + 2] = pz / l;
+              if (k3 >= 0) for (let a = 0; a < 3; a++) cv[j + a] = va[k3 + a] + (vb[k3 + a] - va[k3 + a]) * t; else cv[j] = cv[j + 1] = cv[j + 2] = 0;  }
             qx += px; qy += py; qz += pz;
           };
           for (let k = 0; k < nc; k++) {
@@ -257,6 +257,13 @@ export class Skirt {
         // 床（台）と体に逆向きから押された点（はさまれた点）は、はさむ向きの速さを消す。重力とすべる向きは残す
         // （横に寝る種目で、下になった側のすそが押し合いを毎コマ速さにしてはね回った。速さを丸ごと0にすると、脚に触れたすそが空中で止まった）
         const bl = Math.hypot(bn[j], bn[j + 1], bn[j + 2]), fl = Math.hypot(fn[j], fn[j + 1], fn[j + 2]);
+        // 体の2か所（両脚など）に逆向きから押された点は、はさむ向き（最後に押された向き）の動きを消し、位置も前のコマ＋その速さに戻す
+        // （骨盤の球を小さくしたら、横に寝る種目ですそが両脚にはさまれ、重なった脚の当たりの間で位置が毎コマ入れ替わった。速さだけ消しても位置は跳ねる）
+        if (ba[i] >= 2 && bl < ba[i] * 0.5) {
+          const d = vx * cn[j] + vy * cn[j + 1] + vz * cn[j + 2], k = 1 - o.mu;
+          v[j] = (vx - cn[j] * d) * k; v[j + 1] = (vy - cn[j + 1] * d) * k; v[j + 2] = (vz - cn[j + 2] * d) * k;
+          x[j] = p[j] + v[j] * h; x[j + 1] = p[j + 1] + v[j + 1] * h; x[j + 2] = p[j + 2] + v[j + 2] * h; continue;
+        }
         if (bl && fl && (bn[j] * fn[j] + bn[j + 1] * fn[j + 1] + bn[j + 2] * fn[j + 2]) / (bl * fl) < -0.3) {
           const ax = fn[j] / fl - bn[j] / bl, ay = fn[j + 1] / fl - bn[j + 1] / bl, az = fn[j + 2] / fl - bn[j + 2] / bl, al = Math.hypot(ax, ay, az), d = (vx * ax + vy * ay + vz * az) / (al * al), k = 1 - o.mu;
           v[j] = (vx - ax * d) * k; v[j + 1] = (vy - ay * d) * k; v[j + 2] = (vz - az * d) * k; continue;
