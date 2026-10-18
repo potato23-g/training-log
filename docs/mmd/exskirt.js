@@ -208,6 +208,7 @@ export class Skirt {
           const I = S[s2][0], Wt = S[s2][1]; let den = 0, qx = 0, qy = 0, qz = 0, py0 = 0;
           for (let k = 0; k < I.length; k++) { const j = I[k] * 3; qx += x[j] * Wt[k]; qy += x[j + 1] * Wt[k]; qz += x[j + 2] * Wt[k]; py0 += p[j + 1] * Wt[k]; if (w[I[k]]) den += Wt[k] * Wt[k]; }
           if (den === 0) continue;
+          let lf = 1;                                // 床から浮かせる割合（脚に近いほど小さく）
           const push = (px, py, pz, k3, t) => {
             // 深く入りこんだ所を一度に押し出さない（脚や台の角に押されたすそが、1コマで跳ねた）。床は上限なし。体は台より大きく（小さいと脚に押されたすそが追いつけず、空中に残って脚が布を通り抜けた）
             const cap = k3 >= 0 ? o.pmaxB : px || pz ? o.pmax : 0; if (cap) { const l = Math.hypot(px, py, pz); if (l > cap) { const k = cap / l; px *= k; py *= k; pz *= k; } }
@@ -221,10 +222,12 @@ export class Skirt {
             const c = cols[k]; if (c.outer && !o.arms) continue;
             const k3 = k * 3, ax = ca[k3], ay = ca[k3 + 1], az = ca[k3 + 2], bx = cb[k3] - ax, by = cb[k3 + 1] - ay, bz = cb[k3 + 2] - az;
             const L2 = bx * bx + by * by + bz * bz; let t = L2 > 1e-9 ? ((qx - ax) * bx + (qy - ay) * by + (qz - az) * bz) / L2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
-            const dx = qx - ax - bx * t, dy = qy - ay - by * t, dz = qz - az - bz * t, d2 = dx * dx + dy * dy + dz * dz, rm = c.rmax + m;
+            const dx = qx - ax - bx * t, dy = qy - ay - by * t, dz = qz - az - bz * t, d2 = dx * dx + dy * dy + dz * dz, rm = c.rmax + m + lift[s2];
             if (d2 > rm * rm) continue;
             let r = this._rad(c, t) + m; if (c.clamp && c.clamp[s2] < r) r = c.clamp[s2];
-            const d = Math.sqrt(d2); if (d >= r || d < 1e-6) continue;
+            const d = Math.sqrt(d2);
+            if (!c.outer && !c.slick && lift[s2] > 0) lf = Math.min(lf, Math.max(0, (d - r) / lift[s2]));
+            if (d >= r || d < 1e-6) continue;
             const f = (r - d) / d;
             if (c.outer) {                            // 体の軸に向かう横の分だけ押す。上下には押さない（下から来た腕やダンベルに布が引っかかって持ち上がるため）
               const ux = qx - c0x, uy = qy - c0y, uz = qz - c0z, h2 = ux * adx + uy * ady + uz * adz, da = dx * adx + dy * ady + dz * adz;
@@ -248,7 +251,10 @@ export class Skirt {
             else if (ex <= ez) { const sx = Math.sign(lx) * ex; push(sx * b.cs, 0, -sx * b.sn, -1, 0); }
             else { const sz = Math.sign(lz) * ez; push(sz * b.sn, 0, sz * b.cs, -1, 0); }
           }
-          if (qy < fy + lift[s2]) push(0, fy + lift[s2] - qy, 0, -1, 0);
+          // 体の近くは床から浮かせない。体からの距離に応じてなめらかに減らす（すそを浮かせる分 lift が、床に寝た太ももの下の布を脚の中へ押し上げ、
+          // 太ももの内側に布が入りこんだ。浮かせる・浮かせないを切り替えると、境目で床の高さが跳んで布が震えた）
+          const fl0 = fy + lift[s2] * lf;
+          if (qy < fl0) push(0, fl0 - qy, 0, -1, 0);
         }
       }
       for (let i = 0; i < n; i++) {
