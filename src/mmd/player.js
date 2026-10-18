@@ -178,7 +178,7 @@ export async function create() {
     const r = (az) * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
     key.position.set(keyAt.x * c + keyAt.z * s, keyAt.y, -keyAt.x * s + keyAt.z * c);
   }
-  const settle = (a, n) => { physics.reset(); for (let i = 0; i < n; i++) { applyPose(a); physics.update(1 / 60); } if (skirt) skirt.reseed(); calm.reset(); };
+  const settle = (a, n, sn) => { physics.reset(); for (let i = 0; i < n; i++) { applyPose(a); physics.update(1 / 60); } if (skirt) skirt.reseed(36, sn); calm.reset(); };
   let shown = '';
   function set(id, o, a) {
     const ex = resolve(id);
@@ -222,7 +222,7 @@ export async function create() {
     shown = '';
     if (!set(id, o, a)) return null;
     shown = '';
-    settle(a || {}, 80);
+    settle(a || {}, 80, 120);   // 止め絵はコートを長めに落とす（短いと、寝た種目で上になった側のすそが立ったまま残る）
     if (blinkIdx >= 0) mesh.morphTargetInfluences[blinkIdx] = 0;
     setCam(0);
     effect.render(scene, camera);

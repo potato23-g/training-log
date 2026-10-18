@@ -147,6 +147,7 @@ export class Skirt {
   }
 
   // 姿勢が飛んだとき（種目の切り替え・止め絵）。立った形から、いまの姿勢へ体を動かしながら布を落ち着かせる。
+  // 仕上げは、ふつうの減衰で落とす。止め絵は settle を長く（重い減衰で短く止めると、寝た種目で上になった側のすそが立ったまま残り、脚が布を通り抜けた）
   reseed(frames = 36, settle = 24) {
     this._targets(); this._targets();
     const M = this.M, q = this._tmp, x = this.x;
@@ -161,7 +162,7 @@ export class Skirt {
       this._sim(1 / 60, 6);
     }
     for (const col of this.cols) { col.pa.copy(col.a); col.pb.copy(col.b); }
-    for (let f = 0; f < settle; f++) this._sim(1 / 60, 6);
+    for (let f = 0; f < settle; f++) this._sim(1 / 60, this.o.drag);
     this.v.fill(0);
     this._write();
   }
