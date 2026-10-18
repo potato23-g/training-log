@@ -15,7 +15,7 @@ export class Skirt {
   constructor(rig, raw, props, opt) {
     const mesh = this.mesh = rig.mesh, bones = mesh.skeleton.bones, rw = rig.rw;
     this.rig = rig; this.props = props;
-    this.o = Object.assign({ sub: 6, iter: 3, g: -98, drag: 1.8, vmax: 55, margin: 0.13, mu: 0.45, muSlick: 0.02, arms: false, hem: 0.65, bend: 0.0004, ring: 0.0005, shear: 0.004, comp: 0.006, vcomp: 1, floor: 0, pmax: 0.06, pmaxB: 0.2, slit: [0.8, 1.6, 2.6, 3.8, 5, 6, 7] }, opt);
+    this.o = Object.assign({ sub: 6, iter: 3, g: -98, drag: 1.8, vmax: 55, margin: 0.13, mu: 0.45, muSlick: 0.02, arms: false, hem: 0.65, bend: 0.0004, ring: 0.0005, shear: 0.004, comp: 0.006, vcomp: 1, floor: 0, pmax: 0.12, pmaxB: 0.2, slit: [0.8, 1.6, 2.6, 3.8, 5, 6, 7] }, opt);
     const bone = n => bones.find(b => b.name === n), body = n => raw.rigidBodies.find(b => b.name === n);
     this.root = bone('Skirt_Root'); this.rootRest = rw['Skirt_Root'].clone();
     const n = this.n = (R + 1) * C;
@@ -98,6 +98,9 @@ export class Skirt {
     for (const col of this.cols) {
       if (!col.bone || !/^下半身/.test(col.name)) continue;
       const A = col.ra, ab = col.rb.clone().sub(A), L2 = ab.lengthSq(), r0 = col.prof[0], bins = Array.from({ length: K + 1 }, () => []), q = V();
+      // 球（足の付け根）は測らない。骨盤の頂点の95%を包む球は実際のお尻よりずっと大きく（1.9〜2.2。剛体は 0.9〜1.0）、
+      // 横に寝ると上側のお尻の上に見えない球が張り出して、コートが宙に立ち、球の中では脚が布を突き抜けた
+      if (L2 < 1e-9) continue;
       for (let i = 0; i < pos.count; i++) {
         if (dn[i] !== col.bone.name) continue;
         q.fromBufferAttribute(pos, i); const t = L2 > 1e-9 ? q.clone().sub(A).dot(ab) / L2 : 0; if (t < -0.1 || t > 1.1) continue;
@@ -319,7 +322,7 @@ export class Skirt {
     const P = this.props.P, pts = new Float64Array(this.n * 3), q = V(), m = this.o.margin;
     for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) { q.setFromMatrixPosition(this.sk[r * C + c].matrixWorld).toArray(pts, id(r, c) * 3);
       if (r === R - 1) { q.copy(this.x0[id(R, c)]).sub(this.x0[id(r, c)]).applyMatrix4(this.sk[r * C + c].matrixWorld).toArray(pts, id(R, c) * 3); } }
-    const out = { body: 0, who: '', prop: 0, floor: 0, n: 0, arm: 0, armWho: '', armN: 0 }, a = V(), b = V(), sp = V();
+    const out = { body: 0, who: '', by: {}, prop: 0, floor: 0, n: 0, arm: 0, armWho: '', armN: 0 }, a = V(), b = V(), sp = V();
     const boxes = this.boxes.filter(bx => bx.m.visible);
     this.S.forEach(([I, Wt], s) => {
       sp.set(0, 0, 0); I.forEach((i, k) => { sp.x += pts[i * 3] * Wt[k]; sp.y += pts[i * 3 + 1] * Wt[k]; sp.z += pts[i * 3 + 2] * Wt[k]; });
@@ -332,7 +335,7 @@ export class Skirt {
         let r = this._rad(col, t); if (!col.outer && col.clamp && col.clamp[s] - m < r) r = col.clamp[s] - m;
         const dep = r - sp.distanceTo(a.addScaledVector(ab, t));
         if (col.outer) { if (dep > 0.05) { out.armN++; if (dep > out.arm) { out.arm = dep; out.armWho = col.name; } } continue; }
-        if (dep > 0.05) { hit = true; if (col.bone) { if (dep > out.body) { out.body = dep; out.who = col.name; } } else out.prop = Math.max(out.prop, dep); }
+        if (dep > 0.05) { hit = true; if (col.bone) { if (dep > out.body) { out.body = dep; out.who = col.name; } const w = out.by[col.name] || (out.by[col.name] = [0, 0]); w[0]++; w[1] = Math.max(w[1], +dep.toFixed(2)); } else out.prop = Math.max(out.prop, dep); }
       }
       for (const bx of boxes) { const c = bx.m.position, cs = Math.cos(bx.m.rotation.y), sn = Math.sin(bx.m.rotation.y), rx = sp.x - c.x, rz = sp.z - c.z;
         const dep = Math.min(bx.h[0] - Math.abs(rx * cs - rz * sn), bx.h[1] - Math.abs(sp.y - c.y), bx.h[2] - Math.abs(rx * sn + rz * cs));

@@ -1,9 +1,9 @@
 /* トレーニング記録 — オフラインキャッシュ
-   ビルド時に 5f28a1541c を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
-const CACHE_NAME = 'trainlog-5f28a1541c';
+   ビルド時に f31d683ee8 を内容ハッシュへ置き換える（更新のたびにキャッシュが入れ替わる） */
+const CACHE_NAME = 'trainlog-f31d683ee8';
 /* モデルの動き（./mmd/ 以下。14MBほど）は別の保存に分ける。使ったときに初めて保存し、
-   アプリ本体を更新しても消さない。中身が変わったとき（7bdd66e6e5 が変わる）だけ入れ替える */
-const MODEL_CACHE = 'trainmodel-7bdd66e6e5';
+   アプリ本体を更新しても消さない。中身が変わったとき（8a79215656 が変わる）だけ入れ替える */
+const MODEL_CACHE = 'trainmodel-8a79215656';
 const PRECACHE = [
   './',
   './index.html',
