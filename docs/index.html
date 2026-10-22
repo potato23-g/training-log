@@ -4461,6 +4461,7 @@ function sanitizeState(obj){
         n = num(z.rpe); if(n !== null && n >= 0 && n <= 10) nz.rpe = n;
         if(typeof z.label === "string") nz.label = z.label.slice(0, 60);
         n = num(z.target); if(n !== null && n >= 0) nz.target = n;
+        n = num(z.pn); if(n !== null && n >= 1 && n <= 10 && n === Math.floor(n)) nz.pn = n;   /* その日の予定のセット数（追加したセットを除く） */
         ne.sets.push(nz);
       });
       x.entries.push(ne);
@@ -4474,6 +4475,7 @@ function sanitizeState(obj){
         var np = { ex: p.ex }, n;
         if((n = text(p.label, 60)) !== undefined) np.label = n;
         n = num(p.sets); if(n !== null && n >= 1 && n <= 10) np.sets = n;
+        n = num(p.more); if(n !== null && n >= 1 && n <= 10 && n === Math.floor(n)) np.more = n;   /* その日だけ追加したセット */
         n = num(p.r); if(n !== null && n >= 0) np.r = n;
         ["side", "baseFig", "extra", "manual", "skip"].forEach(function(k){ if(p[k] === true) np[k] = true; });
         if((n = text(p.note, 300)) !== undefined) np.note = n;
@@ -4524,6 +4526,8 @@ function sanitizeState(obj){
       var pj = num(pg.jump);
       if(pj === 0 || pj === 2) g2.jump = pj;
       if(pg.first === "harder" || pg.first === "keep" || pg.first === "stay") g2.first = pg.first;
+      if(pg.low === "lo") g2.low = pg.low;
+      if(pg.drop === "easier" || pg.drop === "none") g2.drop = pg.drop;
       tn.prog = stamp(pg, g2); }
     if(Object.keys(tn).length) out.tune = tn;
   }
@@ -5927,7 +5931,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-18 20:18";
+const BUILD_VERSION = "2026-10-22 21:03";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -7054,7 +7058,7 @@ function setExOn(id, on){
 /* 本人が変えられる決まり（2026-10-10 本人の要望: 提案を細かくカスタマイズできるようにしたい。選んだのは
    種目の出やすさ・反対の部位と回復の日数・回数や重量の増え方）。
    state.tune = {pref:{map:{動き:1|-1}, updatedAt}, pair:{off:true, updatedAt}, gap:{map:{部位:日数}, updatedAt},
-                 prog:{step:0|2|3, need:2|3, jump:0|2, first:"harder"|"keep", updatedAt}}
+                 prog:{step:0|2|3, need:2|3, jump:0|2, first:"harder"|"keep", low:"lo", drop:"easier"|"none", updatedAt}}
    初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
    4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
    読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
@@ -7073,7 +7077,7 @@ function tuneIsDefault(k){
   if(!p) return true;
   if(k === "pref" || k === "gap") return !p.map || !Object.keys(p.map).length;
   if(k === "pair") return p.off !== true;
-  return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier";
+  return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier" && progLow() === "keep" && progDrop() === "lighter";
 }
 function tuneChanged(){ return TUNE_KEYS.some(k => !tuneIsDefault(k)); }
 /* 種目の出やすさ（動きごと）: 1=よく出す / 0=ふつう / -1=あまり出さない。
@@ -7102,15 +7106,25 @@ function progNeed(){ const p = tunePart("prog"), n = p ? p.need : 1; return n ==
 function progJump(){ const p = tunePart("prog"); return !p ? 1 : p.first === "stay" || p.jump === 0 ? 0 : p.jump === 2 ? 2 : 1; }
 /* 増やし方のひとつを変える（初めの設定と同じ値は持たない） */
 function setProg(field, v){
-  const o = {step: progGain("w"), need: progNeed(), jump: progJump(), first: progFirst()};
+  const o = {step: progGain("w"), need: progNeed(), jump: progJump(), first: progFirst(), low: progLow(), drop: progDrop()};
   o[field] = v;
   const out = {};
   if(o.step === 0 || o.step === 2 || o.step === 3) out.step = o.step;
   if(o.need === 2 || o.need === 3) out.need = o.need;
   if(o.jump === 0 || o.jump === 2) out.jump = o.jump;
   if(o.first === "harder" || o.first === "keep") out.first = o.first;
+  if(o.low === "lo") out.low = o.low;
+  if(o.drop === "easier" || o.drop === "none") out.drop = o.drop;
   setTune("prog", out);
 }
+/* 目標の下げ方（2026-10-22 本人の指摘: 自分で決めてやっている回数が、少ないと判断されて勝手に増やされる。下げ方も選べるように）。
+   progLow = 回数の範囲（解説の「10〜15回」）の下限より少なくやった次の回の目標。
+     "keep"=やった回数に合わせる（下限まで上げない。初めの設定）/ "lo"=範囲の下限にする（10-22 より前の版の動き）
+   progDrop = 同じ重さで2回続けて範囲の下限より少なかったとき。
+     "lighter"=ダンベルを一段軽く、無ければやさしいやり方へ（初めの設定）/ "easier"=やさしいやり方を先に / "none"=下げない
+   どちらも読むのは progress.js の progressFor だけ */
+function progLow(){ const p = tunePart("prog"); return p && p.low === "lo" ? "lo" : "keep"; }
+function progDrop(){ const p = tunePart("prog"), d = p ? p.drop : ""; return d === "easier" || d === "none" ? d : "lighter"; }
 /* やり方の進め方: "heavier"=ダンベルを重くできないときに一段難しいやり方へ（初めの設定）/ "harder"=重くするより先に難しいやり方へ /
    "keep"=やり方は変えない */
 function progFirst(){ const p = tunePart("prog"), f = p ? p.first : ""; return f === "harder" ? f : f === "keep" || f === "stay" ? "keep" : "heavier"; }
@@ -7242,6 +7256,10 @@ const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, frontdelt:1, si
 const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
 /* 1種目のセット数。本人の要望で3に固定（2026-09-29。重さ・回数は本人が調整する） */
 const SETS_PER_EXERCISE = 3;
+/* 今日のメニューのその種目のセット数。決まったセット数に、その日だけ追加したセット（行の more。カードの「セット追加」:
+   2026-10-22 本人の要望「種目によっては5セットやりたい」）を足す。セット数を数えるところは、どこもこれを使う */
+const MORE_SETS_MAX = 7;
+function setsOf(it){ return SETS_PER_EXERCISE + Math.max(0, Math.min(MORE_SETS_MAX, (it && it.more) | 0)); }
 /* 初めの設定の日数と、今の日数（本人が設定で変えた部位はその日数: 上の state.tune.gap） */
 function recoverGapDefault(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
 function recoverGap(m){
@@ -7254,6 +7272,16 @@ function setRecoverGap(m, v){
   setTune("gap", {map});
 }
 /* 部位 m が主役（主働筋）だったセット数（fromDaysAgo〜toDaysAgo 日前） */
+/* 連日でもよい部位（回復の日数が0）を、昨日から数えて何日続けてメインで鍛えたか（RECOVER_PRIMARY セット以上の日）。
+   DAILY_RUN_MAX 日続いた部位は、今日はメインにしない（planner.js の why の "run"）。昨日鍛えた部位の種目は、ほかの連日でもよい部位の
+   種目より後に選ぶ（DAILY_RUN_PREF）。2026-10-22 本人の指摘「連日やっても良い種目が何個もあるが、一つの部位が三日連続で出た。
+   連日可能な部位もできるだけ提案がばらけるように」 */
+const DAILY_RUN_MAX = 2, DAILY_RUN_PREF = 0.7;
+function dailyRun(m){
+  let n = 0;
+  while(n < 14 && primaryLoadBetween(m, n + 1, n + 1) >= RECOVER_PRIMARY) n++;
+  return n;
+}
 function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   let n = 0;
   sessionsBetween(fromDaysAgo, toDaysAgo).forEach(s => {
@@ -7670,7 +7698,7 @@ function exLoad(exId, n){
 /* 1種目にかかる時間（分）の目安。1回4秒（秒数の種目はその秒数）、左右ありは2倍と持ち替え、
    セット間は休憩タイマーの秒数、種目の切り替えに1分 */
 function itemMinutes(it){
-  const ex = EXMAP[it.ex], sets = it.sets || 3, side = !!it.side;
+  const ex = EXMAP[it.ex], sets = it.sets || setsOf(it), side = !!it.side;
   const reps = progressFor(it).target;
   const work = ex.kind === "t" ? reps * (side ? 2 : 1) + 15 : reps * 4 * (side ? 2 : 1) + (side ? 15 : 0) + 15;
   return (sets * work + (sets - 1) * restFor(it) + 60) / 60;
@@ -7722,11 +7750,15 @@ function buildPlan(){
   const weekP = m => (m in weekPMemo ? weekPMemo[m] : (weekPMemo[m] = primaryLoadBetween(m, 1, 6)));   /* 直近6日にメインで鍛えたセット数 */
   /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕）だけが主役の動きは、昨日やっていても続けてよい */
   const daily = ex => ex.p.every(m => recoverGap(m) === 0);
+  const runMemo = {};
+  const runOf = m => (m in runMemo ? runMemo[m] : (runMemo[m] = dailyRun(m)));
+  /* 昨日メインで鍛えた連日でもよい部位の種目は、ほかの種目より後に選ぶ（同じ部位が続かず、ばらけるように） */
+  const ranYesterday = c => EXMAP[c.ex].p.some(m => recoverGap(m) === 0 && runOf(m) >= 1);
   const today = {}, plan = [];
   let sets = 0, minutes = 0;
   const minutesMemo = {};
   const mins = it => {
-    const k = it.ex + "|" + (it.label || "") + "|" + (it.sets || 3);
+    const k = it.ex + "|" + (it.label || "") + "|" + (it.sets || setsOf(it));
     if(minutesMemo[k] === undefined) minutesMemo[k] = itemMinutes(it);
     return minutesMemo[k];
   };
@@ -7751,18 +7783,20 @@ function buildPlan(){
     const over = Math.max(0, Math.min(have + add, WEEK_MAX) - Math.max(have, WEEK_TARGET));
     return (PLAN_WEIGHT[m] || 0) * (under + over * 0.15);
   };
-  const gain = c => { const add = exLoad(c.ex, c.sets || 3); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
+  const gain = c => { const add = exLoad(c.ex, setsOf(c)); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
   /* 部位 m を今日メインで鍛えるセット数（記録したぶんと、メニューに入れたぶん） */
   const primToday = m => doneToday.reduce((a, e) => a + (EXMAP[e.ex].p.includes(m) ? e.sets.length : 0), 0)
-    + plan.reduce((a, p) => { if(!EXMAP[p.ex].p.includes(m)) return a; const d = doneToday.find(e => e.ex === p.ex); return a + Math.max(0, (p.sets || SETS_PER_EXERCISE) - (d ? d.sets.length : 0)); }, 0);
+    + plan.reduce((a, p) => { if(!EXMAP[p.ex].p.includes(m)) return a; const d = doneToday.find(e => e.ex === p.ex); return a + Math.max(0, setsOf(p) - (d ? d.sets.length : 0)); }, 0);
   /* その組み方を今日のメニューに入れられない理由（入れられるなら ""）。"rest:glutes" のように、理由と部位を返す */
   const why = c => {
-    const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n), pat = patternOf(c.ex);
+    const ex = EXMAP[c.ex], n = setsOf(c), add = exLoad(c.ex, n), pat = patternOf(c.ex);
     if(!exOn(c.ex)) return "off";                                                   /* メニューに入れない種目（rules.js の exOn） */
     if(plan.some(p => patternOf(p.ex) === pat)) return "same";                      /* 同じ動きは1日1つ */
     if(donePattern.has(pat)) return "done";                                         /* 今日もうやった動き */
     if(planSkip && planSkip.has(pat)) return "skip";                                /* 今日は外した動き */
     if(touched.has(pat) && !daily(ex)) return "yesterday";                          /* 昨日と同じ動きは続けない（連日でもよい部位は除く） */
+    const run = ex.p.find(m => recoverGap(m) === 0 && runOf(m) >= DAILY_RUN_MAX);
+    if(run) return "run:" + run;                                                    /* 連日でもよい部位も、3日続けてメインにしない（rules.js の dailyRun） */
     const after = PATTERN_AFTER[pat];
     if(after && !after.some(pt => donePattern.has(pt) || plan.some(p => patternOf(p.ex) === pt))) return "after";   /* 仕上げの動きは、先に組む動きがある日だけ */
     if(!gearReady(c.ex, c)) return "gear";                                          /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
@@ -7833,9 +7867,9 @@ function buildPlan(){
     return gain(c) / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
   };
   const take = c => {
-    const it = Object.assign({}, c), add = exLoad(it.ex, it.sets || 3);
+    const it = Object.assign({}, c), add = exLoad(it.ex, setsOf(it));
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
-    sets += it.sets || 3; minutes += mins(it);
+    sets += setsOf(it); minutes += mins(it);
     plan.push(it);
     Object.keys(starved).forEach(k => delete starved[k]);
   };
@@ -7856,7 +7890,7 @@ function buildPlan(){
            7日使えていない部位を先に入れるとき（force）だけ入れる */
         const need = pr < 0 && !force ? Math.max(minGain, 1) : minGain;
         if(g * (pr < 0 ? EX_PREF_FACTOR[pr] : 1) >= need && (!byPattern[pat] || f > byPattern[pat].f))
-          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1) * EX_PREF_FACTOR[pr]};
+          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1) * EX_PREF_FACTOR[pr] * (ranYesterday(c) ? DAILY_RUN_PREF : 1)};
       });
       /* 反対の部位の相手を探すとき（pairFill）は、同じまとまりの動き（ダンベルカールとハンマーカールなど）のうち、
          しばらくやっていない方を相手にする（2026-10-17: 相手を広げたら、毎日やる場合にカールばかりが相手になり、ハンマーカールが出なくなった） */
@@ -7890,7 +7924,7 @@ function buildPlan(){
   const keepIn = it => {
     if(plan.some(p => p.ex === it.ex)) return;
     const done = doneToday.find(e => e.ex === it.ex);
-    const rest = done ? Math.max(0, (it.sets || 3) - done.sets.length) : (it.sets || 3);
+    const rest = done ? Math.max(0, setsOf(it) - done.sets.length) : setsOf(it);
     const add = exLoad(it.ex, rest);
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
     sets += rest;
@@ -7990,9 +8024,9 @@ function buildPlan(){
                                             && plan.some(p => EXMAP[p.ex].p[0] === m && !p.seed));
       if(!over) break;
       const i = plan.findIndex(p => EXMAP[p.ex].p[0] === over && !p.seed);
-      const all = exLoad(plan[i].ex, plan[i].sets || SETS_PER_EXERCISE);
+      const all = exLoad(plan[i].ex, setsOf(plan[i]));
       Object.keys(all).forEach(m => today[m] -= all[m]);
-      sets -= plan[i].sets || SETS_PER_EXERCISE; minutes -= mins(plan[i]); plan.splice(i, 1);
+      sets -= setsOf(plan[i]); minutes -= mins(plan[i]); plan.splice(i, 1);
       Object.keys(starved).forEach(k => delete starved[k]);
       cut++;
     }
@@ -8041,13 +8075,15 @@ function fewItemsText(){
 }
 /* 保存したメニューの行を、今の種目表の中身で出す。行は保存した時点の写しなので、版が変わって
    組み方の名前・回数・動きが変わっても（2026-09 の A4・B7）古いまま残っている。
-   「自分で足した」「外した」「メニュー外」の印だけは保存した値を使う。セット数は3で固定（保存した値は使わない）。
+   「自分で足した」「外した」「メニュー外」の印だけは保存した値を使う。セット数は3にその日だけ追加したセット（more）を足す
+   （保存した sets は使わない。古い版が4〜5セットで保存した行がある）。
    今は無い組み方（名前が変わって無くなったもの）は、素の組み方として出す（記録の数え方と同じ） */
 function currentRow(x){
   const row = catalogRow(x.ex, x.label || "") || catalogRow(x.ex, "");
-  if(!row) return Object.assign({}, x, {sets: SETS_PER_EXERCISE});
-  const out = Object.assign({}, row, {sets: SETS_PER_EXERCISE});
+  if(!row) return Object.assign({}, x, {sets: setsOf(x)});
+  const out = Object.assign({}, row, {sets: setsOf(x)});
   ["manual", "skip", "extra"].forEach(k => { if(x[k]) out[k] = true; });
+  if(x.more) out.more = x.more;
   return out;
 }
 /* 今日のメニュー（「外した」種目も skip:true のまま含む。数えるときは除く）。
@@ -8155,7 +8191,7 @@ function replanToday(opt){
 function isDoneToday(id){
   const it = todayItems().find(i=>i.ex===id);
   const e = entryFor(TODAY, id, false);
-  return !!(it && e && e.sets.length >= (it.sets || 3));
+  return !!(it && e && e.sets.length >= setsOf(it));
 }
 /* ---- 次のセットの入力欄に入れる数字 ---- */
 function clampR(kind, r){
@@ -8233,7 +8269,7 @@ function dayProgress(items){
   if(!items.length) return "";
   const done = items.filter(it => isDoneToday(it.ex)).length;
   const left = items.reduce((a, it) => {
-    const e = entryFor(TODAY, it.ex, false), n = e ? e.sets.length : 0, t = it.sets || SETS_PER_EXERCISE;
+    const e = entryFor(TODAY, it.ex, false), n = e ? e.sets.length : 0, t = setsOf(it);
     return a + (n >= t ? 0 : itemMinutes(it) * (t - n) / t);
   }, 0);
   return `<div class="dayprog" data-dayprog="1"><span>今日 <b class="num">${done} / ${items.length}</b> 種目</span>
@@ -8263,7 +8299,7 @@ function viewToday(){
   let next = null;
   for(const it of items){
     const e = entryFor(TODAY, it.ex, false);
-    if(!e || e.sets.length < (it.sets||3)){ next = it; break; }
+    if(!e || e.sets.length < setsOf(it)){ next = it; break; }
   }
   const dl = deloadAdvice();
 
@@ -8846,7 +8882,8 @@ function settingsCard(){
      疲れとは見ず、実際にやった回数に合わせる:
        重さを変えた回は、その重さでどのセットもできた回数から始め直す。
        同じ重さで少なかった回は、前回の最高の回数を次の目標にする（前回の目標より上げない）。
-       同じ重さで2回続けて回数の幅の下限より少なかったときだけ、一段軽く（やさしく）する
+       同じ重さで2回続けて回数の幅の下限より少なかったときだけ、一段軽く（やさしく）する（下げ方は rules.js の progDrop）。
+       幅の下限より少ない回数は、下限まで上げない（上げるかは rules.js の progLow。2026-10-22 本人の指摘で初めの設定を変えた）
    ・軽い週を勧めるのは、同じ組み方・同じ重さで1セットあたりの回数が2回続けて減った動きが2つ以上あるとき
    ・きつさ（RPE）は使わない（2026-09-29 本人の要望で入力をやめた。重さ・回数は本人が調整する）
    ・軽い週（ディロード）の記録は判断に使わない。軽い週のあいだは目標を据え置き、種目を少なめにする（セット数は3で固定）
@@ -8901,7 +8938,7 @@ function deloadNow(){
 }
 
 /* ---- その動きをやった回（今日より前・軽い週を除く）。新しい順 ----
-   {date, ex, label, item, sets, planned}。label は実際にやった組み方の名前（今は無い組み方は素の種目として扱う） */
+   {date, ex, label, item, sets, planned, all}。sets は評価に使うセット（追加したセットを除く）、all はその日の全部のセット。label は実際にやった組み方の名前（今は無い組み方は素の種目として扱う） */
 function patternHistory(pattern){
   if(progMemo.hist[pattern]) return progMemo.hist[pattern];
   const out = [];
@@ -8916,7 +8953,11 @@ function patternHistory(pattern){
       const inPlan = (s.plan || []).find(x => x && x.ex === e.ex);
       /* セット数は3で固定（2026-09-29）。それより前の版が保存した4〜5セットの行（古い版の端末から同期されたものも）は3として見る */
       const planned = Math.min(SETS_PER_EXERCISE, (inPlan && inPlan.sets) || item.sets || SETS_PER_EXERCISE);
-      out.push({date: d, ex: e.ex, label, item, sets: e.sets, planned});
+      /* 2026-10-22 から、各セットにその日の予定のセット数（追加したセットを除く: pn）を書く。評価はその数までのセットで行う
+         （「セット追加」で足した4〜5セット目は回数が落ちるのがふつうで、それで目標が上がらなくなるのを防ぐ） */
+      const pn = e.sets.map(z => z.pn).find(n => typeof n === "number");
+      out.push(pn ? {date: d, ex: e.ex, label, item, sets: e.sets.slice(0, pn), planned: pn, all: e.sets}
+                  : {date: d, ex: e.ex, label, item, sets: e.sets, planned, all: e.sets});
     });
   }
   return (progMemo.hist[pattern] = out);
@@ -8992,7 +9033,7 @@ function progressFor(item){
     if(!res.opt) res.opt = defaultOptionFor(item);
   }else{
     const h = mine[0], ev = evalSession(h);
-    res.last = {date: h.date, target: ev.target, sets: h.sets};
+    res.last = {date: h.date, target: ev.target, sets: h.all};       /* 「前回」の行には追加したセットも出す */
     res.src = "前回の目標 " + ev.target + u;
     let cur = opts.length ? optByW(ev.w) : null;
     if(opts.length && !cur){
@@ -9049,48 +9090,54 @@ function progressFor(item){
       }
     }else{
       /* 目標より少なかった。届かなかったとは限らない（重いダンベルに替えた・多すぎて抑えた）ので、
-         疲れとは見ず、実際にやった回数に合わせる */
-      const pe = mine[1] ? evalSession(mine[1]) : null, lo = rr.lo;
+         疲れとは見ず、実際にやった回数に合わせる。
+         範囲の下限より少なくやったときに下限まで上げるかは本人が選ぶ（rules.js の progLow。初めの設定は上げない:
+         2026-10-22 本人の指摘「自分で決めてやっている回数が、少ないと判断されて勝手に増やされる」） */
+      const pe = mine[1] ? evalSession(mine[1]) : null, lo = rr.lo, floor = progLow() === "lo" ? lo : 1;
+      const drop = progDrop();
       if(pe && !sameWeight(ev, pe)){
-        /* 重さを変えた回: その重さでどのセットもできた回数から始め直す（幅の下限より少なければ下限から） */
+        /* 重さを変えた回: その重さでどのセットもできた回数から始め直す */
         res.change = "rebase";
-        res.target = Math.max(lo, Math.min(rr.hi, ev.minR));
+        res.target = Math.max(floor, Math.min(rr.hi, ev.minR));
         res.why = "前回はダンベルを" + (ev.w > pe.w ? "重く" : "軽く") + "したので、その重さで"
-                + (ev.minR >= lo ? res.target + u + "から始めます" : u + "数の範囲の下限（" + lo + u + "）から始めます");
-      }else if(pe && ev.maxR < lo && pe.maxR < lo){
-        /* 同じ重さで2回続けて幅の下限より少なかった → 一段軽く・やさしく */
-        const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
-        const prv = pv ? null : stepItem(item, -1);
-        const head = "同じ重さで2回続けて" + u + "数の範囲の下限（" + lo + u + "）より少なかったので、";
-        if(pv){
-          res.opt = pv; res.target = midTarget(item); res.change = "lighter";
-          res.why = head + "ダンベルを一段軽くします";
-        }else if(prv){
-          res.next = prv; res.change = "easier"; res.target = lo;
-          res.why = head + "次は一段やさしい「" + itemName(prv) + "」にします";
-        }else{
-          res.target = lo; res.change = "hold";
-          res.why = u + "数の範囲の下限（" + lo + u + "）を目標に続けます";
-        }
+                + (ev.minR >= floor ? res.target + u + "から始めます" : u + "数の範囲の下限（" + lo + u + "）から始めます");
       }else{
-        /* 同じ重さで少なかった: 前回の最高の回数を次の目標にする（前回の目標より上げない） */
-        const best = Math.min(ev.target, ev.maxR), nt = Math.max(lo, best);
-        res.target = nt;
-        if(nt >= ev.target){
-          res.change = "hold";
-          res.why = "前回は目標より少ないセットがあったので、同じ目標にしています";
-        }else{
-          res.change = "match";
-          res.why = "前回は最高" + best + u + "だったので、" + (best >= lo ? "目標を" + nt + u + "にします"
-                                                                   : u + "数の範囲の下限（" + lo + u + "）を目標にします");
+        /* 同じ重さで2回続けて範囲の下限より少なかった → 本人の選んだ下げ方（rules.js の progDrop）で一段軽く・やさしく */
+        let done = false;
+        if(drop !== "none" && pe && ev.maxR < lo && pe.maxR < lo){
+          const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
+          const prv = stepItem(item, -1);
+          const head = "同じ重さで2回続けて" + u + "数の範囲の下限（" + lo + u + "）より少なかったので、";
+          const easy = prv && (drop === "easier" || !pv), light = pv && !easy;
+          if(light){
+            res.opt = pv; res.target = midTarget(item); res.change = "lighter"; done = true;
+            res.why = head + "ダンベルを一段軽くします";
+          }else if(easy){
+            res.next = prv; res.change = "easier"; res.target = lo; done = true;
+            res.why = head + "次は一段やさしい「" + itemName(prv) + "」にします";
+          }
+        }
+        if(!done){
+          /* 同じ重さで少なかった: 前回の最高の回数を次の目標にする（前回の目標より上げない） */
+          const best = Math.min(ev.target, ev.maxR), nt = Math.max(floor, best);
+          res.target = nt;
+          if(nt >= ev.target){
+            res.change = "hold";
+            res.why = "前回は目標より少ないセットがあったので、同じ目標にしています";
+          }else{
+            res.change = "match";
+            res.why = "前回は最高" + best + u + "だったので、" + (best >= floor ? "目標を" + nt + u + "にします"
+                                                                     : u + "数の範囲の下限（" + lo + u + "）を目標にします");
+          }
         }
       }
     }
   }
   /* 目標はいつも解説の回数の幅の中（B7）。目標を書いていない古い記録（1セット目の回数を目標とみなす）は
      幅の外のことがあるので、幅に収めてそう添える */
+  /* 下限より少ない目標は、本人が下限まで上げる設定（rules.js の progLow）にしているときだけ上げる */
   const t0 = Math.round(res.target);
-  res.target = Math.max(1, Math.min(rr.hi, Math.max(rr.lo, t0)));
+  res.target = Math.max(1, Math.min(rr.hi, Math.max(progLow() === "lo" ? rr.lo : 1, t0)));
   if(res.target !== t0) res.why += "。解説にある" + u + "数の範囲（" + rr.lo + "〜" + rr.hi + u + "）に合わせて" + res.target + u + "にします";
   if(res.opt) res.w = res.opt.total;
   return (progMemo.items[key] = res);
@@ -9279,7 +9326,7 @@ function exRow(item){
   const e = entryFor(TODAY, id, false);
   const sets = e ? e.sets : [];
   const n = sets.length;
-  const target = SETS_PER_EXERCISE;          /* セット数は3で固定（本人の要望） */
+  const target = setsOf(item);               /* セット数は3（その日だけ追加したセットを足す: rules.js の setsOf） */
   const sideTag = item.side ? '<span class="side">左右</span>' : "";
   const name = esc(itemName(item));
   const setLines = sets.map((st,i)=>`
@@ -9290,13 +9337,15 @@ function exRow(item){
       </div>`).join("");
 
   /* 規定のセット数を終えた種目は、もう記録できない。
-     「修正」で間違えたセットを消すと規定に届かなくなり、また記録できるようになる */
+     「修正」で間違えたセットを消すと規定に届かなくなり、また記録できるようになる。
+     「セット追加」でその日だけセットを1つ増やすと、また記録できるようになる（2026-10-22 本人の要望） */
   if(n >= target){
     const editing = editEx === id;
     return `<div class="exrow done${editing ? " editing" : ""}">
       <div class="exhead">
         <span><span class="nm">${name}${sideTag}</span><span class="meta">${esc(sets.map(x=>setTextFor(item, x)).join(" / "))}</span></span>
         <span class="cnt num">${n} / ${target}</span>
+        ${target < SETS_PER_EXERCISE + MORE_SETS_MAX ? `<button class="fix" data-act="moreset" data-ex="${id}">セット追加</button>` : ""}
         <button class="fix" data-act="edit" data-ex="${id}">${editing ? "閉じる" : "修正"}</button>
       </div>
       ${editing ? `<div class="exbody exedit">
@@ -9358,6 +9407,7 @@ function exRow(item){
       ${last ? `<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${esc(last.sets.map(x=>setTextFor(item, x)).join(" / "))}</b></p>` : ""}
       ${!n ? stepButtons(item) : ""}
       ${!n ? `<div class="cardtools"><button data-act="later" data-ex="${id}">後に回す</button><button data-act="skip" data-ex="${id}">今日は外す</button></div>` : ""}
+      ${item.more && n < target ? `<div class="cardtools"><button data-act="lessset" data-ex="${id}">追加したセットを1つ減らす</button></div>` : ""}
       ${recordedDays() < 3 ? `<p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットを始められる時間になると、音で知らせます。</p>` : ""}
       <div class="rowbtns">
         <button data-act="goref" data-ex="${id}">解説を見る</button>
@@ -9624,6 +9674,16 @@ function progRuleText(){
   if(!step) return up ? when + "回数は増やさずに、" + up + "。" : "全部のセットが目標に届いても、回数は増やさず、同じ目標で続けます。";
   return when + "次は" + step + "回（秒の種目は" + progGain("t") + "秒）増やします。回数が範囲の上限に届いたら、" + (up || "上限のまま続けます") + "。";
 }
+/* 目標の下げ方の文（提案タブの「目標の上げ方・下げ方」で選んだとおりに書く） */
+function progDownText(){
+  const low = progLow(), drop = progDrop();
+  return "目標より少なかったときは、前回の最高の回数を次の目標にします"
+    + (low === "lo" ? "（回数の範囲の下限より少なければ、下限にします）" : "（回数の範囲の下限より少なくても、そのまま）")
+    + "。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。"
+    + (drop === "none" ? "同じ重さで回数の範囲の下限より少ない回が続いても、軽くはしません。"
+       : "同じ重さで2回続けて回数の範囲の下限より少ないときだけ、"
+         + (drop === "easier" ? "一段やさしいやり方に（無ければダンベルを一段軽く）" : "ダンベルを一段軽く（軽くできなければ、一段やさしいやり方に）") + "します。");
+}
 /* 動きごとの今の段階（記録のある動きだけ） */
 function ladderRows(){
   const out = [];
@@ -9698,7 +9758,7 @@ function viewPlan(){
     ${foldSec("menu", menuCard())}
     ${fold("rule", "この提案の仕組み", `<div class="card">
       <p style="margin:0;font-size:14px">${progRuleText()}</p>
-      <p style="margin:8px 0 0;font-size:14px">目標より少なかったときは、前回の最高の回数を次の目標にします。ダンベルの重さを変えた回は、その重さでできた回数から始め直します。同じ重さで2回続けて回数の範囲の下限より少ないときだけ、一段軽く（やさしく）します。</p>
+      <p style="margin:8px 0 0;font-size:14px">${progDownText()}</p>
       <p style="margin:8px 0 0;font-size:14px">種目は、週の目標から遠い部位を優先して選び、メインで鍛える部位が週の目標に届いていない種目を、1回${SESSION_MAX.exercises}種目・${SESSION_MAX.minutes}分までの範囲で入れます。週5回以上行っているときは、日ごとの種目数の差が小さくなるように、1回の種目数を少なくします${sessionCap() < SESSION_MAX.exercises ? "（いまは" + sessionCap() + "種目まで）" : ""}。メインで鍛えた部位は、部位ごとに決めた日数を空けてから、また鍛えます。回復が終わってから日が空いた部位は、その部位をメインで鍛える種目を先に入れます。${UNUSED_DAYS}日以上使えていない部位を使う種目が1つも入らないときは、その部位をメインで鍛える種目を、ほかの種目より先に入れます。その部位が、回復の途中の部位も使う種目でしか鍛えられないときは、回復の途中でもその種目を入れます。今日「筋肉痛の部位」で選んだ部位は、メインで鍛えません。上の「${EX_OFF_HEAD}」で選んだ種目は入れません。</p>
       ${pairOn() ? `<p style="margin:8px 0 0;font-size:14px">今日のメニューの種目と反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）を鍛える種目は、回復と上限の範囲で入れられるかぎり入れて、隣に並べます。1セットずつ交互に行うと、片方を動かしているあいだにもう片方が休めます。</p>` : ""}
       <p class="lastline">${esc(recoverGapText())}</p>
@@ -10319,6 +10379,7 @@ function addSet(id){
   if(wIn) st.w = wStored(item, wRaw);
   st.label = item.label || "";                      /* どの組み方でやったか（次の回の目標を組み方ごとに出すため） */
   st.target = sugNow.target;                        /* この日の目標（届いたかどうかを次の回に使う） */
+  st.pn = setsOf(item) - (item.more | 0);           /* その日の予定のセット数（追加したセットを除く。次の回の評価はこの数まで） */
   const s = session(TODAY);
   fixPlan(s);
   const e = entryFor(TODAY, id, true);
@@ -10332,11 +10393,11 @@ function addSet(id){
     if(pr) todayMsg = pr;
   }
 
-  const doneNow = e.sets.length >= (item.sets||3);
+  const doneNow = e.sets.length >= setsOf(item);
   if(doneNow){ openEx = null; editEx = null; }
   let label;
   if(doneNow){
-    const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < (it.sets||3); });
+    const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < setsOf(it); });
     label = nx ? "次: " + itemName(nx) : "今日のメニュー完了";
   }else{
     label = itemName(item) + "  " + sugText(item, suggestNext(item, e));
@@ -10460,6 +10521,30 @@ function editPlanItem(id, fn){
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
 }
+/* その日だけセットを1つ増やす・増やした分を1つ減らす（カードの「セット追加」: 2026-10-22 本人の要望）。
+   メニューの行の more に持つ（rules.js の setsOf）。メニューに無い記録の種目は、メニュー外の行として足す */
+ACTIONS.moreset = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  const id = el.dataset.ex, item = itemOf(id);
+  if(setsOf(item) >= SETS_PER_EXERCISE + MORE_SETS_MAX) return;
+  const s = session(TODAY);
+  fixPlan(s);
+  if(!s.plan) s.plan = [];                           /* 休みの日（メニューが空）に記録した種目 */
+  if(!s.plan.some(x => x.ex === id)) s.plan.push({ex: id, label: item.label || "", extra: true});
+  editPlanItem(id, (plan, i)=>{ plan[i].more = (plan[i].more | 0) + 1; });
+  openEx = id; editEx = null;
+  todayMsg = "「" + itemName(item) + "」にセットを1つ追加しました（全部で" + setsOf(itemOf(id)) + "セット）";
+  render();
+};
+ACTIONS.lessset = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  const id = el.dataset.ex, item = itemOf(id), e = entryFor(TODAY, id, false), n = e ? e.sets.length : 0;
+  if(!item.more || setsOf(item) - 1 < n) return;
+  editPlanItem(id, (plan, i)=>{ const m = (plan[i].more | 0) - 1; if(m > 0) plan[i].more = m; else delete plan[i].more; });
+  todayMsg = "「" + itemName(item) + "」のセットを1つ減らしました（全部で" + setsOf(itemOf(id)) + "セット）";
+  if(isDoneToday(id)) openEx = null;
+  render();
+};
 ACTIONS.later = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;
@@ -10922,7 +11007,7 @@ function exOffBody(){
    2026-10-11 本人の要望で、設定から提案タブへ移した（設定タブに残すのは、道具・1日の区切り・休憩の合図・同期・バックアップ）。
    値はどれも rules.js の関数（progNeed・progGain・progJump・progFirst・pairOn・recoverGap・patPref・exOn）から読む。
    長い一覧は畳んでおく（開いたかどうかは、描き直しても保つ） */
-const PROG_HEAD = "目標の上げ方", MENU_HEAD = "メニューの組み方", PREF_HEAD = "種目を入れる頻度";
+const PROG_HEAD = "目標の上げ方・下げ方", MENU_HEAD = "メニューの組み方", PREF_HEAD = "種目を入れる頻度";
 const tuneOpen = {gap: false, pref: false, off: false};
 function tuneSel(key, cur, opts){
   return `<select data-tune="${key}">${opts.map(o => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`;
@@ -10945,6 +11030,10 @@ function progCard(){
       ${jumpNote ? `<p class="lastline" data-jumpnote="1" style="margin:4px 0 0">${jumpNote}</p>` : ""}</div>
     <div class="fld tunefld"><label>同じ動きの、一段難しいやり方へ</label>
       ${tuneSel("first", first, ways)}</div>
+    <div class="fld tunefld"><label>回数の範囲の下限より少なくやったとき</label>
+      ${tuneSel("low", progLow(), [["keep", "やった回数を次の目標にする"], ["lo", "範囲の下限を次の目標にする"]])}</div>
+    <div class="fld tunefld"><label>同じ重さで2回続けて、範囲の下限より少なかったとき</label>
+      ${tuneSel("drop", progDrop(), [["lighter", "ダンベルを一段軽くする"], ["easier", "一段やさしいやり方にする"], ["none", "下げない"]])}</div>
     ${tuneIsDefault("prog") ? "" : `<div class="rowbtns"><button data-act="tunereset" data-part="prog">初めの設定に戻す</button></div>`}
   </div>`;
 }
@@ -11003,6 +11092,12 @@ function wireTune(root){
       }else if(kind === "jump"){
         setProg("jump", +v);
         tuneApplied(false, !progJump() ? "ダンベルを重くしないようにしました" : progJump() === 2 ? "ダンベルを二段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
+      }else if(kind === "low"){
+        setProg("low", v);
+        tuneApplied(false, progLow() === "lo" ? "範囲の下限より少なかった次の回は、下限を目標にするようにしました" : "範囲の下限より少なかった次の回は、やった回数を目標にするようにしました");
+      }else if(kind === "drop"){
+        setProg("drop", v);
+        tuneApplied(false, progDrop() === "none" ? "目標を下げないようにしました" : progDrop() === "easier" ? "下げるときは、一段やさしいやり方にするようにしました" : "下げるときは、ダンベルを一段軽くするようにしました");
       }else if(kind === "first"){
         setProg("first", v);
         tuneApplied(false, progFirst() === "keep" ? "難しいやり方へ進まないようにしました" : !progJump() ? "一段難しいやり方へ進むようにしました"
