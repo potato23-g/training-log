@@ -7,7 +7,8 @@
      疲れとは見ず、実際にやった回数に合わせる:
        重さを変えた回は、その重さでどのセットもできた回数から始め直す。
        同じ重さで少なかった回は、前回の最高の回数を次の目標にする（前回の目標より上げない）。
-       同じ重さで2回続けて回数の幅の下限より少なかったときだけ、一段軽く（やさしく）する
+       同じ重さで2回続けて回数の幅の下限より少なかったときだけ、一段軽く（やさしく）する（下げ方は rules.js の progDrop）。
+       幅の下限より少ない回数は、下限まで上げない（上げるかは rules.js の progLow。2026-10-22 本人の指摘で初めの設定を変えた）
    ・軽い週を勧めるのは、同じ組み方・同じ重さで1セットあたりの回数が2回続けて減った動きが2つ以上あるとき
    ・きつさ（RPE）は使わない（2026-09-29 本人の要望で入力をやめた。重さ・回数は本人が調整する）
    ・軽い週（ディロード）の記録は判断に使わない。軽い週のあいだは目標を据え置き、種目を少なめにする（セット数は3で固定）
@@ -62,7 +63,7 @@ function deloadNow(){
 }
 
 /* ---- その動きをやった回（今日より前・軽い週を除く）。新しい順 ----
-   {date, ex, label, item, sets, planned}。label は実際にやった組み方の名前（今は無い組み方は素の種目として扱う） */
+   {date, ex, label, item, sets, planned, all}。sets は評価に使うセット（追加したセットを除く）、all はその日の全部のセット。label は実際にやった組み方の名前（今は無い組み方は素の種目として扱う） */
 function patternHistory(pattern){
   if(progMemo.hist[pattern]) return progMemo.hist[pattern];
   const out = [];
@@ -77,7 +78,11 @@ function patternHistory(pattern){
       const inPlan = (s.plan || []).find(x => x && x.ex === e.ex);
       /* セット数は3で固定（2026-09-29）。それより前の版が保存した4〜5セットの行（古い版の端末から同期されたものも）は3として見る */
       const planned = Math.min(SETS_PER_EXERCISE, (inPlan && inPlan.sets) || item.sets || SETS_PER_EXERCISE);
-      out.push({date: d, ex: e.ex, label, item, sets: e.sets, planned});
+      /* 2026-10-22 から、各セットにその日の予定のセット数（追加したセットを除く: pn）を書く。評価はその数までのセットで行う
+         （「セット追加」で足した4〜5セット目は回数が落ちるのがふつうで、それで目標が上がらなくなるのを防ぐ） */
+      const pn = e.sets.map(z => z.pn).find(n => typeof n === "number");
+      out.push(pn ? {date: d, ex: e.ex, label, item, sets: e.sets.slice(0, pn), planned: pn, all: e.sets}
+                  : {date: d, ex: e.ex, label, item, sets: e.sets, planned, all: e.sets});
     });
   }
   return (progMemo.hist[pattern] = out);
@@ -153,7 +158,7 @@ function progressFor(item){
     if(!res.opt) res.opt = defaultOptionFor(item);
   }else{
     const h = mine[0], ev = evalSession(h);
-    res.last = {date: h.date, target: ev.target, sets: h.sets};
+    res.last = {date: h.date, target: ev.target, sets: h.all};       /* 「前回」の行には追加したセットも出す */
     res.src = "前回の目標 " + ev.target + u;
     let cur = opts.length ? optByW(ev.w) : null;
     if(opts.length && !cur){
@@ -210,48 +215,54 @@ function progressFor(item){
       }
     }else{
       /* 目標より少なかった。届かなかったとは限らない（重いダンベルに替えた・多すぎて抑えた）ので、
-         疲れとは見ず、実際にやった回数に合わせる */
-      const pe = mine[1] ? evalSession(mine[1]) : null, lo = rr.lo;
+         疲れとは見ず、実際にやった回数に合わせる。
+         範囲の下限より少なくやったときに下限まで上げるかは本人が選ぶ（rules.js の progLow。初めの設定は上げない:
+         2026-10-22 本人の指摘「自分で決めてやっている回数が、少ないと判断されて勝手に増やされる」） */
+      const pe = mine[1] ? evalSession(mine[1]) : null, lo = rr.lo, floor = progLow() === "lo" ? lo : 1;
+      const drop = progDrop();
       if(pe && !sameWeight(ev, pe)){
-        /* 重さを変えた回: その重さでどのセットもできた回数から始め直す（幅の下限より少なければ下限から） */
+        /* 重さを変えた回: その重さでどのセットもできた回数から始め直す */
         res.change = "rebase";
-        res.target = Math.max(lo, Math.min(rr.hi, ev.minR));
+        res.target = Math.max(floor, Math.min(rr.hi, ev.minR));
         res.why = "前回はダンベルを" + (ev.w > pe.w ? "重く" : "軽く") + "したので、その重さで"
-                + (ev.minR >= lo ? res.target + u + "から始めます" : u + "数の範囲の下限（" + lo + u + "）から始めます");
-      }else if(pe && ev.maxR < lo && pe.maxR < lo){
-        /* 同じ重さで2回続けて幅の下限より少なかった → 一段軽く・やさしく */
-        const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
-        const prv = pv ? null : stepItem(item, -1);
-        const head = "同じ重さで2回続けて" + u + "数の範囲の下限（" + lo + u + "）より少なかったので、";
-        if(pv){
-          res.opt = pv; res.target = midTarget(item); res.change = "lighter";
-          res.why = head + "ダンベルを一段軽くします";
-        }else if(prv){
-          res.next = prv; res.change = "easier"; res.target = lo;
-          res.why = head + "次は一段やさしい「" + itemName(prv) + "」にします";
-        }else{
-          res.target = lo; res.change = "hold";
-          res.why = u + "数の範囲の下限（" + lo + u + "）を目標に続けます";
-        }
+                + (ev.minR >= floor ? res.target + u + "から始めます" : u + "数の範囲の下限（" + lo + u + "）から始めます");
       }else{
-        /* 同じ重さで少なかった: 前回の最高の回数を次の目標にする（前回の目標より上げない） */
-        const best = Math.min(ev.target, ev.maxR), nt = Math.max(lo, best);
-        res.target = nt;
-        if(nt >= ev.target){
-          res.change = "hold";
-          res.why = "前回は目標より少ないセットがあったので、同じ目標にしています";
-        }else{
-          res.change = "match";
-          res.why = "前回は最高" + best + u + "だったので、" + (best >= lo ? "目標を" + nt + u + "にします"
-                                                                   : u + "数の範囲の下限（" + lo + u + "）を目標にします");
+        /* 同じ重さで2回続けて範囲の下限より少なかった → 本人の選んだ下げ方（rules.js の progDrop）で一段軽く・やさしく */
+        let done = false;
+        if(drop !== "none" && pe && ev.maxR < lo && pe.maxR < lo){
+          const i = cur ? optionIndex(opts, cur) : -1, pv = i > 0 ? opts[i - 1] : null;
+          const prv = stepItem(item, -1);
+          const head = "同じ重さで2回続けて" + u + "数の範囲の下限（" + lo + u + "）より少なかったので、";
+          const easy = prv && (drop === "easier" || !pv), light = pv && !easy;
+          if(light){
+            res.opt = pv; res.target = midTarget(item); res.change = "lighter"; done = true;
+            res.why = head + "ダンベルを一段軽くします";
+          }else if(easy){
+            res.next = prv; res.change = "easier"; res.target = lo; done = true;
+            res.why = head + "次は一段やさしい「" + itemName(prv) + "」にします";
+          }
+        }
+        if(!done){
+          /* 同じ重さで少なかった: 前回の最高の回数を次の目標にする（前回の目標より上げない） */
+          const best = Math.min(ev.target, ev.maxR), nt = Math.max(floor, best);
+          res.target = nt;
+          if(nt >= ev.target){
+            res.change = "hold";
+            res.why = "前回は目標より少ないセットがあったので、同じ目標にしています";
+          }else{
+            res.change = "match";
+            res.why = "前回は最高" + best + u + "だったので、" + (best >= floor ? "目標を" + nt + u + "にします"
+                                                                     : u + "数の範囲の下限（" + lo + u + "）を目標にします");
+          }
         }
       }
     }
   }
   /* 目標はいつも解説の回数の幅の中（B7）。目標を書いていない古い記録（1セット目の回数を目標とみなす）は
      幅の外のことがあるので、幅に収めてそう添える */
+  /* 下限より少ない目標は、本人が下限まで上げる設定（rules.js の progLow）にしているときだけ上げる */
   const t0 = Math.round(res.target);
-  res.target = Math.max(1, Math.min(rr.hi, Math.max(rr.lo, t0)));
+  res.target = Math.max(1, Math.min(rr.hi, Math.max(progLow() === "lo" ? rr.lo : 1, t0)));
   if(res.target !== t0) res.why += "。解説にある" + u + "数の範囲（" + rr.lo + "〜" + rr.hi + u + "）に合わせて" + res.target + u + "にします";
   if(res.opt) res.w = res.opt.total;
   return (progMemo.items[key] = res);

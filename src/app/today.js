@@ -42,7 +42,7 @@ function dayProgress(items){
   if(!items.length) return "";
   const done = items.filter(it => isDoneToday(it.ex)).length;
   const left = items.reduce((a, it) => {
-    const e = entryFor(TODAY, it.ex, false), n = e ? e.sets.length : 0, t = it.sets || SETS_PER_EXERCISE;
+    const e = entryFor(TODAY, it.ex, false), n = e ? e.sets.length : 0, t = setsOf(it);
     return a + (n >= t ? 0 : itemMinutes(it) * (t - n) / t);
   }, 0);
   return `<div class="dayprog" data-dayprog="1"><span>今日 <b class="num">${done} / ${items.length}</b> 種目</span>
@@ -72,7 +72,7 @@ function viewToday(){
   let next = null;
   for(const it of items){
     const e = entryFor(TODAY, it.ex, false);
-    if(!e || e.sets.length < (it.sets||3)){ next = it; break; }
+    if(!e || e.sets.length < setsOf(it)){ next = it; break; }
   }
   const dl = deloadAdvice();
 

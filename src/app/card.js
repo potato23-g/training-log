@@ -15,7 +15,7 @@ function exRow(item){
   const e = entryFor(TODAY, id, false);
   const sets = e ? e.sets : [];
   const n = sets.length;
-  const target = SETS_PER_EXERCISE;          /* セット数は3で固定（本人の要望） */
+  const target = setsOf(item);               /* セット数は3（その日だけ追加したセットを足す: rules.js の setsOf） */
   const sideTag = item.side ? '<span class="side">左右</span>' : "";
   const name = esc(itemName(item));
   const setLines = sets.map((st,i)=>`
@@ -26,13 +26,15 @@ function exRow(item){
       </div>`).join("");
 
   /* 規定のセット数を終えた種目は、もう記録できない。
-     「修正」で間違えたセットを消すと規定に届かなくなり、また記録できるようになる */
+     「修正」で間違えたセットを消すと規定に届かなくなり、また記録できるようになる。
+     「セット追加」でその日だけセットを1つ増やすと、また記録できるようになる（2026-10-22 本人の要望） */
   if(n >= target){
     const editing = editEx === id;
     return `<div class="exrow done${editing ? " editing" : ""}">
       <div class="exhead">
         <span><span class="nm">${name}${sideTag}</span><span class="meta">${esc(sets.map(x=>setTextFor(item, x)).join(" / "))}</span></span>
         <span class="cnt num">${n} / ${target}</span>
+        ${target < SETS_PER_EXERCISE + MORE_SETS_MAX ? `<button class="fix" data-act="moreset" data-ex="${id}">セット追加</button>` : ""}
         <button class="fix" data-act="edit" data-ex="${id}">${editing ? "閉じる" : "修正"}</button>
       </div>
       ${editing ? `<div class="exbody exedit">
@@ -94,6 +96,7 @@ function exRow(item){
       ${last ? `<p class="lastline">前回（${daysAgo(last.date)}日前）: <b>${esc(last.sets.map(x=>setTextFor(item, x)).join(" / "))}</b></p>` : ""}
       ${!n ? stepButtons(item) : ""}
       ${!n ? `<div class="cardtools"><button data-act="later" data-ex="${id}">後に回す</button><button data-act="skip" data-ex="${id}">今日は外す</button></div>` : ""}
+      ${item.more && n < target ? `<div class="cardtools"><button data-act="lessset" data-ex="${id}">追加したセットを1つ減らす</button></div>` : ""}
       ${recordedDays() < 3 ? `<p class="lastline">「記録」を押すと休憩のカウントダウンが始まり、次のセットを始められる時間になると、音で知らせます。</p>` : ""}
       <div class="rowbtns">
         <button data-act="goref" data-ex="${id}">解説を見る</button>

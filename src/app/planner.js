@@ -40,7 +40,7 @@ function exLoad(exId, n){
 /* 1種目にかかる時間（分）の目安。1回4秒（秒数の種目はその秒数）、左右ありは2倍と持ち替え、
    セット間は休憩タイマーの秒数、種目の切り替えに1分 */
 function itemMinutes(it){
-  const ex = EXMAP[it.ex], sets = it.sets || 3, side = !!it.side;
+  const ex = EXMAP[it.ex], sets = it.sets || setsOf(it), side = !!it.side;
   const reps = progressFor(it).target;
   const work = ex.kind === "t" ? reps * (side ? 2 : 1) + 15 : reps * 4 * (side ? 2 : 1) + (side ? 15 : 0) + 15;
   return (sets * work + (sets - 1) * restFor(it) + 60) / 60;
@@ -92,11 +92,15 @@ function buildPlan(){
   const weekP = m => (m in weekPMemo ? weekPMemo[m] : (weekPMemo[m] = primaryLoadBetween(m, 1, 6)));   /* 直近6日にメインで鍛えたセット数 */
   /* 連日でもよい部位（空ける日数0: 腹直筋・腹斜筋・前腕）だけが主役の動きは、昨日やっていても続けてよい */
   const daily = ex => ex.p.every(m => recoverGap(m) === 0);
+  const runMemo = {};
+  const runOf = m => (m in runMemo ? runMemo[m] : (runMemo[m] = dailyRun(m)));
+  /* 昨日メインで鍛えた連日でもよい部位の種目は、ほかの種目より後に選ぶ（同じ部位が続かず、ばらけるように） */
+  const ranYesterday = c => EXMAP[c.ex].p.some(m => recoverGap(m) === 0 && runOf(m) >= 1);
   const today = {}, plan = [];
   let sets = 0, minutes = 0;
   const minutesMemo = {};
   const mins = it => {
-    const k = it.ex + "|" + (it.label || "") + "|" + (it.sets || 3);
+    const k = it.ex + "|" + (it.label || "") + "|" + (it.sets || setsOf(it));
     if(minutesMemo[k] === undefined) minutesMemo[k] = itemMinutes(it);
     return minutesMemo[k];
   };
@@ -121,18 +125,20 @@ function buildPlan(){
     const over = Math.max(0, Math.min(have + add, WEEK_MAX) - Math.max(have, WEEK_TARGET));
     return (PLAN_WEIGHT[m] || 0) * (under + over * 0.15);
   };
-  const gain = c => { const add = exLoad(c.ex, c.sets || 3); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
+  const gain = c => { const add = exLoad(c.ex, setsOf(c)); return Object.keys(add).reduce((a, m) => a + worth(m, add[m]), 0); };
   /* 部位 m を今日メインで鍛えるセット数（記録したぶんと、メニューに入れたぶん） */
   const primToday = m => doneToday.reduce((a, e) => a + (EXMAP[e.ex].p.includes(m) ? e.sets.length : 0), 0)
-    + plan.reduce((a, p) => { if(!EXMAP[p.ex].p.includes(m)) return a; const d = doneToday.find(e => e.ex === p.ex); return a + Math.max(0, (p.sets || SETS_PER_EXERCISE) - (d ? d.sets.length : 0)); }, 0);
+    + plan.reduce((a, p) => { if(!EXMAP[p.ex].p.includes(m)) return a; const d = doneToday.find(e => e.ex === p.ex); return a + Math.max(0, setsOf(p) - (d ? d.sets.length : 0)); }, 0);
   /* その組み方を今日のメニューに入れられない理由（入れられるなら ""）。"rest:glutes" のように、理由と部位を返す */
   const why = c => {
-    const ex = EXMAP[c.ex], n = c.sets || 3, add = exLoad(c.ex, n), pat = patternOf(c.ex);
+    const ex = EXMAP[c.ex], n = setsOf(c), add = exLoad(c.ex, n), pat = patternOf(c.ex);
     if(!exOn(c.ex)) return "off";                                                   /* メニューに入れない種目（rules.js の exOn） */
     if(plan.some(p => patternOf(p.ex) === pat)) return "same";                      /* 同じ動きは1日1つ */
     if(donePattern.has(pat)) return "done";                                         /* 今日もうやった動き */
     if(planSkip && planSkip.has(pat)) return "skip";                                /* 今日は外した動き */
     if(touched.has(pat) && !daily(ex)) return "yesterday";                          /* 昨日と同じ動きは続けない（連日でもよい部位は除く） */
+    const run = ex.p.find(m => recoverGap(m) === 0 && runOf(m) >= DAILY_RUN_MAX);
+    if(run) return "run:" + run;                                                    /* 連日でもよい部位も、3日続けてメインにしない（rules.js の dailyRun） */
     const after = PATTERN_AFTER[pat];
     if(after && !after.some(pt => donePattern.has(pt) || plan.some(p => patternOf(p.ex) === pt))) return "after";   /* 仕上げの動きは、先に組む動きがある日だけ */
     if(!gearReady(c.ex, c)) return "gear";                                          /* 持っているダンベルで作れない（秒の種目・重りを使う組み方も: C19） */
@@ -203,9 +209,9 @@ function buildPlan(){
     return gain(c) / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
   };
   const take = c => {
-    const it = Object.assign({}, c), add = exLoad(it.ex, it.sets || 3);
+    const it = Object.assign({}, c), add = exLoad(it.ex, setsOf(it));
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
-    sets += it.sets || 3; minutes += mins(it);
+    sets += setsOf(it); minutes += mins(it);
     plan.push(it);
     Object.keys(starved).forEach(k => delete starved[k]);
   };
@@ -226,7 +232,7 @@ function buildPlan(){
            7日使えていない部位を先に入れるとき（force）だけ入れる */
         const need = pr < 0 && !force ? Math.max(minGain, 1) : minGain;
         if(g * (pr < 0 ? EX_PREF_FACTOR[pr] : 1) >= need && (!byPattern[pat] || f > byPattern[pat].f))
-          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1) * EX_PREF_FACTOR[pr]};
+          byPattern[pat] = {c, f, v: g * (PATTERN_PREF[pat] || 1) * (paired(c) ? PAIR_PREF : 1) * EX_PREF_FACTOR[pr] * (ranYesterday(c) ? DAILY_RUN_PREF : 1)};
       });
       /* 反対の部位の相手を探すとき（pairFill）は、同じまとまりの動き（ダンベルカールとハンマーカールなど）のうち、
          しばらくやっていない方を相手にする（2026-10-17: 相手を広げたら、毎日やる場合にカールばかりが相手になり、ハンマーカールが出なくなった） */
@@ -260,7 +266,7 @@ function buildPlan(){
   const keepIn = it => {
     if(plan.some(p => p.ex === it.ex)) return;
     const done = doneToday.find(e => e.ex === it.ex);
-    const rest = done ? Math.max(0, (it.sets || 3) - done.sets.length) : (it.sets || 3);
+    const rest = done ? Math.max(0, setsOf(it) - done.sets.length) : setsOf(it);
     const add = exLoad(it.ex, rest);
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
     sets += rest;
@@ -360,9 +366,9 @@ function buildPlan(){
                                             && plan.some(p => EXMAP[p.ex].p[0] === m && !p.seed));
       if(!over) break;
       const i = plan.findIndex(p => EXMAP[p.ex].p[0] === over && !p.seed);
-      const all = exLoad(plan[i].ex, plan[i].sets || SETS_PER_EXERCISE);
+      const all = exLoad(plan[i].ex, setsOf(plan[i]));
       Object.keys(all).forEach(m => today[m] -= all[m]);
-      sets -= plan[i].sets || SETS_PER_EXERCISE; minutes -= mins(plan[i]); plan.splice(i, 1);
+      sets -= setsOf(plan[i]); minutes -= mins(plan[i]); plan.splice(i, 1);
       Object.keys(starved).forEach(k => delete starved[k]);
       cut++;
     }
@@ -411,13 +417,15 @@ function fewItemsText(){
 }
 /* 保存したメニューの行を、今の種目表の中身で出す。行は保存した時点の写しなので、版が変わって
    組み方の名前・回数・動きが変わっても（2026-09 の A4・B7）古いまま残っている。
-   「自分で足した」「外した」「メニュー外」の印だけは保存した値を使う。セット数は3で固定（保存した値は使わない）。
+   「自分で足した」「外した」「メニュー外」の印だけは保存した値を使う。セット数は3にその日だけ追加したセット（more）を足す
+   （保存した sets は使わない。古い版が4〜5セットで保存した行がある）。
    今は無い組み方（名前が変わって無くなったもの）は、素の組み方として出す（記録の数え方と同じ） */
 function currentRow(x){
   const row = catalogRow(x.ex, x.label || "") || catalogRow(x.ex, "");
-  if(!row) return Object.assign({}, x, {sets: SETS_PER_EXERCISE});
-  const out = Object.assign({}, row, {sets: SETS_PER_EXERCISE});
+  if(!row) return Object.assign({}, x, {sets: setsOf(x)});
+  const out = Object.assign({}, row, {sets: setsOf(x)});
   ["manual", "skip", "extra"].forEach(k => { if(x[k]) out[k] = true; });
+  if(x.more) out.more = x.more;
   return out;
 }
 /* 今日のメニュー（「外した」種目も skip:true のまま含む。数えるときは除く）。
@@ -525,5 +533,5 @@ function replanToday(opt){
 function isDoneToday(id){
   const it = todayItems().find(i=>i.ex===id);
   const e = entryFor(TODAY, id, false);
-  return !!(it && e && e.sets.length >= (it.sets || 3));
+  return !!(it && e && e.sets.length >= setsOf(it));
 }

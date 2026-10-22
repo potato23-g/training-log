@@ -220,7 +220,7 @@ function exOffBody(){
    2026-10-11 本人の要望で、設定から提案タブへ移した（設定タブに残すのは、道具・1日の区切り・休憩の合図・同期・バックアップ）。
    値はどれも rules.js の関数（progNeed・progGain・progJump・progFirst・pairOn・recoverGap・patPref・exOn）から読む。
    長い一覧は畳んでおく（開いたかどうかは、描き直しても保つ） */
-const PROG_HEAD = "目標の上げ方", MENU_HEAD = "メニューの組み方", PREF_HEAD = "種目を入れる頻度";
+const PROG_HEAD = "目標の上げ方・下げ方", MENU_HEAD = "メニューの組み方", PREF_HEAD = "種目を入れる頻度";
 const tuneOpen = {gap: false, pref: false, off: false};
 function tuneSel(key, cur, opts){
   return `<select data-tune="${key}">${opts.map(o => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`;
@@ -243,6 +243,10 @@ function progCard(){
       ${jumpNote ? `<p class="lastline" data-jumpnote="1" style="margin:4px 0 0">${jumpNote}</p>` : ""}</div>
     <div class="fld tunefld"><label>同じ動きの、一段難しいやり方へ</label>
       ${tuneSel("first", first, ways)}</div>
+    <div class="fld tunefld"><label>回数の範囲の下限より少なくやったとき</label>
+      ${tuneSel("low", progLow(), [["keep", "やった回数を次の目標にする"], ["lo", "範囲の下限を次の目標にする"]])}</div>
+    <div class="fld tunefld"><label>同じ重さで2回続けて、範囲の下限より少なかったとき</label>
+      ${tuneSel("drop", progDrop(), [["lighter", "ダンベルを一段軽くする"], ["easier", "一段やさしいやり方にする"], ["none", "下げない"]])}</div>
     ${tuneIsDefault("prog") ? "" : `<div class="rowbtns"><button data-act="tunereset" data-part="prog">初めの設定に戻す</button></div>`}
   </div>`;
 }
@@ -301,6 +305,12 @@ function wireTune(root){
       }else if(kind === "jump"){
         setProg("jump", +v);
         tuneApplied(false, !progJump() ? "ダンベルを重くしないようにしました" : progJump() === 2 ? "ダンベルを二段ずつ重くするようにしました" : "ダンベルを一段ずつ重くするようにしました");
+      }else if(kind === "low"){
+        setProg("low", v);
+        tuneApplied(false, progLow() === "lo" ? "範囲の下限より少なかった次の回は、下限を目標にするようにしました" : "範囲の下限より少なかった次の回は、やった回数を目標にするようにしました");
+      }else if(kind === "drop"){
+        setProg("drop", v);
+        tuneApplied(false, progDrop() === "none" ? "目標を下げないようにしました" : progDrop() === "easier" ? "下げるときは、一段やさしいやり方にするようにしました" : "下げるときは、ダンベルを一段軽くするようにしました");
       }else if(kind === "first"){
         setProg("first", v);
         tuneApplied(false, progFirst() === "keep" ? "難しいやり方へ進まないようにしました" : !progJump() ? "一段難しいやり方へ進むようにしました"

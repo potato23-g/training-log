@@ -43,6 +43,7 @@ function sanitizeState(obj){
         n = num(z.rpe); if(n !== null && n >= 0 && n <= 10) nz.rpe = n;
         if(typeof z.label === "string") nz.label = z.label.slice(0, 60);
         n = num(z.target); if(n !== null && n >= 0) nz.target = n;
+        n = num(z.pn); if(n !== null && n >= 1 && n <= 10 && n === Math.floor(n)) nz.pn = n;   /* その日の予定のセット数（追加したセットを除く） */
         ne.sets.push(nz);
       });
       x.entries.push(ne);
@@ -56,6 +57,7 @@ function sanitizeState(obj){
         var np = { ex: p.ex }, n;
         if((n = text(p.label, 60)) !== undefined) np.label = n;
         n = num(p.sets); if(n !== null && n >= 1 && n <= 10) np.sets = n;
+        n = num(p.more); if(n !== null && n >= 1 && n <= 10 && n === Math.floor(n)) np.more = n;   /* その日だけ追加したセット */
         n = num(p.r); if(n !== null && n >= 0) np.r = n;
         ["side", "baseFig", "extra", "manual", "skip"].forEach(function(k){ if(p[k] === true) np[k] = true; });
         if((n = text(p.note, 300)) !== undefined) np.note = n;
@@ -106,6 +108,8 @@ function sanitizeState(obj){
       var pj = num(pg.jump);
       if(pj === 0 || pj === 2) g2.jump = pj;
       if(pg.first === "harder" || pg.first === "keep" || pg.first === "stay") g2.first = pg.first;
+      if(pg.low === "lo") g2.low = pg.low;
+      if(pg.drop === "easier" || pg.drop === "none") g2.drop = pg.drop;
       tn.prog = stamp(pg, g2); }
     if(Object.keys(tn).length) out.tune = tn;
   }

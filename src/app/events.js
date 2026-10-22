@@ -191,6 +191,7 @@ function addSet(id){
   if(wIn) st.w = wStored(item, wRaw);
   st.label = item.label || "";                      /* どの組み方でやったか（次の回の目標を組み方ごとに出すため） */
   st.target = sugNow.target;                        /* この日の目標（届いたかどうかを次の回に使う） */
+  st.pn = setsOf(item) - (item.more | 0);           /* その日の予定のセット数（追加したセットを除く。次の回の評価はこの数まで） */
   const s = session(TODAY);
   fixPlan(s);
   const e = entryFor(TODAY, id, true);
@@ -204,11 +205,11 @@ function addSet(id){
     if(pr) todayMsg = pr;
   }
 
-  const doneNow = e.sets.length >= (item.sets||3);
+  const doneNow = e.sets.length >= setsOf(item);
   if(doneNow){ openEx = null; editEx = null; }
   let label;
   if(doneNow){
-    const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < (it.sets||3); });
+    const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < setsOf(it); });
     label = nx ? "次: " + itemName(nx) : "今日のメニュー完了";
   }else{
     label = itemName(item) + "  " + sugText(item, suggestNext(item, e));
@@ -332,6 +333,30 @@ function editPlanItem(id, fn){
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
 }
+/* その日だけセットを1つ増やす・増やした分を1つ減らす（カードの「セット追加」: 2026-10-22 本人の要望）。
+   メニューの行の more に持つ（rules.js の setsOf）。メニューに無い記録の種目は、メニュー外の行として足す */
+ACTIONS.moreset = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  const id = el.dataset.ex, item = itemOf(id);
+  if(setsOf(item) >= SETS_PER_EXERCISE + MORE_SETS_MAX) return;
+  const s = session(TODAY);
+  fixPlan(s);
+  if(!s.plan) s.plan = [];                           /* 休みの日（メニューが空）に記録した種目 */
+  if(!s.plan.some(x => x.ex === id)) s.plan.push({ex: id, label: item.label || "", extra: true});
+  editPlanItem(id, (plan, i)=>{ plan[i].more = (plan[i].more | 0) + 1; });
+  openEx = id; editEx = null;
+  todayMsg = "「" + itemName(item) + "」にセットを1つ追加しました（全部で" + setsOf(itemOf(id)) + "セット）";
+  render();
+};
+ACTIONS.lessset = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  const id = el.dataset.ex, item = itemOf(id), e = entryFor(TODAY, id, false), n = e ? e.sets.length : 0;
+  if(!item.more || setsOf(item) - 1 < n) return;
+  editPlanItem(id, (plan, i)=>{ const m = (plan[i].more | 0) - 1; if(m > 0) plan[i].more = m; else delete plan[i].more; });
+  todayMsg = "「" + itemName(item) + "」のセットを1つ減らしました（全部で" + setsOf(itemOf(id)) + "セット）";
+  if(isDoneToday(id)) openEx = null;
+  render();
+};
 ACTIONS.later = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;

@@ -306,9 +306,10 @@ setTimeout(() => {
   const all = Array.from(planView.querySelectorAll("select[data-tune]"));
   need(planView.querySelectorAll("[data-act=exoff]").length === EX.length, "提案タブに「メニューに入れない種目」の押しボタンがそろっていない");
   const pats = PATTERN_ORDER.filter(pat => EX.some(e => !e.base && patternOf(e.id) === pat));
-  need(all.length === 5 + Object.keys(MUSCLES).length + pats.length, "設定の選択の数が違う: " + all.length);
+  need(all.length === 7 + Object.keys(MUSCLES).length + pats.length, "設定の選択の数が違う: " + all.length);
   need(EX.filter(e => !e.base).every(e => pats.includes(patternOf(e.id))), "出やすさの一覧に出ない種目がある");
   const shownOk = () => q("pair").value === (pairOn() ? "1" : "0") && q("step").value === String(progGain("w")) && q("first").value === progFirst() && q("need").value === String(progNeed()) && q("jump").value === String(progJump())
+    && q("low").value === progLow() && q("drop").value === progDrop()
     && Object.keys(MUSCLES).every(m => q("gap:" + m).value === String(recoverGap(m))) && pats.every(pat => q("pref:" + pat).value === String(patPref(pat)));
   need(shownOk(), "設定の選択の値が、読み出しの関数と合わない");
   need(!!planView.querySelector("[data-act=tunereset]"), "変えた設定があるのに「初めの設定に戻す」が出ない");
@@ -327,6 +328,11 @@ setTimeout(() => {
   need(/回数は変えません/.test((planView.querySelector("[data-jumpnote]") || {}).textContent || ""), "回数を増やさないときの、重さの添え書きが違う");
   pick("jump", "0");
   need(progJump() === 0 && state.tune.prog.jump === 0 && !planView.querySelector("[data-jumpnote]") && q("first").options.length === 2 && shownOk(), "重くしないを選んだ値が入らない・表示が古い: " + JSON.stringify(state.tune.prog));
+  /* 範囲より少ないときの目標・下げ方（2026-10-22） */
+  pick("low", "lo"); pick("drop", "none");
+  need(progLow() === "lo" && progDrop() === "none" && state.tune.prog.low === "lo" && state.tune.prog.drop === "none" && shownOk(), "下げ方の選択を変えた値が入らない: " + JSON.stringify(state.tune.prog));
+  pick("low", "keep"); pick("drop", "lighter");
+  need(!("low" in state.tune.prog) && !("drop" in state.tune.prog) && shownOk(), "下げ方: 初めの設定と同じ値を持ったまま: " + JSON.stringify(state.tune.prog));
   pick("need", "1"); pick("jump", "1");
   need(!("need" in state.tune.prog) && !("jump" in state.tune.prog) && state.tune.prog.step === 0 && state.tune.prog.first === "keep", "増え方: 初めの設定と同じ値を持ったまま・ほかの値が消えた " + JSON.stringify(state.tune.prog));
   need(planView.querySelectorAll("[data-act=tunereset]").length === 2, "「初めの設定に戻す」が、変えたカードの数だけ出ていない");

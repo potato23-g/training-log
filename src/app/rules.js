@@ -101,7 +101,7 @@ function setExOn(id, on){
 /* 本人が変えられる決まり（2026-10-10 本人の要望: 提案を細かくカスタマイズできるようにしたい。選んだのは
    種目の出やすさ・反対の部位と回復の日数・回数や重量の増え方）。
    state.tune = {pref:{map:{動き:1|-1}, updatedAt}, pair:{off:true, updatedAt}, gap:{map:{部位:日数}, updatedAt},
-                 prog:{step:0|2|3, need:2|3, jump:0|2, first:"harder"|"keep", updatedAt}}
+                 prog:{step:0|2|3, need:2|3, jump:0|2, first:"harder"|"keep", low:"lo", drop:"easier"|"none", updatedAt}}
    初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
    4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
    読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
@@ -120,7 +120,7 @@ function tuneIsDefault(k){
   if(!p) return true;
   if(k === "pref" || k === "gap") return !p.map || !Object.keys(p.map).length;
   if(k === "pair") return p.off !== true;
-  return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier";
+  return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier" && progLow() === "keep" && progDrop() === "lighter";
 }
 function tuneChanged(){ return TUNE_KEYS.some(k => !tuneIsDefault(k)); }
 /* 種目の出やすさ（動きごと）: 1=よく出す / 0=ふつう / -1=あまり出さない。
@@ -149,15 +149,25 @@ function progNeed(){ const p = tunePart("prog"), n = p ? p.need : 1; return n ==
 function progJump(){ const p = tunePart("prog"); return !p ? 1 : p.first === "stay" || p.jump === 0 ? 0 : p.jump === 2 ? 2 : 1; }
 /* 増やし方のひとつを変える（初めの設定と同じ値は持たない） */
 function setProg(field, v){
-  const o = {step: progGain("w"), need: progNeed(), jump: progJump(), first: progFirst()};
+  const o = {step: progGain("w"), need: progNeed(), jump: progJump(), first: progFirst(), low: progLow(), drop: progDrop()};
   o[field] = v;
   const out = {};
   if(o.step === 0 || o.step === 2 || o.step === 3) out.step = o.step;
   if(o.need === 2 || o.need === 3) out.need = o.need;
   if(o.jump === 0 || o.jump === 2) out.jump = o.jump;
   if(o.first === "harder" || o.first === "keep") out.first = o.first;
+  if(o.low === "lo") out.low = o.low;
+  if(o.drop === "easier" || o.drop === "none") out.drop = o.drop;
   setTune("prog", out);
 }
+/* 目標の下げ方（2026-10-22 本人の指摘: 自分で決めてやっている回数が、少ないと判断されて勝手に増やされる。下げ方も選べるように）。
+   progLow = 回数の範囲（解説の「10〜15回」）の下限より少なくやった次の回の目標。
+     "keep"=やった回数に合わせる（下限まで上げない。初めの設定）/ "lo"=範囲の下限にする（10-22 より前の版の動き）
+   progDrop = 同じ重さで2回続けて範囲の下限より少なかったとき。
+     "lighter"=ダンベルを一段軽く、無ければやさしいやり方へ（初めの設定）/ "easier"=やさしいやり方を先に / "none"=下げない
+   どちらも読むのは progress.js の progressFor だけ */
+function progLow(){ const p = tunePart("prog"); return p && p.low === "lo" ? "lo" : "keep"; }
+function progDrop(){ const p = tunePart("prog"), d = p ? p.drop : ""; return d === "easier" || d === "none" ? d : "lighter"; }
 /* やり方の進め方: "heavier"=ダンベルを重くできないときに一段難しいやり方へ（初めの設定）/ "harder"=重くするより先に難しいやり方へ /
    "keep"=やり方は変えない */
 function progFirst(){ const p = tunePart("prog"), f = p ? p.first : ""; return f === "harder" ? f : f === "keep" || f === "stay" ? "keep" : "heavier"; }
@@ -289,6 +299,10 @@ const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, frontdelt:1, si
 const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
 /* 1種目のセット数。本人の要望で3に固定（2026-09-29。重さ・回数は本人が調整する） */
 const SETS_PER_EXERCISE = 3;
+/* 今日のメニューのその種目のセット数。決まったセット数に、その日だけ追加したセット（行の more。カードの「セット追加」:
+   2026-10-22 本人の要望「種目によっては5セットやりたい」）を足す。セット数を数えるところは、どこもこれを使う */
+const MORE_SETS_MAX = 7;
+function setsOf(it){ return SETS_PER_EXERCISE + Math.max(0, Math.min(MORE_SETS_MAX, (it && it.more) | 0)); }
 /* 初めの設定の日数と、今の日数（本人が設定で変えた部位はその日数: 上の state.tune.gap） */
 function recoverGapDefault(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
 function recoverGap(m){
@@ -301,6 +315,16 @@ function setRecoverGap(m, v){
   setTune("gap", {map});
 }
 /* 部位 m が主役（主働筋）だったセット数（fromDaysAgo〜toDaysAgo 日前） */
+/* 連日でもよい部位（回復の日数が0）を、昨日から数えて何日続けてメインで鍛えたか（RECOVER_PRIMARY セット以上の日）。
+   DAILY_RUN_MAX 日続いた部位は、今日はメインにしない（planner.js の why の "run"）。昨日鍛えた部位の種目は、ほかの連日でもよい部位の
+   種目より後に選ぶ（DAILY_RUN_PREF）。2026-10-22 本人の指摘「連日やっても良い種目が何個もあるが、一つの部位が三日連続で出た。
+   連日可能な部位もできるだけ提案がばらけるように」 */
+const DAILY_RUN_MAX = 2, DAILY_RUN_PREF = 0.7;
+function dailyRun(m){
+  let n = 0;
+  while(n < 14 && primaryLoadBetween(m, n + 1, n + 1) >= RECOVER_PRIMARY) n++;
+  return n;
+}
 function primaryLoadBetween(m, fromDaysAgo, toDaysAgo){
   let n = 0;
   sessionsBetween(fromDaysAgo, toDaysAgo).forEach(s => {

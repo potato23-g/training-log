@@ -105,7 +105,10 @@
   ok(pc.change === "rebase" && Math.abs((pc.w || 0) - (sc1.w + 2)) < 0.01,
      "3c: 重くして回数が減った回を、その重さで始め直さない: " + pc.change + " " + pc.w + " / " + pc.why);
   ok(!/届/.test(pc.why), "3c: 重くした回を「届かなかった」と書いている: " + pc.why);
+  /* 3d は「範囲の下限を次の目標にする」設定（progLow "lo"）のとき。初めの設定（"keep"）では
+     下限より少なくやった回数がそのまま次の目標になり、届けば増やす（2026-10-22） */
   fresh(); state.gear = ADJ; planMemo = null; resetProg();
+  state.tune = {prog: {low: "lo", updatedAt: 1}};
   const lo3 = repRange("row", rowIt).lo;
   putRow(s3[0], same3(x => x.target));
   putRow(s3[1], same3(() => lo3 - 2));
@@ -113,6 +116,18 @@
   const pd3 = rowAt(s3[3]);
   ok(pd3.change === "lighter" || pd3.change === "easier",
      "3d: 同じ重さで2回続けて回数の幅の下限より少ないのに、一段下げない: " + pd3.change + " / " + pd3.why);
+  state.tune = {prog: {low: "lo", drop: "none", updatedAt: 1}}; resetProg();
+  const pd3n = rowAt(s3[3]);
+  ok(pd3n.change !== "lighter" && pd3n.change !== "easier", "3d: 「下げない」にしても下げた: " + pd3n.change);
+  delete state.tune;
+  fresh(); state.gear = ADJ; planMemo = null; resetProg();
+  putRow(s3[0], same3(x => x.target));
+  const sk1 = putRow(s3[1], same3(() => lo3 - 2));
+  const pk = rowAt(s3[2]);
+  ok(pk.target === lo3 - 2 && pk.target < lo3, "3e: 初めの設定で、下限より少なくやった回数を下限まで上げた: " + pk.target + " / " + pk.why);
+  putRow(s3[2], same3(x => x.target));
+  const pk2 = rowAt(s3[3]);
+  ok(pk2.change === "up" && pk2.target === lo3 - 1, "3e: 下限より少ない目標に届いたのに、1回ずつ増えない: " + pk2.change + " " + pk2.target);
 
   /* ---- 4. きつさの入力は無い（2026-09-29 にやめた）。出来は回数だけで見る:
      全部のセットが目標に届けば次は上げ、1回だけ届かなかったなら据え置き ---- */
@@ -236,10 +251,15 @@
   /* 幅の下に外れた古い記録（5回）は、目標を幅の下限に収めて、そう理由に書く
      （18回のほうは全部届いた扱いで一段難しい組み方へ進むので、幅に収める場面にならない） */
   fresh();
+  state.tune = {prog: {low: "lo", updatedAt: 1}};
   entryFor(oldDay, "goblet", true).sets.push(...[0, 1, 2].map(k => ({id: newSetId(), at: k, r: 5, w: 10})));
   resetProg();
   const pLow = progressFor(gobRow);
   ok(pLow.target === pLow.lo && /範囲（/.test(pLow.why), "B7: 幅の外の古い記録（5回）から、幅に収めたことを理由に書いていない: " + pLow.target + " / " + pLow.why);
+  /* 初めの設定（progLow "keep"）では下限まで上げない（2026-10-22） */
+  delete state.tune; resetProg();
+  const pLowK = progressFor(gobRow);
+  ok(pLowK.target < pLowK.lo && !/範囲（/.test(pLowK.why), "B7: 初めの設定で、古い記録（5回）を下限まで上げた: " + pLowK.target + " / " + pLowK.why);
   /* 更新前に保存した今日のメニューの行（今は無い組み方の名前・動きのID）は、今の素の組み方で出す。印は残し、セット数は3（2026-09-29 から固定） */
   session(TODAY).plan = [{ex: "goblet", label: "ゴブレットスクワット（深くしゃがむ）", lv: 1, sets: 2, r: 14, mo: "goblet_deep",
                           tag: "深くしゃがむ", note: "古い説明", manual: true}];
