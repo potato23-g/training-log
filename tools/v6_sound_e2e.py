@@ -14,7 +14,9 @@ JS から startRest() を呼ぶ検査（v3_timer_eval.js）は「予約したか
   4 休憩の途中で音声が止められても（iPhoneで電話などに割り込まれた想定）、終わりから1秒以内に鳴る
   5 画面から離れて戻ったあとに「記録」を押すと、音声を作り直して合図が鳴る
   6 休憩の途中で画面から離れて戻ったとき、画面に触れただけでは予約した合図をそのままにし、+30秒を押すと音声を作り直して予約し直す
-  7 「マナーモード・画面ロック中も鳴らす」では、無音＋合図の音声が最後まで再生される
+  7 「マナーモード・画面ロック中も鳴らす」では、無音＋合図の音声が最後まで再生される。残りとずれていたら合わせ直す
+  9 更新しても休憩が続き、最初に画面に触れたときに合図を予約し直す。休憩を終えたあとの更新では出ない
+  8 音声の時計が先に進んで合図が早く予約されていても、画面を開いているあいだに合わせ直し、休憩の終わりに鳴る
 最後に「N passed, M failed」を出す（check_all.py が読む）。
 """
 import json
@@ -204,12 +206,32 @@ def main():
         m = measure(ev("window.__rec"), end)
         ok(m["on"] is not None and abs(m["on"]) <= 0.3 and m["peak"] >= 0.35, "予約し直した合図が、休憩の終わりに鳴る（終わりから %s 秒）" % m["on"])
 
+        # 8 音声の時計が画面の時計より先に進んだ（合図が残りより早く予約されている）。画面を開いているあいだに合わせ直し、
+        #   休憩の終わりより前には鳴らない（2026-10-22 本人の指摘「時間が経過しきっていないのに音が鳴った」）
+        ev(SETUP)
+        x, y = ev(BTN)
+        press(cdp, x, y)
+        ev(SHORTEN)
+        end = ev("restEnd += 1500; restEnd")          # 予約はそのまま、残りだけ1.5秒延ばす＝合図が1.5秒早く予約されている
+        time.sleep(0.6)
+        d = ev("chimeAt - AC.currentTime - (restEnd - Date.now()) / 1000")
+        time.sleep(REST + 1.5 + 1.0)
+        m = measure(ev("window.__rec"), end)
+        ok(abs(d) <= 0.3 and m["on"] is not None and abs(m["on"]) <= 0.3 and m["peak"] >= 0.35,
+           "音声の時計が先に進んでも、合わせ直して休憩の終わりに鳴る（ずれ %.2f 秒・終わりから %s 秒）" % (d, m["on"]))
+
         # 7 確実に鳴らす方式（音声ファイルを流す）
         ev('PREF.set("sure", true); true')
         ev(SETUP)
         x, y = ev(BTN)
         press(cdp, x, y)
         ev(SHORTEN)
+        # 7b その音声も、残りとずれていたら合わせ直す（再生の位置が1.5秒先に進んだ想定）
+        ev("restAudio.currentTime += 1.5; true")
+        time.sleep(0.6)
+        dw = ev("restAudio.currentTime - (restAudio.duration - CHIME_LEN - (restEnd - Date.now()) / 1000)")
+        ok(abs(dw) <= 0.35, "「マナーモード・画面ロック中も鳴らす」の音声も、残りに合わせ直す（ずれ %.2f 秒）" % dw)
+        time.sleep(1.5)
         time.sleep(1.0)
         a = ev('({audio: !!restAudio, paused: restAudio ? restAudio.paused : null, t: restAudio ? restAudio.currentTime : null, nodes: chimeNodes.length})')
         ok(a["audio"] and a["paused"] is False and (a["t"] or 0) > 0.3 and a["nodes"] == 0,
@@ -218,6 +240,30 @@ def main():
         a = ev('({ended: restAudio ? restAudio.ended : null})')
         ok(a["ended"] is True, "その音声が最後（合図）まで再生される")
         ev('PREF.set("sure", false); stopRest(); true')
+
+        # 9 更新（読み込み直し）しても休憩が続き、最初に画面に触れたときに合図を予約し直す（2026-10-22 本人の要望）
+        ev(SETUP)
+        x, y = ev(BTN)
+        press(cdp, x, y)
+        end0 = ev("restEnd")
+        cdp.call("Page.reload")
+        time.sleep(2.0)
+        r = ev('({on: document.getElementById("timer").classList.contains("on"), end: restEnd, iv: !!restIv, '
+               't: document.getElementById("timerT").textContent, lb: document.getElementById("timerLb").textContent})')
+        ok(r["on"] and r["iv"] and r["end"] == end0 and r["t"] not in ("", "0:00") and r["lb"] != "",
+           "更新しても休憩が続く（残り %s・%s）" % (r["t"], r["lb"]))
+        press(cdp, 195, 6)
+        s9 = ev('({ac: AC ? AC.state : null, delay: chimeAt === null ? null : chimeAt - AC.currentTime, left: (restEnd - Date.now()) / 1000})')
+        ok(s9["ac"] == "running" and s9["delay"] is not None and abs(s9["delay"] - s9["left"]) <= 0.4,
+           "更新のあと画面に触れると、残りに合わせて合図を予約し直す（合図まで %s 秒・残り %.1f 秒）" % (s9["delay"], s9["left"]))
+        end = ev(SHORTEN)
+        time.sleep(REST + 1.6)
+        m = measure(ev("window.__rec"), end)
+        ok(m["on"] is not None and abs(m["on"]) <= 0.3 and m["peak"] >= 0.35, "更新のあとも、休憩の終わりに合図が鳴る（終わりから %s 秒）" % m["on"])
+        ev("stopRest(); true")
+        cdp.call("Page.reload")
+        time.sleep(2.0)
+        ok(ev('!restIv && !document.getElementById("timer").classList.contains("on")'), "休憩を終えたあとに更新しても、タイマーは出ない")
 
         try:
             cdp.call("Browser.close")

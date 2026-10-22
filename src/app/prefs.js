@@ -158,6 +158,22 @@ function ensureChimeNow(){
   }
   if(!AC || AC.state !== "running" || chimeAt === null || AC.currentTime < chimeAt - 0.5) scheduleChime(0);
 }
+/* 休憩の途中（画面を開いているあいだ）、予約した合図と画面の残りがずれていたら合わせ直す（tickRest から呼ぶ）。
+   合図は音声の時計で予約するが、音声の時計は画面の時計と別に進み、iPhone では速く進んだり（音の出口が変わったとき）、
+   止められたあと飛んだりして、残りがあるのに鳴ることがあった（2026-10-22 本人の指摘「時間が経過しきっていないのに音が鳴った」）。
+   最後の CHIME_RESYNC_MIN 秒は合わせ直さない（先に流す小さな音を途中で切らないため） */
+const CHIME_DRIFT = 0.3, CHIME_RESYNC_MIN = 2;
+function syncChime(){
+  const left = (restEnd - Date.now()) / 1000;
+  if(left < CHIME_RESYNC_MIN || !PREF.get("sound", true)) return;
+  if(restAudio){
+    if(restAudio.paused || !restAudio.duration) return;
+    const want = restAudio.duration - CHIME_LEN - left;
+    if(Math.abs(restAudio.currentTime - want) > CHIME_DRIFT){ try{ restAudio.currentTime = Math.max(0, want); }catch(e){} }
+    return;
+  }
+  if(AC && AC.state === "running" && chimeAt !== null && Math.abs(chimeAt - AC.currentTime - left) > CHIME_DRIFT) scheduleChime(left);
+}
 /* 設定画面の「鳴らしてみる」 */
 function testChime(){
   if(PREF.get("sure", false)){ cancelChime(); if(!playRestAudio(0)) scheduleChime(0); }

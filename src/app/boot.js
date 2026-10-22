@@ -11,4 +11,5 @@ setInterval(checkNewDay, 60000);
 
 /* ---------- 起動 ---------- */
 render();
+resumeRest();
 initStore().then(()=>{ if(typeof syncInit === "function") syncInit(); });
