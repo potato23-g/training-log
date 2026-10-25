@@ -355,9 +355,9 @@ details.tune[open] summary::after{content:"−"}
 .tunerow span{flex:1 1 0;min-width:0;font-size:14px}
 .tunerow span small{display:block;font-size:12px;color:var(--ink-2)}
 .tunerow select{flex:0 0 auto;width:auto;max-width:58%;min-height:44px}
-.sheet .inner .sorechip,details.tune .sorechip{min-height:44px;padding:6px 14px;border:1px solid var(--rule);border-radius:22px;
+.sheet .inner .sorechip,details.tune .sorechip,.dailypick .sorechip{min-height:44px;padding:6px 14px;border:1px solid var(--rule);border-radius:22px;
   background:var(--panel-2);color:var(--ink-2);font-size:13.5px;font-weight:600}
-.sheet .inner .sorechip.on,details.tune .sorechip.on{background:var(--muscle);border-color:var(--muscle);color:#fff}
+.sheet .inner .sorechip.on,details.tune .sorechip.on,.dailypick .sorechip.on{background:var(--muscle);border-color:var(--muscle);color:#fff}
 
 /* ---- 種目を選ぶシート（U4） ---- */
 .pickhead{font-size:12.5px;font-weight:700;color:var(--ink-2);margin:18px 0 6px}
@@ -433,6 +433,15 @@ table.hist td{padding:9px 6px}
   min-height:44px;box-sizing:border-box;
 }
 .sheet .inner .entry .fld{flex:1 1 84px;min-width:84px}
+/* 今日のカードの並べ替え（today.js の wireDrag）: 左端のつまみを押したまま上下に動かす */
+.exrow.dragok{position:relative}
+.exrow.dragok .exhead{padding-left:34px}
+.exrow .grip{position:absolute;left:0;top:0;width:30px;height:62px;touch-action:none;cursor:grab;z-index:1;
+  background:radial-gradient(circle,var(--ink-3) 1.4px,transparent 1.9px) 9px 21px/7px 7px;
+  background-repeat:repeat;clip-path:inset(20px 8px 20px 9px)}
+.exrow.dragging{z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.18);transition:none}
+.exrow.dragging .grip{cursor:grabbing}
+.exrow.shift{transition:transform .15s ease}
 </style>
 </head>
 <body>
@@ -4518,6 +4527,7 @@ function sanitizeState(obj){
     };
     maps("pref", exok, function(n){ return n === 1 || n === -1; });
     maps("sets", exok, function(n){ return n >= 1 && n <= 8 && n === Math.floor(n); });
+    maps("order", exok, function(n){ return n >= 0 && n <= 1; });
     maps("gap", function(key){ return /^[a-z]{2,20}$/.test(key); }, function(n){ return n >= 0 && n <= 5 && n === Math.floor(n); });
     var pr = part("pair"); if(pr) tn.pair = stamp(pr, pr.off === true ? { off: true } : {});
     var pg = part("prog");
@@ -5217,7 +5227,7 @@ function syncMergeGear(a, b){
    片方の端末で回復の日数を、もう片方で種目の出やすさを変えても、両方残る。どちらにも無ければ undefined */
 function syncMergeTune(a, b){
   var out = {}, any = false;
-  ["pref", "pair", "gap", "prog", "sets"].forEach(function(k){
+  ["pref", "pair", "gap", "prog", "sets", "order"].forEach(function(k){
     var m = syncMergeGear(a && a[k], b && b[k]);
     if(m){ out[k] = m; any = true; }
   });
@@ -5932,7 +5942,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-25 16:45";
+const BUILD_VERSION = "2026-10-25 16:56";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -7099,7 +7109,7 @@ function setExOn(id, on){
    初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
    4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
    読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
-const TUNE_KEYS = ["pref", "pair", "gap", "prog", "sets"];
+const TUNE_KEYS = ["pref", "pair", "gap", "prog", "sets", "order"];
 function tunePart(k){ const t = state.tune; return (t && t[k] && typeof t[k] === "object") ? t[k] : null; }
 function setTune(k, part){
   const t = Object.assign({}, state.tune || {});
@@ -7112,7 +7122,7 @@ function setTune(k, part){
 function tuneIsDefault(k){
   const p = tunePart(k);
   if(!p) return true;
-  if(k === "pref" || k === "gap" || k === "sets") return !p.map || !Object.keys(p.map).length;
+  if(k === "pref" || k === "gap" || k === "sets" || k === "order") return !p.map || !Object.keys(p.map).length;
   if(k === "pair") return p.off !== true;
   return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier" && progLow() === "keep" && progDrop() === "lighter";
 }
@@ -7307,6 +7317,26 @@ function setBaseSets(exId, n){
 /* 今日のメニューのその種目のセット数。その種目のセット数に、その日だけ追加したセット（行の more。カードの「セット追加」:
    2026-10-22 本人の要望「種目によっては5セットやりたい」）を足す。全部で SETS_MAX まで。セット数を数えるところは、どこもこれを使う */
 function setsOf(it){ return Math.min(SETS_MAX, baseSets(it && it.ex) + Math.max(0, (it && it.more) | 0)); }
+/* 種目の並び（今日のカードをドラッグして並べ替えたときに覚える: 2026-10-25 本人の要望）。
+   種目ごとに「前から何割の位置に置いたか」（0=最初・1=最後）を持ち、並べ替えるたびに半分ずつ新しい位置へ寄せる。
+   メニューを組むとき、覚えた種目はこの位置で並べる（planner.js の orderPlan） */
+const ORDER_RATE = 0.5;
+function orderPos(exId){ const p = tunePart("order"), v = p && p.map ? p.map[exId] : undefined; return typeof v === "number" && v >= 0 && v <= 1 ? v : null; }
+function learnOrder(ids){
+  if(ids.length < 2) return;
+  const p = tunePart("order"), map = Object.assign({}, p && p.map);
+  ids.forEach((id, i) => {
+    const r = i / (ids.length - 1), was = orderPos(id);
+    map[id] = Math.round((was === null ? r : was + (r - was) * ORDER_RATE) * 100) / 100;
+  });
+  setTune("order", {map});
+}
+/* 並びを決める: 初めの並び（動きの順）での位置を、覚えた位置があればそれに置き換えて並べ直す。同じ位置なら初めの並びのまま */
+function orderPlan(items){
+  const n = items.length; if(n < 2) return items.slice();
+  const key = items.map((it, i) => { const v = orderPos(it.ex); return v === null ? i / (n - 1) : v; });
+  return items.map((it, i) => i).sort((a, b) => key[a] - key[b] || a - b).map(i => items[i]);
+}
 /* 初めの設定の日数と、今の日数（本人が設定で変えた部位はその日数: 上の state.tune.gap） */
 function recoverGapDefault(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
 function recoverGap(m){
@@ -8099,8 +8129,9 @@ function buildPlan(){
 
   if(!planSeed){
     plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
-    /* 反対の部位どうしは隣に並べる（1セットずつ交互に行いやすいように） */
-    const ordered = pairUp(plan);
+    /* 本人が並べ替えて覚えた順があれば、それで並べる（rules.js の orderPlan）。
+       反対の部位どうしは隣に並べる（1セットずつ交互に行いやすいように） */
+    const ordered = pairUp(orderPlan(plan));
     plan.length = 0; ordered.forEach(p => plan.push(p));
   }
   plan.forEach(p => { p.sets = setsOf(p); });          /* 行のセット数は、いつも今の設定のセット数（rules.js の setsOf） */
@@ -8387,7 +8418,7 @@ function viewToday(){
   const deloadAsk = dl && dl.suggest
     ? `<div class="flash">同じ重さで回数が続けて減っている動きがあります。今週を軽めの週（1回3種目まで）にすると、疲れが抜けて、また伸びやすくなります。
         <div class="rowbtns"><button data-act="deloadon">今週を軽めの週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
-  const rows = items.map(it=>exRow(it)).join("");
+  const rows = items.map(it=>exRow(it, items.length > 1)).join("");
   const skippedLine = skipped.length
     ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
   const sore = soreToday();
@@ -8399,7 +8430,7 @@ function viewToday(){
   /* 反対の部位どうしで隣に並んだ種目（rules.js の menuPairs）。両方終わった組は出さない */
   const pairLine = menuPairs(items).filter(p => !p.every(it => isDoneToday(it.ex)))
     .map(p => `<p class="skipped">${esc(itemName(p[0]))}と${esc(itemName(p[1]))}: 反対の部位を使う種目です。1セットずつ交互に行えます。</p>`).join("");
-  return storeBanners() + menuNote + deloadAsk + dayProgress(items) + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + `
+  return storeBanners() + menuNote + deloadAsk + dayProgress(items) + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + dailyPickCard() + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
@@ -8408,6 +8439,105 @@ function viewToday(){
     </div>
     ${typeof backupReminder === "function" ? backupReminder() : ""}
     <p class="lastline" style="text-align:center;margin-top:18px">バージョン ${esc(BUILD_VERSION)}</p>`;
+}
+
+/* 毎日やってよい種目（メインで鍛える部位の回復の日数がどれも0: rules.js の recoverGap）から、今日やるものを選ぶ欄。
+   押すと今日のメニューに入り、もう一度押すと外れる（2026-10-25 本人の要望）。記録した種目は外せない。
+   2日続けてメインで鍛えた部位の種目には「3日目」と添える（メニュー作りは入れない: planner.js の "run"） */
+function dailyPickList(){
+  return EX.filter(e => !e.base && exOn(e.id) && e.p.length && e.p.every(m => recoverGap(m) === 0));
+}
+function dailyPickCard(){
+  const list = dailyPickList();
+  if(!list.length) return "";
+  const parts = [];
+  list.forEach(e => e.p.forEach(m => { if(!parts.includes(MUSCLES[m])) parts.push(MUSCLES[m]); }));
+  const chips = list.map(e => {
+    const on = menuState(e.id) === "in", en = entryFor(TODAY, e.id, false), n = en ? en.sets.length : 0;
+    const third = e.p.some(m => dailyRun(m) >= DAILY_RUN_MAX);
+    return `<button class="sorechip${on ? " on" : ""}" data-act="dailypick" data-ex="${e.id}" aria-pressed="${on}">${esc(e.name)}${n ? "（記録済み）" : third ? "（3日目）" : ""}</button>`;
+  }).join("");
+  return `<h3 class="sec">毎日やってよい種目</h3>
+    <div class="card dailypick">
+      <p class="lastline" style="margin-top:0">${esc(parts.join("・"))}は、毎日鍛えてもかまいません。押すと今日のメニューに入り、もう一度押すと外れます。</p>
+      <div class="sorechips">${chips}</div>
+    </div>`;
+}
+/* 今日のカードの並べ替え（2026-10-25 本人の要望）。左端のつまみを押したまま上下に動かし、離したところに置く。
+   並べた順は今日のメニューに保存し、種目ごとの位置を覚えて次からのメニューの並びにも使う（rules.js の learnOrder・orderPlan） */
+function wireDrag(v){
+  v.querySelectorAll(".exrow .grip").forEach(g => { g.onpointerdown = e => startDrag(e, g.closest(".exrow")); });
+}
+WIRES.push(wireDrag);
+function startDrag(e, row){
+  if(!row || e.button > 0) return;
+  e.preventDefault();
+  const rows = Array.from(row.parentNode.querySelectorAll(":scope > .exrow[data-row]"));
+  const from = rows.indexOf(row); if(from < 0 || rows.length < 2) return;
+  const gap = 10, h = row.offsetHeight + gap;
+  const mids = rows.map(r => { const b = r.getBoundingClientRect(); return b.top + window.scrollY + b.height / 2; });
+  const y0 = e.clientY + window.scrollY;
+  let to = from, scrollIv = null, lastY = e.clientY;
+  row.classList.add("dragging");
+  rows.forEach(r => { if(r !== row) r.classList.add("shift"); });
+  try{ row.setPointerCapture(e.pointerId); }catch(err){}
+  const place = () => {
+    const y = lastY + window.scrollY, dy = y - y0;
+    row.style.transform = `translateY(${dy}px)`;
+    const mid = mids[from] + dy;
+    to = from;
+    for(let i = 0; i < rows.length; i++){
+      if(i < from && mid < mids[i]){ to = i; break; }
+    }
+    for(let i = rows.length - 1; i > from; i--){
+      if(mid > mids[i]){ to = i; break; }
+    }
+    rows.forEach((r, i) => {
+      if(r === row) return;
+      const s = from < to && i > from && i <= to ? -h : from > to && i >= to && i < from ? h : 0;
+      r.style.transform = s ? `translateY(${s}px)` : "";
+    });
+  };
+  /* 画面の上下の端に近づいたら、そちらへ送る */
+  const edge = () => {
+    const H = window.innerHeight, d = lastY < 60 ? -12 : lastY > H - 60 ? 12 : 0;
+    if(d){ window.scrollBy(0, d); place(); }
+  };
+  const move = ev => { lastY = ev.clientY; place(); };
+  const end = () => {
+    row.removeEventListener("pointermove", move);
+    row.removeEventListener("pointerup", end);
+    row.removeEventListener("pointercancel", end);
+    clearInterval(scrollIv);
+    rows.forEach(r => { r.classList.remove("shift", "dragging"); r.style.transform = ""; });
+    if(to === from) return;
+    const ids = rows.map(r => r.dataset.row), id = ids.splice(from, 1)[0];
+    ids.splice(to, 0, id);
+    /* 描き直しを待たずに、見た目の並びを先に変えておく（押した直後の描き直しは pressDone まで待たされる） */
+    if(to > from) rows[to].after(row); else rows[to].before(row);
+    reorderToday(ids);
+  };
+  row.addEventListener("pointermove", move);
+  row.addEventListener("pointerup", end);
+  row.addEventListener("pointercancel", end);
+  scrollIv = setInterval(edge, 30);
+}
+/* 今日やる種目を ids の順に並べ替える。外した種目は最後のまま。メニューに無い記録の種目は、メニュー外の行として入れる */
+function reorderToday(ids){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  const s = session(TODAY);
+  fixPlan(s);
+  if(!s.plan) s.plan = [];
+  ids.forEach(id => { if(!s.plan.some(x => x.ex === id)) s.plan.push({ex: id, label: (itemOf(id) || {}).label || "", extra: true}); });
+  const rows = ids.map(id => s.plan.find(x => x.ex === id));
+  s.plan = rows.concat(s.plan.filter(x => !ids.includes(x.ex)));
+  s.planAt = s.planEdit = stampNow();
+  persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();
+  learnOrder(ids);
+  planMemo = null; resetProg();
+  todayMsg = "並びを変えました。次からのメニューも、この並びに近づけます";
+  render();
 }
 /* ============================================================
    持っているダンベル
@@ -9371,7 +9501,8 @@ function setTextFor(item, st){
   if(ex.kind === "t") return (st.w !== undefined ? kgText(st.w) + "・" : "") + st.r + " 秒";
   return st.r + " 回";
 }
-function exRow(item){
+/* drag: true のとき、カードの左端につまみを付ける（今日のカードの並べ替え: today.js の wireDrag） */
+function exRow(item, drag){
   const id = item.ex, ex = EXMAP[id]; if(!ex) return "";
   const e = entryFor(TODAY, id, false);
   const sets = e ? e.sets : [];
@@ -9379,6 +9510,7 @@ function exRow(item){
   const target = setsOf(item);               /* その種目のセット数（その日だけ追加したセットを足す: rules.js の setsOf） */
   const sideTag = item.side ? '<span class="side">左右</span>' : "";
   const name = esc(itemName(item));
+  const grip = drag ? `<span class="grip" data-grip="${id}" aria-hidden="true"></span>` : "";
   const setLines = sets.map((st,i)=>`
       <div class="setline">
         <span class="i num">${i+1}</span>
@@ -9391,7 +9523,7 @@ function exRow(item){
      「セット追加」でその日だけセットを1つ増やすと、また記録できるようになる（2026-10-22 本人の要望） */
   if(n >= target){
     const editing = editEx === id;
-    return `<div class="exrow done${editing ? " editing" : ""}">
+    return `<div class="exrow done${editing ? " editing" : ""}${drag ? " dragok" : ""}" data-row="${id}">${grip}
       <div class="exhead">
         <span><span class="nm">${name}${sideTag}</span><span class="meta">${esc(sets.map(x=>setTextFor(item, x)).join(" / "))}</span></span>
         <span class="cnt num">${n} / ${target}</span>
@@ -9465,7 +9597,7 @@ function exRow(item){
       </div><div class="exside">${diaHTML(id, true, item, sug.opt)}</div></div>`;
   }
 
-  return `<div class="exrow">
+  return `<div class="exrow${drag ? " dragok" : ""}" data-row="${id}">${grip}
     <button class="exhead" data-act="toggle" data-ex="${id}">
       <span><span class="nm">${name}${sideTag}${adv && adv.short?`<span class="adv ${adv.warn?"warn":""}">${esc(adv.short)}</span>`:""}</span><span class="meta">${esc(parts)}</span></span>
       <span class="cnt num">${n} / ${target}</span>
@@ -10611,6 +10743,29 @@ ACTIONS.skip = el=>{
   todayMsg = "「" + itemName(itemOf(id)) + "」を今日は外しました。組み直しても入りません。下の「戻す」で戻せます";
   render();
 };
+/* 今日タブの「毎日やってよい種目」の押しボタン（today.js の dailyPickCard）。入れる・外すだけで、種目のカードは開かない。
+   押したボタンが画面の同じ位置に残るように合わせる（続けて押せるように） */
+ACTIONS.dailypick = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  const id = el.dataset.ex, st = menuState(id), en = entryFor(TODAY, id, false), name = itemNameOf(id);
+  const sel = '[data-act="dailypick"][data-ex="' + id + '"]', y0 = el.getBoundingClientRect().top, open0 = openEx;
+  if(st === "in"){
+    if(en && en.sets.length){ setStatus("「" + name + "」は今日記録したので外せません"); return; }
+    editPlanItem(id, (plan, i)=>{ if(plan[i].manual) plan.splice(i, 1); else plan[i].skip = true; });
+    if(openEx === id) openEx = null;
+    todayMsg = "「" + name + "」を今日のメニューから外しました";
+  }else if(st === "skipped"){
+    editPlanItem(id, (plan, i)=>{ delete plan[i].skip; });
+    todayMsg = "「" + name + "」を今日のメニューに入れました";
+  }else{
+    addToProgramToday(id);
+    openEx = open0;
+    todayMsg = "「" + name + "」を今日のメニューに入れました";
+  }
+  render();
+  const b = document.querySelector(sel);
+  if(b) window.scrollBy(0, b.getBoundingClientRect().top - y0);
+};
 ACTIONS.unskip = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;
@@ -11104,7 +11259,8 @@ function menuCard(){
     .map(e => `<div class="tunerow"><span>${esc(e.name)}</span>${tuneSel("sets:" + e.id, baseSets(e.id), setsOpts)}</div>`).join("");
   const nSets = EX.filter(e => baseSets(e.id) !== SETS_PER_EXERCISE).length;
   const nOff = EX.filter(e => !exOn(e.id)).length;
-  const changed = ["pref", "gap", "pair", "sets"].some(k => !tuneIsDefault(k));
+  const changed = ["pref", "gap", "pair", "sets", "order"].some(k => !tuneIsDefault(k));
+  const nOrder = EX.filter(e => orderPos(e.id) !== null).length;
   return `<h3 class="sec">${MENU_HEAD}</h3>
   <div class="card">
     <div class="fld tunefld" style="margin-top:0"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
@@ -11121,6 +11277,9 @@ function menuCard(){
       <p class="lastline" style="margin-top:0">今日のメニューと、次からのメニューのセット数になります。その日だけ増やすときは、カードの「セット追加」を使ってください。</p>
       ${setsRows}
     </details>
+    <div class="fld tunefld"><label>種目の並び</label>
+      <p class="lastline" style="margin-top:0">今日のメニューで、カードの左端のつまみを押したまま上下に動かすと並べ替えられます。並べた順を覚えて、次からのメニューもその順に近づけます。${nOrder ? "（" + nOrder + "種目の位置を覚えています）" : ""}</p>
+      ${nOrder ? `<div class="rowbtns"><button data-act="orderreset">覚えた並びを消す</button></div>` : ""}</div>
     <details class="tune" data-tune-d="off"${tuneOpen.off ? " open" : ""}><summary>${EX_OFF_HEAD}${nOff ? "（" + nOff + "種目）" : ""}</summary>
       ${exOffBody()}
     </details>
@@ -11179,8 +11338,12 @@ WIRES.push(wireTune);
 ACTIONS.tunereset = el => {
   const prog = el && el.dataset.part === "prog";
   if(prog) setTune("prog", {});
-  else{ setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); setTune("sets", {map: {}}); }
+  else{ setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); setTune("sets", {map: {}}); setTune("order", {map: {}}); }
   tuneApplied(!prog, "「" + (prog ? PROG_HEAD : MENU_HEAD) + "」を初めの設定に戻しました");
+};
+ACTIONS.orderreset = () => {
+  setTune("order", {map: {}});
+  tuneApplied(false, "覚えた並びを消しました。次からのメニューは初めの並びになります");
 };
 function viewSet(){
   /* 縦に長いものは、初めは閉じておく（ダンベルを登録していないうちは、登録を促す文が見えるように開いておく） */
