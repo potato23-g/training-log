@@ -1129,7 +1129,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     pins: [FOOT.heel, FOOT.ball]
   });
 
-  /* 胸の前で両手にダンベルを抱える（ゴブレット持ち） */
+  /* 胸の前でダンベルの持ち手を両手で握る（ゴブレット持ち） */
   const gobletHands = {
     R: { at: { bone: 'spineC', local: [0.210, 0.060, 0.052] }, local: HAND.palm, pitch: 120, yaw: -25,
          pole: [0.05, -1, 0.14] },
@@ -1147,7 +1147,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     ],
     feet: { R: flatFoot(0, 0.17, 16), L: flatFoot(0, -0.17, -16) },
     hands: gobletHands,
-    dumbbells: [{ grip: 'both', axis: 'bone', bone: 'spineC', kg: 5, local: HAND.grip, offset: [0, -0.085, 0] }],
+    /* 持ち手を両手で握る（ダンベルは両手を結ぶ向きに横たわる。2026-10-25 本人の指摘「重りではなく持ち手を両手で持つ」） */
+    dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }],
     balance: { axes: ['x'] },
     base: {
       'pelvis.y': 0.955, 'pelvis.pitch': 4,
@@ -1372,7 +1373,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       { t: 1.3, label: '戻す 3秒' }
     ],
     feet: standFeet,
-    dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, -0.05, 0] }],
+    dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }],   /* 持ち手を両手で握る */
     balance: { axes: ['x'] },
     base: {
       'pelvis.y': 0.95, 'pelvis.pitch': 0,
@@ -1780,7 +1781,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   });
 
   /* ---------------- ヒップスラスト ---------------- */
-  /* 肩甲骨を高さ30cmのベッドの縁に当てる。足は床。ダンベルは骨盤の上を両手で支える */
+  /* 肩甲骨を高さ30cmのベッドの縁に当てる。足は床。ダンベルは骨盤の上に置き、持ち手を両手で握る */
   const BED_HIP = { type: 'box', id: 'bed', min: [-0.65, 0, -0.16], max: [-0.15, 0.30, 0.16], label: 'ベッド' };
   M.register({
     id: 'hipthrust',
@@ -1932,16 +1933,18 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       phases: [{ t: 0, label: '閉じる 1秒' }, { t: 1.0, label: '胸の上で止める' },
                { t: 1.6, label: '開く 3秒' }]
     },
-    /* 肘の角度は25度で固定したまま、上腕を横に開いて閉じる */
+    /* 肘は直角のまま、上腕を横に開いて閉じる（2026-10-25 本人の指摘「肘が直角になるように曲げる」。前は25度）。
+       上腕は肩の高さで前へ上げてから横へ倒す（abd が開き具合）。開いたところで上腕は床、前腕は真上。
+       閉じたところで、左右のダンベルが胸の上で触れる手前（手首の間 0.25m） */
     times: { 2.6: 1.6, 4: 4.6 },
-    keys: { 0: { 'upperarmR.flex': -10, 'upperarmR.abd': 80, 'upperarmL.flex': -10, 'upperarmL.abd': 80,
-                 'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 0, 'forearmL.rot': 0 },
-            1: { 'upperarmR.flex': 78, 'upperarmR.abd': -8, 'upperarmL.flex': 78, 'upperarmL.abd': -8,
-                 'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 90, 'forearmL.rot': 90 },
-            1.6: { 'upperarmR.flex': 78, 'upperarmR.abd': -8, 'upperarmL.flex': 78, 'upperarmL.abd': -8,
-                   'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 90, 'forearmL.rot': 90 },
-            4.6: { 'upperarmR.flex': -10, 'upperarmR.abd': 80, 'upperarmL.flex': -10, 'upperarmL.abd': 80,
-                   'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 0, 'forearmL.rot': 0 } }
+    keys: { 0: { 'upperarmR.flex': 90, 'upperarmR.abd': 88, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 88, 'upperarmL.rot': 90,
+                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            1: { 'upperarmR.flex': 90, 'upperarmR.abd': 32, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 32, 'upperarmL.rot': 90,
+                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            1.6: { 'upperarmR.flex': 90, 'upperarmR.abd': 32, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 32, 'upperarmL.rot': 90,
+                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            4.6: { 'upperarmR.flex': 90, 'upperarmR.abd': 88, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 88, 'upperarmL.rot': 90,
+                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 } }
   });
 
   /* ---------------- フロアトライセプスエクステンション ----------------
@@ -2126,7 +2129,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   });
 
   /* ---------------- ダンベルプルオーバー ----------------
-     仰向け、膝を立てる（フロアプレスと同じ仰向け姿勢）。ダンベル1つを両手でまとめて持ち、
+     仰向け、膝を立てる（フロアプレスと同じ仰向け姿勢）。ダンベル1つの持ち手を両手で握り、
      胸の真上から弧を描いて頭の後ろへ。肘の角度（前腕の曲げ）は最後まで変えない。 */
   const pulloverFoot = (z) => ({
     at: [0.50, 0, z], local: [0, -FOOT.ankleH, 0], yaw: 0, pitch: 0,
@@ -2139,7 +2142,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       { t: 0, label: '下ろす 3秒' }, { t: 3.0, label: '頭の後ろで止める' }, { t: 3.4, label: '引き上げる 2秒' }
     ],
     feet: { R: pulloverFoot(0.13), L: pulloverFoot(-0.13) },
-    dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, -0.05, 0] }],
+    dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }],   /* 持ち手を両手で握る */
     base: {
       'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,
       'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 4, 'head.flex': 0,
@@ -2661,7 +2664,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     keys: { 2.2: { 'pelvis.y': 0.890, 'pelvis.z': 0.100 }, 3.5: { 'pelvis.y': 0.870, 'pelvis.z': 0.130 },
             4.1: { 'pelvis.y': 0.870, 'pelvis.z': 0.130 }, 4.6: { 'pelvis.y': 0.900, 'pelvis.z': 0.090 } } });
   derive('fly', { id: 'fly_shallow',
-    keys: { 0: { 'upperarmR.abd': 52, 'upperarmL.abd': 52 }, 4.6: { 'upperarmR.abd': 52, 'upperarmL.abd': 52 } } });
+    keys: { 0: { 'upperarmR.abd': 70, 'upperarmL.abd': 70 }, 4.6: { 'upperarmR.abd': 70, 'upperarmL.abd': 70 } } });
   derive('bridge', { id: 'bridge_low',
     set: { phases: [{ t: 0, label: '持ち上げる 1.3秒' }, { t: 1.3, label: '上で2秒止める' },
                     { t: 3.3, label: '下ろす 2秒' }] },
@@ -2676,10 +2679,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   derive('slidecurl', { id: 'slidecurl_one',
     keys: { 0.0: SC_BENT, 0.7: SC_BENT, 1.4: SC_BENT, 2.0: SC_BENT, 2.3: SC_BENT, 3.0: SC_BENT, 3.7: SC_BENT, 4.3: SC_BENT } });
 
-  /* ロシアンツイスト: ダンベルを両手でまとめて持つ（動きはそのまま）。
+  /* ロシアンツイスト: ダンベルの持ち手を両手で握る（動きはそのまま）。
      胸の高さで持つので、フロアプレス系と違って下げすぎると太ももに当たる。手の位置より少し上で持つ */
   derive('twist', { id: 'twist_db',
-    set: { dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, 0.08, 0] }] } });
+    set: { dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }] } });   /* 持ち手を両手で握る */
 
   /* ロシアンツイスト: ひねる角度を浅くする */
   const twistShallow = (bend) => ({ 'spineL.rot': bend * 5, 'spineT.rot': bend * 8, 'spineC.rot': bend * 10 });
@@ -2721,9 +2724,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
             'forearmL.flex': 96, 'forearmL.rot': 40, 'handL.flex': 0 },
     keys: { 0: { 'forearmL.flex': 96 }, 1.3: { 'forearmL.flex': 96 }, 1.6: { 'forearmL.flex': 96 }, 5.1: { 'forearmL.flex': 96 } } });
 
-  /* 腹筋（クランチ）: 胸にダンベルを抱える／腕を体の横に置く */
+  /* 腹筋（クランチ）: 胸の上でダンベルの持ち手を両手で握る／腕を体の横に置く */
   derive('crunch', { id: 'crunch_db',
-    set: { dumbbells: [{ grip: 'both', axis: 'bone', bone: 'spineC', kg: 5, local: HAND.grip, offset: [0.06, -0.10, 0] }] },
+    set: { dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }] },   /* 持ち手を両手で握る */
     base: { 'upperarmR.flex': 36, 'upperarmR.abd': -10, 'forearmR.flex': 128, 'forearmR.rot': 40,
             'upperarmL.flex': 36, 'upperarmL.abd': -10, 'forearmL.flex': 128, 'forearmL.rot': 40 },
     keys: { 0: { 'upperarmR.flex': 36, 'upperarmR.abd': -10, 'forearmR.flex': 128,
@@ -3423,7 +3426,7 @@ const EX = [
     id:"goblet", name:"ゴブレットスクワット", kind:"w", w:5, r:12, sets:3, level:2,
     p:["quads","glutes"], s:["adductors","abs","erectors"],
     how:[
-      "ダンベルを縦に持ち、胸の前で両手で抱える。肘は体の内側に落とす。",
+      "ダンベルを横にして持ち手を両手で握り、胸の前に構える。肘は体の内側に落とす。",
       "足は肩幅よりやや広く、つま先は少し外向き。",
       "胸を張ったまま、股関節から後ろに座るようにしゃがむ。太ももが床と平行かそれ以下まで。",
       "かかと全体で床を押して立ち上がる。一番上で尻を締める。"
@@ -3480,7 +3483,7 @@ const EX = [
     p:["glutes"], s:["hams","abs"],
     how:[
       "肩甲骨をベッドや椅子の縁に乗せ、膝を90度に立てる。",
-      "ダンベルを骨盤の上に置いて両手で支える。",
+      "ダンベルを骨盤の上に横向きに置き、持ち手を両手で握って押さえる。",
       "かかとで床を押し、肩・腰・膝が一直線になるまで尻を持ち上げる。",
       "一番上で1〜2秒締めてから下ろす。"
     ],
@@ -3563,7 +3566,7 @@ const EX = [
     id:"triext", name:"トライセプスエクステンション", kind:"w", w:5, r:12, sets:3, level:2,
     p:["triceps"], s:[],
     how:[
-      "ダンベルを両手で持ち、頭の後ろに構える。",
+      "ダンベルの持ち手を両手で握り、頭の後ろに構える。",
       "肘の位置を固定したまま、腕を真上に伸ばす。",
       "ゆっくり頭の後ろへ戻す。"
     ],
@@ -3601,7 +3604,7 @@ const EX = [
       "ゆっくり戻す。首を引っ張らない。"
     ],
     ng:["首を手で引っ張る。","反動で起き上がる。","毎日高回数やる。腹筋も他の筋肉と同じで回復が要る。"],
-    up:["ダンベルを胸に抱えて行う","上で2秒静止","動作をゆっくりにする"]
+    up:["ダンベルの持ち手を両手で握り、胸にのせて行う","上で2秒静止","動作をゆっくりにする"]
   },
   {
     id:"sideplank", name:"サイドプランク", kind:"t", r:30, sets:2, level:2,
@@ -3629,7 +3632,7 @@ const EX = [
     p:["quads","glutes"], s:["adductors","erectors","abs"],
     how:[
       "足を肩幅の1.5倍に開き、つま先を30度ほど外へ向ける。",
-      "ダンベルを縦に持ち、胸の前で両手で支える。",
+      "ダンベルを横にして持ち手を両手で握り、胸の前に構える。",
       "膝をつま先と同じ方向に開きながら、まっすぐ下に沈む。",
       "内ももと尻で床を押して立ち上がる。"
     ],
@@ -3674,10 +3677,10 @@ const EX = [
     p:["chest"], s:["frontdelt","biceps"],
     how:[
       "仰向けで膝を立て、ダンベルを胸の上に持つ。手のひらは向かい合わせ。",
-      "肘を軽く曲げた角度のまま、腕を横に開く。",
+      "肘を直角に曲げたまま、腕を横に開く。",
       "上腕が床についたら、胸を寄せるように戻す。"
     ],
-    ng:["肘を伸ばしきる。肘の角度は固定したまま。","重すぎて肩が前に出る。軽くして可動域を優先する。"],
+    ng:["肘を伸ばす。肘は直角のまま固定する。","重すぎて肩が前に出る。軽くして可動域を優先する。"],
     up:["開く動作を4秒に","開いた位置で2秒止める"]
   },
   {
@@ -3730,7 +3733,7 @@ const EX = [
     p:["calves"], s:[],
     how:[
       "椅子に浅く座り、足は腰幅。かかとが膝の真下に来る位置に置く。",
-      "ダンベルを膝の少し上に縦に置き、両手で押さえる。",
+      "ダンベルを膝の少し上に横向きに置き、持ち手を両手で握って押さえる。",
       "かかとを持ち上げ、つま先立ちの形で1〜2秒止める。",
       "ゆっくりかかとを下ろす。"
     ],
@@ -3753,7 +3756,7 @@ const EX = [
     p:["adductors","quads","glutes"], s:["hams","abs"],
     how:[
       "足を肩幅の2倍に開いて立ち、つま先は正面よりやや外へ向ける。",
-      "ダンベルを縦にして胸の前で両手で支える。",
+      "ダンベルを横にして持ち手を両手で握り、胸の前に構える。",
       "片側の股関節に体重を預け、その膝を曲げて沈む。反対の脚は伸ばしたまま。",
       "曲げた脚の足裏で床を押して戻る。"
     ],
@@ -3780,7 +3783,7 @@ const EX = [
     p:["lats"], s:["chest","triceps"],
     how:[
       "床（または低い台）に仰向けになり、膝を立てる。",
-      "ダンベルを縦にして、プレートの片側を両手でまとめて支え、胸の真上に伸ばす。",
+      "ダンベルの持ち手を両手で握り、胸の真上に伸ばす。",
       "肘の角度を変えずに、弧を描くように頭の後ろへ下ろす。",
       "広背筋で引き上げるように、同じ弧を通って胸の上へ戻す。"
     ],
@@ -4001,7 +4004,7 @@ function itemName(it){ return it.label || EXMAP[it.ex].name; }
 const DETAIL = {
 goblet:{
  why:"体の中で最も大きい筋肉が集まる脚と尻を、一種目でまとめて使える。ダンベルを胸の前で持つ形は背中が丸まりにくく、フォームを覚える段階に向いている。",
- setup:"足は肩幅よりやや広く、つま先を15〜30度外へ。ダンベルは縦に持ち、上側のプレートを両手で下から支えて胸の前に抱える。肘は体の内側に落とす。",
+ setup:"足は肩幅よりやや広く、つま先を15〜30度外へ。ダンベルは横にして持ち手を両手で握り、胸の前に構える。肘は体の内側に落とす。",
  breath:"立った位置で息を吸って腹を固め、しゃがんで立ち上がりきるまで止める。上まで戻ってから吐く。",
  tempo:"下ろす3秒 → 一番下で0〜1秒 → 立ち上がる1秒。",
  rom:"太ももが床と平行か、それ以下まで。かかとが浮く、腰が丸まる、どちらかが起きた位置が今の限界。",
@@ -4031,7 +4034,7 @@ split:{
  reps:"左右それぞれ3セット × 8〜12回"},
 hipthrust:{
  why:"尻を最も直接鍛えられる。スクワットやデッドリフトで尻に効いている感覚が出にくい人の補強になる。",
- setup:"肩甲骨の下あたりをベッドや椅子の縁に当てる。膝は90度、足は肩幅。ダンベルは骨盤の上に置いて両手で支える。",
+ setup:"肩甲骨の下あたりをベッドや椅子の縁に当てる。膝は90度、足は肩幅。ダンベルは骨盤の上に横向きに置き、持ち手を両手で握って押さえる。",
  breath:"下で吸い、上げきるところで吐く。",
  tempo:"上げる1秒 → 一番上で2秒静止 → 下ろす2秒。",
  rom:"肩・腰・膝が一直線になるまで。それ以上は腰を反らせているだけ。",
@@ -4101,7 +4104,7 @@ curl:{
  reps:"3セット × 10〜15回"},
 triext:{
  why:"腕の太さの大部分は上腕三頭筋。押す種目でも使われるが、頭上で行うと可動域を最も広く取れる。",
- setup:"立つか座る。ダンベルを両手で持ち、頭の後ろへ。肘は前を向けたまま耳の横に固定する。",
+ setup:"立つか座る。ダンベルの持ち手を両手で握り、頭の後ろへ。肘は前を向けたまま耳の横に固定する。",
  breath:"伸ばしながら吐く。",
  tempo:"伸ばす1秒 → 戻す3秒。",
  rom:"肘に違和感が出ない範囲で頭の後ろまで。無理に深くしない。",
@@ -4137,7 +4140,7 @@ crunch:{
  rom:"肩甲骨が床から離れるところまで。腰は床につけたまま。",
  feel:"みぞおちから下腹。首が疲れるなら首を引っ張っている。",
  easy:"手を体の横に置く",
- hard:"ダンベルを胸に抱える、一番上で2秒静止",
+ hard:"ダンベルの持ち手を両手で握って胸にのせる、一番上で2秒静止",
  reps:"2〜3セット × 10〜20回"},
 sideplank:{
  why:"体が横に曲がったり、ねじれたりしないように支える力を鍛える。腹斜筋を安全に使える数少ない種目。",
@@ -4171,7 +4174,7 @@ farmer:{
  reps:"3セット × 30〜60秒"},
 sumo:{
  why:"足幅を広げると、内ももと尻の関与が増える。同じダンベルでも刺激の当たる場所が変わるので、スクワット系を続けるときの変化になる。",
- setup:"足は肩幅の1.5倍、つま先は30度ほど外向き。ダンベルは縦に持ち、胸の前で両手で支える。",
+ setup:"足は肩幅の1.5倍、つま先は30度ほど外向き。ダンベルは横にして持ち手を両手で握り、胸の前に構える。",
  breath:"立った位置で息を吸って腹を固め、立ち上がりきってから吐く。",
  tempo:"下ろす2〜3秒 → 立ち上がる1秒。",
  rom:"太ももが床と平行になるまで。内ももが伸びきる手前が限界。",
@@ -4211,7 +4214,7 @@ pushupknee:{
  reps:"3セット × 8〜15回"},
 fly:{
  why:"押す動きでは使いにくい胸の内側まで、開いて閉じる動きで使える。床で行えば肩が伸びすぎないので安全。",
- setup:"仰向けで膝を立てる。ダンベルを胸の上で向かい合わせに持ち、肘を20〜30度曲げて固定する。",
+ setup:"仰向けで膝を立てる。ダンベルを胸の上で向かい合わせに持ち、肘を直角に曲げて固定する。",
  breath:"開きながら吸い、閉じながら吐く。",
  tempo:"開く3秒 → 閉じる1〜2秒。",
  rom:"上腕が床につくまで。肩の前が突っ張る手前で止める。",
@@ -4261,7 +4264,7 @@ row2:{
  reps:"3セット × 10〜12回"},
 calfseat:{
  why:"膝を曲げて行うと、ふくらはぎの奥にあるヒラメ筋が主役になる。立って行うカーフレイズとは効く場所が変わる。座って行うぶん体を支える必要がなく、ふくらはぎに集中できる。",
- setup:"椅子に浅く座り、足は腰幅。かかとが膝の真下に来るように置く。ダンベルを膝の少し上に縦に置き、両手で押さえる。",
+ setup:"椅子に浅く座り、足は腰幅。かかとが膝の真下に来るように置く。ダンベルを膝の少し上に横向きに置き、持ち手を両手で握って押さえる。",
  breath:"上げながら吐く。",
  tempo:"上げる1秒 → 一番上で2秒 → 下ろす2〜3秒。",
  rom:"かかとが下がりきるところから、つま先立ちの限界まで。",
@@ -4281,7 +4284,7 @@ sidebend:{
  reps:"左右それぞれ3セット × 12〜20回"},
 sidelunge:{
  why:"横へ開く動きで、内ももを直接使える数少ない種目。前後の動きだけでは鍛えにくい部分を補える。",
- setup:"足を肩幅の2倍、つま先はやや外向き。ダンベルを縦にして胸の前で両手で支える。",
+ setup:"足を肩幅の2倍、つま先はやや外向き。ダンベルを横にして持ち手を両手で握り、胸の前に構える。",
  breath:"沈むときに吸い、戻るときに吐く。",
  tempo:"沈む2〜3秒 → 戻る1秒。",
  rom:"曲げた側の太ももが45度くらい下がるまで。反対の内ももが伸びて止まるところが限界。",
@@ -4301,7 +4304,7 @@ slidecurl:{
  reps:"3セット × 10〜15回"},
 pullover:{
  why:"腕を頭の上まで伸ばす動きで、ロウでは使い切れない広背筋の上部まで伸ばせる。胸・体幹も一緒に働く。",
- setup:"床に仰向けになり、膝を立てる。ダンベルを縦にして、プレートの片側を両手でまとめて下から支え、胸の真上に伸ばす。肘は軽く曲げたまま最後まで角度を変えない。",
+ setup:"床に仰向けになり、膝を立てる。ダンベルの持ち手を両手で握り、胸の真上に伸ばす。肘は軽く曲げたまま最後まで角度を変えない。",
  breath:"下ろしながら吸い、引き上げながら吐く。",
  tempo:"下ろす3秒、頭の後ろで止める、引き上げる2秒。",
  rom:"肘の角度を変えずに、腕を頭の後ろまで下ろす。肩が痛む、または腰が反る手前が限界。",
@@ -5942,7 +5945,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-25 16:56";
+const BUILD_VERSION = "2026-10-25 17:37";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6509,19 +6512,19 @@ document.querySelectorAll("nav.tabs button").forEach(b=>{
    ============================================================ */
 /* 接地の説明（新しい図解でもそのまま使う）。head は見出し（無ければ「接地」。ぶら下がる種目は「支え」） */
 const PHYS = {
-  goblet:{hold:"両足は床につけたまま。ダンベルは胸の前で両手で支える"},
+  goblet:{hold:"両足は床につけたまま。ダンベルの持ち手を両手で握り、胸の前に構える"},
   rdl:{hold:"両足は床につけたまま。ダンベルは両手で体の前に持つ"},
   rdl1:{hold:"片足だけが床。ダンベルは体の前に持つ"},
   deadlift:{hold:"両足は床につけたまま。ダンベルは両手に1つずつ、体の横に持つ"},
   chinning:{head:"支え", hold:"両手でバーを握ってぶら下がる。膝を曲げて、足は床から浮かせておく"},
   split:{hold:"前足は床、後ろ足の甲をベッドに乗せる。ダンベルは両手に1つずつ"},
-  hipthrust:{hold:"肩甲骨をベッドの縁に当て、足裏は床。ダンベルは骨盤の上に置いて手で支える"},
+  hipthrust:{hold:"肩甲骨をベッドの縁に当て、足裏は床。ダンベルは骨盤の上に置き、持ち手を両手で握る"},
   row:{hold:"片手と片膝を椅子に乗せ、反対の足は床。ダンベルは垂らした手に1つ"},
   ohp:{hold:"両足は床。ダンベルは両手に1つずつ"},
   lateral:{hold:"両足は床。ダンベルは両手に1つずつ"},
   curl:{hold:"両足は床。肘は体側に固定。ダンベルは両手に1つずつ"},
   farmer:{hold:"両足は床。ダンベルは両手に1つずつ、体の横で保持"},
-  triext:{hold:"両足は床。ダンベル1つを両手で持ち、頭の後ろへ"},
+  triext:{hold:"両足は床。ダンベル1つの持ち手を両手で握り、頭の後ろへ"},
   floorpress:{hold:"背中と足裏は床。ダンベルは胸の横から真上へ"},
   pushup:{hold:"手のひらとつま先だけが床に接する"},
   plank:{hold:"前腕とつま先だけが床に接する"},
@@ -6529,20 +6532,20 @@ const PHYS = {
   deadbug:{hold:"背中と腰は床につけたまま。手足だけを動かす"},
   crunch:{hold:"腰と足裏は床につけたまま。肩甲骨だけを浮かせる"},
   calf:{hold:"母趾球だけが段差に乗り、かかとは空中。手すりや壁に軽く触れてよい"},
-  sumo:{hold:"両足は床につけたまま。ダンベルは胸の前で両手で支える"},
+  sumo:{hold:"両足は床につけたまま。ダンベルの持ち手を両手で握り、胸の前に構える"},
   splitfloor:{hold:"前足は床、後ろ足はつま先立ち。ダンベルは両手に1つずつ"},
   bridge:{hold:"肩と足裏は床。腰だけを持ち上げる"},
   pushupknee:{hold:"手のひらと膝が床に接する"},
-  fly:{hold:"背中と足裏は床。ダンベルは胸の上で開閉する"},
+  fly:{hold:"背中と足裏は床。肘は直角のまま、ダンベルを胸の上で開閉する"},
   skull:{hold:"背中と足裏は床。上腕は床に垂直のまま"},
   front:{hold:"両足は床。ダンベルは両手に1つずつ"},
   shrug:{hold:"両足は床。腕は伸ばしたまま、ダンベルは両手に1つずつ"},
   row2:{hold:"両足は床。上体を倒したまま、ダンベルは両手に1つずつ"},
-  calfseat:{hold:"椅子に座り、母趾球だけを床につける。ダンベルは膝の上に置く"},
+  calfseat:{hold:"椅子に座り、母趾球だけを床につける。ダンベルは膝の上に置き、持ち手を両手で握る"},
   sidebend:{hold:"両足は床。ダンベルは片手に1つ、体の横に垂らす"},
-  sidelunge:{hold:"両足は床につけたまま。ダンベルは胸の前で両手で支える"},
+  sidelunge:{hold:"両足は床につけたまま。ダンベルの持ち手を両手で握り、胸の前に構える"},
   slidecurl:{hold:"肩と足裏（かかと）は床。腰を浮かせたまま、かかとを滑らせる"},
-  pullover:{hold:"背中と足裏は床。ダンベル1つを両手でまとめて持ち、胸の上と頭の後ろの間を動かす"},
+  pullover:{hold:"背中と足裏は床。ダンベル1つの持ち手を両手で握り、胸の上と頭の後ろの間を動かす"},
   twist:{hold:"尻と足裏が床。足は浮かせず、床につけたまま体幹をひねる"},
   sissy:{hold:"両足のつま先側だけが床（かかとは浮かせる）。片手で柱やドア枠を軽くつかむ"},
   rear:{hold:"両足は床。上体を倒したまま、ダンベルは両手に1つずつ"},
@@ -6941,7 +6944,7 @@ const MDRV = {
   ohp: ["upperarmR.flex", 22, 172], lateral: ["upperarmR.abd", 0, 85], front: ["upperarmR.flex", 8, 88], rear: ["upperarmR.abd", 3, 85],
   curl: ["forearmR.flex", 5, 142], hammer: ["forearmR.flex", 5, 138], triext: ["forearmR.flex", 95, 10],
   /* 次の3つは、キャラクターの側が「腕を伸ばした所」を始めにしている */
-  floorpress: ["upperarmR.flex", 90, -15], fly: ["upperarmR.abd", -8, 80], skull: ["forearmR.flex", 8, 96],
+  floorpress: ["upperarmR.flex", 90, -15], fly: ["upperarmR.abd", 32, 88], skull: ["forearmR.flex", 8, 96],
   pushup: ["pelvis.y", 0.38, 0.18], pushupknee: ["pelvis.y", 0.38, 0.18], pushup_deep: ["pelvis.y", 0.44, 0.18],
   crunch: ["spineT.flex", 0, 18], backext: ["spineL.flex", 2, -12], sidebend: ["spineL.abd", 0, 22],
   /* 左右を交互に動かす: 右の番（k=0）と左の番（k=1）を、動いている側で決める */
@@ -7618,7 +7621,7 @@ const VARIANT_TEXT = {
                easy: ["膝をつく",          "膝をついて行い、頭から膝までを一直線に保つ。"]},
   sideplank:  {hard: ["上の脚を上げる",    "上側の脚を床から浮かせて保つ。"],
                easy: ["膝をつく",          "下側の膝をついて行う。"]},
-  crunch:     {hard: ["胸に重りを抱える",  "ダンベルを胸に抱えて行う。", {needsDb:true}],
+  crunch:     {hard: ["胸に重りを抱える",  "ダンベルの持ち手を両手で握り、胸にのせて行う。", {needsDb:true}],
                easy: ["腕を体の横に置く",  "手を体の横に置き、首を引っ張らないようにして行う。"]},
   deadbug:    {hard: ["ダンベルを持って行う", "両手に1つずつダンベルを持ち、いつもどおり対角の腕と脚を伸ばす。腰が浮くなら片手だけで持つ。", {needsDb:true}],
                easy: ["腕か脚だけ動かす",  "腕だけ、または脚だけを動かす。"]},
@@ -7626,7 +7629,7 @@ const VARIANT_TEXT = {
                easy: ["浅く行う",         "かかとを滑らせる距離を短くし、膝が少し曲がったところで引き寄せに戻る。"]},
   pullover:   {hard: ["頭の後ろで2秒止める", "腕を頭の後ろまで下ろした位置で2秒止めてから引き上げる。"],
                easy: ["浅めに下ろす",      "胸の真上から少し後ろまでで止め、可動域を狭くする。"]},
-  twist:      {hard: ["ダンベルを持って行う", "ダンベルを両手でまとめて持ち、いつもどおり体幹をひねる。", {needsDb:true}],
+  twist:      {hard: ["ダンベルを持って行う", "ダンベルの持ち手を両手で握り、いつもどおり体幹をひねる。", {needsDb:true}],
                easy: ["浅くひねる",        "体幹をひねる角度を浅くする。"]},
   sissy:      {hard: ["一番下で2秒止める", "一番深い位置で2秒止め、膝から肩までの一直線を崩さずに戻る。"],
                easy: ["浅めに沈む",        "膝が90度に曲がる手前までで戻る。"]},
@@ -8639,32 +8642,32 @@ function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
    per    = "arm" なら片腕あたりの重さで重い・軽いを決める（腕の種目）。"total" なら合計で決める
    prefer = 同じ重さになる使い方が複数あるとき、1つで持つほうを選ぶ（"one"） */
 const HOLD = {
-  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total"},
-  rdl:       {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"},
-  split:     {pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
+  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total"},
+  rdl:       {pair:"両手に1つずつ持つ",    one:"持ち手を両手で握る",     per:"total"},
+  split:     {pair:"両手に1つずつ持つ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total"},
   hipthrust: {pair:"骨盤の上に並べて置く", one:"骨盤の上に置く",         per:"total", prefer:"one", mixed:true},
   row:       {one:"片手に持ち、左右を入れ替える",                          per:"total"},
   ohp:       {pair:"両手に1つずつ持つ",    one:"片手ずつ押し上げ、左右を入れ替える", per:"arm"},
   lateral:   {pair:"両手に1つずつ持つ",    one:"片手ずつ上げ、左右を入れ替える",     per:"arm"},
   floorpress:{pair:"両手に1つずつ持つ",    one:"片手ずつ押し、反対の手は床に置く",   per:"arm"},
   curl:      {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
-  triext:    {one:"両手でまとめて持つ",                                    per:"total"},
+  triext:    {one:"持ち手を両手で握る",                                    per:"total"},
   calf:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、反対の手で壁を支える",   per:"total"},
   farmer:    {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で左右を持ち替える", per:"total"},
-  sumo:      {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
-  splitfloor:{pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
+  sumo:      {pair:"両肩に1つずつ担ぐ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total", prefer:"one"},
+  splitfloor:{pair:"両手に1つずつ持つ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total"},
   fly:       {pair:"両手に1つずつ持つ",    one:"片手ずつ行い、反対の手は床に置く",   per:"arm"},
   skull:     {pair:"両手に1つずつ持つ",    one:"片手ずつ行い、反対の手で肘を支える", per:"arm"},
   front:     {pair:"両手に1つずつ持つ",    one:"片手ずつ上げ、左右を入れ替える",     per:"arm"},
   shrug:     {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で持ち替える",       per:"total"},
   row2:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、左右を入れ替える",       per:"total"},
-  calfseat:  {pair:"左右の膝に1つずつ置く", one:"片方の膝に置き、両手で押さえる",     per:"total"},
+  calfseat:  {pair:"左右の膝に1つずつ置く", one:"膝の上に横向きに置き、持ち手を両手で握って押さえる",     per:"total"},
   sidebend:  {one:"片手に持ち、左右を入れ替える",                                    per:"total"},
-  sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
-  pullover:  {one:"両手でまとめて持つ",                                    per:"total"},
+  sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"横にして持ち手を両手で握り、胸の前に構える", per:"total", prefer:"one"},
+  pullover:  {one:"持ち手を両手で握る",                                    per:"total"},
   rear:      {pair:"両手に1つずつ持つ",    one:"片手ずつ開き、反対の手は膝に置く",   per:"arm"},
   hammer:    {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
-  deadlift:  {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"}
+  deadlift:  {pair:"両手に1つずつ持つ",    one:"持ち手を両手で握る",     per:"total"}
 };
 function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
 /* この種目（catalog の行）は、今持っているダンベルで行えるか。C19: HOLD の無い種目は常に true。

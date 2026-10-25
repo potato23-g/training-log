@@ -125,15 +125,22 @@ const clasp = (sg, g, c) => ({
   pos: g.top.clone().addScaledVector(g.X, sg * g.h).addScaledVector(g.F, -0.5),
   pole: g.pole ? g.pole(sg) : c.c(sg * 0.3, -1, 0), palm: g.X.clone().multiplyScalar(-sg), fingers: g.F, hand: g.hand || 'cup',
 });
-const claspBoth = { handL: c => clasp(1, c.free, c), handR: c => clasp(-1, c.free, c) };
-// ダンベルを縦にして胸の前で抱える（上のプレートを両手ではさむ）
+// 1個のダンベルの持ち手を、両手で並べて握る（2026-10-25 本人の指摘「重りではなく持ち手を両手で持つのが正しい」）。
+// free が返す { pos: ダンベルの中心, axis: 持ち手の向き（＋が左手の側）, g: 指の向き, pn: 手のひらから持ち手へ向かう向き, w: 中心から握る所まで }。
+// 手首は、握る所から指の向きと手のひらの向きへ戻した所（チンニングと同じ）
+const GRIP_W = 0.4;
+const gripAt = (sg, f, c) => ({
+  pos: f.pos.clone().addScaledVector(f.axis, sg * (f.w || GRIP_W)).addScaledVector(f.g, -c.m.armL.hand * 0.92).addScaledVector(f.pn, -0.27),
+  pole: f.pole(sg), g: f.g, bar: f.g.clone().cross(f.pn).multiplyScalar(-sg), hand: 'grip',
+});
+const gripBoth = { handL: c => gripAt(1, c.free, c), handR: c => gripAt(-1, c.free, c) };
+// 手首の中心 W から、握る向き（指 g・手のひら pn）に合わせてダンベルの中心を決める
+const fromWrist = (W, g, pn, c) => W.clone().addScaledVector(g, c.m.armL.hand * 0.92).addScaledVector(pn, 0.27);
+// ダンベルを横にして胸の前で持つ。持ち手を両手で下から握り、手のひらは胸へ向ける
 const gobletHold = () => ({
-  free: c => {
-    const ax = c.c(0, 1, 0), top = mid(c.shL, c.shR).add(c.c(0, -0.3, 2.3));
-    return { pos: top.clone().addScaledVector(ax, -1), axis: ax, top, X: c.c(1, 0, 0), F: c.c(0, 0.85, 0.5).normalize(), h: 0.78,
-             pole: sg => c.c(sg * 0.25, -1, 0) };
-  },
-  ...claspBoth,
+  free: c => ({ pos: mid(c.shL, c.shR).add(c.c(0, -1.25, 2.25)), axis: c.c(1, 0, 0), g: c.c(0, 0.95, 0.3).normalize(), pn: c.c(0, 0.3, -0.95).normalize(),
+                pole: sg => c.c(sg * 0.25, -1, 0) }),
+  ...gripBoth,
 });
 
 // あおむけ。a は腰を持ち上げる角度（肩を支点に体を傾ける）
@@ -223,11 +230,8 @@ export const EXLIB = {
         baseQ: Qx(-90 + b), head: [lerp(32, 14, u), 0, 0],
         pin: c => V(0, 5.42, ze).sub(mid(c.shL, c.shR).add(c.w(0, -1.0, -0.96))),
         footL: foot(1), footR: foot(-1),
-        free: c => {
-          const P = c.hips.clone().add(c.p(0, 0.1, 1.32));
-          return { pos: P, axis: X, top: P, X, F: c.p(0, -1, -0.15).normalize(), h: 1.46, pole: sg => c.c(sg, 0, -0.5) };
-        },
-        ...claspBoth,
+        free: c => ({ pos: c.hips.clone().add(c.p(0, 0.1, 1.32)), axis: X, g: c.p(0, -1, 0), pn: c.p(0, 0, -1), pole: sg => c.c(sg, 0, -0.5) }),
+        ...gripBoth,
       };
     },
   },
@@ -334,12 +338,12 @@ export const EXLIB = {
     })() : ({
       ...feet(1.66), shrugL: 12, shrugR: 12,
       free: c => {
-        const th = lerp(115, 0, u) * D, f = c.c(0, Math.cos(th), -Math.sin(th));
-        const C = mid(c.shL, c.shR).add(c.c(0, 2.2, 0.3)).addScaledVector(f, 2.3);
-        const P = C.clone().addScaledVector(f, 0.5);
-        return { pos: P, axis: c.c(1, 0, 0), top: P, X: c.c(1, 0, 0), F: f, h: 1.46, pole: sg => c.c(sg * 1.1, 0.5, 0.8) };
+        // 持ち手を横にして両手で握る。伸ばしきったとき手のひらは前、下ろすと上を向く
+        const th = lerp(115, 0, u) * D, f = c.c(0, Math.cos(th), -Math.sin(th)), pn = c.c(0, Math.sin(th), Math.cos(th));
+        const W = mid(c.shL, c.shR).add(c.c(0, 2.2, 0.3)).addScaledVector(f, 2.3);
+        return { pos: fromWrist(W, f, pn, c), axis: c.c(1, 0, 0), g: f, pn, pole: sg => c.c(sg * 1.1, 0.5, 0.8) };
       },
-      ...claspBoth,
+      ...gripBoth,
     }),
   },
 
@@ -384,10 +388,9 @@ export const EXLIB = {
     pose: (u, k, m, v = {}) => {
       const body = { baseQ: Qx(-90), pin: pinHip(SUP_SH + 0.44 + 0.08 * u, SUP_Z + 4.57), ...kneesUp(), pelvis: [9 * u, 0, 0], chest: [64 * u, 0, 0], head: [10 + 14 * u, 0, 0] };
       // db: ダンベルを横にして胸の上で抱える
-      if (v.db) return { ...body, free: c => {
-        const P = mid(c.shL, c.shR).add(c.c(0, v.cy != null ? v.cy : -1.5, v.cz != null ? v.cz : 1.75));
-        return { pos: P, axis: c.c(1, 0, 0), top: P, X: c.c(1, 0, 0), F: c.c(0, 0.25, 0.97).normalize(), h: 1.46, pole: sg => c.c(sg, -0.6, -0.4) };
-      }, ...claspBoth };
+      if (v.db) return { ...body, free: c => ({
+        pos: mid(c.shL, c.shR).add(c.c(0, v.cy != null ? v.cy : -1.5, v.cz != null ? v.cz : 1.75)), axis: c.c(1, 0, 0),
+        g: c.c(0, -0.3, 0.95).normalize(), pn: c.c(0, -0.95, -0.3).normalize(), pole: sg => c.c(sg, -0.6, -0.4) }), ...gripBoth };
       // arms: 腕は体の横。肩が浮くぶん、手は床の上を頭のほうへ少し滑る
       const side = sg => c => {
         const S = sg > 0 ? c.shL : c.shR, len = (m.armL.L1 + m.armL.L2) * 0.97, dy = S.y - 0.42;
@@ -504,14 +507,19 @@ export const EXLIB = {
     },
   },
 
-  // ダンベルフライ: 台に仰向けになり、足は床。手のひらは向かい合わせ。肘を軽く曲げたまま、胸が伸びるところまで横に開く。
+  // ダンベルフライ: 台に仰向けになり、足は床。手のひらは向かい合わせ。肘を直角に曲げたまま、胸が伸びるところまで横に開く
+  // （2026-10-25 本人の指摘「肘が直角になるように曲げる」。前は軽く曲げるだけだった）。
   // 台に寝るので、ひじは肩より下まで下がる（床の上では上腕が床で止まり、胸が伸びきらない）。
-  // 上: ダンベルは胸の真上でそろえ、手のひらは向かい合わせ。下: ひじを少し深く曲げながら、大きな弧で横へ開く。ひじは肩の線より少し足寄り。
+  // 下: 上腕は横へ水平より少し下、前腕は真上。上: 肘は直角のまま上腕を立て、左右のダンベルが胸の上で触れる手前で止める。
   fly: {
     name: 'ダンベルフライ', cam: { alt: 12 }, props: { bench: [0, 2.7, -3.6, 0] }, bedY: BENCH_H, tempo: [1.9, 0.4, 1.5, 0.5],
     pose: (u, k, m) => {
+      const eb = 90 * D, L1 = m.armL.L1, L2 = m.armL.L2;
+      // 上の位置: 手首が体の中心から 1.05 離れる角度（それより閉じると、左右のダンベルがぶつかる）
+      const top = c => { const sx = Math.abs(c.shL.x - c.shR.x) / 2; let lo = 0, hi = Math.PI / 2;
+        for (let i = 0; i < 24; i++){ const a = (lo + hi) / 2; if (sx + L1 * Math.sin(a) - L2 * Math.cos(a) < 1.05) lo = a; else hi = a; } return lo; };
       const hand = sg => c => {
-        const ph = lerp(2, 103, u) * D, eb = lerp(14, 30, u) * D, d = (a, z) => V(sg * Math.sin(a), Math.cos(a), z * Math.sin(a));
+        const ph = lerp(top(c), 97 * D, u), d = (a, z) => V(sg * Math.sin(a), Math.cos(a), z * Math.sin(a));
         return { ...armFK(c, sg, d(ph, 0.2), d(ph - eb, 0.2), V(sg * 0.3, -1, 0.2)), bar: V(0, 0, -1), db: true };
       };
       return { ...benchSupine(), ...feetDown(4.9), handL: hand(1), handR: hand(-1) };
@@ -572,11 +580,9 @@ export const EXLIB = {
       }
       return {
         pelvis: [6, 0, 0], chest: [16, 0, 0], head: [-4, 0, 0], pin: pinHip(m.legL.ankleH + m.legL.L2 + 0.05, 0), footL: f(1), footR: f(-1),
-        free: c => {
-          const base = mid(c.kneeL, c.kneeR).add(V(0, 0.62, -1.0)), top = base.clone().add(V(0, 2.25, 0));
-          return { pos: base.clone().add(V(0, 1.25, 0)), axis: Y, top, X, F: V(0, -0.55, 0.83), h: 0.78, pole: sg => V(sg * 0.8, -0.3, -0.6) };
-        },
-        ...claspBoth,
+        // ダンベルを横にして、両端のプレートを左右の太ももに乗せる。持ち手を上から両手で握って押さえる
+        free: c => ({ pos: mid(c.kneeL, c.kneeR).add(V(0, 0.62 + 0.64, -1.0)), axis: X, g: V(0, 0, 1), pn: V(0, -1, 0), pole: sg => V(sg * 0.8, -0.3, -0.6) }),
+        ...gripBoth,
       };
     },
   },
@@ -621,10 +627,12 @@ export const EXLIB = {
     pose: (u, k, m) => ({
       ...benchSupine(), ...kneesUp(KNEE_Z, BENCH_H),
       free: c => {
-        const a = lerp(-6, 94, u) * D, d = V(0, Math.cos(a), -Math.sin(a)), P = mid(c.shL, c.shR).addScaledVector(d, 4.95);
-        return { pos: P, axis: X, top: P, X, F: d, h: 1.46, pole: sg => V(sg, 0.25 * Math.sin(a), 0.25 * Math.cos(a)) };
+        // 持ち手を横にして両手で握る。手のひらは足のほうへ向ける
+        const a = lerp(-6, 94, u) * D, d = V(0, Math.cos(a), -Math.sin(a)), pn = V(0, Math.sin(a), Math.cos(a));
+        const W = mid(c.shL, c.shR).addScaledVector(d, 4.35);
+        return { pos: fromWrist(W, d, pn, c), axis: X, g: d, pn, pole: sg => V(sg, 0.25 * Math.sin(a), 0.25 * Math.cos(a)) };
       },
-      ...claspBoth,
+      ...gripBoth,
     }),
   },
 
@@ -638,10 +646,9 @@ export const EXLIB = {
                         pole: sg => c.c(sg * 0.7, -0.7, -0.2) });
       const body = { pelvis: [-28, 0, 0], chest: Qx(-32).multiply(Qy(yaw)), head: [8, -yaw * 0.35, 0], pin: pinHip(1.2, 0), footL: foot(1), footR: foot(-1) };
       // db: ダンベルを縦にして、上のプレートを両手ではさむ。太ももに当たらないよう、手だけのときより少し上で持つ
-      if (v.db) return { ...body, free: c => {
-        const ax = c.c(0, 0.94, 0.34), top = G(c).top.clone().add(c.c(0, v.ty != null ? v.ty : 2.0, v.tz != null ? v.tz : 0.1));
-        return { pos: top.clone().addScaledVector(ax, -1), axis: ax, top, X: c.c(1, 0, 0), F: c.c(0, 0.6, 0.8).normalize(), h: 0.78, pole: sg => c.c(sg * 0.5, -1, 0) };
-      }, ...claspBoth };
+      if (v.db) return { ...body, free: c => ({
+        pos: G(c).top.clone().add(c.c(0, v.ty != null ? v.ty : 1.0, v.tz != null ? v.tz : 0.2)), axis: c.c(1, 0, 0),
+        g: c.c(0, 0.95, 0.3).normalize(), pn: c.c(0, 0.3, -0.95).normalize(), pole: sg => c.c(sg * 0.5, -1, 0) }), ...gripBoth };
       return { ...body, handL: c => clasp(1, G(c), c), handR: c => clasp(-1, G(c), c) };
     },
   },
