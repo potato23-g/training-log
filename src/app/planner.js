@@ -1,28 +1,28 @@
 
 /* メニューの候補一覧。A〜Dに書いてある組み方（回数・メモ）を先に並べ、
    そこに無い種目は種目表の既定値で足し、最後に楽／大変のやり方を足す。
-   種目を増やせば自動で候補に入る。セット数はどの行も3（本人の要望で固定。A〜Dの sets は使わない） */
+   種目を増やせば自動で候補に入る。行にはセット数を持たない（その種目のセット数は rules.js の setsOf。A〜Dの sets は使わない） */
 let catalogMemo = null;
 function catalog(){
   if(catalogMemo) return catalogMemo;
   const out = [];
   ROUTINES.forEach(r => r.items.forEach(it => {
-    if(!out.some(x => x.ex === it.ex && (x.label||"") === (it.label||""))) out.push(Object.assign({}, it, {sets: SETS_PER_EXERCISE}));
+    if(!out.some(x => x.ex === it.ex && (x.label||"") === (it.label||""))){ const row = Object.assign({}, it); delete row.sets; out.push(row); }
   }));
   EX.forEach(e => {
     if(out.some(x => x.ex === e.id)) return;
-    const it = {ex:e.id, sets:SETS_PER_EXERCISE, r:e.r};
+    const it = {ex:e.id, r:e.r};
     if(e.side) it.side = true;
     out.push(it);
   });
-  VARIANT_ROWS.forEach(v => { if(!out.some(x => (x.label || "") === v.label)) out.push(Object.assign({}, v, {sets: SETS_PER_EXERCISE})); });
+  VARIANT_ROWS.forEach(v => { if(!out.some(x => (x.label || "") === v.label)) out.push((() => { const row = Object.assign({}, v); delete row.sets; return row; })()); });
   catalogMemo = out;
   return out;
 }
 /* その種目の素の組み方（組み方の名前が無い行）。無ければ最初の行 */
 function catalogItem(exId){
   const c = catalog().find(x => x.ex === exId && !x.label) || catalog().find(x => x.ex === exId), ex = EXMAP[exId];
-  return c ? Object.assign({}, c) : {ex:exId, sets:SETS_PER_EXERCISE, r:ex.r};
+  return c ? Object.assign({}, c) : {ex:exId, r:ex.r};
 }
 /* 部位ごとの有効セット（fromDaysAgo〜toDaysAgo 日前。今日は含めない） */
 function loadMap(fromDaysAgo, toDaysAgo){
@@ -153,7 +153,9 @@ function buildPlan(){
     /* 2026-10-11 本人の判断: 1日・1週間の上限は、メインで鍛えた分だけで見る（補助で使った分は数えない）。
        補助の分まで数えると、腹直筋・僧帽筋・前腕・上腕三頭筋・ふくらはぎは補助だけで上限に届き、脚・胸・背中の回復が
        重なった日に、入れられる種目が連日できる部位の3種目ほどしか残らなかった */
-    const dayOver = ex.p.find(m => primToday(m) + add[m] > dayMax(m));
+    /* 本人が1種目だけで上限より多いセット数にした種目（rules.js の baseSets。2026-10-25）は、その部位をその日はじめて鍛える
+       ときだけ入れる（上限で見ると一度も入らなくなる） */
+    const dayOver = ex.p.find(m => { const was = primToday(m); return was + add[m] > (was ? dayMax(m) : Math.max(dayMax(m), n)); });
     if(dayOver) return "day:" + dayOver;                                            /* 1日の上限 */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目で一緒にメインで鍛える部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
@@ -209,7 +211,7 @@ function buildPlan(){
     return gain(c) / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
   };
   const take = c => {
-    const it = Object.assign({}, c), add = exLoad(it.ex, setsOf(it));
+    const it = Object.assign({}, c, {sets: setsOf(c)}), add = exLoad(it.ex, it.sets);
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
     sets += setsOf(it); minutes += mins(it);
     plan.push(it);
@@ -396,6 +398,7 @@ function buildPlan(){
     const ordered = pairUp(plan);
     plan.length = 0; ordered.forEach(p => plan.push(p));
   }
+  plan.forEach(p => { p.sets = setsOf(p); });          /* 行のセット数は、いつも今の設定のセット数（rules.js の setsOf） */
   planMemo = plan;
   return planMemo;
 }

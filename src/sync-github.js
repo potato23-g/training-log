@@ -355,11 +355,11 @@ function syncMergeGear(a, b){
   return (stableKey(b) || "") > (stableKey(a) || "") ? b : a;
 }
 
-/* 本人が変えた決まり（rules.js の state.tune）は、まとまり（pref・pair・gap・prog）ごとに gear と同じ決め方。
+/* 本人が変えた決まり（rules.js の state.tune）は、まとまり（pref・pair・gap・prog・sets）ごとに gear と同じ決め方。
    片方の端末で回復の日数を、もう片方で種目の出やすさを変えても、両方残る。どちらにも無ければ undefined */
 function syncMergeTune(a, b){
   var out = {}, any = false;
-  ["pref", "pair", "gap", "prog"].forEach(function(k){
+  ["pref", "pair", "gap", "prog", "sets"].forEach(function(k){
     var m = syncMergeGear(a && a[k], b && b[k]);
     if(m){ out[k] = m; any = true; }
   });

@@ -7,7 +7,7 @@ setTimeout(() => {
   r.added = pick.map(id => {
     addToProgramToday(id);
     const it = todayItems().find(i => i.ex === id), c = catalogItem(id);
-    return {id, extra: it.extra, sets: it.sets, catSets: c.sets, r: it.r, catR: c.r, side: !!it.side, catSide: !!c.side, label: it.label || "", note: !!it.note};
+    return {id, extra: it.extra, sets: it.sets, catSets: setsOf(c), r: it.r, catR: c.r, side: !!it.side, catSide: !!c.side, label: it.label || "", note: !!it.note};
   });
   r.mismatch = r.added.filter(a => a.sets !== a.catSets || a.r !== a.catR || a.side !== a.catSide);
   openEx = pick[0]; render();

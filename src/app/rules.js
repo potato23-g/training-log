@@ -105,7 +105,7 @@ function setExOn(id, on){
    初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
    4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
    読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
-const TUNE_KEYS = ["pref", "pair", "gap", "prog"];
+const TUNE_KEYS = ["pref", "pair", "gap", "prog", "sets"];
 function tunePart(k){ const t = state.tune; return (t && t[k] && typeof t[k] === "object") ? t[k] : null; }
 function setTune(k, part){
   const t = Object.assign({}, state.tune || {});
@@ -118,7 +118,7 @@ function setTune(k, part){
 function tuneIsDefault(k){
   const p = tunePart(k);
   if(!p) return true;
-  if(k === "pref" || k === "gap") return !p.map || !Object.keys(p.map).length;
+  if(k === "pref" || k === "gap" || k === "sets") return !p.map || !Object.keys(p.map).length;
   if(k === "pair") return p.off !== true;
   return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier" && progLow() === "keep" && progDrop() === "lighter";
 }
@@ -297,12 +297,22 @@ const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, 
 const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, frontdelt:1, sidedelt:1, reardelt:1, traps:1, erectors:2,
                      biceps:1, triceps:1, forearms:0, abs:0, obliques:0, calves:0, adductors:2, gmed:1};
 const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
-/* 1種目のセット数。本人の要望で3に固定（2026-09-29。重さ・回数は本人が調整する） */
-const SETS_PER_EXERCISE = 3;
-/* 今日のメニューのその種目のセット数。決まったセット数に、その日だけ追加したセット（行の more。カードの「セット追加」:
-   2026-10-22 本人の要望「種目によっては5セットやりたい」）を足す。セット数を数えるところは、どこもこれを使う */
-const MORE_SETS_MAX = 7;
-function setsOf(it){ return SETS_PER_EXERCISE + Math.max(0, Math.min(MORE_SETS_MAX, (it && it.more) | 0)); }
+/* 1種目の初めのセット数（2026-09-29 から3。重さ・回数は本人が調整する）。
+   種目ごとのセット数は本人が設定で変えられる（state.tune.sets = {map: {種目id: セット数}}。2026-10-25 本人の要望
+   「各種目の標準セット数を変更できるように」）。3と同じ値は持たない */
+const SETS_PER_EXERCISE = 3, SETS_BASE_MAX = 8, SETS_MAX = 10;
+function baseSets(exId){
+  const p = tunePart("sets"), n = p && p.map ? p.map[exId] : undefined;
+  return Number.isInteger(n) && n >= 1 && n <= SETS_BASE_MAX ? n : SETS_PER_EXERCISE;
+}
+function setBaseSets(exId, n){
+  const p = tunePart("sets"), map = Object.assign({}, p && p.map);
+  if(n === SETS_PER_EXERCISE) delete map[exId]; else map[exId] = n;
+  setTune("sets", {map});
+}
+/* 今日のメニューのその種目のセット数。その種目のセット数に、その日だけ追加したセット（行の more。カードの「セット追加」:
+   2026-10-22 本人の要望「種目によっては5セットやりたい」）を足す。全部で SETS_MAX まで。セット数を数えるところは、どこもこれを使う */
+function setsOf(it){ return Math.min(SETS_MAX, baseSets(it && it.ex) + Math.max(0, (it && it.more) | 0)); }
 /* 初めの設定の日数と、今の日数（本人が設定で変えた部位はその日数: 上の state.tune.gap） */
 function recoverGapDefault(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
 function recoverGap(m){

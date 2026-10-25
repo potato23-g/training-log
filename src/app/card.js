@@ -15,7 +15,7 @@ function exRow(item){
   const e = entryFor(TODAY, id, false);
   const sets = e ? e.sets : [];
   const n = sets.length;
-  const target = setsOf(item);               /* セット数は3（その日だけ追加したセットを足す: rules.js の setsOf） */
+  const target = setsOf(item);               /* その種目のセット数（その日だけ追加したセットを足す: rules.js の setsOf） */
   const sideTag = item.side ? '<span class="side">左右</span>' : "";
   const name = esc(itemName(item));
   const setLines = sets.map((st,i)=>`
@@ -34,7 +34,7 @@ function exRow(item){
       <div class="exhead">
         <span><span class="nm">${name}${sideTag}</span><span class="meta">${esc(sets.map(x=>setTextFor(item, x)).join(" / "))}</span></span>
         <span class="cnt num">${n} / ${target}</span>
-        ${target < SETS_PER_EXERCISE + MORE_SETS_MAX ? `<button class="fix" data-act="moreset" data-ex="${id}">セット追加</button>` : ""}
+        ${target < SETS_MAX ? `<button class="fix" data-act="moreset" data-ex="${id}">セット追加</button>` : ""}
         <button class="fix" data-act="edit" data-ex="${id}">${editing ? "閉じる" : "修正"}</button>
       </div>
       ${editing ? `<div class="exbody exedit">

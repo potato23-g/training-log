@@ -338,7 +338,7 @@ function editPlanItem(id, fn){
 ACTIONS.moreset = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex, item = itemOf(id);
-  if(setsOf(item) >= SETS_PER_EXERCISE + MORE_SETS_MAX) return;
+  if(setsOf(item) >= SETS_MAX) return;
   const s = session(TODAY);
   fixPlan(s);
   if(!s.plan) s.plan = [];                           /* 休みの日（メニューが空）に記録した種目 */

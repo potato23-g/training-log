@@ -306,11 +306,12 @@ setTimeout(() => {
   const all = Array.from(planView.querySelectorAll("select[data-tune]"));
   need(planView.querySelectorAll("[data-act=exoff]").length === EX.length, "提案タブに「メニューに入れない種目」の押しボタンがそろっていない");
   const pats = PATTERN_ORDER.filter(pat => EX.some(e => !e.base && patternOf(e.id) === pat));
-  need(all.length === 7 + Object.keys(MUSCLES).length + pats.length, "設定の選択の数が違う: " + all.length);
+  need(all.length === 7 + Object.keys(MUSCLES).length + pats.length + EX.length, "設定の選択の数が違う: " + all.length);
   need(EX.filter(e => !e.base).every(e => pats.includes(patternOf(e.id))), "出やすさの一覧に出ない種目がある");
   const shownOk = () => q("pair").value === (pairOn() ? "1" : "0") && q("step").value === String(progGain("w")) && q("first").value === progFirst() && q("need").value === String(progNeed()) && q("jump").value === String(progJump())
     && q("low").value === progLow() && q("drop").value === progDrop()
-    && Object.keys(MUSCLES).every(m => q("gap:" + m).value === String(recoverGap(m))) && pats.every(pat => q("pref:" + pat).value === String(patPref(pat)));
+    && Object.keys(MUSCLES).every(m => q("gap:" + m).value === String(recoverGap(m))) && pats.every(pat => q("pref:" + pat).value === String(patPref(pat)))
+    && EX.every(e => q("sets:" + e.id).value === String(baseSets(e.id)));
   need(shownOk(), "設定の選択の値が、読み出しの関数と合わない");
   need(!!planView.querySelector("[data-act=tunereset]"), "変えた設定があるのに「初めの設定に戻す」が出ない");
   Object.keys(MUSCLES).forEach(m => {
@@ -332,6 +333,22 @@ setTimeout(() => {
   pick("low", "lo"); pick("drop", "none");
   need(progLow() === "lo" && progDrop() === "none" && state.tune.prog.low === "lo" && state.tune.prog.drop === "none" && shownOk(), "下げ方の選択を変えた値が入らない: " + JSON.stringify(state.tune.prog));
   pick("low", "keep"); pick("drop", "lighter");
+  /* 種目ごとのセット数（2026-10-25）: 変えた種目は今日のメニューもそのセット数になり、記録の pn もその数。
+     メニューは組み直さない。3に戻すと値を持たない。範囲の外の値は保存で落ちる */
+  const plan0 = (session(TODAY).plan || []).map(x => x.ex).join(",");
+  const sx = (session(TODAY).plan || []).find(x => !x.skip) || {ex: "curl"};
+  pick("sets:" + sx.ex, "5");
+  const itx = itemOf(sx.ex);
+  need(baseSets(sx.ex) === 5 && setsOf(itx) === 5 && state.tune.sets.map[sx.ex] === 5 && shownOk(), "セット数を5にした値が入らない: " + JSON.stringify(state.tune.sets));
+  need((session(TODAY).plan || []).map(x => x.ex).join(",") === plan0, "セット数を変えたら、今日のメニューが組み直された");
+  need(setsOf(Object.assign({}, itx, {more: 9})) === SETS_MAX, "セット追加を足しても全部で " + SETS_MAX + " セットまで");
+  need(baseSets("curl_nope") === 3 && setsOf(catalogItem(sx.ex)) === 5 && !("sets" in catalogItem(sx.ex)), "候補の行がセット数を持っている・知らない種目が3でない");
+  const sv = sanitizeState({tune: {sets: {map: {curl: 9, row: 0, goblet: 2.5, press: 4}, updatedAt: 5}}});
+  need(sv.tune && sv.tune.sets && JSON.stringify(sv.tune.sets.map) === '{"press":4}', "セット数: 範囲の外の値が保存に残る: " + JSON.stringify(sv.tune));
+  const mg = typeof syncMergeTune === "function" ? syncMergeTune({sets: {map: {curl: 5}, updatedAt: 9}}, {gap: {map: {}, updatedAt: 3}}) : {sets: {map: {curl: 5}}};
+  need(mg && mg.sets && mg.sets.map.curl === 5, "セット数が同期でほかの端末へ渡らない: " + JSON.stringify(mg));
+  pick("sets:" + sx.ex, "3");
+  need(!(sx.ex in state.tune.sets.map) && tuneIsDefault("sets") && shownOk(), "セット数: 3に戻しても値を持ったまま");
   need(!("low" in state.tune.prog) && !("drop" in state.tune.prog) && shownOk(), "下げ方: 初めの設定と同じ値を持ったまま: " + JSON.stringify(state.tune.prog));
   pick("need", "1"); pick("jump", "1");
   need(!("need" in state.tune.prog) && !("jump" in state.tune.prog) && state.tune.prog.step === 0 && state.tune.prog.first === "keep", "増え方: 初めの設定と同じ値を持ったまま・ほかの値が消えた " + JSON.stringify(state.tune.prog));
