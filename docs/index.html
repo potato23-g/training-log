@@ -4517,6 +4517,7 @@ function sanitizeState(obj){
       tn[k] = stamp(v, { map: m });
     };
     maps("pref", exok, function(n){ return n === 1 || n === -1; });
+    maps("sets", exok, function(n){ return n >= 1 && n <= 8 && n === Math.floor(n); });
     maps("gap", function(key){ return /^[a-z]{2,20}$/.test(key); }, function(n){ return n >= 0 && n <= 5 && n === Math.floor(n); });
     var pr = part("pair"); if(pr) tn.pair = stamp(pr, pr.off === true ? { off: true } : {});
     var pg = part("prog");
@@ -5212,11 +5213,11 @@ function syncMergeGear(a, b){
   return (stableKey(b) || "") > (stableKey(a) || "") ? b : a;
 }
 
-/* 本人が変えた決まり（rules.js の state.tune）は、まとまり（pref・pair・gap・prog）ごとに gear と同じ決め方。
+/* 本人が変えた決まり（rules.js の state.tune）は、まとまり（pref・pair・gap・prog・sets）ごとに gear と同じ決め方。
    片方の端末で回復の日数を、もう片方で種目の出やすさを変えても、両方残る。どちらにも無ければ undefined */
 function syncMergeTune(a, b){
   var out = {}, any = false;
-  ["pref", "pair", "gap", "prog"].forEach(function(k){
+  ["pref", "pair", "gap", "prog", "sets"].forEach(function(k){
     var m = syncMergeGear(a && a[k], b && b[k]);
     if(m){ out[k] = m; any = true; }
   });
@@ -5931,7 +5932,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-22 21:22";
+const BUILD_VERSION = "2026-10-25 16:45";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -7098,7 +7099,7 @@ function setExOn(id, on){
    初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
    4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
    読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
-const TUNE_KEYS = ["pref", "pair", "gap", "prog"];
+const TUNE_KEYS = ["pref", "pair", "gap", "prog", "sets"];
 function tunePart(k){ const t = state.tune; return (t && t[k] && typeof t[k] === "object") ? t[k] : null; }
 function setTune(k, part){
   const t = Object.assign({}, state.tune || {});
@@ -7111,7 +7112,7 @@ function setTune(k, part){
 function tuneIsDefault(k){
   const p = tunePart(k);
   if(!p) return true;
-  if(k === "pref" || k === "gap") return !p.map || !Object.keys(p.map).length;
+  if(k === "pref" || k === "gap" || k === "sets") return !p.map || !Object.keys(p.map).length;
   if(k === "pair") return p.off !== true;
   return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier" && progLow() === "keep" && progDrop() === "lighter";
 }
@@ -7290,12 +7291,22 @@ const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, 
 const RECOVER_GAP = {quads:3, glutes:3, hams:3, chest:2, lats:2, frontdelt:1, sidedelt:1, reardelt:1, traps:1, erectors:2,
                      biceps:1, triceps:1, forearms:0, abs:0, obliques:0, calves:0, adductors:2, gmed:1};
 const RECOVER_PRIMARY = 3, RECOVER_HEAVY = 6;
-/* 1種目のセット数。本人の要望で3に固定（2026-09-29。重さ・回数は本人が調整する） */
-const SETS_PER_EXERCISE = 3;
-/* 今日のメニューのその種目のセット数。決まったセット数に、その日だけ追加したセット（行の more。カードの「セット追加」:
-   2026-10-22 本人の要望「種目によっては5セットやりたい」）を足す。セット数を数えるところは、どこもこれを使う */
-const MORE_SETS_MAX = 7;
-function setsOf(it){ return SETS_PER_EXERCISE + Math.max(0, Math.min(MORE_SETS_MAX, (it && it.more) | 0)); }
+/* 1種目の初めのセット数（2026-09-29 から3。重さ・回数は本人が調整する）。
+   種目ごとのセット数は本人が設定で変えられる（state.tune.sets = {map: {種目id: セット数}}。2026-10-25 本人の要望
+   「各種目の標準セット数を変更できるように」）。3と同じ値は持たない */
+const SETS_PER_EXERCISE = 3, SETS_BASE_MAX = 8, SETS_MAX = 10;
+function baseSets(exId){
+  const p = tunePart("sets"), n = p && p.map ? p.map[exId] : undefined;
+  return Number.isInteger(n) && n >= 1 && n <= SETS_BASE_MAX ? n : SETS_PER_EXERCISE;
+}
+function setBaseSets(exId, n){
+  const p = tunePart("sets"), map = Object.assign({}, p && p.map);
+  if(n === SETS_PER_EXERCISE) delete map[exId]; else map[exId] = n;
+  setTune("sets", {map});
+}
+/* 今日のメニューのその種目のセット数。その種目のセット数に、その日だけ追加したセット（行の more。カードの「セット追加」:
+   2026-10-22 本人の要望「種目によっては5セットやりたい」）を足す。全部で SETS_MAX まで。セット数を数えるところは、どこもこれを使う */
+function setsOf(it){ return Math.min(SETS_MAX, baseSets(it && it.ex) + Math.max(0, (it && it.more) | 0)); }
 /* 初めの設定の日数と、今の日数（本人が設定で変えた部位はその日数: 上の state.tune.gap） */
 function recoverGapDefault(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
 function recoverGap(m){
@@ -7695,28 +7706,28 @@ const VARIANT_ROWS = (function(){
 
 /* メニューの候補一覧。A〜Dに書いてある組み方（回数・メモ）を先に並べ、
    そこに無い種目は種目表の既定値で足し、最後に楽／大変のやり方を足す。
-   種目を増やせば自動で候補に入る。セット数はどの行も3（本人の要望で固定。A〜Dの sets は使わない） */
+   種目を増やせば自動で候補に入る。行にはセット数を持たない（その種目のセット数は rules.js の setsOf。A〜Dの sets は使わない） */
 let catalogMemo = null;
 function catalog(){
   if(catalogMemo) return catalogMemo;
   const out = [];
   ROUTINES.forEach(r => r.items.forEach(it => {
-    if(!out.some(x => x.ex === it.ex && (x.label||"") === (it.label||""))) out.push(Object.assign({}, it, {sets: SETS_PER_EXERCISE}));
+    if(!out.some(x => x.ex === it.ex && (x.label||"") === (it.label||""))){ const row = Object.assign({}, it); delete row.sets; out.push(row); }
   }));
   EX.forEach(e => {
     if(out.some(x => x.ex === e.id)) return;
-    const it = {ex:e.id, sets:SETS_PER_EXERCISE, r:e.r};
+    const it = {ex:e.id, r:e.r};
     if(e.side) it.side = true;
     out.push(it);
   });
-  VARIANT_ROWS.forEach(v => { if(!out.some(x => (x.label || "") === v.label)) out.push(Object.assign({}, v, {sets: SETS_PER_EXERCISE})); });
+  VARIANT_ROWS.forEach(v => { if(!out.some(x => (x.label || "") === v.label)) out.push((() => { const row = Object.assign({}, v); delete row.sets; return row; })()); });
   catalogMemo = out;
   return out;
 }
 /* その種目の素の組み方（組み方の名前が無い行）。無ければ最初の行 */
 function catalogItem(exId){
   const c = catalog().find(x => x.ex === exId && !x.label) || catalog().find(x => x.ex === exId), ex = EXMAP[exId];
-  return c ? Object.assign({}, c) : {ex:exId, sets:SETS_PER_EXERCISE, r:ex.r};
+  return c ? Object.assign({}, c) : {ex:exId, r:ex.r};
 }
 /* 部位ごとの有効セット（fromDaysAgo〜toDaysAgo 日前。今日は含めない） */
 function loadMap(fromDaysAgo, toDaysAgo){
@@ -7847,7 +7858,9 @@ function buildPlan(){
     /* 2026-10-11 本人の判断: 1日・1週間の上限は、メインで鍛えた分だけで見る（補助で使った分は数えない）。
        補助の分まで数えると、腹直筋・僧帽筋・前腕・上腕三頭筋・ふくらはぎは補助だけで上限に届き、脚・胸・背中の回復が
        重なった日に、入れられる種目が連日できる部位の3種目ほどしか残らなかった */
-    const dayOver = ex.p.find(m => primToday(m) + add[m] > dayMax(m));
+    /* 本人が1種目だけで上限より多いセット数にした種目（rules.js の baseSets。2026-10-25）は、その部位をその日はじめて鍛える
+       ときだけ入れる（上限で見ると一度も入らなくなる） */
+    const dayOver = ex.p.find(m => { const was = primToday(m); return was + add[m] > (was ? dayMax(m) : Math.max(dayMax(m), n)); });
     if(dayOver) return "day:" + dayOver;                                            /* 1日の上限 */
     /* 週の上限。狙いの部位（主働筋の先頭）はWEEK_MAX、同じ種目で一緒にメインで鍛える部位は少し多めまで許す
        （スクワットの尻のように、ほかの種目の付け合わせで先に上限へ届いてしまうのを防ぐ） */
@@ -7903,7 +7916,7 @@ function buildPlan(){
     return gain(c) / (1 + 1.2 * Math.abs(itemLevel(c) - want)) * (c.lv ? 0.8 : 1);
   };
   const take = c => {
-    const it = Object.assign({}, c), add = exLoad(it.ex, setsOf(it));
+    const it = Object.assign({}, c, {sets: setsOf(c)}), add = exLoad(it.ex, it.sets);
     Object.keys(add).forEach(m => today[m] = (today[m] || 0) + add[m]);
     sets += setsOf(it); minutes += mins(it);
     plan.push(it);
@@ -8090,6 +8103,7 @@ function buildPlan(){
     const ordered = pairUp(plan);
     plan.length = 0; ordered.forEach(p => plan.push(p));
   }
+  plan.forEach(p => { p.sets = setsOf(p); });          /* 行のセット数は、いつも今の設定のセット数（rules.js の setsOf） */
   planMemo = plan;
   return planMemo;
 }
@@ -9362,7 +9376,7 @@ function exRow(item){
   const e = entryFor(TODAY, id, false);
   const sets = e ? e.sets : [];
   const n = sets.length;
-  const target = setsOf(item);               /* セット数は3（その日だけ追加したセットを足す: rules.js の setsOf） */
+  const target = setsOf(item);               /* その種目のセット数（その日だけ追加したセットを足す: rules.js の setsOf） */
   const sideTag = item.side ? '<span class="side">左右</span>' : "";
   const name = esc(itemName(item));
   const setLines = sets.map((st,i)=>`
@@ -9381,7 +9395,7 @@ function exRow(item){
       <div class="exhead">
         <span><span class="nm">${name}${sideTag}</span><span class="meta">${esc(sets.map(x=>setTextFor(item, x)).join(" / "))}</span></span>
         <span class="cnt num">${n} / ${target}</span>
-        ${target < SETS_PER_EXERCISE + MORE_SETS_MAX ? `<button class="fix" data-act="moreset" data-ex="${id}">セット追加</button>` : ""}
+        ${target < SETS_MAX ? `<button class="fix" data-act="moreset" data-ex="${id}">セット追加</button>` : ""}
         <button class="fix" data-act="edit" data-ex="${id}">${editing ? "閉じる" : "修正"}</button>
       </div>
       ${editing ? `<div class="exbody exedit">
@@ -10562,7 +10576,7 @@ function editPlanItem(id, fn){
 ACTIONS.moreset = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex, item = itemOf(id);
-  if(setsOf(item) >= SETS_PER_EXERCISE + MORE_SETS_MAX) return;
+  if(setsOf(item) >= SETS_MAX) return;
   const s = session(TODAY);
   fixPlan(s);
   if(!s.plan) s.plan = [];                           /* 休みの日（メニューが空）に記録した種目 */
@@ -11043,8 +11057,8 @@ function exOffBody(){
    2026-10-11 本人の要望で、設定から提案タブへ移した（設定タブに残すのは、道具・1日の区切り・休憩の合図・同期・バックアップ）。
    値はどれも rules.js の関数（progNeed・progGain・progJump・progFirst・pairOn・recoverGap・patPref・exOn）から読む。
    長い一覧は畳んでおく（開いたかどうかは、描き直しても保つ） */
-const PROG_HEAD = "目標の上げ方・下げ方", MENU_HEAD = "メニューの組み方", PREF_HEAD = "種目を入れる頻度";
-const tuneOpen = {gap: false, pref: false, off: false};
+const PROG_HEAD = "目標の上げ方・下げ方", MENU_HEAD = "メニューの組み方", PREF_HEAD = "種目を入れる頻度", SETS_HEAD = "種目ごとのセット数";
+const tuneOpen = {gap: false, pref: false, sets: false, off: false};
 function tuneSel(key, cur, opts){
   return `<select data-tune="${key}">${opts.map(o => `<option value="${o[0]}"${String(o[0]) === String(cur) ? " selected" : ""}>${esc(o[1])}</option>`).join("")}</select>`;
 }
@@ -11084,8 +11098,13 @@ function menuCard(){
     if(!names.length) return "";
     return `<div class="tunerow"><span>${esc(names.join("・"))}</span>${tuneSel("pref:" + pat, patPref(pat), [[1, EX_PREF_LABEL["1"]], [0, EX_PREF_LABEL["0"]], [-1, EX_PREF_LABEL["-1"]]])}</div>`;
   }).join("");
+  const setsOpts = [];
+  for(let n = 1; n <= SETS_BASE_MAX; n++) setsOpts.push([n, n + "セット"]);
+  const setsRows = EX.slice().sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.id)) - PATTERN_ORDER.indexOf(patternOf(b.id)))
+    .map(e => `<div class="tunerow"><span>${esc(e.name)}</span>${tuneSel("sets:" + e.id, baseSets(e.id), setsOpts)}</div>`).join("");
+  const nSets = EX.filter(e => baseSets(e.id) !== SETS_PER_EXERCISE).length;
   const nOff = EX.filter(e => !exOn(e.id)).length;
-  const changed = ["pref", "gap", "pair"].some(k => !tuneIsDefault(k));
+  const changed = ["pref", "gap", "pair", "sets"].some(k => !tuneIsDefault(k));
   return `<h3 class="sec">${MENU_HEAD}</h3>
   <div class="card">
     <div class="fld tunefld" style="margin-top:0"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
@@ -11097,6 +11116,10 @@ function menuCard(){
     <details class="tune" data-tune-d="pref"${tuneOpen.pref ? " open" : ""}><summary>${PREF_HEAD}</summary>
       <p class="lastline" style="margin-top:0">「${EX_PREF_LABEL["1"]}」にした種目は、入れられる日には優先して入れます。「${EX_PREF_LABEL["-1"]}」にした種目は、メインで鍛える部位の量が足りていないときだけ入れます。</p>
       ${prefRows}
+    </details>
+    <details class="tune" data-tune-d="sets"${tuneOpen.sets ? " open" : ""}><summary>${SETS_HEAD}${nSets ? "（" + nSets + "種目を変更）" : ""}</summary>
+      <p class="lastline" style="margin-top:0">今日のメニューと、次からのメニューのセット数になります。その日だけ増やすときは、カードの「セット追加」を使ってください。</p>
+      ${setsRows}
     </details>
     <details class="tune" data-tune-d="off"${tuneOpen.off ? " open" : ""}><summary>${EX_OFF_HEAD}${nOff ? "（" + nOff + "種目）" : ""}</summary>
       ${exOffBody()}
@@ -11141,6 +11164,9 @@ function wireTune(root){
       }else if(kind === "gap" && MUSCLES[id]){
         setRecoverGap(id, +v);
         tuneApplied(true, MUSCLES[id] + "の回復の日数を「" + recoverGapLabel(recoverGap(id)) + "」にしました");
+      }else if(kind === "sets" && EXMAP[id]){
+        setBaseSets(id, +v);
+        tuneApplied(false, "「" + EXMAP[id].name + "」を" + baseSets(id) + "セットにしました");     /* 今日のメニューは組み直さず、セット数だけ変える */
       }else if(kind === "pref" && PATTERN_ORDER.includes(id)){
         setPatPref(id, +v);
         tuneApplied(true, "入れる頻度を「" + EX_PREF_LABEL[String(patPref(id))] + "」にしました");
@@ -11153,7 +11179,7 @@ WIRES.push(wireTune);
 ACTIONS.tunereset = el => {
   const prog = el && el.dataset.part === "prog";
   if(prog) setTune("prog", {});
-  else{ setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); }
+  else{ setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); setTune("sets", {map: {}}); }
   tuneApplied(!prog, "「" + (prog ? PROG_HEAD : MENU_HEAD) + "」を初めの設定に戻しました");
 };
 function viewSet(){
