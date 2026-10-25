@@ -10,7 +10,8 @@ function setTextFor(item, st){
   if(ex.kind === "t") return (st.w !== undefined ? kgText(st.w) + "・" : "") + st.r + " 秒";
   return st.r + " 回";
 }
-function exRow(item){
+/* drag: true のとき、カードの左端につまみを付ける（今日のカードの並べ替え: today.js の wireDrag） */
+function exRow(item, drag){
   const id = item.ex, ex = EXMAP[id]; if(!ex) return "";
   const e = entryFor(TODAY, id, false);
   const sets = e ? e.sets : [];
@@ -18,6 +19,7 @@ function exRow(item){
   const target = setsOf(item);               /* その種目のセット数（その日だけ追加したセットを足す: rules.js の setsOf） */
   const sideTag = item.side ? '<span class="side">左右</span>' : "";
   const name = esc(itemName(item));
+  const grip = drag ? `<span class="grip" data-grip="${id}" aria-hidden="true"></span>` : "";
   const setLines = sets.map((st,i)=>`
       <div class="setline">
         <span class="i num">${i+1}</span>
@@ -30,7 +32,7 @@ function exRow(item){
      「セット追加」でその日だけセットを1つ増やすと、また記録できるようになる（2026-10-22 本人の要望） */
   if(n >= target){
     const editing = editEx === id;
-    return `<div class="exrow done${editing ? " editing" : ""}">
+    return `<div class="exrow done${editing ? " editing" : ""}${drag ? " dragok" : ""}" data-row="${id}">${grip}
       <div class="exhead">
         <span><span class="nm">${name}${sideTag}</span><span class="meta">${esc(sets.map(x=>setTextFor(item, x)).join(" / "))}</span></span>
         <span class="cnt num">${n} / ${target}</span>
@@ -104,7 +106,7 @@ function exRow(item){
       </div><div class="exside">${diaHTML(id, true, item, sug.opt)}</div></div>`;
   }
 
-  return `<div class="exrow">
+  return `<div class="exrow${drag ? " dragok" : ""}" data-row="${id}">${grip}
     <button class="exhead" data-act="toggle" data-ex="${id}">
       <span><span class="nm">${name}${sideTag}${adv && adv.short?`<span class="adv ${adv.warn?"warn":""}">${esc(adv.short)}</span>`:""}</span><span class="meta">${esc(parts)}</span></span>
       <span class="cnt num">${n} / ${target}</span>

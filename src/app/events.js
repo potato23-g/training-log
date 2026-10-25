@@ -373,6 +373,29 @@ ACTIONS.skip = el=>{
   todayMsg = "「" + itemName(itemOf(id)) + "」を今日は外しました。組み直しても入りません。下の「戻す」で戻せます";
   render();
 };
+/* 今日タブの「毎日やってよい種目」の押しボタン（today.js の dailyPickCard）。入れる・外すだけで、種目のカードは開かない。
+   押したボタンが画面の同じ位置に残るように合わせる（続けて押せるように） */
+ACTIONS.dailypick = el=>{
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  const id = el.dataset.ex, st = menuState(id), en = entryFor(TODAY, id, false), name = itemNameOf(id);
+  const sel = '[data-act="dailypick"][data-ex="' + id + '"]', y0 = el.getBoundingClientRect().top, open0 = openEx;
+  if(st === "in"){
+    if(en && en.sets.length){ setStatus("「" + name + "」は今日記録したので外せません"); return; }
+    editPlanItem(id, (plan, i)=>{ if(plan[i].manual) plan.splice(i, 1); else plan[i].skip = true; });
+    if(openEx === id) openEx = null;
+    todayMsg = "「" + name + "」を今日のメニューから外しました";
+  }else if(st === "skipped"){
+    editPlanItem(id, (plan, i)=>{ delete plan[i].skip; });
+    todayMsg = "「" + name + "」を今日のメニューに入れました";
+  }else{
+    addToProgramToday(id);
+    openEx = open0;
+    todayMsg = "「" + name + "」を今日のメニューに入れました";
+  }
+  render();
+  const b = document.querySelector(sel);
+  if(b) window.scrollBy(0, b.getBoundingClientRect().top - y0);
+};
 ACTIONS.unskip = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
   const id = el.dataset.ex;

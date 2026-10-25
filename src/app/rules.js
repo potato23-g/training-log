@@ -105,7 +105,7 @@ function setExOn(id, on){
    初めの設定と同じ値は持たない（map から消す・キーを書かない）ので、何も変えていなければ今までとまったく同じに動く。
    4つのまとまりは別々の時刻で持ち、端末をまたいで同期する（settings.json。2台で別のまとまりを変えても両方残る）。
    読むところは、どれも下の関数から（画面とメニュー作り・伸ばし方で食い違わない） */
-const TUNE_KEYS = ["pref", "pair", "gap", "prog", "sets"];
+const TUNE_KEYS = ["pref", "pair", "gap", "prog", "sets", "order"];
 function tunePart(k){ const t = state.tune; return (t && t[k] && typeof t[k] === "object") ? t[k] : null; }
 function setTune(k, part){
   const t = Object.assign({}, state.tune || {});
@@ -118,7 +118,7 @@ function setTune(k, part){
 function tuneIsDefault(k){
   const p = tunePart(k);
   if(!p) return true;
-  if(k === "pref" || k === "gap" || k === "sets") return !p.map || !Object.keys(p.map).length;
+  if(k === "pref" || k === "gap" || k === "sets" || k === "order") return !p.map || !Object.keys(p.map).length;
   if(k === "pair") return p.off !== true;
   return progGain("w") === 1 && progNeed() === 1 && progJump() === 1 && progFirst() === "heavier" && progLow() === "keep" && progDrop() === "lighter";
 }
@@ -313,6 +313,26 @@ function setBaseSets(exId, n){
 /* 今日のメニューのその種目のセット数。その種目のセット数に、その日だけ追加したセット（行の more。カードの「セット追加」:
    2026-10-22 本人の要望「種目によっては5セットやりたい」）を足す。全部で SETS_MAX まで。セット数を数えるところは、どこもこれを使う */
 function setsOf(it){ return Math.min(SETS_MAX, baseSets(it && it.ex) + Math.max(0, (it && it.more) | 0)); }
+/* 種目の並び（今日のカードをドラッグして並べ替えたときに覚える: 2026-10-25 本人の要望）。
+   種目ごとに「前から何割の位置に置いたか」（0=最初・1=最後）を持ち、並べ替えるたびに半分ずつ新しい位置へ寄せる。
+   メニューを組むとき、覚えた種目はこの位置で並べる（planner.js の orderPlan） */
+const ORDER_RATE = 0.5;
+function orderPos(exId){ const p = tunePart("order"), v = p && p.map ? p.map[exId] : undefined; return typeof v === "number" && v >= 0 && v <= 1 ? v : null; }
+function learnOrder(ids){
+  if(ids.length < 2) return;
+  const p = tunePart("order"), map = Object.assign({}, p && p.map);
+  ids.forEach((id, i) => {
+    const r = i / (ids.length - 1), was = orderPos(id);
+    map[id] = Math.round((was === null ? r : was + (r - was) * ORDER_RATE) * 100) / 100;
+  });
+  setTune("order", {map});
+}
+/* 並びを決める: 初めの並び（動きの順）での位置を、覚えた位置があればそれに置き換えて並べ直す。同じ位置なら初めの並びのまま */
+function orderPlan(items){
+  const n = items.length; if(n < 2) return items.slice();
+  const key = items.map((it, i) => { const v = orderPos(it.ex); return v === null ? i / (n - 1) : v; });
+  return items.map((it, i) => i).sort((a, b) => key[a] - key[b] || a - b).map(i => items[i]);
+}
 /* 初めの設定の日数と、今の日数（本人が設定で変えた部位はその日数: 上の state.tune.gap） */
 function recoverGapDefault(m){ return RECOVER_GAP[m] === undefined ? 2 : RECOVER_GAP[m]; }
 function recoverGap(m){

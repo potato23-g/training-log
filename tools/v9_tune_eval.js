@@ -349,6 +349,21 @@ setTimeout(() => {
   need(mg && mg.sets && mg.sets.map.curl === 5, "セット数が同期でほかの端末へ渡らない: " + JSON.stringify(mg));
   pick("sets:" + sx.ex, "3");
   need(!(sx.ex in state.tune.sets.map) && tuneIsDefault("sets") && shownOk(), "セット数: 3に戻しても値を持ったまま");
+
+  /* 種目の並び（今日のカードをドラッグした順を覚える: rules.js の learnOrder・orderPlan）。2026-10-25 */
+  const ord = ["goblet", "rdl", "pushup", "row"].map(id => catalogItem(id));
+  need(orderPlan(ord).map(i => i.ex).join() === "goblet,rdl,pushup,row" && tuneIsDefault("order"), "並び: 覚えていないのに並びが変わる");
+  learnOrder(["rdl", "pushup", "row", "goblet"]);
+  need(orderPos("goblet") === 1 && orderPos("rdl") === 0 && !tuneIsDefault("order"), "並び: 並べた位置を覚えない: " + JSON.stringify(state.tune.order));
+  need(orderPlan(ord).map(i => i.ex).join() === "rdl,pushup,row,goblet", "並び: 覚えた順でメニューを並べない: " + orderPlan(ord).map(i => i.ex).join());
+  learnOrder(["goblet", "rdl", "pushup", "row"]);
+  need(orderPos("goblet") === 0.5, "並び: 2回目は半分だけ寄せる: " + orderPos("goblet"));
+  const so = sanitizeState({tune: {order: {map: {curl: 0.3, row: 1.5, goblet: -1, press: "x"}, updatedAt: 5}}});
+  need(so.tune && JSON.stringify(so.tune.order.map) === '{"curl":0.3}', "並び: 範囲の外の値が保存に残る: " + JSON.stringify(so.tune));
+  const mo = typeof syncMergeTune === "function" ? syncMergeTune({order: {map: {curl: 0.2}, updatedAt: 9}}, {gap: {map: {}, updatedAt: 3}}) : {order: {map: {curl: 0.2}}};
+  need(mo && mo.order && mo.order.map.curl === 0.2, "並びが同期でほかの端末へ渡らない: " + JSON.stringify(mo));
+  ACTIONS.orderreset();
+  need(tuneIsDefault("order") && orderPos("goblet") === null, "並び: 消すボタンで消えない");
   need(!("low" in state.tune.prog) && !("drop" in state.tune.prog) && shownOk(), "下げ方: 初めの設定と同じ値を持ったまま: " + JSON.stringify(state.tune.prog));
   pick("need", "1"); pick("jump", "1");
   need(!("need" in state.tune.prog) && !("jump" in state.tune.prog) && state.tune.prog.step === 0 && state.tune.prog.first === "keep", "増え方: 初めの設定と同じ値を持ったまま・ほかの値が消えた " + JSON.stringify(state.tune.prog));

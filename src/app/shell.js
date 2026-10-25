@@ -267,7 +267,8 @@ function menuCard(){
     .map(e => `<div class="tunerow"><span>${esc(e.name)}</span>${tuneSel("sets:" + e.id, baseSets(e.id), setsOpts)}</div>`).join("");
   const nSets = EX.filter(e => baseSets(e.id) !== SETS_PER_EXERCISE).length;
   const nOff = EX.filter(e => !exOn(e.id)).length;
-  const changed = ["pref", "gap", "pair", "sets"].some(k => !tuneIsDefault(k));
+  const changed = ["pref", "gap", "pair", "sets", "order"].some(k => !tuneIsDefault(k));
+  const nOrder = EX.filter(e => orderPos(e.id) !== null).length;
   return `<h3 class="sec">${MENU_HEAD}</h3>
   <div class="card">
     <div class="fld tunefld" style="margin-top:0"><label>反対の部位（胸と背中、上腕二頭筋と上腕三頭筋など）</label>
@@ -284,6 +285,9 @@ function menuCard(){
       <p class="lastline" style="margin-top:0">今日のメニューと、次からのメニューのセット数になります。その日だけ増やすときは、カードの「セット追加」を使ってください。</p>
       ${setsRows}
     </details>
+    <div class="fld tunefld"><label>種目の並び</label>
+      <p class="lastline" style="margin-top:0">今日のメニューで、カードの左端のつまみを押したまま上下に動かすと並べ替えられます。並べた順を覚えて、次からのメニューもその順に近づけます。${nOrder ? "（" + nOrder + "種目の位置を覚えています）" : ""}</p>
+      ${nOrder ? `<div class="rowbtns"><button data-act="orderreset">覚えた並びを消す</button></div>` : ""}</div>
     <details class="tune" data-tune-d="off"${tuneOpen.off ? " open" : ""}><summary>${EX_OFF_HEAD}${nOff ? "（" + nOff + "種目）" : ""}</summary>
       ${exOffBody()}
     </details>
@@ -342,8 +346,12 @@ WIRES.push(wireTune);
 ACTIONS.tunereset = el => {
   const prog = el && el.dataset.part === "prog";
   if(prog) setTune("prog", {});
-  else{ setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); setTune("sets", {map: {}}); }
+  else{ setTune("pref", {map: {}}); setTune("gap", {map: {}}); setTune("pair", {}); setTune("sets", {map: {}}); setTune("order", {map: {}}); }
   tuneApplied(!prog, "「" + (prog ? PROG_HEAD : MENU_HEAD) + "」を初めの設定に戻しました");
+};
+ACTIONS.orderreset = () => {
+  setTune("order", {map: {}});
+  tuneApplied(false, "覚えた並びを消しました。次からのメニューは初めの並びになります");
 };
 function viewSet(){
   /* 縦に長いものは、初めは閉じておく（ダンベルを登録していないうちは、登録を促す文が見えるように開いておく） */

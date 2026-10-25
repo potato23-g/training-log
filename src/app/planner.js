@@ -394,8 +394,9 @@ function buildPlan(){
 
   if(!planSeed){
     plan.sort((a, b) => PATTERN_ORDER.indexOf(patternOf(a.ex)) - PATTERN_ORDER.indexOf(patternOf(b.ex)));
-    /* 反対の部位どうしは隣に並べる（1セットずつ交互に行いやすいように） */
-    const ordered = pairUp(plan);
+    /* 本人が並べ替えて覚えた順があれば、それで並べる（rules.js の orderPlan）。
+       反対の部位どうしは隣に並べる（1セットずつ交互に行いやすいように） */
+    const ordered = pairUp(orderPlan(plan));
     plan.length = 0; ordered.forEach(p => plan.push(p));
   }
   plan.forEach(p => { p.sets = setsOf(p); });          /* 行のセット数は、いつも今の設定のセット数（rules.js の setsOf） */

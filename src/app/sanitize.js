@@ -100,6 +100,7 @@ function sanitizeState(obj){
     };
     maps("pref", exok, function(n){ return n === 1 || n === -1; });
     maps("sets", exok, function(n){ return n >= 1 && n <= 8 && n === Math.floor(n); });
+    maps("order", exok, function(n){ return n >= 0 && n <= 1; });
     maps("gap", function(key){ return /^[a-z]{2,20}$/.test(key); }, function(n){ return n >= 0 && n <= 5 && n === Math.floor(n); });
     var pr = part("pair"); if(pr) tn.pair = stamp(pr, pr.off === true ? { off: true } : {});
     var pg = part("prog");

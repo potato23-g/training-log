@@ -359,7 +359,7 @@ function syncMergeGear(a, b){
    片方の端末で回復の日数を、もう片方で種目の出やすさを変えても、両方残る。どちらにも無ければ undefined */
 function syncMergeTune(a, b){
   var out = {}, any = false;
-  ["pref", "pair", "gap", "prog", "sets"].forEach(function(k){
+  ["pref", "pair", "gap", "prog", "sets", "order"].forEach(function(k){
     var m = syncMergeGear(a && a[k], b && b[k]);
     if(m){ out[k] = m; any = true; }
   });
