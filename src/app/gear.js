@@ -98,32 +98,32 @@ function kgText(v){ return (Math.round(v * 10) / 10) + "kg"; }
    per    = "arm" なら片腕あたりの重さで重い・軽いを決める（腕の種目）。"total" なら合計で決める
    prefer = 同じ重さになる使い方が複数あるとき、1つで持つほうを選ぶ（"one"） */
 const HOLD = {
-  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total"},
-  rdl:       {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"},
-  split:     {pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
+  goblet:    {pair:"両肩に1つずつ担ぐ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total"},
+  rdl:       {pair:"両手に1つずつ持つ",    one:"持ち手を両手で握る",     per:"total"},
+  split:     {pair:"両手に1つずつ持つ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total"},
   hipthrust: {pair:"骨盤の上に並べて置く", one:"骨盤の上に置く",         per:"total", prefer:"one", mixed:true},
   row:       {one:"片手に持ち、左右を入れ替える",                          per:"total"},
   ohp:       {pair:"両手に1つずつ持つ",    one:"片手ずつ押し上げ、左右を入れ替える", per:"arm"},
   lateral:   {pair:"両手に1つずつ持つ",    one:"片手ずつ上げ、左右を入れ替える",     per:"arm"},
   floorpress:{pair:"両手に1つずつ持つ",    one:"片手ずつ押し、反対の手は床に置く",   per:"arm"},
   curl:      {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
-  triext:    {one:"両手でまとめて持つ",                                    per:"total"},
+  triext:    {one:"持ち手を両手で握る",                                    per:"total"},
   calf:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、反対の手で壁を支える",   per:"total"},
   farmer:    {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で左右を持ち替える", per:"total"},
-  sumo:      {pair:"両肩に1つずつ担ぐ",    one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
-  splitfloor:{pair:"両手に1つずつ持つ",    one:"縦にして胸の前で抱える", per:"total"},
+  sumo:      {pair:"両肩に1つずつ担ぐ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total", prefer:"one"},
+  splitfloor:{pair:"両手に1つずつ持つ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total"},
   fly:       {pair:"両手に1つずつ持つ",    one:"片手ずつ行い、反対の手は床に置く",   per:"arm"},
   skull:     {pair:"両手に1つずつ持つ",    one:"片手ずつ行い、反対の手で肘を支える", per:"arm"},
   front:     {pair:"両手に1つずつ持つ",    one:"片手ずつ上げ、左右を入れ替える",     per:"arm"},
   shrug:     {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で持ち替える",       per:"total"},
   row2:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、左右を入れ替える",       per:"total"},
-  calfseat:  {pair:"左右の膝に1つずつ置く", one:"片方の膝に置き、両手で押さえる",     per:"total"},
+  calfseat:  {pair:"左右の膝に1つずつ置く", one:"膝の上に横向きに置き、持ち手を両手で握って押さえる",     per:"total"},
   sidebend:  {one:"片手に持ち、左右を入れ替える",                                    per:"total"},
-  sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"縦にして胸の前で抱える", per:"total", prefer:"one"},
-  pullover:  {one:"両手でまとめて持つ",                                    per:"total"},
+  sidelunge: {pair:"両肩に1つずつ担ぐ",     one:"横にして持ち手を両手で握り、胸の前に構える", per:"total", prefer:"one"},
+  pullover:  {one:"持ち手を両手で握る",                                    per:"total"},
   rear:      {pair:"両手に1つずつ持つ",    one:"片手ずつ開き、反対の手は膝に置く",   per:"arm"},
   hammer:    {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
-  deadlift:  {pair:"両手に1つずつ持つ",    one:"両手でまとめて持つ",     per:"total"}
+  deadlift:  {pair:"両手に1つずつ持つ",    one:"持ち手を両手で握る",     per:"total"}
 };
 function holdOf(id){ return HOLD[id] || HOLD[baseOf(id)] || null; }
 /* この種目（catalog の行）は、今持っているダンベルで行えるか。C19: HOLD の無い種目は常に true。

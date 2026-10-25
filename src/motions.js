@@ -16,7 +16,7 @@
     pins: [FOOT.heel, FOOT.ball]
   });
 
-  /* 胸の前で両手にダンベルを抱える（ゴブレット持ち） */
+  /* 胸の前でダンベルの持ち手を両手で握る（ゴブレット持ち） */
   const gobletHands = {
     R: { at: { bone: 'spineC', local: [0.210, 0.060, 0.052] }, local: HAND.palm, pitch: 120, yaw: -25,
          pole: [0.05, -1, 0.14] },
@@ -34,7 +34,8 @@
     ],
     feet: { R: flatFoot(0, 0.17, 16), L: flatFoot(0, -0.17, -16) },
     hands: gobletHands,
-    dumbbells: [{ grip: 'both', axis: 'bone', bone: 'spineC', kg: 5, local: HAND.grip, offset: [0, -0.085, 0] }],
+    /* 持ち手を両手で握る（ダンベルは両手を結ぶ向きに横たわる。2026-10-25 本人の指摘「重りではなく持ち手を両手で持つ」） */
+    dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }],
     balance: { axes: ['x'] },
     base: {
       'pelvis.y': 0.955, 'pelvis.pitch': 4,

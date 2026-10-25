@@ -64,7 +64,7 @@ const MDRV = {
   ohp: ["upperarmR.flex", 22, 172], lateral: ["upperarmR.abd", 0, 85], front: ["upperarmR.flex", 8, 88], rear: ["upperarmR.abd", 3, 85],
   curl: ["forearmR.flex", 5, 142], hammer: ["forearmR.flex", 5, 138], triext: ["forearmR.flex", 95, 10],
   /* 次の3つは、キャラクターの側が「腕を伸ばした所」を始めにしている */
-  floorpress: ["upperarmR.flex", 90, -15], fly: ["upperarmR.abd", -8, 80], skull: ["forearmR.flex", 8, 96],
+  floorpress: ["upperarmR.flex", 90, -15], fly: ["upperarmR.abd", 32, 88], skull: ["forearmR.flex", 8, 96],
   pushup: ["pelvis.y", 0.38, 0.18], pushupknee: ["pelvis.y", 0.38, 0.18], pushup_deep: ["pelvis.y", 0.44, 0.18],
   crunch: ["spineT.flex", 0, 18], backext: ["spineL.flex", 2, -12], sidebend: ["spineL.abd", 0, 22],
   /* 左右を交互に動かす: 右の番（k=0）と左の番（k=1）を、動いている側で決める */

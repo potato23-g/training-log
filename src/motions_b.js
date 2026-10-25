@@ -122,7 +122,7 @@
       { t: 1.3, label: '戻す 3秒' }
     ],
     feet: standFeet,
-    dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, -0.05, 0] }],
+    dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }],   /* 持ち手を両手で握る */
     balance: { axes: ['x'] },
     base: {
       'pelvis.y': 0.95, 'pelvis.pitch': 0,

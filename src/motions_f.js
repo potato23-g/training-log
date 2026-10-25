@@ -208,7 +208,7 @@
     keys: { 2.2: { 'pelvis.y': 0.890, 'pelvis.z': 0.100 }, 3.5: { 'pelvis.y': 0.870, 'pelvis.z': 0.130 },
             4.1: { 'pelvis.y': 0.870, 'pelvis.z': 0.130 }, 4.6: { 'pelvis.y': 0.900, 'pelvis.z': 0.090 } } });
   derive('fly', { id: 'fly_shallow',
-    keys: { 0: { 'upperarmR.abd': 52, 'upperarmL.abd': 52 }, 4.6: { 'upperarmR.abd': 52, 'upperarmL.abd': 52 } } });
+    keys: { 0: { 'upperarmR.abd': 70, 'upperarmL.abd': 70 }, 4.6: { 'upperarmR.abd': 70, 'upperarmL.abd': 70 } } });
   derive('bridge', { id: 'bridge_low',
     set: { phases: [{ t: 0, label: '持ち上げる 1.3秒' }, { t: 1.3, label: '上で2秒止める' },
                     { t: 3.3, label: '下ろす 2秒' }] },
@@ -223,10 +223,10 @@
   derive('slidecurl', { id: 'slidecurl_one',
     keys: { 0.0: SC_BENT, 0.7: SC_BENT, 1.4: SC_BENT, 2.0: SC_BENT, 2.3: SC_BENT, 3.0: SC_BENT, 3.7: SC_BENT, 4.3: SC_BENT } });
 
-  /* ロシアンツイスト: ダンベルを両手でまとめて持つ（動きはそのまま）。
+  /* ロシアンツイスト: ダンベルの持ち手を両手で握る（動きはそのまま）。
      胸の高さで持つので、フロアプレス系と違って下げすぎると太ももに当たる。手の位置より少し上で持つ */
   derive('twist', { id: 'twist_db',
-    set: { dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, 0.08, 0] }] } });
+    set: { dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }] } });   /* 持ち手を両手で握る */
 
   /* ロシアンツイスト: ひねる角度を浅くする */
   const twistShallow = (bend) => ({ 'spineL.rot': bend * 5, 'spineT.rot': bend * 8, 'spineC.rot': bend * 10 });
@@ -268,9 +268,9 @@
             'forearmL.flex': 96, 'forearmL.rot': 40, 'handL.flex': 0 },
     keys: { 0: { 'forearmL.flex': 96 }, 1.3: { 'forearmL.flex': 96 }, 1.6: { 'forearmL.flex': 96 }, 5.1: { 'forearmL.flex': 96 } } });
 
-  /* 腹筋（クランチ）: 胸にダンベルを抱える／腕を体の横に置く */
+  /* 腹筋（クランチ）: 胸の上でダンベルの持ち手を両手で握る／腕を体の横に置く */
   derive('crunch', { id: 'crunch_db',
-    set: { dumbbells: [{ grip: 'both', axis: 'bone', bone: 'spineC', kg: 5, local: HAND.grip, offset: [0.06, -0.10, 0] }] },
+    set: { dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }] },   /* 持ち手を両手で握る */
     base: { 'upperarmR.flex': 36, 'upperarmR.abd': -10, 'forearmR.flex': 128, 'forearmR.rot': 40,
             'upperarmL.flex': 36, 'upperarmL.abd': -10, 'forearmL.flex': 128, 'forearmL.rot': 40 },
     keys: { 0: { 'upperarmR.flex': 36, 'upperarmR.abd': -10, 'forearmR.flex': 128,

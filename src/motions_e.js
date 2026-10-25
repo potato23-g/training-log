@@ -116,16 +116,18 @@
       phases: [{ t: 0, label: '閉じる 1秒' }, { t: 1.0, label: '胸の上で止める' },
                { t: 1.6, label: '開く 3秒' }]
     },
-    /* 肘の角度は25度で固定したまま、上腕を横に開いて閉じる */
+    /* 肘は直角のまま、上腕を横に開いて閉じる（2026-10-25 本人の指摘「肘が直角になるように曲げる」。前は25度）。
+       上腕は肩の高さで前へ上げてから横へ倒す（abd が開き具合）。開いたところで上腕は床、前腕は真上。
+       閉じたところで、左右のダンベルが胸の上で触れる手前（手首の間 0.25m） */
     times: { 2.6: 1.6, 4: 4.6 },
-    keys: { 0: { 'upperarmR.flex': -10, 'upperarmR.abd': 80, 'upperarmL.flex': -10, 'upperarmL.abd': 80,
-                 'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 0, 'forearmL.rot': 0 },
-            1: { 'upperarmR.flex': 78, 'upperarmR.abd': -8, 'upperarmL.flex': 78, 'upperarmL.abd': -8,
-                 'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 90, 'forearmL.rot': 90 },
-            1.6: { 'upperarmR.flex': 78, 'upperarmR.abd': -8, 'upperarmL.flex': 78, 'upperarmL.abd': -8,
-                   'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 90, 'forearmL.rot': 90 },
-            4.6: { 'upperarmR.flex': -10, 'upperarmR.abd': 80, 'upperarmL.flex': -10, 'upperarmL.abd': 80,
-                   'forearmR.flex': 25, 'forearmL.flex': 25, 'forearmR.rot': 0, 'forearmL.rot': 0 } }
+    keys: { 0: { 'upperarmR.flex': 90, 'upperarmR.abd': 88, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 88, 'upperarmL.rot': 90,
+                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            1: { 'upperarmR.flex': 90, 'upperarmR.abd': 32, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 32, 'upperarmL.rot': 90,
+                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            1.6: { 'upperarmR.flex': 90, 'upperarmR.abd': 32, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 32, 'upperarmL.rot': 90,
+                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            4.6: { 'upperarmR.flex': 90, 'upperarmR.abd': 88, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 88, 'upperarmL.rot': 90,
+                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 } }
   });
 
   /* ---------------- フロアトライセプスエクステンション ----------------
@@ -310,7 +312,7 @@
   });
 
   /* ---------------- ダンベルプルオーバー ----------------
-     仰向け、膝を立てる（フロアプレスと同じ仰向け姿勢）。ダンベル1つを両手でまとめて持ち、
+     仰向け、膝を立てる（フロアプレスと同じ仰向け姿勢）。ダンベル1つの持ち手を両手で握り、
      胸の真上から弧を描いて頭の後ろへ。肘の角度（前腕の曲げ）は最後まで変えない。 */
   const pulloverFoot = (z) => ({
     at: [0.50, 0, z], local: [0, -FOOT.ankleH, 0], yaw: 0, pitch: 0,
@@ -323,7 +325,7 @@
       { t: 0, label: '下ろす 3秒' }, { t: 3.0, label: '頭の後ろで止める' }, { t: 3.4, label: '引き上げる 2秒' }
     ],
     feet: { R: pulloverFoot(0.13), L: pulloverFoot(-0.13) },
-    dumbbells: [{ grip: 'both', axis: 'vertical', kg: 5, offset: [0, -0.05, 0] }],
+    dumbbells: [{ grip: 'both', kg: 5, local: HAND.grip }],   /* 持ち手を両手で握る */
     base: {
       'pelvis.y': 0.135, 'pelvis.pitch': -90, 'pelvis.x': 0, 'pelvis.z': 0,
       'spineL.flex': 0, 'spineT.flex': 0, 'spineC.flex': 0, 'neck.flex': 4, 'head.flex': 0,
