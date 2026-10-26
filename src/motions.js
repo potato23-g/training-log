@@ -16,11 +16,12 @@
     pins: [FOOT.heel, FOOT.ball]
   });
 
-  /* 胸の前でダンベルの持ち手を両手で握る（ゴブレット持ち） */
+  /* 胸の前でダンベルの持ち手を両手で握る（ゴブレット持ち）。
+     刀を持つように縦に重ねて握る（2026-10-26 本人の指摘）ので、左右ではなく上下にずらす */
   const gobletHands = {
-    R: { at: { bone: 'spineC', local: [0.210, 0.060, 0.052] }, local: HAND.palm, pitch: 120, yaw: -25,
+    R: { at: { bone: 'spineC', local: [0.210, 0.075, 0] }, local: HAND.palm, pitch: 120, yaw: -25,
          pole: [0.05, -1, 0.14] },
-    L: { at: { bone: 'spineC', local: [0.210, 0.060, -0.052] }, local: HAND.palm, pitch: 120, yaw: 25,
+    L: { at: { bone: 'spineC', local: [0.210, 0.045, 0] }, local: HAND.palm, pitch: 120, yaw: 25,
          pole: [0.05, -1, -0.14] }
   };
 

@@ -134,6 +134,8 @@
       { t: 3.3, label: '下ろす 2秒' }
     ],
     feet: { R: flatFoot(0.60, 0.11, 4), L: flatFoot(0.60, -0.11, -4) },
+    /* 刀を持つように縦に重ねて握る案（奥行きでずらす）は、ダンベルが胴体に食い込むため見送り、
+       元の左右分割に戻した（2026-10-27 db_clash.js: pelvis/spineT 食い込みで検出） */
     hands: {
       R: { at: { bone: 'pelvis', local: [0.16, 0.17, 0.085] }, local: HAND.palm, pitch: 90, yaw: -30, pole: [-0.87, -0.5, 0.15] },
       L: { at: { bone: 'pelvis', local: [0.16, 0.17, -0.085] }, local: HAND.palm, pitch: 90, yaw: 30, pole: [-0.87, -0.5, -0.15] }

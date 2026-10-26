@@ -85,16 +85,35 @@ function viewToday(){
     hero = `<div class="hero"><p class="kicker">今日のメニュー</p><h2>完了</h2>
       <div class="bigset"><span class="v num" style="color:var(--done)">${total}</span><span class="u">セット</span></div>
       <p class="sub">お疲れさまでした。直したい記録は、各種目の「修正」から消せます。</p></div>`;
-  }else if(openEx){
-    /* 種目カードを開いている間は、カードと同じ内容になるので1行に縮める */
+  }else if(openEx === next.ex){
+    /* 「次の種目」自身のカードを開いている間は、カードと同じ内容になるので1行に縮める。
+       ほかの種目のカードを開いているときは、次の種目のカードは閉じたままで記録ボタンが出ないので、
+       ここで出し続ける（2026-10-26 本人の指摘「記録ボタンが出たり出なかったりする」の原因）。 */
     hero = `<div class="hero compact"><p class="kicker">次の種目</p><h2>${esc(itemName(next))}</h2></div>`;
   }else{
     const ex = EXMAP[next.ex];
     const e = entryFor(TODAY, next.ex, false);
     const sug = suggestNext(next, e);
-    const inner = ex.kind==="w"
-      ? `<div class="bigset"><span class="v num">${wShown(next, sug.w)}</span><span class="x num">×</span><span class="v num">${sug.r}</span><span class="u">${perArm(next.ex) ? "kg（片手）・回" : "kg・回"}${next.side?"・左右":""}</span></div>`
-      : `<div class="bigset"><span class="v num">${sug.r}</span><span class="u">${ex.kind==="t"?"秒":"回"}${next.side?"・左右":""}</span></div>`;
+    const id = next.ex;
+    const weighted = ex.kind==="w" && !!sug.opt;
+    /* 重量・回数も、このカードから直接変えられるように（card.js の wfld・回数ステッパーと同じ作り。
+       id を w_${id}・r_${id} にそろえて addSet がそのまま読めるようにする。2026-10-26 本人の要望） */
+    const wfld = weighted ? `
+      <div class="fld"><label>重量 ${wUnit(next)}</label>
+        <div class="stepper">
+          <button data-act="step" data-t="w" data-ex="${id}" data-d="-1" aria-label="軽く">−</button>
+          <input type="number" id="w_${id}" value="${wShown(next, sug.w)}" step="0.5" inputmode="decimal">
+          <button data-act="step" data-t="w" data-ex="${id}" data-d="1" aria-label="重く">＋</button>
+        </div></div>` : "";
+    const inner = `<div class="entry">
+      ${wfld}
+      <div class="fld"><label>${ex.kind==="t"?"秒":"回数"}</label>
+        <div class="stepper">
+          <button data-act="step" data-t="r" data-ex="${id}" data-d="-1" aria-label="減らす">−</button>
+          <input type="number" id="r_${id}" value="${sug.r}" inputmode="numeric">
+          <button data-act="step" data-t="r" data-ex="${id}" data-d="1" aria-label="増やす">＋</button>
+        </div></div>
+      </div>`;
     /* このカードからそのまま記録できる（2026-10-11 本人の要望。押すと下の種目のカードが開き、この目標で1セット入る） */
     hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${esc(itemName(next))}</h2>${inner}

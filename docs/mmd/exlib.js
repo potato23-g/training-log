@@ -136,9 +136,12 @@ const gripAt = (sg, f, c) => ({
 const gripBoth = { handL: c => gripAt(1, c.free, c), handR: c => gripAt(-1, c.free, c) };
 // 手首の中心 W から、握る向き（指 g・手のひら pn）に合わせてダンベルの中心を決める
 const fromWrist = (W, g, pn, c) => W.clone().addScaledVector(g, c.m.armL.hand * 0.92).addScaledVector(pn, 0.27);
+// 両手の並ぶ向き（axis）を、指の向き（g）と同じ向きに重ねる＝刀を持つように縦に並べて握る
+// （2026-10-26 本人の指摘「両手で持つ種目は刀を持つような方向で握る」。g・pn は自然な腕の構えのまま変えない）
+const swordGrip = f => ({ ...f, axis: f.g });
 // ダンベルを横にして胸の前で持つ。持ち手を両手で下から握り、手のひらは胸へ向ける
 const gobletHold = () => ({
-  free: c => ({ pos: mid(c.shL, c.shR).add(c.c(0, -1.25, 2.25)), axis: c.c(1, 0, 0), g: c.c(0, 0.95, 0.3).normalize(), pn: c.c(0, 0.3, -0.95).normalize(),
+  free: c => swordGrip({ pos: mid(c.shL, c.shR).add(c.c(0, -1.25, 2.25)), g: c.c(0, 0.95, 0.3).normalize(), pn: c.c(0, 0.3, -0.95).normalize(),
                 pole: sg => c.c(sg * 0.25, -1, 0) }),
   ...gripBoth,
 });
@@ -230,7 +233,7 @@ export const EXLIB = {
         baseQ: Qx(-90 + b), head: [lerp(32, 14, u), 0, 0],
         pin: c => V(0, 5.42, ze).sub(mid(c.shL, c.shR).add(c.w(0, -1.0, -0.96))),
         footL: foot(1), footR: foot(-1),
-        free: c => ({ pos: c.hips.clone().add(c.p(0, 0.1, 1.32)), axis: X, g: c.p(0, -1, 0), pn: c.p(0, 0, -1), pole: sg => c.c(sg, 0, -0.5) }),
+        free: c => swordGrip({ pos: c.hips.clone().add(c.p(0, 0.1, 1.32)), g: c.p(0, -1, 0), pn: c.p(0, 0, -1), pole: sg => c.c(sg, 0, -0.5) }),
         ...gripBoth,
       };
     },
@@ -338,10 +341,10 @@ export const EXLIB = {
     })() : ({
       ...feet(1.66), shrugL: 12, shrugR: 12,
       free: c => {
-        // 持ち手を横にして両手で握る。伸ばしきったとき手のひらは前、下ろすと上を向く
+        // 持ち手を刀のように縦に重ねて両手で握る。伸ばしきったとき手のひらは前、下ろすと上を向く
         const th = lerp(115, 0, u) * D, f = c.c(0, Math.cos(th), -Math.sin(th)), pn = c.c(0, Math.sin(th), Math.cos(th));
-        const W = mid(c.shL, c.shR).add(c.c(0, 2.2, 0.3)).addScaledVector(f, 2.3);
-        return { pos: fromWrist(W, f, pn, c), axis: c.c(1, 0, 0), g: f, pn, pole: sg => c.c(sg * 1.1, 0.5, 0.8) };
+        const W = mid(c.shL, c.shR).add(c.c(0, 2.2, 0.3)).addScaledVector(f, 2.15);
+        return swordGrip({ pos: fromWrist(W, f, pn, c), g: f, pn, pole: sg => c.c(sg * 1.3, 0.3, 0.6), w: 0.1 });
       },
       ...gripBoth,
     }),
@@ -388,9 +391,9 @@ export const EXLIB = {
     pose: (u, k, m, v = {}) => {
       const body = { baseQ: Qx(-90), pin: pinHip(SUP_SH + 0.44 + 0.08 * u, SUP_Z + 4.57), ...kneesUp(), pelvis: [9 * u, 0, 0], chest: [64 * u, 0, 0], head: [10 + 14 * u, 0, 0] };
       // db: ダンベルを横にして胸の上で抱える
-      if (v.db) return { ...body, free: c => ({
-        pos: mid(c.shL, c.shR).add(c.c(0, v.cy != null ? v.cy : -1.5, v.cz != null ? v.cz : 1.75)), axis: c.c(1, 0, 0),
-        g: c.c(0, -0.3, 0.95).normalize(), pn: c.c(0, -0.95, -0.3).normalize(), pole: sg => c.c(sg, -0.6, -0.4) }), ...gripBoth };
+      if (v.db) return { ...body, free: c => swordGrip({
+        pos: mid(c.shL, c.shR).add(c.c(0, v.cy != null ? v.cy : -1.5, v.cz != null ? v.cz : 1.75)),
+        g: c.c(0, -0.3, 0.95).normalize(), pn: c.c(0, -0.95, -0.3).normalize(), pole: sg => c.c(sg, -0.6, -0.4), w: 0.25 }), ...gripBoth };
       // arms: 腕は体の横。肩が浮くぶん、手は床の上を頭のほうへ少し滑る
       const side = sg => c => {
         const S = sg > 0 ? c.shL : c.shR, len = (m.armL.L1 + m.armL.L2) * 0.97, dy = S.y - 0.42;
@@ -514,7 +517,10 @@ export const EXLIB = {
   fly: {
     name: 'ダンベルフライ', cam: { alt: 12 }, props: { bench: [0, 2.7, -3.6, 0] }, bedY: BENCH_H, tempo: [1.9, 0.4, 1.5, 0.5],
     pose: (u, k, m) => {
-      const eb = 90 * D, L1 = m.armL.L1, L2 = m.armL.L2;
+      const L1 = m.armL.L1, L2 = m.armL.L2;
+      // 肘の曲がりは引き切った上（u=0・閉じて絞る位置）だけ直角。開いて伸ばす側（u=1）ほど肘を伸ばす
+      // （2026-10-26 本人の指摘「肘が直角というのは常にという意味ではない」）
+      const eb = lerp(90, 25, u) * D;
       // 上の位置: 手首が体の中心から 1.05 離れる角度（それより閉じると、左右のダンベルがぶつかる）
       const top = c => { const sx = Math.abs(c.shL.x - c.shR.x) / 2; let lo = 0, hi = Math.PI / 2;
         for (let i = 0; i < 24; i++){ const a = (lo + hi) / 2; if (sx + L1 * Math.sin(a) - L2 * Math.cos(a) < 1.05) lo = a; else hi = a; } return lo; };
@@ -581,7 +587,7 @@ export const EXLIB = {
       return {
         pelvis: [6, 0, 0], chest: [16, 0, 0], head: [-4, 0, 0], pin: pinHip(m.legL.ankleH + m.legL.L2 + 0.05, 0), footL: f(1), footR: f(-1),
         // ダンベルを横にして、両端のプレートを左右の太ももに乗せる。持ち手を上から両手で握って押さえる
-        free: c => ({ pos: mid(c.kneeL, c.kneeR).add(V(0, 0.62 + 0.64, -1.0)), axis: X, g: V(0, 0, 1), pn: V(0, -1, 0), pole: sg => V(sg * 0.8, -0.3, -0.6) }),
+        free: c => swordGrip({ pos: mid(c.kneeL, c.kneeR).add(V(0, 0.62 + 0.64, -1.0)), g: V(0, 0, 1), pn: V(0, -1, 0), pole: sg => V(sg * 0.8, -0.3, -0.6) }),
         ...gripBoth,
       };
     },
@@ -621,16 +627,16 @@ export const EXLIB = {
 
   // ダンベルプルオーバー: 台に仰向けになり、ダンベルを両手で胸の上に構える。肘の角度を変えずに、弧を描いて頭の向こうへ下ろす。
   // 頭を台の端に置くので、ダンベルは頭の向こうで台より下まで下ろせる（床の上では頭の上で止まる）。
-  // この体は腕が短く頭が大きいので、ダンベルは横にして両端のプレートを両手ではさむ（縦に持つと頭に当たる）。
   pullover: {
     name: 'ダンベルプルオーバー', cam: { alt: 12 }, props: { bench: [0, 2.7, -0.1, 0] }, bedY: BENCH_H, air: true, tempo: [1.9, 0.4, 1.6, 0.5],
     pose: (u, k, m) => ({
       ...benchSupine(), ...kneesUp(KNEE_Z, BENCH_H),
       free: c => {
-        // 持ち手を横にして両手で握る。手のひらは足のほうへ向ける
-        const a = lerp(-6, 94, u) * D, d = V(0, Math.cos(a), -Math.sin(a)), pn = V(0, Math.sin(a), Math.cos(a));
+        // 持ち手を刀のように縦に重ねて両手で握る。手のひらは足のほうへ向ける
+        // （この体は頭が大きいので、頭の向こうへ下ろしきる角度は少し手前で止める）
+        const a = lerp(-6, 76, u) * D, d = V(0, Math.cos(a), -Math.sin(a)), pn = V(0, Math.sin(a), Math.cos(a));
         const W = mid(c.shL, c.shR).addScaledVector(d, 4.35);
-        return { pos: fromWrist(W, d, pn, c), axis: X, g: d, pn, pole: sg => V(sg, 0.25 * Math.sin(a), 0.25 * Math.cos(a)) };
+        return swordGrip({ pos: fromWrist(W, d, pn, c), g: d, pn, pole: sg => V(sg, 0.25 * Math.sin(a), 0.25 * Math.cos(a)), w: 0.08 });
       },
       ...gripBoth,
     }),
@@ -646,9 +652,9 @@ export const EXLIB = {
                         pole: sg => c.c(sg * 0.7, -0.7, -0.2) });
       const body = { pelvis: [-28, 0, 0], chest: Qx(-32).multiply(Qy(yaw)), head: [8, -yaw * 0.35, 0], pin: pinHip(1.2, 0), footL: foot(1), footR: foot(-1) };
       // db: ダンベルを縦にして、上のプレートを両手ではさむ。太ももに当たらないよう、手だけのときより少し上で持つ
-      if (v.db) return { ...body, free: c => ({
-        pos: G(c).top.clone().add(c.c(0, v.ty != null ? v.ty : 1.0, v.tz != null ? v.tz : 0.2)), axis: c.c(1, 0, 0),
-        g: c.c(0, 0.95, 0.3).normalize(), pn: c.c(0, 0.3, -0.95).normalize(), pole: sg => c.c(sg * 0.5, -1, 0) }), ...gripBoth };
+      if (v.db) return { ...body, free: c => swordGrip({
+        pos: G(c).top.clone().add(c.c(0, v.ty != null ? v.ty : 1.0, v.tz != null ? v.tz : -0.6)),
+        g: c.c(0, 0.95, 0.3).normalize(), pn: c.c(0, 0.3, -0.95).normalize(), pole: sg => c.c(sg * 0.5, -1, 0), w: 0.18 }), ...gripBoth };
       return { ...body, handL: c => clasp(1, G(c), c), handR: c => clasp(-1, G(c), c) };
     },
   },
