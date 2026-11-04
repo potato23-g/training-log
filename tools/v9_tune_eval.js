@@ -217,6 +217,21 @@ setTimeout(() => {
   p = after(none, "goblet", rr.lo);
   need(p.target === rr.lo && p.change === "hold" && !p.next && /目標は変えずに続けます/.test(p.why), "全部増やさない設定で、目標が変わった: " + p.target + " " + p.change);
   need(rowOf().next === "目標は" + rr.lo + "回のまま続けます" && /回数は増やさず、同じ目標で続けます/.test(viewPlan()), "提案タブが、全部増やさない設定と合わない: " + rowOf().next);
+  /* 回数を増やさない設定では、前回の最後のセットでやった回数が次の目標・回数の欄の初めの値（上限・下限で切らない）。
+     2026-11-04 本人の指摘「回数は最新のものをデフォルトに。変えない設定なのに固定の数字にされる」 */
+  const lastIs = (reps, tune) => {
+    reset(tune);
+    const d = shiftKey(TODAY, -3), o = defaultOptionFor(gb);
+    const sets = reps.map((r, k) => { const st = {id: "z" + k, at: k, r, label: "", target: rr.lo}; if(o) st.w = o.total; return st; });
+    state.sessions[d] = {date: d, entries: [{ex: "goblet", sets}], plan: [{ex: "goblet", sets: 3}]};
+    fresh();
+    return progressFor(catalogItem("goblet"));
+  };
+  for(const [reps, tune] of [[[rr.lo + 3, rr.lo + 2, rr.hi + 4], none], [[rr.lo, rr.lo, rr.lo - 2], none], [[rr.lo + 2, rr.lo + 2, rr.lo + 1], none], [[rr.lo + 1, rr.lo, rr.lo - 1], zero]]){
+    p = lastIs(reps, tune);
+    const want = reps[reps.length - 1], sug = suggestNext(catalogItem("goblet"), null);
+    need(p.target === want && sug.r === want, "回数を増やさない設定で、前回の最後のセットの回数（" + want + "）が目標にならない: " + p.target + " " + sug.r + " " + p.why);
+  }
   /* 重さだけ増やさない: 回数は増え、上限に届いたら難しいやり方へ */
   const noKg = {prog: {jump: 0, updatedAt: 1}};
   p = after(noKg, "goblet", rr.lo);

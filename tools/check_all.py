@@ -446,6 +446,7 @@ def main():
     run_bun("grip_check.js", "grip_check.js", judge_trailing_count("手の向きが合わない箇所"))
     run_bun("joint_audit.js", "joint_audit.js", judge_joint_audit)
     run_bun("form_check.js", "form_check.js", judge_trailing_count("合わない項目"))
+    run_bun("db_perp_check.js", "db_perp_check.js", judge_trailing_count("合わない項目"))
     run_bun("phase_check.js", "phase_check.js", judge_trailing_count("合っていない場面"))
     run_bun("anim_check.js", "anim_check.js", judge_trailing_count("ラベルと動きが食い違う場面"))
     run_bun("variant_check.js", "variant_check.js", judge_variant_check)

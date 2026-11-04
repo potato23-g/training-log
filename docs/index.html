@@ -1135,10 +1135,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   /* 胸の前でダンベルの持ち手を両手で握る（ゴブレット持ち）。
      刀を持つように縦に重ねて握る（2026-10-26 本人の指摘）ので、左右ではなく上下にずらす */
+  /* ダンベルは胸の前で横にして、持ち手を両手で左右に並べて握る。持ち手は前腕と直角
+     （2026-11-04 本人の指摘「手とダンベルは横から見て直角に持つ」。両手を上下に重ねていたときは、持ち手が縦になり前腕と同じ向きだった） */
   const gobletHands = {
-    R: { at: { bone: 'spineC', local: [0.210, 0.075, 0] }, local: HAND.palm, pitch: 120, yaw: -25,
+    R: { at: { bone: 'spineC', local: [0.210, 0.06, 0.06] }, local: HAND.palm, pitch: 120, yaw: -25,
          pole: [0.05, -1, 0.14] },
-    L: { at: { bone: 'spineC', local: [0.210, 0.045, 0] }, local: HAND.palm, pitch: 120, yaw: 25,
+    L: { at: { bone: 'spineC', local: [0.210, 0.06, -0.06] }, local: HAND.palm, pitch: 120, yaw: 25,
          pole: [0.05, -1, -0.14] }
   };
 
@@ -5967,7 +5969,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-11-04 16:53";
+const BUILD_VERSION = "2026-11-04 17:50";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -9369,11 +9371,23 @@ function progressFor(item){
       }
     }
   }
-  /* 目標はいつも解説の回数の幅の中（B7）。目標を書いていない古い記録（1セット目の回数を目標とみなす）は
+  /* 回数を増やさない設定（step が 0）のときは、前回の最後のセットでやった回数をそのまま目標にする。
+     前回の目標を引き継ぐと、本人が回数を変えても同じ数字に戻される（2026-11-04 本人の指摘「回数は最新のものを
+     デフォルトに。変えない設定なのに固定の数字にされる」）。軽くした・やさしくした・やり方を移った回は従来どおり */
+  const fresh = !step && mine.length && !["lighter", "easier", "harder"].includes(res.change);
+  if(fresh){
+    const ls = mine[0].sets, lr = ls[ls.length - 1].r | 0;
+    if(lr > 0 && lr !== res.target){
+      res.target = lr;
+      res.why = res.change === "heavier" ? "前回は全部のセットで目標に届いたので、ダンベルを" + (res.steps === 2 ? "二段" : "一段") + "重くします。" + u + "数は前回の最後のセットと同じ" + lr + u + "です"
+              : "前回の最後のセットの" + lr + u + "を目標にします";
+    }
+  }
+  /* 目標はいつも解説の回数の幅の中（B7）。ただし回数を増やさない設定で前回の回数を引き継ぐときは、上限で切らない。目標を書いていない古い記録（1セット目の回数を目標とみなす）は
      幅の外のことがあるので、幅に収めてそう添える */
   /* 下限より少ない目標は、本人が下限まで上げる設定（rules.js の progLow）にしているときだけ上げる */
   const t0 = Math.round(res.target);
-  res.target = Math.max(1, Math.min(rr.hi, Math.max(progLow() === "lo" ? rr.lo : 1, t0)));
+  res.target = Math.max(1, Math.min(fresh ? Infinity : rr.hi, Math.max(progLow() === "lo" ? rr.lo : 1, t0)));
   if(res.target !== t0) res.why += "。解説にある" + u + "数の範囲（" + rr.lo + "〜" + rr.hi + u + "）に合わせて" + res.target + u + "にします";
   if(res.opt) res.w = res.opt.total;
   return (progMemo.items[key] = res);
@@ -10634,10 +10648,11 @@ function addSet(id, keep){
 
   const doneNow = e.sets.length >= setsOf(item);
   if(doneNow && openEx === id){ openEx = null; editEx = null; }
-  let label;
+  let label, dayDone = false;
   if(doneNow){
     const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < setsOf(it); });
     label = nx ? "次: " + itemName(nx) : "今日のメニュー完了";
+    dayDone = !nx;
   }else{
     label = itemName(item) + "  " + sugText(item, suggestNext(item, e));
   }
@@ -10649,7 +10664,8 @@ function addSet(id, keep){
   render();
   const btn1 = y0 === null ? null : document.querySelector(sel);
   if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
-  startRest(restFor(item), label);
+  /* その日の最後のセットのあとは休憩が要らないので、タイマーも合図の音も出さない（2026-11-04 本人の要望） */
+  if(dayDone) stopRest(); else startRest(restFor(item), label);
   /* 休憩の帯（画面の下に出る）が「記録」ボタンに重なるときは、ボタンが帯のすぐ上に見えるところまで画面を送る
      （重なったままだと、次に押したときに帯のボタンを押してしまう） */
   const bar = document.getElementById("timer"), btn2 = document.querySelector(sel);

@@ -258,11 +258,23 @@ function progressFor(item){
       }
     }
   }
-  /* 目標はいつも解説の回数の幅の中（B7）。目標を書いていない古い記録（1セット目の回数を目標とみなす）は
+  /* 回数を増やさない設定（step が 0）のときは、前回の最後のセットでやった回数をそのまま目標にする。
+     前回の目標を引き継ぐと、本人が回数を変えても同じ数字に戻される（2026-11-04 本人の指摘「回数は最新のものを
+     デフォルトに。変えない設定なのに固定の数字にされる」）。軽くした・やさしくした・やり方を移った回は従来どおり */
+  const fresh = !step && mine.length && !["lighter", "easier", "harder"].includes(res.change);
+  if(fresh){
+    const ls = mine[0].sets, lr = ls[ls.length - 1].r | 0;
+    if(lr > 0 && lr !== res.target){
+      res.target = lr;
+      res.why = res.change === "heavier" ? "前回は全部のセットで目標に届いたので、ダンベルを" + (res.steps === 2 ? "二段" : "一段") + "重くします。" + u + "数は前回の最後のセットと同じ" + lr + u + "です"
+              : "前回の最後のセットの" + lr + u + "を目標にします";
+    }
+  }
+  /* 目標はいつも解説の回数の幅の中（B7）。ただし回数を増やさない設定で前回の回数を引き継ぐときは、上限で切らない。目標を書いていない古い記録（1セット目の回数を目標とみなす）は
      幅の外のことがあるので、幅に収めてそう添える */
   /* 下限より少ない目標は、本人が下限まで上げる設定（rules.js の progLow）にしているときだけ上げる */
   const t0 = Math.round(res.target);
-  res.target = Math.max(1, Math.min(rr.hi, Math.max(progLow() === "lo" ? rr.lo : 1, t0)));
+  res.target = Math.max(1, Math.min(fresh ? Infinity : rr.hi, Math.max(progLow() === "lo" ? rr.lo : 1, t0)));
   if(res.target !== t0) res.why += "。解説にある" + u + "数の範囲（" + rr.lo + "〜" + rr.hi + u + "）に合わせて" + res.target + u + "にします";
   if(res.opt) res.w = res.opt.total;
   return (progMemo.items[key] = res);

@@ -129,19 +129,28 @@ const clasp = (sg, g, c) => ({
 // free が返す { pos: ダンベルの中心, axis: 持ち手の向き（＋が左手の側）, g: 指の向き, pn: 手のひらから持ち手へ向かう向き, w: 中心から握る所まで }。
 // 手首は、握る所から指の向きと手のひらの向きへ戻した所（チンニングと同じ）
 const GRIP_W = 0.4;
-const gripAt = (sg, f, c) => ({
-  pos: f.pos.clone().addScaledVector(f.axis, sg * (f.w || GRIP_W)).addScaledVector(f.g, -c.m.armL.hand * 0.92).addScaledVector(f.pn, -0.27),
-  pole: f.pole(sg), g: f.g, bar: f.g.clone().cross(f.pn).multiplyScalar(-sg), hand: 'grip',
-});
+const gripAt = (sg, f, c) => {
+  // 刀持ち（swordGrip）は、左手は手のひらを右へ、右手は左へ向けて持ち手をはさむ
+  const pn = f.side ? f.side.clone().multiplyScalar(f.side.dot(c.c(1, 0, 0)) > 0 ? -sg : sg) : f.pn;
+  return {
+    pos: f.pos.clone().addScaledVector(f.axis, sg * (f.w || GRIP_W)).addScaledVector(f.g, -c.m.armL.hand * 0.92).addScaledVector(pn, -0.27),
+    pole: f.pole(sg), g: f.g, bar: f.g.clone().cross(pn).multiplyScalar(-sg), hand: 'grip',
+  };
+};
 const gripBoth = { handL: c => gripAt(1, c.free, c), handR: c => gripAt(-1, c.free, c) };
 // 手首の中心 W から、握る向き（指 g・手のひら pn）に合わせてダンベルの中心を決める
 const fromWrist = (W, g, pn, c) => W.clone().addScaledVector(g, c.m.armL.hand * 0.92).addScaledVector(pn, 0.27);
-// 両手の並ぶ向き（axis）を、指の向き（g）と同じ向きに重ねる＝刀を持つように縦に並べて握る
-// （2026-10-26 本人の指摘「両手で持つ種目は刀を持つような方向で握る」。g・pn は自然な腕の構えのまま変えない）
-const swordGrip = f => ({ ...f, axis: f.g });
-// ダンベルを横にして胸の前で持つ。持ち手を両手で下から握り、手のひらは胸へ向ける
+// 刀を持つように、両手を持ち手に沿って並べて握る（2026-10-26 本人の指摘「両手で持つ種目は刀を持つような方向で握る」）。
+// 持ち手は前腕と直角に通す（2026-11-04 本人の指摘「手とダンベルは横から見て直角に持つ。トライセプスが同じ向きで持っていておかしい」。
+// 以前は持ち手を指の向き g に重ねていて、前腕とダンベルが一直線に見えた）。
+// 呼ぶ側は g（指）と pn（体の前後・上下の面の中で g と直角）を腕の構えのまま渡す。持ち手はその pn の向きに通し、
+// 手のひらは左右から持ち手をはさむように向き合う（棒を両手で握る形。gripAt の side）。手首の間の中心が呼ぶ側の決めた位置に来る
+// 体の上に載せたダンベル（腰・太もも）は横に寝かせ、持ち手を両手で左右に並べて握る。持ち手は指と手のひらの両方に直角（左右）
+const crossGrip = f => ({ ...f, axis: f.g.clone().cross(f.pn).normalize() });
+const swordGrip = f => ({ ...f, axis: f.pn.clone(), side: f.g.clone().cross(f.pn).normalize(), pos: f.pos.clone().addScaledVector(f.pn, -0.27) });
+// ダンベルを胸の前で縦に立て、持ち手を両手で上下に並べて握る。前腕は前へ倒し、持ち手と直角にする
 const gobletHold = () => ({
-  free: c => swordGrip({ pos: mid(c.shL, c.shR).add(c.c(0, -1.25, 2.25)), g: c.c(0, 0.95, 0.3).normalize(), pn: c.c(0, 0.3, -0.95).normalize(),
+  free: c => swordGrip({ pos: mid(c.shL, c.shR).add(c.c(0, -1.25, 2.25)), g: c.c(0, 0.45, 0.9).normalize(), pn: c.c(0, 0.9, -0.45).normalize(),
                 pole: sg => c.c(sg * 0.25, -1, 0) }),
   ...gripBoth,
 });
@@ -233,7 +242,7 @@ export const EXLIB = {
         baseQ: Qx(-90 + b), head: [lerp(32, 14, u), 0, 0],
         pin: c => V(0, 5.42, ze).sub(mid(c.shL, c.shR).add(c.w(0, -1.0, -0.96))),
         footL: foot(1), footR: foot(-1),
-        free: c => swordGrip({ pos: c.hips.clone().add(c.p(0, 0.1, 1.32)), g: c.p(0, -1, 0), pn: c.p(0, 0, -1), pole: sg => c.c(sg, 0, -0.5) }),
+        free: c => crossGrip({ pos: c.hips.clone().add(c.p(0, 0.1, 1.32)), g: c.p(0, -1, 0), pn: c.p(0, 0, -1), pole: sg => c.c(sg, 0, -0.5) }),
         ...gripBoth,
       };
     },
@@ -587,7 +596,7 @@ export const EXLIB = {
       return {
         pelvis: [6, 0, 0], chest: [16, 0, 0], head: [-4, 0, 0], pin: pinHip(m.legL.ankleH + m.legL.L2 + 0.05, 0), footL: f(1), footR: f(-1),
         // ダンベルを横にして、両端のプレートを左右の太ももに乗せる。持ち手を上から両手で握って押さえる
-        free: c => swordGrip({ pos: mid(c.kneeL, c.kneeR).add(V(0, 0.62 + 0.64, -1.0)), g: V(0, 0, 1), pn: V(0, -1, 0), pole: sg => V(sg * 0.8, -0.3, -0.6) }),
+        free: c => crossGrip({ pos: mid(c.kneeL, c.kneeR).add(V(0, 0.62 + 0.64, -1.0)), g: V(0, 0, 1), pn: V(0, -1, 0), pole: sg => V(sg * 0.8, -0.3, -0.6) }),
         ...gripBoth,
       };
     },
@@ -651,10 +660,10 @@ export const EXLIB = {
       const G = c => ({ top: mid(c.shL, c.shR).add(c.c(s * 0.6 * u, -1.3 - 1.3 * u, 3.1 - 0.3 * u)), X: c.c(1, 0, 0), F: c.c(0, -0.25, 0.97), h: 0.14, hand: 'flat',
                         pole: sg => c.c(sg * 0.7, -0.7, -0.2) });
       const body = { pelvis: [-28, 0, 0], chest: Qx(-32).multiply(Qy(yaw)), head: [8, -yaw * 0.35, 0], pin: pinHip(1.2, 0), footL: foot(1), footR: foot(-1) };
-      // db: ダンベルを縦にして、上のプレートを両手ではさむ。太ももに当たらないよう、手だけのときより少し上で持つ
+      // db: ダンベルを縦にして、持ち手を両手で上下に並べて握る。太ももに当たらないよう、手だけのときより少し上で持つ
       if (v.db) return { ...body, free: c => swordGrip({
         pos: G(c).top.clone().add(c.c(0, v.ty != null ? v.ty : 1.0, v.tz != null ? v.tz : -0.6)),
-        g: c.c(0, 0.95, 0.3).normalize(), pn: c.c(0, 0.3, -0.95).normalize(), pole: sg => c.c(sg * 0.5, -1, 0), w: 0.18 }), ...gripBoth };
+        g: c.c(0, 0.45, 0.9).normalize(), pn: c.c(0, 0.9, -0.45).normalize(), pole: sg => c.c(sg * 0.5, -1, 0), w: 0.18 }), ...gripBoth };
       return { ...body, handL: c => clasp(1, G(c), c), handR: c => clasp(-1, G(c), c) };
     },
   },

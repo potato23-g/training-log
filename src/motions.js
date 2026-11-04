@@ -18,10 +18,12 @@
 
   /* 胸の前でダンベルの持ち手を両手で握る（ゴブレット持ち）。
      刀を持つように縦に重ねて握る（2026-10-26 本人の指摘）ので、左右ではなく上下にずらす */
+  /* ダンベルは胸の前で横にして、持ち手を両手で左右に並べて握る。持ち手は前腕と直角
+     （2026-11-04 本人の指摘「手とダンベルは横から見て直角に持つ」。両手を上下に重ねていたときは、持ち手が縦になり前腕と同じ向きだった） */
   const gobletHands = {
-    R: { at: { bone: 'spineC', local: [0.210, 0.075, 0] }, local: HAND.palm, pitch: 120, yaw: -25,
+    R: { at: { bone: 'spineC', local: [0.210, 0.06, 0.06] }, local: HAND.palm, pitch: 120, yaw: -25,
          pole: [0.05, -1, 0.14] },
-    L: { at: { bone: 'spineC', local: [0.210, 0.045, 0] }, local: HAND.palm, pitch: 120, yaw: 25,
+    L: { at: { bone: 'spineC', local: [0.210, 0.06, -0.06] }, local: HAND.palm, pitch: 120, yaw: 25,
          pole: [0.05, -1, -0.14] }
   };
 

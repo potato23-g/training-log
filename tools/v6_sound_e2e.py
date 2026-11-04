@@ -260,6 +260,19 @@ def main():
         time.sleep(REST + 1.6)
         m = measure(ev("window.__rec"), end)
         ok(m["on"] is not None and abs(m["on"]) <= 0.3 and m["peak"] >= 0.35, "更新のあとも、休憩の終わりに合図が鳴る（終わりから %s 秒）" % m["on"])
+        # 8 その日の最後のセットのあとは、休憩のタイマーも合図も出さない（2026-11-04 本人の要望）
+        ev(SETUP)
+        n = ev('setsOf(catalogItem("curl"))')
+        for k in range(n):
+            x, y = ev(BTN)
+            press(cdp, x, y, after=0.5)
+            if k == n - 2:
+                ok(ev('document.getElementById("timer").classList.contains("on") && chimeAt !== null'), "最後の1つ前のセットのあとは、休憩と合図がある")
+        s7 = ev('({sets: (entryFor(TODAY, "curl", false) || {sets: []}).sets.length, on: document.getElementById("timer").classList.contains("on"), '
+                'iv: !!restIv, chime: chimeAt})')
+        ok(s7["sets"] == n and not s7["on"] and not s7["iv"] and s7["chime"] is None,
+           "その日の最後のセットのあとは、休憩のタイマーも合図も出ない: " + str(s7))
+
         ev("stopRest(); true")
         cdp.call("Page.reload")
         time.sleep(2.0)

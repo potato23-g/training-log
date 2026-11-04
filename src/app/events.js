@@ -208,10 +208,11 @@ function addSet(id, keep){
 
   const doneNow = e.sets.length >= setsOf(item);
   if(doneNow && openEx === id){ openEx = null; editEx = null; }
-  let label;
+  let label, dayDone = false;
   if(doneNow){
     const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < setsOf(it); });
     label = nx ? "次: " + itemName(nx) : "今日のメニュー完了";
+    dayDone = !nx;
   }else{
     label = itemName(item) + "  " + sugText(item, suggestNext(item, e));
   }
@@ -223,7 +224,8 @@ function addSet(id, keep){
   render();
   const btn1 = y0 === null ? null : document.querySelector(sel);
   if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
-  startRest(restFor(item), label);
+  /* その日の最後のセットのあとは休憩が要らないので、タイマーも合図の音も出さない（2026-11-04 本人の要望） */
+  if(dayDone) stopRest(); else startRest(restFor(item), label);
   /* 休憩の帯（画面の下に出る）が「記録」ボタンに重なるときは、ボタンが帯のすぐ上に見えるところまで画面を送る
      （重なったままだと、次に押したときに帯のボタンを押してしまう） */
   const bar = document.getElementById("timer"), btn2 = document.querySelector(sel);
