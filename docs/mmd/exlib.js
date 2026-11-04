@@ -518,12 +518,12 @@ export const EXLIB = {
     name: 'ダンベルフライ', cam: { alt: 12 }, props: { bench: [0, 2.7, -3.6, 0] }, bedY: BENCH_H, tempo: [1.9, 0.4, 1.5, 0.5],
     pose: (u, k, m) => {
       const L1 = m.armL.L1, L2 = m.armL.L2;
-      // 肘の曲がりは引き切った上（u=0・閉じて絞る位置）だけ直角。開いて伸ばす側（u=1）ほど肘を伸ばす
-      // （2026-10-26 本人の指摘「肘が直角というのは常にという意味ではない」）
-      const eb = lerp(90, 25, u) * D;
-      // 上の位置: 手首が体の中心から 1.05 離れる角度（それより閉じると、左右のダンベルがぶつかる）
+      // 肘は胸の上で閉じたところ（u=0）でほぼ伸ばし、腕を開いて下ろす（引く）につれて曲げ、開ききったところ（u=1）で直角
+      // （2026-11-04 本人の指摘「腕を引く時は直角になるまで」。閉じたところで直角にすると前腕が内に向き、ダンベル同士がぶつかっていた）
+      const EB0 = 15 * D, eb = lerp(15, 90, u) * D;
+      // 上の位置: 手首が体の中心から 1.2 離れる角度（重りの半径 0.64 に少し隙間を足した。それより閉じると左右のダンベルがぶつかる）。上での肘の曲がり EB0 で解く
       const top = c => { const sx = Math.abs(c.shL.x - c.shR.x) / 2; let lo = 0, hi = Math.PI / 2;
-        for (let i = 0; i < 24; i++){ const a = (lo + hi) / 2; if (sx + L1 * Math.sin(a) - L2 * Math.cos(a) < 1.05) lo = a; else hi = a; } return lo; };
+        for (let i = 0; i < 24; i++){ const a = (lo + hi) / 2; if (sx + L1 * Math.sin(a) + L2 * Math.sin(a - EB0) < 1.2) lo = a; else hi = a; } return lo; };
       const hand = sg => c => {
         const ph = lerp(top(c), 97 * D, u), d = (a, z) => V(sg * Math.sin(a), Math.cos(a), z * Math.sin(a));
         return { ...armFK(c, sg, d(ph, 0.2), d(ph - eb, 0.2), V(sg * 0.3, -1, 0.2)), bar: V(0, 0, -1), db: true };

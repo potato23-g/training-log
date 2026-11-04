@@ -116,3 +116,7 @@ table.hist td{padding:9px 6px}
 .exrow.dragging{z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.18);transition:none}
 .exrow.dragging .grip{cursor:grabbing}
 .exrow.shift{transition:transform .15s ease}
+.kits .kitrow{display:flex;gap:8px;align-items:stretch;margin:8px 0}
+.kits .kitgo{flex:1;text-align:left;min-height:52px;padding:8px 12px;font-weight:600}
+.kits .kitgo span{display:block;font-weight:400;font-size:12px;color:var(--ink-2);margin-top:2px}
+.kits .kitedit{flex:none;min-width:64px}

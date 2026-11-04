@@ -113,6 +113,20 @@ function sanitizeState(obj){
       if(pg.low === "lo") g2.low = pg.low;
       if(pg.drop === "easier" || pg.drop === "none") g2.drop = pg.drop;
       tn.prog = stamp(pg, g2); }
+    /* 種目セット（kits.js）。名前は20文字・セットは20個・種目は1つに15まで */
+    var kt = part("kits");
+    if(kt){ var kl = [];
+      (Array.isArray(kt.list) ? kt.list : []).slice(0, 20).forEach(function(k){
+        if(!k || typeof k !== "object" || typeof k.id !== "string" || !/^[a-z0-9]{1,24}$/.test(k.id) || typeof k.name !== "string") return;
+        var name = k.name.trim().slice(0, 20); if(!name || kl.some(function(x){ return x.id === k.id; })) return;
+        var items = [];
+        (Array.isArray(k.items) ? k.items : []).slice(0, 15).forEach(function(it){
+          if(!it || !exok(it.ex) || items.some(function(x){ return x.ex === it.ex; })) return;
+          items.push({ ex: it.ex, label: typeof it.label === "string" ? it.label.slice(0, 40) : "" });
+        });
+        kl.push({ id: k.id, name: name, items: items });
+      });
+      tn.kits = stamp(kt, { list: kl }); }
     if(Object.keys(tn).length) out.tune = tn;
   }
   if(Array.isArray(src.program)) out.program = src.program.filter(exok);

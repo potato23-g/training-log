@@ -116,16 +116,17 @@
       phases: [{ t: 0, label: '閉じる 1秒' }, { t: 1.0, label: '胸の上で止める' },
                { t: 1.6, label: '開く 3秒' }]
     },
-    /* 肘は直角のまま、上腕を横に開いて閉じる（2026-10-25 本人の指摘「肘が直角になるように曲げる」。前は25度）。
-       上腕は肩の高さで前へ上げてから横へ倒す（abd が開き具合）。開いたところで上腕は床、前腕は真上。
-       閉じたところで、左右のダンベルが胸の上で触れる手前（手首の間 0.25m） */
+    /* 肘は、胸の上で閉じたところでほぼ伸ばし（15度）、腕を開いて下ろしていくにつれて曲げ、
+       開ききったところで直角にする（2026-11-04 本人の指摘「腕を引く時は直角になるまで」。
+       閉じたところで直角にすると前腕が内に向いて、左右のダンベルがぶつかっていた）。
+       上腕は肩の高さで前へ上げてから横へ倒す（abd が開き具合）。開いたところで上腕は床、前腕は真上 */
     times: { 2.6: 1.6, 4: 4.6 },
     keys: { 0: { 'upperarmR.flex': 90, 'upperarmR.abd': 88, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 88, 'upperarmL.rot': 90,
                  'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
-            1: { 'upperarmR.flex': 90, 'upperarmR.abd': 32, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 32, 'upperarmL.rot': 90,
-                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
-            1.6: { 'upperarmR.flex': 90, 'upperarmR.abd': 32, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 32, 'upperarmL.rot': 90,
-                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            1: { 'upperarmR.flex': 90, 'upperarmR.abd': -2, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': -2, 'upperarmL.rot': 90,
+                 'forearmR.flex': 15, 'forearmL.flex': 15, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            1.6: { 'upperarmR.flex': 90, 'upperarmR.abd': -2, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': -2, 'upperarmL.rot': 90,
+                 'forearmR.flex': 15, 'forearmL.flex': 15, 'forearmR.rot': 0, 'forearmL.rot': 0 },
             4.6: { 'upperarmR.flex': 90, 'upperarmR.abd': 88, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 88, 'upperarmL.rot': 90,
                  'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 } }
   });

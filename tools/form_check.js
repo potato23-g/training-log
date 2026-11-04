@@ -400,15 +400,17 @@ const CHECKS = {
   },
   fly: (m) => {
     const T = M.cycleTime(m);
-    let minE = 999, maxE = -999, openY = 999, closeGap = 999;
+    let openY = 999, closeGap = 999, eOpen = 0, eClose = 0;
     for (let i = 0; i <= 60; i++) {
       const fr = at(m, T * i / 60), e = M.boneAngles(fr.pose, 'forearmR').flex;
-      minE = Math.min(minE, e); maxE = Math.max(maxE, e);
-      openY = Math.min(openY, fr.b.forearmR.pos[1]);
-      closeGap = Math.min(closeGap, Math.abs(fr.b.handR.pos[2] - fr.b.handL.pos[2]));
+      const y = fr.b.forearmR.pos[1], g = Math.abs(fr.b.handR.pos[2] - fr.b.handL.pos[2]);
+      if (y < openY) { openY = y; eOpen = e; }
+      if (g < closeGap) { closeGap = g; eClose = e; }
     }
     return [
-      ['肘の角度は固定したまま（伸ばしきらない）', `肘屈曲 ${minE.toFixed(0)}〜${maxE.toFixed(0)}°`, maxE - minE < 12 && minE > 12],
+      /* 2026-11-04 本人の指摘「腕を引く時は直角になるまで」: 胸の上で閉じたところはほぼ伸ばし、開ききったところで直角 */
+      ['閉じたところで肘はほぼ伸ばす（伸ばしきらない）', `閉じたときの肘屈曲 ${eClose.toFixed(0)}°`, eClose > 8 && eClose < 30],
+      ['開ききったところで肘は直角', `開いたときの肘屈曲 ${eOpen.toFixed(0)}°`, eOpen > 75 && eOpen < 105],
       ['上腕が床につくまで開く', `開いたときの肘の高さ ${(openY * 100).toFixed(0)}cm`, openY < 0.22],
       ['閉じたとき両手が胸の上で近づく', `両手の間隔 ${(closeGap * 100).toFixed(0)}cm`, closeGap < 0.30]
     ];

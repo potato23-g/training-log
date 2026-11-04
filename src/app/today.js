@@ -52,10 +52,10 @@ function dayProgress(items){
 /* 「次の種目」のカードの「この内容で記録」。種目のカードを開いてから、そのカードの「記録」と同じ処理（addSet）で入れる。
    押した直後はカードが開いて行の位置が変わるので、同じ場所を続けて押しても種目の見出し（開け閉め）が反応しないようにする */
 let heroRecAt = 0;
+/* 「次の種目」のカードから、そのまま1セット記録する。下の種目のカードは開かず、画面も動かさない
+   （以前は下のカードを開いてそこへ移っていた。2026-11-04 本人の指摘「一回入力すると閉じてその種目に移動しちゃう」） */
 ACTIONS.herorec = el => {
-  openEx = el.dataset.ex; editEx = null;
-  render();
-  addSet(el.dataset.ex);
+  addSet(el.dataset.ex, '[data-act="herorec"]');
   heroRecAt = Date.now();
 };
 function viewToday(){
@@ -114,7 +114,7 @@ function viewToday(){
           <button data-act="step" data-t="r" data-ex="${id}" data-d="1" aria-label="増やす">＋</button>
         </div></div>
       </div>`;
-    /* このカードからそのまま記録できる（2026-10-11 本人の要望。押すと下の種目のカードが開き、この目標で1セット入る） */
+    /* このカードからそのまま記録できる（2026-10-11 本人の要望。この目標で1セット入る） */
     hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${esc(itemName(next))}</h2>${inner}
       <div class="herorec"><button class="addbtn" data-act="herorec" data-ex="${next.ex}">この内容で記録</button></div>
@@ -141,7 +141,7 @@ function viewToday(){
   /* 反対の部位どうしで隣に並んだ種目（rules.js の menuPairs）。両方終わった組は出さない */
   const pairLine = menuPairs(items).filter(p => !p.every(it => isDoneToday(it.ex)))
     .map(p => `<p class="skipped">${esc(itemName(p[0]))}と${esc(itemName(p[1]))}: 反対の部位を使う種目です。1セットずつ交互に行えます。</p>`).join("");
-  return storeBanners() + menuNote + deloadAsk + dayProgress(items) + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + dailyPickCard() + `
+  return storeBanners() + menuNote + deloadAsk + dayProgress(items) + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + kitCard() + dailyPickCard() + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
@@ -195,13 +195,14 @@ function startDrag(e, row){
   const place = () => {
     const y = lastY + window.scrollY, dy = y - y0;
     row.style.transform = `translateY(${dy}px)`;
-    const mid = mids[from] + dy;
+    /* 行き先は指の位置で決める。動かすカードの中心で決めていたときは、開いて縦に長くなったカードを
+       ずっと下まで引かないと入れ替わらなかった（2026-11-04 本人の指摘「種目を開いていると順番を移動させられない」） */
     to = from;
     for(let i = 0; i < rows.length; i++){
-      if(i < from && mid < mids[i]){ to = i; break; }
+      if(i < from && y < mids[i]){ to = i; break; }
     }
     for(let i = rows.length - 1; i > from; i--){
-      if(mid > mids[i]){ to = i; break; }
+      if(y > mids[i]){ to = i; break; }
     }
     rows.forEach((r, i) => {
       if(r === row) return;

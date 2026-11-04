@@ -56,7 +56,7 @@ setTimeout(() => {
     btn.click();
     const e = entryFor(TODAY, ex, false);
     need(!!e && e.sets.length === before + 1, "「この内容で記録」で1セット入らない");
-    need(openEx === ex, "「この内容で記録」のあと、その種目のカードが開いていない");
+    need(openEx === null, "「この内容で記録」のあと、下の種目のカードが開いた（2026-11-04 からは開かない）");
     const sug = suggestNext(items.find(it => it.ex === ex), null);
     need(!!e && e.sets[0].r === sug.target, "入った回数が、表示した目標と違う");
     /* 残りのセットは記録へじかに足す（addSet は、同じ値を続けて押したときの二重の記録を防ぐので、続けては呼べない） */

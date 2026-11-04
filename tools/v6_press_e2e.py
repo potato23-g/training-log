@@ -197,8 +197,8 @@ def main():
         else:
             ok(False, "設定タブにリポジトリの入力欄が無い（検査の前提が崩れた）")
 
-        # 8 「次の種目」のカードの「この内容で記録」（2026-10-11）。本物の押下で1セット入り、カードが開く。
-        #   同じ場所をすぐもう一度押しても、下から上がってきた種目の見出しが反応してカードが閉じない
+        # 8 「次の種目」のカードの「この内容で記録」（2026-10-11）。本物の押下で1セット入る。下の種目のカードは開かず、
+        #   ボタンは同じ場所に残る。続けてもう一度押すと2セット目が入る（2026-11-04 本人の指摘「一回入力すると閉じてその種目に移動しちゃう」）
         ev(SETUP)
         ev('openEx = null; render(); window.scrollTo(0, 0); true')
         HERO = """(() => { const b = document.querySelector('[data-act="herorec"]'); if(!b) return null;
@@ -207,9 +207,12 @@ def main():
         ok(pos is not None, "カードを開いていないとき、「次の種目」に記録ボタンがある")
         if pos:
             press(cdp, pos[0], pos[1])
-            ok(ev(SETS) == 1 and ev("openEx") == "curl", "「この内容で記録」を押すと1セット入り、その種目のカードが開く: " + str(ev(SETS)))
+            pos2 = ev(HERO)
+            ok(ev(SETS) == 1 and ev("openEx") is None and pos2 is not None and abs(pos2[1] - pos[1]) <= 2,
+               "「この内容で記録」を押すと1セット入り、カードは開かず、ボタンは同じ場所に残る: %s セット・開いた種目 %s" % (ev(SETS), ev("openEx")))
+            time.sleep(0.5)
             press(cdp, pos[0], pos[1], after=0.3)
-            ok(ev("openEx") == "curl" and ev(SETS) <= 2, "同じ場所をすぐもう一度押しても、カードが閉じない")
+            ok(ev(SETS) == 2 and ev("openEx") is None, "続けて同じ場所を押すと2セット目が入る: " + str(ev(SETS)))
 
         try:
             cdp.call("Browser.close")

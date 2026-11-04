@@ -442,6 +442,10 @@ table.hist td{padding:9px 6px}
 .exrow.dragging{z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.18);transition:none}
 .exrow.dragging .grip{cursor:grabbing}
 .exrow.shift{transition:transform .15s ease}
+.kits .kitrow{display:flex;gap:8px;align-items:stretch;margin:8px 0}
+.kits .kitgo{flex:1;text-align:left;min-height:52px;padding:8px 12px;font-weight:600}
+.kits .kitgo span{display:block;font-weight:400;font-size:12px;color:var(--ink-2);margin-top:2px}
+.kits .kitedit{flex:none;min-width:64px}
 </style>
 </head>
 <body>
@@ -1936,16 +1940,17 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       phases: [{ t: 0, label: '閉じる 1秒' }, { t: 1.0, label: '胸の上で止める' },
                { t: 1.6, label: '開く 3秒' }]
     },
-    /* 肘は直角のまま、上腕を横に開いて閉じる（2026-10-25 本人の指摘「肘が直角になるように曲げる」。前は25度）。
-       上腕は肩の高さで前へ上げてから横へ倒す（abd が開き具合）。開いたところで上腕は床、前腕は真上。
-       閉じたところで、左右のダンベルが胸の上で触れる手前（手首の間 0.25m） */
+    /* 肘は、胸の上で閉じたところでほぼ伸ばし（15度）、腕を開いて下ろしていくにつれて曲げ、
+       開ききったところで直角にする（2026-11-04 本人の指摘「腕を引く時は直角になるまで」。
+       閉じたところで直角にすると前腕が内に向いて、左右のダンベルがぶつかっていた）。
+       上腕は肩の高さで前へ上げてから横へ倒す（abd が開き具合）。開いたところで上腕は床、前腕は真上 */
     times: { 2.6: 1.6, 4: 4.6 },
     keys: { 0: { 'upperarmR.flex': 90, 'upperarmR.abd': 88, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 88, 'upperarmL.rot': 90,
                  'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
-            1: { 'upperarmR.flex': 90, 'upperarmR.abd': 32, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 32, 'upperarmL.rot': 90,
-                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
-            1.6: { 'upperarmR.flex': 90, 'upperarmR.abd': 32, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 32, 'upperarmL.rot': 90,
-                 'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            1: { 'upperarmR.flex': 90, 'upperarmR.abd': -2, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': -2, 'upperarmL.rot': 90,
+                 'forearmR.flex': 15, 'forearmL.flex': 15, 'forearmR.rot': 0, 'forearmL.rot': 0 },
+            1.6: { 'upperarmR.flex': 90, 'upperarmR.abd': -2, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': -2, 'upperarmL.rot': 90,
+                 'forearmR.flex': 15, 'forearmL.flex': 15, 'forearmR.rot': 0, 'forearmL.rot': 0 },
             4.6: { 'upperarmR.flex': 90, 'upperarmR.abd': 88, 'upperarmR.rot': 90, 'upperarmL.flex': 90, 'upperarmL.abd': 88, 'upperarmL.rot': 90,
                  'forearmR.flex': 90, 'forearmL.flex': 90, 'forearmR.rot': 0, 'forearmL.rot': 0 } }
   });
@@ -4546,6 +4551,20 @@ function sanitizeState(obj){
       if(pg.low === "lo") g2.low = pg.low;
       if(pg.drop === "easier" || pg.drop === "none") g2.drop = pg.drop;
       tn.prog = stamp(pg, g2); }
+    /* 種目セット（kits.js）。名前は20文字・セットは20個・種目は1つに15まで */
+    var kt = part("kits");
+    if(kt){ var kl = [];
+      (Array.isArray(kt.list) ? kt.list : []).slice(0, 20).forEach(function(k){
+        if(!k || typeof k !== "object" || typeof k.id !== "string" || !/^[a-z0-9]{1,24}$/.test(k.id) || typeof k.name !== "string") return;
+        var name = k.name.trim().slice(0, 20); if(!name || kl.some(function(x){ return x.id === k.id; })) return;
+        var items = [];
+        (Array.isArray(k.items) ? k.items : []).slice(0, 15).forEach(function(it){
+          if(!it || !exok(it.ex) || items.some(function(x){ return x.ex === it.ex; })) return;
+          items.push({ ex: it.ex, label: typeof it.label === "string" ? it.label.slice(0, 40) : "" });
+        });
+        kl.push({ id: k.id, name: name, items: items });
+      });
+      tn.kits = stamp(kt, { list: kl }); }
     if(Object.keys(tn).length) out.tune = tn;
   }
   if(Array.isArray(src.program)) out.program = src.program.filter(exok);
@@ -5229,11 +5248,11 @@ function syncMergeGear(a, b){
   return (stableKey(b) || "") > (stableKey(a) || "") ? b : a;
 }
 
-/* 本人が変えた決まり（rules.js の state.tune）は、まとまり（pref・pair・gap・prog・sets）ごとに gear と同じ決め方。
+/* 本人が変えた決まり（rules.js の state.tune）は、まとまり（pref・pair・gap・prog・sets・order・kits）ごとに gear と同じ決め方。
    片方の端末で回復の日数を、もう片方で種目の出やすさを変えても、両方残る。どちらにも無ければ undefined */
 function syncMergeTune(a, b){
   var out = {}, any = false;
-  ["pref", "pair", "gap", "prog", "sets", "order"].forEach(function(k){
+  ["pref", "pair", "gap", "prog", "sets", "order", "kits"].forEach(function(k){
     var m = syncMergeGear(a && a[k], b && b[k]);
     if(m){ out[k] = m; any = true; }
   });
@@ -5948,7 +5967,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-10-27 00:40";
+const BUILD_VERSION = "2026-11-04 16:53";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6828,9 +6847,20 @@ document.addEventListener("pointerdown", e => {
   if(t && t.closest && t.closest("input, select, textarea")) return;
   pressHeld = true; pressWatch(5000);          /* 離した合図が来なくても、5秒で見張りを解く */
 }, true);
-document.addEventListener("pointerup", () => { if(pressHeld) pressWatch(400); }, true);     /* click が来なければ 0.4 秒後に解く */
+/* 一回のタップで click が2回届くことがある（iPhone。「記録」でセットが2つ入る・＋−が2段進む: 2026-11-04 本人の指摘）。
+   指を離すたびに1回だけ click を通し、指を離していないのに来た2回目は捨てる。速く2回押したときは、それぞれ指を離しているので両方通る。
+   シートの選ぶボタン（入れる・外すの切り替え）も同じ。キーボードや el.click() の click（detail が 0）は見ない */
+let upSinceClick = false;
+document.addEventListener("pointerup", () => { upSinceClick = true; if(pressHeld) pressWatch(400); }, true);     /* click が来なければ 0.4 秒後に解く */
 document.addEventListener("pointercancel", () => { if(pressHeld) pressWatch(0); }, true);
-document.addEventListener("click", () => { pressHeld = false; pressWatch(0); }, true);      /* ボタンの処理より先に解く */
+document.addEventListener("click", e => {
+  const t = e.target, btn = t && t.closest && t.closest("button, summary");
+  if(btn && e.detail > 0){
+    if(!upSinceClick){ e.stopImmediatePropagation(); e.preventDefault(); return; }
+  }
+  upSinceClick = false;
+  pressHeld = false; pressWatch(0);                                                        /* ボタンの処理より先に解く */
+}, true);
 
 function render(){
   if(pressHeld){ renderWaiting = true; return; }
@@ -6887,7 +6917,7 @@ if(window.matchMedia){
    止まった姿は公開前に描いておいた画像（docs/mmd/stills/）、再生は「動きを再生」を押したときに初めて読むモデル。
    どちらかが読めなかったら、その回は画面のすべてを線の図に切り替える（1 枚の画面に両方を混ぜない） */
 const MMD_BASE = "./mmd/";       /* build.py が site のときだけ "./mmd/" を入れる。ほかの版では空 */
-const MMD_STILLS = {"abduct":"w","abduct_bent":"w","abduct_db":"w","adduct":"x","adduct_hold":"x","backext":"x","backext_arms":"x","backext_hold":"x","bridge":"w","bridge_low":"w","bridge_one":"w","calf":"t","calf_floor":"t","calfseat":"t","calfseat.1":"t","calfseat_single":"t","calfseat_single.1":"t","chinning":"t","chinning_hold":"t","chinning_neg":"t","crunch":"w","crunch_arms":"w","crunch_db":"w","curl":"t","curl.1":"t","curl_hold":"t","curl_hold.1":"t","curl_one":"t","deadbug":"x","deadbug_db":"x","deadbug_db.1":"x","deadbug_half":"x","deadlift":"t","deadlift.1":"t","deadlift_hold":"t","deadlift_hold.1":"t","farmer":"t","farmer.1":"t","farmer_one":"t","floorpress":"w","floorpress.1":"w","floorpress_hold":"w","floorpress_hold.1":"w","floorpress_one":"w","fly":"s","fly.1":"s","fly_hold":"s","fly_hold.1":"s","fly_shallow":"s","fly_shallow.1":"s","front":"t","front.1":"t","front_hold":"t","front_hold.1":"t","front_one":"t","goblet":"t","goblet_box":"t","goblet_hold":"t","hammer":"t","hammer.1":"t","hammer_hold":"t","hammer_hold.1":"t","hammer_one":"t","hipthrust":"t","lateral":"t","lateral.1":"t","lateral_hold":"t","lateral_hold.1":"t","lateral_short":"t","lateral_short.1":"t","ohp":"t","ohp.1":"t","ohp_one":"t","plank":"x","plank_leg":"x","pullover":"s","pullover_hold":"s","pullover_shallow":"s","pushup":"x","pushup_deep":"x","pushup_deep.1":"x","pushupknee":"x","pushupknee_hold":"x","rdl":"t","rdl.1":"t","rdl1":"t","rdl1.1":"t","rdl1_hold":"t","rdl1_hold.1":"t","rdl_hold":"t","rdl_hold.1":"t","rear":"s","rear.1":"s","rear_hold":"s","rear_hold.1":"s","rear_short":"t","rear_short.1":"t","row":"s","row2":"t","row2.1":"t","row2_hold":"t","row2_hold.1":"t","row_hold":"s","shrug":"t","shrug.1":"t","shrug_hold":"t","shrug_hold.1":"t","sidebend":"t","sidebend_hold":"t","sidelunge":"t","sidelunge_hold":"t","sidelunge_shallow":"t","sideplank":"x","sideplank_leg":"w","sissy":"t","sissy_hold":"t","sissy_shallow":"t","skull":"w","skull.1":"w","skull_hold":"w","skull_hold.1":"w","skull_one":"w","slidecurl":"x","slidecurl_one":"x","slidecurl_shallow":"x","split":"t","split.1":"t","split_hold":"t","split_hold.1":"t","splitfloor":"t","splitfloor.1":"t","splitfloor_hold":"t","splitfloor_hold.1":"t","sumo":"t","sumo_hold":"t","sumo_shallow":"t","triext":"t","triext_hold":"t","triext_one":"t","twist":"s","twist_db":"s","twist_shallow":"s"};     /* 画像がある動きの id → 枠の形（t 縦長・s 正方形・w 横長・x もっと横長）。build.py が入れる */
+const MMD_STILLS = {"abduct":"w","abduct_bent":"w","abduct_db":"w","adduct":"x","adduct_hold":"x","backext":"x","backext_arms":"x","backext_hold":"x","bridge":"w","bridge_low":"w","bridge_one":"w","calf":"t","calf_floor":"t","calfseat":"t","calfseat.1":"t","calfseat_single":"t","calfseat_single.1":"t","chinning":"t","chinning_hold":"t","chinning_neg":"t","crunch":"w","crunch_arms":"w","crunch_db":"w","curl":"t","curl.1":"t","curl_hold":"t","curl_hold.1":"t","curl_one":"t","deadbug":"x","deadbug_db":"x","deadbug_db.1":"x","deadbug_half":"x","deadlift":"t","deadlift.1":"t","deadlift_hold":"t","deadlift_hold.1":"t","farmer":"t","farmer.1":"t","farmer_one":"t","floorpress":"w","floorpress.1":"w","floorpress_hold":"w","floorpress_hold.1":"w","floorpress_one":"w","fly":"t","fly.1":"t","fly_hold":"t","fly_hold.1":"t","fly_shallow":"t","fly_shallow.1":"t","front":"t","front.1":"t","front_hold":"t","front_hold.1":"t","front_one":"t","goblet":"t","goblet_box":"t","goblet_hold":"t","hammer":"t","hammer.1":"t","hammer_hold":"t","hammer_hold.1":"t","hammer_one":"t","hipthrust":"t","lateral":"t","lateral.1":"t","lateral_hold":"t","lateral_hold.1":"t","lateral_short":"t","lateral_short.1":"t","ohp":"t","ohp.1":"t","ohp_one":"t","plank":"x","plank_leg":"x","pullover":"s","pullover_hold":"s","pullover_shallow":"s","pushup":"x","pushup_deep":"x","pushup_deep.1":"x","pushupknee":"x","pushupknee_hold":"x","rdl":"t","rdl.1":"t","rdl1":"t","rdl1.1":"t","rdl1_hold":"t","rdl1_hold.1":"t","rdl_hold":"t","rdl_hold.1":"t","rear":"s","rear.1":"s","rear_hold":"s","rear_hold.1":"s","rear_short":"t","rear_short.1":"t","row":"s","row2":"t","row2.1":"t","row2_hold":"t","row2_hold.1":"t","row_hold":"s","shrug":"t","shrug.1":"t","shrug_hold":"t","shrug_hold.1":"t","sidebend":"t","sidebend_hold":"t","sidelunge":"t","sidelunge_hold":"t","sidelunge_shallow":"t","sideplank":"x","sideplank_leg":"w","sissy":"t","sissy_hold":"t","sissy_shallow":"t","skull":"w","skull.1":"w","skull_hold":"w","skull_hold.1":"w","skull_one":"w","slidecurl":"x","slidecurl_one":"x","slidecurl_shallow":"x","split":"t","split.1":"t","split_hold":"t","split_hold.1":"t","splitfloor":"t","splitfloor.1":"t","splitfloor_hold":"t","splitfloor_hold.1":"t","sumo":"t","sumo_hold":"t","sumo_shallow":"t","triext":"t","triext_hold":"t","triext_one":"t","twist":"s","twist_db":"s","twist_shallow":"s"};     /* 画像がある動きの id → 枠の形（t 縦長・s 正方形・w 横長・x もっと横長）。build.py が入れる */
 const MMD_SHAPES = {t: [720, 960], s: [840, 840], w: [960, 660], x: [960, 500]};
 let MMD = null, mmdLoading = null, mmdOff = false;
 
@@ -8366,10 +8396,10 @@ function dayProgress(items){
 /* 「次の種目」のカードの「この内容で記録」。種目のカードを開いてから、そのカードの「記録」と同じ処理（addSet）で入れる。
    押した直後はカードが開いて行の位置が変わるので、同じ場所を続けて押しても種目の見出し（開け閉め）が反応しないようにする */
 let heroRecAt = 0;
+/* 「次の種目」のカードから、そのまま1セット記録する。下の種目のカードは開かず、画面も動かさない
+   （以前は下のカードを開いてそこへ移っていた。2026-11-04 本人の指摘「一回入力すると閉じてその種目に移動しちゃう」） */
 ACTIONS.herorec = el => {
-  openEx = el.dataset.ex; editEx = null;
-  render();
-  addSet(el.dataset.ex);
+  addSet(el.dataset.ex, '[data-act="herorec"]');
   heroRecAt = Date.now();
 };
 function viewToday(){
@@ -8428,7 +8458,7 @@ function viewToday(){
           <button data-act="step" data-t="r" data-ex="${id}" data-d="1" aria-label="増やす">＋</button>
         </div></div>
       </div>`;
-    /* このカードからそのまま記録できる（2026-10-11 本人の要望。押すと下の種目のカードが開き、この目標で1セット入る） */
+    /* このカードからそのまま記録できる（2026-10-11 本人の要望。この目標で1セット入る） */
     hero = `<div class="hero"><p class="kicker">次の種目</p>
       <h2>${esc(itemName(next))}</h2>${inner}
       <div class="herorec"><button class="addbtn" data-act="herorec" data-ex="${next.ex}">この内容で記録</button></div>
@@ -8455,7 +8485,7 @@ function viewToday(){
   /* 反対の部位どうしで隣に並んだ種目（rules.js の menuPairs）。両方終わった組は出さない */
   const pairLine = menuPairs(items).filter(p => !p.every(it => isDoneToday(it.ex)))
     .map(p => `<p class="skipped">${esc(itemName(p[0]))}と${esc(itemName(p[1]))}: 反対の部位を使う種目です。1セットずつ交互に行えます。</p>`).join("");
-  return storeBanners() + menuNote + deloadAsk + dayProgress(items) + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + dailyPickCard() + `
+  return storeBanners() + menuNote + deloadAsk + dayProgress(items) + hero + undo + rows + includedLine + pairLine + skippedLine + soreLine + kitCard() + dailyPickCard() + `
     <div class="rowbtns"><button data-act="addauto">おまかせで1種目追加</button><button data-act="addex">種目を選んで追加</button><button data-act="replan">メニューを組み直す</button><button data-act="replanshort">20分で組み直す</button><button data-act="sore">筋肉痛の部位</button></div>
     ${msg ? `<p class="lastline flash">${esc(msg)}</p>` : ""}
     <h3 class="sec">今日のメモ</h3>
@@ -8509,13 +8539,14 @@ function startDrag(e, row){
   const place = () => {
     const y = lastY + window.scrollY, dy = y - y0;
     row.style.transform = `translateY(${dy}px)`;
-    const mid = mids[from] + dy;
+    /* 行き先は指の位置で決める。動かすカードの中心で決めていたときは、開いて縦に長くなったカードを
+       ずっと下まで引かないと入れ替わらなかった（2026-11-04 本人の指摘「種目を開いていると順番を移動させられない」） */
     to = from;
     for(let i = 0; i < rows.length; i++){
-      if(i < from && mid < mids[i]){ to = i; break; }
+      if(i < from && y < mids[i]){ to = i; break; }
     }
     for(let i = rows.length - 1; i > from; i--){
-      if(mid > mids[i]){ to = i; break; }
+      if(y > mids[i]){ to = i; break; }
     }
     rows.forEach((r, i) => {
       if(r === row) return;
@@ -10555,7 +10586,8 @@ function step(t, id, d){
    同じ数字で 0.4 秒以内の2回目だけを捨てる。以前は 0.8 秒以内の2回目を数字に関係なく捨てていて、
    続けて記録したときの2回目が入らないことがあった（2026-10-02 本人の指摘） */
 const lastAddAt = {};
-function addSet(id){
+/* keep: 描き直したあとも同じ位置に残すボタン（既定はその種目のカードの「記録」） */
+function addSet(id, keep){
   const ex = EXMAP[id];
   const rIn = document.getElementById("r_"+id);
   if(!rIn) return;
@@ -10601,7 +10633,7 @@ function addSet(id){
   }
 
   const doneNow = e.sets.length >= setsOf(item);
-  if(doneNow){ openEx = null; editEx = null; }
+  if(doneNow && openEx === id){ openEx = null; editEx = null; }
   let label;
   if(doneNow){
     const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < setsOf(it); });
@@ -10612,7 +10644,7 @@ function addSet(id){
   /* 続けて「記録」を押せるように、描き直したあとも「記録」ボタンが画面の同じ位置に残るよう合わせる。
      1セット目のあとはウォームアップの行が消え、目標の説明も短くなって、ボタンが上にずれる。
      合わせないと、同じ場所をもう一度押したときに別のところ（セットの行など）を押してしまう（2026-10-02） */
-  const sel = '[data-act="addset"][data-ex="' + id + '"]';
+  const sel = keep || '[data-act="addset"][data-ex="' + id + '"]';
   const btn0 = document.querySelector(sel), y0 = btn0 ? btn0.getBoundingClientRect().top : null;
   render();
   const btn1 = y0 === null ? null : document.querySelector(sel);
@@ -10958,6 +10990,145 @@ ACTIONS.exoff = el => {
   if(it && !it.manual && !it.skip && !(e && e.sets.length)) replanToday();
   else render();
   setStatus("「" + EXMAP[id].name + "」を" + (on ? "メニューに入れる種目に戻しました" : "メニューに入れない種目にしました"));
+};
+/* ---------- 種目セット ----------
+   あらかじめ選んだ種目のまとまりに名前を付けて取っておき、押すとそのまま今日のメニューにする
+   （2026-11-04 本人の要望「複数作って日によって違うセットをすぐできるように」）。
+   state.tune.kits = {list: [{id, name, items: [{ex, label}]}], updatedAt}。設定と同じく settings.json で端末をまたいで同期する
+   （sync-github.js の syncMergeTune。まとまりごと新しいほうが勝つ）。決まりではないので TUNE_KEYS には入れない */
+const KITS_MAX = 20, KIT_ITEMS_MAX = 15, KIT_NAME_MAX = 20;
+function kitList(){
+  const p = tunePart("kits");
+  return p && Array.isArray(p.list) ? p.list.filter(k => k && Array.isArray(k.items)) : [];
+}
+function setKits(list){ setTune("kits", {list}); }
+/* セットの中の種目のうち、この版で使えるもの */
+function kitRows(kit){ return kit.items.filter(it => it && EXMAP[it.ex]); }
+function kitNewId(){ return "k" + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36); }
+
+/* セットを今日のメニューにする。今日もう記録した種目は、セットに無くても残す（記録の行が宙に浮かないように） */
+function applyKit(kitId){
+  if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
+  const kit = kitList().find(k => k.id === kitId);
+  if(!kit) { render(); return; }
+  const s = session(TODAY);
+  fixPlan(s);
+  const before = s.plan || [];
+  const rows = kitRows(kit).map(it => {
+    const row = Object.assign({}, catalogRow(it.ex, it.label || "") || pickRowFor(it.ex));
+    ["skip", "extra", "seed"].forEach(k => delete row[k]);
+    return Object.assign(row, {manual: true});
+  });
+  const done = (s.entries || []).filter(e => e.sets.length).map(e => e.ex);
+  /* 今日もう記録した種目は、今のやり方（label）の行をそのまま使う。セットのやり方に替えると、記録と目標が食い違う */
+  const recorded = ex => {
+    const cur = before.find(x => x.ex === ex), x = Object.assign({}, cur || catalogItem(ex));
+    delete x.skip; delete x.extra; return x;
+  };
+  rows.forEach((r, i) => { if(done.includes(r.ex)) rows[i] = recorded(r.ex); });
+  const kept = done.filter(ex => !rows.some(r => r.ex === ex)).map(recorded);
+  s.entries = (s.entries || []).filter(e => e.sets.length);          /* セットの無い箱は残さない */
+  s.plan = kept.concat(rows);
+  s.planAt = s.planEdit = stampNow();                /* 利用者が意図して変えた（同期で自動のメニューに負けない） */
+  persistSession(TODAY);
+  if(typeof syncNow === "function") syncNow();
+  openEx = null; editEx = null;
+  planMemo = null; resetProg();
+  todayMsg = "「" + kit.name + "」を今日のメニューにしました";
+  render();
+  window.scrollTo(0, 0);
+}
+
+/* 今日タブの欄。セットの名前のボタンを押すと今日のメニューになる */
+function kitCard(){
+  const list = kitList();
+  const rows = list.map(k => {
+    const names = kitRows(k).map(it => itemNameOf(it.ex));
+    return `<div class="kitrow">
+      <button class="kitgo" data-act="kitapply" data-k="${esc(k.id)}">${esc(k.name)}<span>${esc(names.join("・") || "種目がありません")}</span></button>
+      <button class="kitedit" data-act="kitedit" data-k="${esc(k.id)}">編集</button></div>`;
+  }).join("");
+  return `<h3 class="sec">種目セット</h3>
+    <div class="card kits">
+      ${list.length ? `<p class="lastline" style="margin-top:0">押すと、そのセットを今日のメニューにします。</p>${rows}`
+                    : `<p class="lastline" style="margin-top:0">よくやる種目の組み合わせを取っておくと、押すだけで今日のメニューにできます。</p>`}
+      <div class="rowbtns">
+        ${list.length < KITS_MAX ? `<button data-act="kitnew">種目を選んで作る</button><button data-act="kitfromtoday">今のメニューから作る</button>` : ""}
+      </div>
+    </div>`;
+}
+
+/* セットを作る・直すシート。種目は押した順に並ぶ */
+function openKitSheet(kit){
+  const isNew = !kitList().some(k => k.id === kit.id);
+  let name = kit.name, picked = kitRows(kit).map(it => ({ex: it.ex, label: it.label || ""})), sure = false;
+  const groups = {};
+  EX.filter(e => !e.base).forEach(e => { const p = groupOf(patternOf(e.id)); (groups[p] = groups[p] || []).push(e); });
+  const draw = () => {
+    const at = id => picked.findIndex(x => x.ex === id);
+    const body = groupOrder().filter(p => groups[p] && groups[p].length).map(p =>
+      `<h4 class="pickhead">${esc(PATTERN_HEAD[p] || p)}</h4><div class="sorechips">${groups[p].map(e => {
+        const i = at(e.id);
+        return `<button class="sorechip${i >= 0 ? " on" : ""}" data-kx="${e.id}" aria-pressed="${i >= 0}">${i >= 0 ? (i + 1) + ". " : ""}${esc(e.name)}</button>`;
+      }).join("")}</div>`).join("");
+    sheetInner.innerHTML = `<h4>${isNew ? "種目セットを作る" : "種目セットを直す"}</h4>
+      <div class="fld"><label for="kitname">名前</label><input type="text" id="kitname" maxlength="${KIT_NAME_MAX}" value="${esc(name)}"></div>
+      <p class="lastline">選んだ種目（${picked.length}）: ${picked.length ? esc(picked.map(x => itemNameOf(x.ex)).join("・")) : "まだありません"}</p>
+      <div class="rowbtns"><button data-kitsave="1"${picked.length ? "" : " disabled"}>保存</button><button data-close="1">閉じる</button></div>
+      ${body}
+      <div class="rowbtns">${isNew ? "" : `<button data-kitdel="1">${sure ? "本当に消す" : "この種目セットを消す"}</button>`}<button data-close="1">閉じる</button></div>`;
+    const nm = sheetInner.querySelector("#kitname");
+    nm.oninput = () => { name = nm.value; };
+    sheetInner.querySelectorAll("[data-kx]").forEach(b => b.onclick = () => {
+      const id = b.dataset.kx, i = at(id), y = b.getBoundingClientRect().top;
+      if(i >= 0) picked.splice(i, 1);
+      else if(picked.length < KIT_ITEMS_MAX) picked.push({ex: id, label: pickRowFor(id).label || ""});
+      else{ setStatus("1つのセットに入れられるのは" + KIT_ITEMS_MAX + "種目までです"); return; }
+      const top = sheetInner.scrollTop;
+      draw();
+      /* 押したボタンが同じ位置に残るように（続けて選べるように） */
+      sheetInner.scrollTop = top;
+      const b2 = sheetInner.querySelector('[data-kx="' + id + '"]');
+      if(b2) sheetInner.scrollTop += b2.getBoundingClientRect().top - y;
+    });
+    sheetInner.querySelectorAll("[data-close]").forEach(b => b.onclick = () => sheet.classList.remove("on"));
+    const sv = sheetInner.querySelector("[data-kitsave]");
+    sv.onclick = () => {
+      if(!picked.length) return;
+      const nmv = (name || "").trim().slice(0, KIT_NAME_MAX) || kitDefaultName();
+      const list = kitList().slice(), i = list.findIndex(k => k.id === kit.id);
+      const out = {id: kit.id, name: nmv, items: picked.slice()};
+      if(i >= 0) list[i] = out; else list.push(out);
+      setKits(list);
+      sheet.classList.remove("on");
+      todayMsg = "「" + nmv + "」を保存しました";
+      render();
+    };
+    const del = sheetInner.querySelector("[data-kitdel]");
+    if(del) del.onclick = () => {
+      if(!sure){ sure = true; const top = sheetInner.scrollTop; draw(); sheetInner.scrollTop = top; return; }
+      setKits(kitList().filter(k => k.id !== kit.id));
+      sheet.classList.remove("on");
+      todayMsg = "「" + kit.name + "」を消しました";
+      render();
+    };
+  };
+  draw();
+  sheetInner.scrollTop = 0;
+  sheet.classList.add("on");
+}
+function kitDefaultName(){
+  const names = new Set(kitList().map(k => k.name));
+  /* 「セット1」だと記録のセット（1/3 など）と紛らわしいので、「メニュー」と呼ぶ */
+  let n = 1; while(names.has("メニュー" + n)) n++;
+  return "メニュー" + n;
+}
+ACTIONS.kitapply = el => applyKit(el.dataset.k);
+ACTIONS.kitedit = el => { const k = kitList().find(x => x.id === el.dataset.k); if(k) openKitSheet(k); else render(); };
+ACTIONS.kitnew = () => openKitSheet({id: kitNewId(), name: kitDefaultName(), items: []});
+ACTIONS.kitfromtoday = () => {
+  const items = todayItems().filter(it => !it.skip).slice(0, KIT_ITEMS_MAX).map(it => ({ex: it.ex, label: it.label || ""}));
+  openKitSheet({id: kitNewId(), name: kitDefaultName(), items});
 };
 /* ---------- 書き出し ---------- */
 function buildCSV(){

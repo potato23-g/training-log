@@ -387,9 +387,20 @@ document.addEventListener("pointerdown", e => {
   if(t && t.closest && t.closest("input, select, textarea")) return;
   pressHeld = true; pressWatch(5000);          /* 離した合図が来なくても、5秒で見張りを解く */
 }, true);
-document.addEventListener("pointerup", () => { if(pressHeld) pressWatch(400); }, true);     /* click が来なければ 0.4 秒後に解く */
+/* 一回のタップで click が2回届くことがある（iPhone。「記録」でセットが2つ入る・＋−が2段進む: 2026-11-04 本人の指摘）。
+   指を離すたびに1回だけ click を通し、指を離していないのに来た2回目は捨てる。速く2回押したときは、それぞれ指を離しているので両方通る。
+   シートの選ぶボタン（入れる・外すの切り替え）も同じ。キーボードや el.click() の click（detail が 0）は見ない */
+let upSinceClick = false;
+document.addEventListener("pointerup", () => { upSinceClick = true; if(pressHeld) pressWatch(400); }, true);     /* click が来なければ 0.4 秒後に解く */
 document.addEventListener("pointercancel", () => { if(pressHeld) pressWatch(0); }, true);
-document.addEventListener("click", () => { pressHeld = false; pressWatch(0); }, true);      /* ボタンの処理より先に解く */
+document.addEventListener("click", e => {
+  const t = e.target, btn = t && t.closest && t.closest("button, summary");
+  if(btn && e.detail > 0){
+    if(!upSinceClick){ e.stopImmediatePropagation(); e.preventDefault(); return; }
+  }
+  upSinceClick = false;
+  pressHeld = false; pressWatch(0);                                                        /* ボタンの処理より先に解く */
+}, true);
 
 function render(){
   if(pressHeld){ renderWaiting = true; return; }

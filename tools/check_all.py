@@ -541,6 +541,22 @@ def main():
     finally:
         _free_port(8851)
         _free_port(9482)
+    # 2026-11-04: カードを開いたままの並べ替え・一回のタップで2回効かないか（タップとマウス）・種目セット
+    for name, args, ports in [("v12_drag_e2e.py", [], [9492]), ("v12_tap_e2e.py", ["touch"], [9493]),
+                              ("v12_tap_e2e.py", ["mouse"], [9493]), ("v12_kit_e2e.py", [], [9494])]:
+        tag = name + (" " + " ".join(args) if args else "")
+        try:
+            p = run_watched([PY, os.path.join(TOOLS, name)] + args, 200, cwd=TOOLS)
+            m = re.search(r"(\d+) passed, (\d+) failed", p.stdout)
+            if m:
+                ok, detail = (m.group(2) == "0"), m.group(0)
+            else:
+                ok, detail = False, "終了コード %d\n%s" % (p.returncode, (p.stdout[-800:] + p.stderr[-800:]))
+            report(tag, ok, detail)
+        except Exception as e:
+            report(tag, False, "実行できない: " + str(e))
+        finally:
+            for pt in ports: _free_port(pt)
     # v4_update_e2e.py は内部で `build.py site` を呼び、docs/ を書き換える。前後で控えて書き戻す
     docs_snap = _snapshot_docs()
     try:

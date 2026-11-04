@@ -160,7 +160,8 @@ function step(t, id, d){
    同じ数字で 0.4 秒以内の2回目だけを捨てる。以前は 0.8 秒以内の2回目を数字に関係なく捨てていて、
    続けて記録したときの2回目が入らないことがあった（2026-10-02 本人の指摘） */
 const lastAddAt = {};
-function addSet(id){
+/* keep: 描き直したあとも同じ位置に残すボタン（既定はその種目のカードの「記録」） */
+function addSet(id, keep){
   const ex = EXMAP[id];
   const rIn = document.getElementById("r_"+id);
   if(!rIn) return;
@@ -206,7 +207,7 @@ function addSet(id){
   }
 
   const doneNow = e.sets.length >= setsOf(item);
-  if(doneNow){ openEx = null; editEx = null; }
+  if(doneNow && openEx === id){ openEx = null; editEx = null; }
   let label;
   if(doneNow){
     const nx = activeItems().find(it=>{ const en = entryFor(TODAY, it.ex, false); return !en || en.sets.length < setsOf(it); });
@@ -217,7 +218,7 @@ function addSet(id){
   /* 続けて「記録」を押せるように、描き直したあとも「記録」ボタンが画面の同じ位置に残るよう合わせる。
      1セット目のあとはウォームアップの行が消え、目標の説明も短くなって、ボタンが上にずれる。
      合わせないと、同じ場所をもう一度押したときに別のところ（セットの行など）を押してしまう（2026-10-02） */
-  const sel = '[data-act="addset"][data-ex="' + id + '"]';
+  const sel = keep || '[data-act="addset"][data-ex="' + id + '"]';
   const btn0 = document.querySelector(sel), y0 = btn0 ? btn0.getBoundingClientRect().top : null;
   render();
   const btn1 = y0 === null ? null : document.querySelector(sel);
