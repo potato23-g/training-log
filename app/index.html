@@ -18,6 +18,8 @@
   --rule:#D6D8D0;
   --muscle:#B23A31;
   --muscle-2:#8A2B24;
+  --muscle-ink:#B23A31;
+  --muscle-solid:#B23A31;
   --neutral-fill:#DBDCD4;
   --neutral-stroke:#C4C6BD;
   --done:#2F6B4F;
@@ -34,6 +36,8 @@
     --rule:#2B333A;
     --muscle:#D3584C;
     --muscle-2:#E8796D;
+    --muscle-ink:#EE8A7F;
+    --muscle-solid:#B5443A;
     --neutral-fill:#2C333A;
     --neutral-stroke:#3A434B;
     --done:#4F9C77;
@@ -50,6 +54,8 @@
   --rule:#2B333A;
   --muscle:#D3584C;
   --muscle-2:#E8796D;
+  --muscle-ink:#EE8A7F;
+  --muscle-solid:#B5443A;
   --neutral-fill:#2C333A;
   --neutral-stroke:#3A434B;
   --done:#4F9C77;
@@ -131,7 +137,7 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 
 .entry{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:12px}
 .fld{display:flex;flex-direction:column;gap:3px}
-.fld label{font-size:11px;color:var(--ink-3)}
+.fld label{font-size:12px;color:var(--ink-3)}
 .stepper{display:flex;align-items:center;border:1px solid var(--rule);border-radius:3px;background:var(--panel-2)}
 .stepper button{background:none;border:none;width:44px;height:44px;font-size:19px;color:var(--ink-2)}
 .stepper input{
@@ -145,7 +151,7 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 
 .hint{font-size:12.5px;color:var(--ink-2);background:var(--panel-2);border-left:2px solid var(--muscle);padding:8px 10px;margin-top:12px;border-radius:0 3px 3px 0}
 .lastline{font-size:12.5px;color:var(--ink-2);margin-top:10px}
-.card a{color:var(--muscle);font-weight:600;text-underline-offset:2px}
+.card a{color:var(--muscle-ink);font-weight:600;text-underline-offset:2px}
 .lastline b{color:var(--ink);font-family:"Archivo",system-ui,sans-serif}
 
 /* ---- rest timer ---- */
@@ -161,7 +167,7 @@ nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(-
 /* ---- body figure ---- */
 .figs{display:flex;gap:6px;justify-content:center;align-items:flex-start}
 .figwrap{flex:1;max-width:190px;text-align:center}
-.figwrap .cap{font-size:11px;color:var(--ink-3);margin-top:2px}
+.figwrap .cap{font-size:12px;color:var(--ink-3);margin-top:2px}
 svg.fig{width:100%;height:auto;display:block}
 svg.fig .nt{fill:var(--neutral-fill);opacity:.55}
 svg.fig .rg{fill:var(--neutral-fill);stroke:var(--neutral-stroke);stroke-width:.8;transition:fill .18s}
@@ -170,13 +176,13 @@ svg.fig.clickable .rg{cursor:pointer}
 svg.fig.ema{width:66%;margin:0 auto}
 svg.fig .ln{fill:none;stroke:var(--neutral-stroke);stroke-width:.8;pointer-events:none}
 
-.legend{display:flex;align-items:center;gap:8px;justify-content:center;font-size:11.5px;color:var(--ink-2);margin-top:10px}
+.legend{display:flex;align-items:center;gap:8px;justify-content:center;font-size:12px;color:var(--ink-2);margin-top:10px}
 .legend .bar{width:96px;height:8px;border-radius:2px;background:linear-gradient(90deg,var(--neutral-fill),var(--muscle))}
 
 .mlist{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
 .chip{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--rule);color:var(--ink-2)}
-.chip.p{background:var(--muscle);border-color:var(--muscle);color:#fff}
-.chip.s{border-color:var(--muscle);color:var(--muscle)}
+.chip.p{background:var(--muscle-solid);border-color:var(--muscle-solid);color:#fff}
+.chip.s{border-color:var(--muscle);color:var(--muscle-ink)}
 
 /* ---- generic blocks ---- */
 .card{background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:16px;margin-bottom:12px}
@@ -184,13 +190,13 @@ h3.sec{font-size:13px;font-weight:700;color:var(--ink-2);margin:26px 0 10px}
 .card h4{margin:0 0 8px;font-size:15px;font-weight:700}
 .steps{margin:0;padding-left:20px}
 .steps li{margin-bottom:5px;font-size:14px}
-.warn{color:var(--muscle)}
+.warn{color:var(--muscle-ink)}
 ul.plain{list-style:none;margin:0;padding:0}
 ul.plain li{font-size:14px;padding-left:15px;position:relative;margin-bottom:5px}
 ul.plain li::before{content:"";position:absolute;left:0;top:11px;width:6px;height:1.5px;background:var(--ink-3)}
 
 table.hist{width:100%;border-collapse:collapse;font-size:13.5px}
-table.hist th{text-align:left;font-size:11.5px;color:var(--ink-3);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--rule)}
+table.hist th{text-align:left;font-size:12px;color:var(--ink-3);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--rule)}
 table.hist td{padding:6px;border-bottom:1px solid var(--rule)}
 table.hist td.n{font-family:"Archivo",system-ui,sans-serif;font-weight:600;text-align:right;white-space:nowrap}
 
@@ -215,7 +221,7 @@ textarea{min-height:64px;resize:vertical}
 .picklist button{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:11px 13px;text-align:left;font-size:14px;font-weight:600}
 .picklist button span{display:block;font-weight:400;font-size:12px;color:var(--ink-2)}
 
-.status{font-size:11.5px;color:var(--ink-3);text-align:center;padding:14px 0 0}
+.status{font-size:12px;color:var(--ink-3);text-align:center;padding:14px 0 0}
 .overflowx{overflow-x:auto}
 
 /* ---- movement diagrams ---- */
@@ -223,8 +229,8 @@ textarea{min-height:64px;resize:vertical}
 .diacell{flex:1;min-width:0;text-align:center}
 .diacell svg,.diasolo svg{width:100%;height:auto;display:block}
 .diasolo{max-width:76%;margin:0 auto}
-.diahint{font-size:11.5px;color:var(--ink-3);text-align:center;margin:2px 0 0}
-.dialab{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.diahint{font-size:12px;color:var(--ink-3);text-align:center;margin:2px 0 0}
+.dialab{font-size:12px;color:var(--ink-3);margin-top:1px}
 .diaarrow{color:var(--ink-3);font-size:19px;line-height:1;flex:0 0 auto;padding:0 2px}
 .fg-body{fill:var(--ink)}
 .fg-far{fill:var(--ink);opacity:.4}
@@ -235,7 +241,7 @@ textarea{min-height:64px;resize:vertical}
 .fg-floor{stroke:var(--neutral-stroke);stroke-width:2;stroke-linecap:round}
 .dianote{font-size:12.5px;color:var(--ink-2);margin:10px 0 0}
 .diahold{font-size:12px;color:var(--ink-2);margin:9px 0 0;padding:7px 9px;background:var(--panel-2);border-radius:3px}
-.diahold b{color:var(--ink-3);font-size:10.5px;font-weight:700}
+.diahold b{color:var(--ink-3);font-size:12px;font-weight:700}
 .exhead .fix{margin-left:8px;flex:0 0 auto;background:none;border:1px solid var(--rule);border-radius:999px;
   padding:4px 12px;font-size:12px;font-weight:600;color:var(--ink-2);white-space:nowrap}
 .exrow.editing .exhead .fix{border-color:var(--ink-2);color:var(--ink)}
@@ -248,20 +254,20 @@ textarea{min-height:64px;resize:vertical}
    専用の行で明示的に右寄せする（gear.js の adjRow） */
 .adjdelwrap{width:100%;display:flex;justify-content:space-between;align-items:center;font-size:14px}
 .adjflds .fld{margin-bottom:2px}
-.side{font-size:10px;color:var(--muscle);border:1px solid var(--muscle);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;white-space:nowrap}
-.adv{font-size:10px;color:var(--ink-2);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;white-space:nowrap}
-.adv.warn{color:var(--muscle);border-color:var(--muscle)}
+.side{font-size:12px;color:var(--muscle-ink);border:1px solid var(--muscle);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+.adv{font-size:12px;color:var(--ink-2);border:1px solid var(--rule);border-radius:3px;padding:0 4px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+.adv.warn{color:var(--muscle-ink);border-color:var(--muscle)}
 .target{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;background:var(--panel-2);
   border-left:2px solid var(--muscle);padding:9px 11px;margin-top:12px;border-radius:0 3px 3px 0}
-.target .tl{font-size:11px;color:var(--ink-3)}
+.target .tl{font-size:12px;color:var(--ink-3)}
 .target .tv{font-size:19px;font-weight:700}
 .setrow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .setrow:last-of-type{border-bottom:none}
-.setrow small{display:block;font-size:11px;color:var(--ink-3)}
+.setrow small{display:block;font-size:12px;color:var(--ink-3)}
 .setrow .stt{margin-left:auto;font-size:12px;color:var(--ink-3)}
 .tg{margin-left:auto;background:none;border:1px solid var(--rule);border-radius:999px;
   padding:4px 14px;font-size:12.5px;font-weight:600;color:var(--ink-3);white-space:nowrap}
-.tg.on{border-color:var(--muscle);color:var(--muscle)}
+.tg.on{border-color:var(--muscle);color:var(--muscle-ink)}
 .splitcols{display:block}
 .exmain{min-width:0}
 .exside{margin-top:14px}
@@ -308,13 +314,13 @@ textarea{min-height:64px;resize:vertical}
 .hero.compact .kicker{display:inline;margin-right:8px}
 .hero.compact h2{display:inline;font-size:15px;margin:0}
 .banner{background:var(--panel);border:1px solid var(--muscle);border-radius:4px;padding:12px 14px;margin-bottom:14px;font-size:13.5px}
-.banner b{color:var(--muscle)}
+.banner b{color:var(--muscle-ink)}
 .flash .rowbtns{margin-top:6px}
 .skipped{font-size:13px;color:var(--ink-2);margin:10px 0 0}
 .skipped button{background:none;border:1px solid var(--rule);border-radius:3px;min-height:36px;padding:4px 10px;margin-left:6px;font-size:12.5px;color:var(--ink-2)}
 .ladder{padding:9px 0;border-bottom:1px dashed var(--rule)}
 .ladder:last-child{border-bottom:none}
-.ladder .lk{font-size:11.5px;color:var(--ink-2);margin:0}
+.ladder .lk{font-size:12px;color:var(--ink-2);margin:0}
 .ladder .ln{margin:2px 0 0;font-size:14px}
 /*INLINE-CSS-FILE:src/app/views.css*/
 </style>

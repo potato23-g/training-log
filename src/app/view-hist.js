@@ -14,7 +14,7 @@ function viewHist(){
     const s = state.sessions[d];
     const sets = (s.entries||[]).reduce((a,e)=>a+e.sets.length,0);
     const names = (s.entries||[]).filter(e=>e.sets.length).map(e=>EXMAP[e.ex]?EXMAP[e.ex].name:e.ex).join("、");
-    return `<tr data-act="histday" data-d="${d}"><td>${esc(fmtDate(d))}<div style="font-size:11.5px;color:var(--ink-3)">${esc(names)}</div>${s.note?`<div style="font-size:11.5px;color:var(--ink-2)">${esc(s.note)}</div>`:""}</td><td class="n">${sets}</td></tr>`;
+    return `<tr data-act="histday" data-d="${d}"><td>${esc(fmtDate(d))}<div style="font-size:12px;color:var(--ink-3)">${esc(names)}</div>${s.note?`<div style="font-size:12px;color:var(--ink-2)">${esc(s.note)}</div>`:""}</td><td class="n">${sets}</td></tr>`;
   }).join("");
 
   return `
@@ -24,7 +24,7 @@ function viewHist(){
       <p class="lastline">直近7日で ${last7} 回。</p>
     </div>
     <h3 class="sec">種目ごとの推移</h3>
-    <p class="lastline" style="margin-top:0">点は日ごとの一番よいセット。<span style="color:var(--muscle)">●</span>は自己ベストの日</p>
+    <p class="lastline" style="margin-top:0">点は日ごとの一番よいセット。<span style="color:var(--muscle-ink)">●</span>は自己ベストの日</p>
     ${trendCards(dates)}
     <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
@@ -80,7 +80,7 @@ function trendCards(dates){
       ${trendChart(points, ex.kind, {ex:g.ex, label:g.label})}
       <p class="lastline" style="margin-top:4px">最高セット <b>${esc(setTextFor({ex:g.ex, label:g.label}, best))}</b></p>
       ${growth ? `<p class="lastline" style="margin-top:2px">${esc(growth)}</p>` : ""}
-      ${pr ? `<p class="lastline" style="margin-top:2px;color:var(--muscle)"><b>${esc(pr)}</b>　${esc(fmtDate(last.d))}</p>` : ""}
+      ${pr ? `<p class="lastline" style="margin-top:2px;color:var(--muscle-ink)"><b>${esc(pr)}</b>　${esc(fmtDate(last.d))}</p>` : ""}
     </div>`;
   }).join("");
 }
