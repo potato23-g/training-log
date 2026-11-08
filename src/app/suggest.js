@@ -6,7 +6,7 @@ function clampR(kind, r){
 /* 次のセットの提案（入力欄の初めの値）。
    その日の1セット目は伸ばし方（progress.js）の目標から。2セット目からは前のセットの重さ・回数をそのまま出す
    （きつさの入力はやめた。重さ・回数は本人が調整する: 2026-09-29）。
-   target はこの日の目標（記録にも残し、次の回の判断に使う）。重さは持っているダンベルで作れる使い方の中からだけ */
+   target はこの日の目標（記録にも残し、次の回の判断に使う）。2セット目からは前のセットでやった回数。重さは持っているダンベルで作れる使い方の中からだけ */
 function suggestNext(item, e){
   const id = item.ex, kind = EXMAP[id].kind;
   const sets = e ? e.sets : [];
@@ -17,7 +17,9 @@ function suggestNext(item, e){
             change:p.change, why:p.why, src:p.src, prog:p};
   }
   const prev = sets[sets.length-1];
-  const target = typeof prev.target === "number" ? prev.target : p.target;
+  /* 目標と違う回数で記録したら、以降のセットの目標はその回数（2026-11-08 本人の指摘「想定と違う回数で記録した時、以降その回数に合わせて」）。
+     記録に残る目標もこれになるので、次の回もこの回数から決まる */
+  const target = prev.r > 0 ? clampR(kind, prev.r) : typeof prev.target === "number" ? prev.target : p.target;
   const src = "目標は" + target + unitOf(kind);
   if(!weighted || prev.w === undefined) return {r:clampR(kind, prev.r), target, w: weighted ? p.opt.total : undefined, opt:p.opt, why:"", src, prog:p};
   const cur = itemOptions(item).find(o => Math.abs(o.total - prev.w) < 0.01) || null;

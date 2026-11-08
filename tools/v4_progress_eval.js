@@ -440,9 +440,10 @@
     const prevR = s20a.target - (kind20 === "t" ? 10 : 2);
     e20.sets.push({id: newSetId(), at: 1, r: prevR, w: other ? other.total : undefined, target: s20a.target, label: it20.label || ""});
     const s20b = suggestNext(it20, e20);
-    ok(s20b.r === clampR(kind20, prevR) && s20b.target === s20a.target && (!other || Math.abs(s20b.w - other.total) < 0.01),
+    /* 目標と違う回数で記録したら、以降の目標はその回数（2026-11-08 本人の指摘） */
+    ok(s20b.r === clampR(kind20, prevR) && s20b.target === clampR(kind20, prevR) && (!other || Math.abs(s20b.w - other.total) < 0.01),
        "2セット目: 前のセットの数字がそのまま入らない: " + itemName(it20) + " " + JSON.stringify({prevR, prevW: other && other.total, r: s20b.r, w: s20b.w, target: s20b.target}));
-    ok(s20b.src === "目標は" + s20a.target + unitOf(kind20), "2セット目: 今日の目標が出ない: " + s20b.src);
+    ok(s20b.src === "目標は" + clampR(kind20, prevR) + unitOf(kind20), "2セット目: 今日の目標が前のセットの回数にならない: " + s20b.src);
   }
 
   /* ---- 21. 前の版で保存したメニューの行が5セット（grow の名残・古い版の端末から同期）でも、3セット全部届けば上げる ---- */

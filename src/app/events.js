@@ -57,13 +57,12 @@ function onAct(el, ev){
   const a = el.dataset.act;
   if(a==="toggle"){
     if(Date.now() - heroRecAt < 500) return;
+    const sp = rowSpot(el.dataset.ex);
     openEx = (openEx===el.dataset.ex)?null:el.dataset.ex;
     render();
-    /* 開いた種目の見出しを画面の上に合わせ、入力と「記録」が見えるようにする */
-    if(openEx){
-      const h = document.querySelector('[data-act="toggle"][data-ex="' + openEx + '"]');
-      if(h && h.scrollIntoView) h.scrollIntoView({block: "start"});
-    }
+    /* 開いた種目は見出しを上の帯のすぐ下に合わせ、入力と「記録」が見えるようにする（帯の裏に隠さない）。閉じたときはその場に残す */
+    if(openEx) keepSpot(Object.assign(sp || {id: openEx, next: [], prev: []}, {y: stickyBottom() + 8}), true);
+    else keepSpot(sp, true);
   }
   else if(a==="addset"){ addSet(el.dataset.ex); }
   else if(a==="delset"){ delSet(el.dataset.ex, +el.dataset.i); }
@@ -221,7 +220,9 @@ function addSet(id, keep){
      合わせないと、同じ場所をもう一度押したときに別のところ（セットの行など）を押してしまう（2026-10-02） */
   const sel = keep || '[data-act="addset"][data-ex="' + id + '"]';
   const btn0 = document.querySelector(sel), y0 = btn0 ? btn0.getBoundingClientRect().top : null;
+  const sp = doneNow ? rowSpot(id) : null;
   render();
+  keepSpot(sp, true);                                /* 終えてカードが閉じたら、閉じたカードを元の高さ（隠れていたら帯の下）に置く */
   const btn1 = y0 === null ? null : document.querySelector(sel);
   if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
   /* その日の最後のセットのあとは休憩が要らないので、タイマーも合図の音も出さない（2026-11-04 本人の要望） */
@@ -360,21 +361,41 @@ ACTIONS.lessset = el=>{
   if(isDoneToday(id)) openEx = null;
   render();
 };
+/* 種目を外した・後に回した・終えたときに画面が飛ばないように（2026-11-08 本人の指摘）。
+   押す前のカードの位置を覚えておき（上の帯より上に隠れていたら帯のすぐ下）、描き直したあと、
+   そのカード（follow）か、無くなった・動いたときはその次のカードを、そこに置く */
+function rowSpot(id){
+  const row = document.querySelector('#view .exrow[data-row="' + id + '"]');
+  if(!row) return null;
+  const rows = Array.from(row.parentNode.querySelectorAll(":scope > .exrow[data-row]")), i = rows.indexOf(row);
+  return {id, y: Math.max(stickyBottom() + 8, row.getBoundingClientRect().top),
+          next: rows.slice(i + 1).map(r => r.dataset.row), prev: rows.slice(0, i).reverse().map(r => r.dataset.row)};
+}
+function keepSpot(sp, follow){
+  if(!sp) return;
+  const ids = (follow ? [sp.id] : []).concat(sp.next, sp.prev);
+  for(const id of ids){
+    const el = document.querySelector('#view .exrow[data-row="' + id + '"]');
+    if(el){ window.scrollBy(0, el.getBoundingClientRect().top - sp.y); return; }
+  }
+}
 ACTIONS.later = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
-  const id = el.dataset.ex;
+  const id = el.dataset.ex, sp = rowSpot(id);
   editPlanItem(id, (plan, i)=>{ const it = plan.splice(i, 1)[0]; plan.push(it); });
   if(openEx === id) openEx = null;
   todayMsg = "「" + itemName(itemOf(id)) + "」を後に回しました";
   render();
+  keepSpot(sp, false);
 };
 ACTIONS.skip = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
-  const id = el.dataset.ex;
+  const id = el.dataset.ex, sp = rowSpot(id);
   editPlanItem(id, (plan, i)=>{ plan[i].skip = true; });
   if(openEx === id) openEx = null;
   todayMsg = "「" + itemName(itemOf(id)) + "」を今日は外しました。組み直しても入りません。下の「戻す」で戻せます";
   render();
+  keepSpot(sp, false);
 };
 /* 今日タブの「毎日やってよい種目」の押しボタン（today.js の dailyPickCard）。入れる・外すだけで、種目のカードは開かない。
    押したボタンが画面の同じ位置に残るように合わせる（続けて押せるように） */

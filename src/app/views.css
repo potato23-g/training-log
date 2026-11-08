@@ -110,7 +110,7 @@ table.hist td{padding:9px 6px}
 /* 今日のカードの並べ替え（today.js の wireDrag）: 左端のつまみを押したまま上下に動かす */
 .exrow.dragok{position:relative}
 .exrow.dragok .exhead{padding-left:34px}
-.exrow .grip{position:absolute;left:0;top:0;width:30px;height:62px;touch-action:none;cursor:grab;z-index:1;
+.exrow .grip{position:absolute;left:0;top:0;width:30px;height:62px;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab;z-index:1;
   background:radial-gradient(circle,var(--ink-3) 1.4px,transparent 1.9px) 9px 21px/7px 7px;
   background-repeat:repeat;clip-path:inset(20px 8px 20px 9px)}
 .exrow.dragging{z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.18);transition:none}

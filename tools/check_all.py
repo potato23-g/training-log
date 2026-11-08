@@ -542,9 +542,9 @@ def main():
     finally:
         _free_port(8851)
         _free_port(9482)
-    # 2026-11-04: カードを開いたままの並べ替え・一回のタップで2回効かないか（タップとマウス）・種目セット
+    # 2026-11-04: カードを開いたままの並べ替え・一回のタップで2回効かないか（タップとマウス）・種目セット。2026-11-08: 画面が飛ばないか・つまみの上のスクロール
     for name, args, ports in [("v12_drag_e2e.py", [], [9492]), ("v12_tap_e2e.py", ["touch"], [9493]),
-                              ("v12_tap_e2e.py", ["mouse"], [9493]), ("v12_kit_e2e.py", [], [9494])]:
+                              ("v12_tap_e2e.py", ["mouse"], [9493]), ("v12_kit_e2e.py", [], [9494]), ("v13_scroll_e2e.py", [], [9547])]:
         tag = name + (" " + " ".join(args) if args else "")
         try:
             p = run_watched([PY, os.path.join(TOOLS, name)] + args, 200, cwd=TOOLS)

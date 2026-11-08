@@ -442,7 +442,7 @@ table.hist td{padding:9px 6px}
 /* 今日のカードの並べ替え（today.js の wireDrag）: 左端のつまみを押したまま上下に動かす */
 .exrow.dragok{position:relative}
 .exrow.dragok .exhead{padding-left:34px}
-.exrow .grip{position:absolute;left:0;top:0;width:30px;height:62px;touch-action:none;cursor:grab;z-index:1;
+.exrow .grip{position:absolute;left:0;top:0;width:30px;height:62px;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab;z-index:1;
   background:radial-gradient(circle,var(--ink-3) 1.4px,transparent 1.9px) 9px 21px/7px 7px;
   background-repeat:repeat;clip-path:inset(20px 8px 20px 9px)}
 .exrow.dragging{z-index:5;box-shadow:0 6px 18px rgba(0,0,0,.18);transition:none}
@@ -5975,7 +5975,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-11-05 17:57";
+const BUILD_VERSION = "2026-11-08 21:51";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6870,6 +6870,40 @@ document.addEventListener("click", e => {
   pressHeld = false; pressWatch(0);                                                        /* ボタンの処理より先に解く */
 }, true);
 
+/* 描き直しで画面が飛ばないように、描く前に見えていた目印（種目のカード・見出し）を、描いたあとも同じ高さに置く。
+   無くなっていたら、その次の目印で合わせる。タブを替えたときは合わせない（タブの切り替えは上から）。
+   2026-11-08 本人の指摘「種目を消したり完了したりすると画面が上とか下に飛ばされる」 */
+let anchorTab = null;
+function stickyBottom(){
+  const b = document.querySelector("#view .dayprog");
+  return b ? Math.max(0, b.getBoundingClientRect().bottom) : 0;
+}
+function anchorKey(el){
+  if(el.matches(".exrow[data-row]")) return '.exrow[data-row="' + el.dataset.row + '"]';
+  if(el.matches(".hero")) return ".hero";
+  return null;
+}
+function viewAnchors(v){
+  const top = stickyBottom(), out = [];
+  let seen = false;
+  v.querySelectorAll(".exrow[data-row], .hero, h3.sec").forEach(el => {
+    const r = el.getBoundingClientRect();
+    if(!seen && r.bottom <= top) return;
+    seen = true;
+    const key = el.matches("h3.sec") ? null : anchorKey(el);
+    out.push({key, text: key ? null : el.textContent, top: r.top});
+  });
+  return out.slice(0, 8);
+}
+function restoreAnchor(v, list){
+  for(const a of list){
+    const el = a.key ? v.querySelector(a.key) : Array.from(v.querySelectorAll("h3.sec")).find(h => h.textContent === a.text);
+    if(!el) continue;
+    const d = el.getBoundingClientRect().top - a.top;
+    if(Math.abs(d) >= 1) window.scrollBy(0, d);
+    return;
+  }
+}
 function render(){
   if(pressHeld){ renderWaiting = true; return; }
   const resumeId = playingId;                /* 再生中の動きがあれば、描き直した後に再開する（C7） */
@@ -6882,6 +6916,8 @@ function render(){
   if(typeof resetProg === "function") resetProg();
   document.getElementById("todayLabel").textContent = fmtDate(TODAY);
   const v = document.getElementById("view");
+  const anchors = anchorTab === tab ? viewAnchors(v) : [];
+  anchorTab = tab;
   v.className = "view-" + tab;
   /* 描くのに失敗しても（おかしな記録が入っていたなど）白い画面にしない。ほかのタブと設定は使えるようにする */
   try{
@@ -6898,6 +6934,7 @@ function render(){
   }
   wire();
   restoreDrafts();
+  restoreAnchor(v, anchors);
   /* 再生中だった動きは、同じ図がまだ画面にあれば再生を続ける（C7） */
   if(resumeId && document.querySelector('[data-dia="' + resumeId + '"]')){ playKeep = true; try{ togglePlay(resumeId); }finally{ playKeep = false; } }
   /* キャラクターの画像が読めなかったら、画面ごと線の図に切り替える */
@@ -8326,7 +8363,7 @@ function clampR(kind, r){
 /* 次のセットの提案（入力欄の初めの値）。
    その日の1セット目は伸ばし方（progress.js）の目標から。2セット目からは前のセットの重さ・回数をそのまま出す
    （きつさの入力はやめた。重さ・回数は本人が調整する: 2026-09-29）。
-   target はこの日の目標（記録にも残し、次の回の判断に使う）。重さは持っているダンベルで作れる使い方の中からだけ */
+   target はこの日の目標（記録にも残し、次の回の判断に使う）。2セット目からは前のセットでやった回数。重さは持っているダンベルで作れる使い方の中からだけ */
 function suggestNext(item, e){
   const id = item.ex, kind = EXMAP[id].kind;
   const sets = e ? e.sets : [];
@@ -8337,7 +8374,9 @@ function suggestNext(item, e){
             change:p.change, why:p.why, src:p.src, prog:p};
   }
   const prev = sets[sets.length-1];
-  const target = typeof prev.target === "number" ? prev.target : p.target;
+  /* 目標と違う回数で記録したら、以降のセットの目標はその回数（2026-11-08 本人の指摘「想定と違う回数で記録した時、以降その回数に合わせて」）。
+     記録に残る目標もこれになるので、次の回もこの回数から決まる */
+  const target = prev.r > 0 ? clampR(kind, prev.r) : typeof prev.target === "number" ? prev.target : p.target;
   const src = "目標は" + target + unitOf(kind);
   if(!weighted || prev.w === undefined) return {r:clampR(kind, prev.r), target, w: weighted ? p.opt.total : undefined, opt:p.opt, why:"", src, prog:p};
   const cur = itemOptions(item).find(o => Math.abs(o.total - prev.w) < 0.01) || null;
@@ -8529,7 +8568,21 @@ function dailyPickCard(){
 /* 今日のカードの並べ替え（2026-10-25 本人の要望）。左端のつまみを押したまま上下に動かし、離したところに置く。
    並べた順は今日のメニューに保存し、種目ごとの位置を覚えて次からのメニューの並びにも使う（rules.js の learnOrder・orderPlan） */
 function wireDrag(v){
-  v.querySelectorAll(".exrow .grip").forEach(g => { g.onpointerdown = e => startDrag(e, g.closest(".exrow")); });
+  v.querySelectorAll(".exrow .grip").forEach(g => { g.onpointerdown = e => holdDrag(e, g.closest(".exrow")); });
+}
+/* 指で触れたときは、少し押したままにしてから動かす。触れてすぐ動かしたらページのスクロールにする
+   （つまみの上から指を動かしてもスクロールできなかった: 2026-11-08 本人の指摘「スマホで種目を見てるとスクロールがおかしくなる」）。
+   マウスは押してすぐ動かせる */
+const DRAG_HOLD_MS = 250;
+function holdDrag(e, row){
+  if(e.pointerType === "mouse"){ startDrag(e, row); return; }
+  const g = e.currentTarget, x0 = e.clientX, y0 = e.clientY, first = {clientX: x0, clientY: y0, pointerId: e.pointerId, button: e.button, preventDefault(){}};
+  const quit = () => { clearTimeout(t); g.removeEventListener("pointermove", mv); g.removeEventListener("pointerup", quit); g.removeEventListener("pointercancel", quit); };
+  const mv = ev => { if(Math.abs(ev.clientX - x0) > 8 || Math.abs(ev.clientY - y0) > 8) quit(); };
+  const t = setTimeout(() => { quit(); startDrag(first, row); }, DRAG_HOLD_MS);
+  g.addEventListener("pointermove", mv);
+  g.addEventListener("pointerup", quit);
+  g.addEventListener("pointercancel", quit);
 }
 WIRES.push(wireDrag);
 function startDrag(e, row){
@@ -8544,6 +8597,9 @@ function startDrag(e, row){
   row.classList.add("dragging");
   rows.forEach(r => { if(r !== row) r.classList.add("shift"); });
   try{ row.setPointerCapture(e.pointerId); }catch(err){}
+  /* 動かしている間は、指の動きでページがスクロールしないようにする */
+  const block = ev => { if(ev.cancelable) ev.preventDefault(); };
+  row.addEventListener("touchmove", block, {passive: false});
   const place = () => {
     const y = lastY + window.scrollY, dy = y - y0;
     row.style.transform = `translateY(${dy}px)`;
@@ -8573,6 +8629,7 @@ function startDrag(e, row){
     row.removeEventListener("pointerup", end);
     row.removeEventListener("pointercancel", end);
     clearInterval(scrollIv);
+    row.removeEventListener("touchmove", block);
     rows.forEach(r => { r.classList.remove("shift", "dragging"); r.style.transform = ""; });
     if(to === from) return;
     const ids = rows.map(r => r.dataset.row), id = ids.splice(from, 1)[0];
@@ -10503,13 +10560,12 @@ function onAct(el, ev){
   const a = el.dataset.act;
   if(a==="toggle"){
     if(Date.now() - heroRecAt < 500) return;
+    const sp = rowSpot(el.dataset.ex);
     openEx = (openEx===el.dataset.ex)?null:el.dataset.ex;
     render();
-    /* 開いた種目の見出しを画面の上に合わせ、入力と「記録」が見えるようにする */
-    if(openEx){
-      const h = document.querySelector('[data-act="toggle"][data-ex="' + openEx + '"]');
-      if(h && h.scrollIntoView) h.scrollIntoView({block: "start"});
-    }
+    /* 開いた種目は見出しを上の帯のすぐ下に合わせ、入力と「記録」が見えるようにする（帯の裏に隠さない）。閉じたときはその場に残す */
+    if(openEx) keepSpot(Object.assign(sp || {id: openEx, next: [], prev: []}, {y: stickyBottom() + 8}), true);
+    else keepSpot(sp, true);
   }
   else if(a==="addset"){ addSet(el.dataset.ex); }
   else if(a==="delset"){ delSet(el.dataset.ex, +el.dataset.i); }
@@ -10667,7 +10723,9 @@ function addSet(id, keep){
      合わせないと、同じ場所をもう一度押したときに別のところ（セットの行など）を押してしまう（2026-10-02） */
   const sel = keep || '[data-act="addset"][data-ex="' + id + '"]';
   const btn0 = document.querySelector(sel), y0 = btn0 ? btn0.getBoundingClientRect().top : null;
+  const sp = doneNow ? rowSpot(id) : null;
   render();
+  keepSpot(sp, true);                                /* 終えてカードが閉じたら、閉じたカードを元の高さ（隠れていたら帯の下）に置く */
   const btn1 = y0 === null ? null : document.querySelector(sel);
   if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
   /* その日の最後のセットのあとは休憩が要らないので、タイマーも合図の音も出さない（2026-11-04 本人の要望） */
@@ -10806,21 +10864,41 @@ ACTIONS.lessset = el=>{
   if(isDoneToday(id)) openEx = null;
   render();
 };
+/* 種目を外した・後に回した・終えたときに画面が飛ばないように（2026-11-08 本人の指摘）。
+   押す前のカードの位置を覚えておき（上の帯より上に隠れていたら帯のすぐ下）、描き直したあと、
+   そのカード（follow）か、無くなった・動いたときはその次のカードを、そこに置く */
+function rowSpot(id){
+  const row = document.querySelector('#view .exrow[data-row="' + id + '"]');
+  if(!row) return null;
+  const rows = Array.from(row.parentNode.querySelectorAll(":scope > .exrow[data-row]")), i = rows.indexOf(row);
+  return {id, y: Math.max(stickyBottom() + 8, row.getBoundingClientRect().top),
+          next: rows.slice(i + 1).map(r => r.dataset.row), prev: rows.slice(0, i).reverse().map(r => r.dataset.row)};
+}
+function keepSpot(sp, follow){
+  if(!sp) return;
+  const ids = (follow ? [sp.id] : []).concat(sp.next, sp.prev);
+  for(const id of ids){
+    const el = document.querySelector('#view .exrow[data-row="' + id + '"]');
+    if(el){ window.scrollBy(0, el.getBoundingClientRect().top - sp.y); return; }
+  }
+}
 ACTIONS.later = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
-  const id = el.dataset.ex;
+  const id = el.dataset.ex, sp = rowSpot(id);
   editPlanItem(id, (plan, i)=>{ const it = plan.splice(i, 1)[0]; plan.push(it); });
   if(openEx === id) openEx = null;
   todayMsg = "「" + itemName(itemOf(id)) + "」を後に回しました";
   render();
+  keepSpot(sp, false);
 };
 ACTIONS.skip = el=>{
   if(rollDay()){ render(); setStatus("日付が変わったので、今日のメニューに切り替えました"); return; }
-  const id = el.dataset.ex;
+  const id = el.dataset.ex, sp = rowSpot(id);
   editPlanItem(id, (plan, i)=>{ plan[i].skip = true; });
   if(openEx === id) openEx = null;
   todayMsg = "「" + itemName(itemOf(id)) + "」を今日は外しました。組み直しても入りません。下の「戻す」で戻せます";
   render();
+  keepSpot(sp, false);
 };
 /* 今日タブの「毎日やってよい種目」の押しボタン（today.js の dailyPickCard）。入れる・外すだけで、種目のカードは開かない。
    押したボタンが画面の同じ位置に残るように合わせる（続けて押せるように） */

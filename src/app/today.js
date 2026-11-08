@@ -177,7 +177,21 @@ function dailyPickCard(){
 /* 今日のカードの並べ替え（2026-10-25 本人の要望）。左端のつまみを押したまま上下に動かし、離したところに置く。
    並べた順は今日のメニューに保存し、種目ごとの位置を覚えて次からのメニューの並びにも使う（rules.js の learnOrder・orderPlan） */
 function wireDrag(v){
-  v.querySelectorAll(".exrow .grip").forEach(g => { g.onpointerdown = e => startDrag(e, g.closest(".exrow")); });
+  v.querySelectorAll(".exrow .grip").forEach(g => { g.onpointerdown = e => holdDrag(e, g.closest(".exrow")); });
+}
+/* 指で触れたときは、少し押したままにしてから動かす。触れてすぐ動かしたらページのスクロールにする
+   （つまみの上から指を動かしてもスクロールできなかった: 2026-11-08 本人の指摘「スマホで種目を見てるとスクロールがおかしくなる」）。
+   マウスは押してすぐ動かせる */
+const DRAG_HOLD_MS = 250;
+function holdDrag(e, row){
+  if(e.pointerType === "mouse"){ startDrag(e, row); return; }
+  const g = e.currentTarget, x0 = e.clientX, y0 = e.clientY, first = {clientX: x0, clientY: y0, pointerId: e.pointerId, button: e.button, preventDefault(){}};
+  const quit = () => { clearTimeout(t); g.removeEventListener("pointermove", mv); g.removeEventListener("pointerup", quit); g.removeEventListener("pointercancel", quit); };
+  const mv = ev => { if(Math.abs(ev.clientX - x0) > 8 || Math.abs(ev.clientY - y0) > 8) quit(); };
+  const t = setTimeout(() => { quit(); startDrag(first, row); }, DRAG_HOLD_MS);
+  g.addEventListener("pointermove", mv);
+  g.addEventListener("pointerup", quit);
+  g.addEventListener("pointercancel", quit);
 }
 WIRES.push(wireDrag);
 function startDrag(e, row){
@@ -192,6 +206,9 @@ function startDrag(e, row){
   row.classList.add("dragging");
   rows.forEach(r => { if(r !== row) r.classList.add("shift"); });
   try{ row.setPointerCapture(e.pointerId); }catch(err){}
+  /* 動かしている間は、指の動きでページがスクロールしないようにする */
+  const block = ev => { if(ev.cancelable) ev.preventDefault(); };
+  row.addEventListener("touchmove", block, {passive: false});
   const place = () => {
     const y = lastY + window.scrollY, dy = y - y0;
     row.style.transform = `translateY(${dy}px)`;
@@ -221,6 +238,7 @@ function startDrag(e, row){
     row.removeEventListener("pointerup", end);
     row.removeEventListener("pointercancel", end);
     clearInterval(scrollIv);
+    row.removeEventListener("touchmove", block);
     rows.forEach(r => { r.classList.remove("shift", "dragging"); r.style.transform = ""; });
     if(to === from) return;
     const ids = rows.map(r => r.dataset.row), id = ids.splice(from, 1)[0];

@@ -402,6 +402,40 @@ document.addEventListener("click", e => {
   pressHeld = false; pressWatch(0);                                                        /* ボタンの処理より先に解く */
 }, true);
 
+/* 描き直しで画面が飛ばないように、描く前に見えていた目印（種目のカード・見出し）を、描いたあとも同じ高さに置く。
+   無くなっていたら、その次の目印で合わせる。タブを替えたときは合わせない（タブの切り替えは上から）。
+   2026-11-08 本人の指摘「種目を消したり完了したりすると画面が上とか下に飛ばされる」 */
+let anchorTab = null;
+function stickyBottom(){
+  const b = document.querySelector("#view .dayprog");
+  return b ? Math.max(0, b.getBoundingClientRect().bottom) : 0;
+}
+function anchorKey(el){
+  if(el.matches(".exrow[data-row]")) return '.exrow[data-row="' + el.dataset.row + '"]';
+  if(el.matches(".hero")) return ".hero";
+  return null;
+}
+function viewAnchors(v){
+  const top = stickyBottom(), out = [];
+  let seen = false;
+  v.querySelectorAll(".exrow[data-row], .hero, h3.sec").forEach(el => {
+    const r = el.getBoundingClientRect();
+    if(!seen && r.bottom <= top) return;
+    seen = true;
+    const key = el.matches("h3.sec") ? null : anchorKey(el);
+    out.push({key, text: key ? null : el.textContent, top: r.top});
+  });
+  return out.slice(0, 8);
+}
+function restoreAnchor(v, list){
+  for(const a of list){
+    const el = a.key ? v.querySelector(a.key) : Array.from(v.querySelectorAll("h3.sec")).find(h => h.textContent === a.text);
+    if(!el) continue;
+    const d = el.getBoundingClientRect().top - a.top;
+    if(Math.abs(d) >= 1) window.scrollBy(0, d);
+    return;
+  }
+}
 function render(){
   if(pressHeld){ renderWaiting = true; return; }
   const resumeId = playingId;                /* 再生中の動きがあれば、描き直した後に再開する（C7） */
@@ -414,6 +448,8 @@ function render(){
   if(typeof resetProg === "function") resetProg();
   document.getElementById("todayLabel").textContent = fmtDate(TODAY);
   const v = document.getElementById("view");
+  const anchors = anchorTab === tab ? viewAnchors(v) : [];
+  anchorTab = tab;
   v.className = "view-" + tab;
   /* 描くのに失敗しても（おかしな記録が入っていたなど）白い画面にしない。ほかのタブと設定は使えるようにする */
   try{
@@ -430,6 +466,7 @@ function render(){
   }
   wire();
   restoreDrafts();
+  restoreAnchor(v, anchors);
   /* 再生中だった動きは、同じ図がまだ画面にあれば再生を続ける（C7） */
   if(resumeId && document.querySelector('[data-dia="' + resumeId + '"]')){ playKeep = true; try{ togglePlay(resumeId); }finally{ playKeep = false; } }
   /* キャラクターの画像が読めなかったら、画面ごと線の図に切り替える */
