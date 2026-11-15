@@ -10,7 +10,20 @@ function viewHist(){
   const totalSets = dates.reduce((a,d)=>a+(state.sessions[d].entries||[]).reduce((x,e)=>x+e.sets.length,0),0);
   const last7 = dates.filter(d=>daysAgo(d)<7).length;
 
-  const table = dates.slice(0,30).map(d=>{
+  /* 日ごとの記録は1か月ずつ見せ、前の月・次の月で切り替える（2026-11-15 本人の要望）。
+     初めは今月。記録の一番古い月より前・今月より先には進めない */
+  const nowMon = TODAY.slice(0,7), firstMon = dates[dates.length-1].slice(0,7);
+  if(!histMonth || histMonth > nowMon) histMonth = nowMon;
+  if(histMonth < firstMon) histMonth = firstMon;
+  const monDates = dates.filter(d => d.slice(0,7) === histMonth);
+  const [hy, hm] = histMonth.split("-").map(Number);
+  const monSets = monDates.reduce((a,d)=>a+(state.sessions[d].entries||[]).reduce((x,e)=>x+e.sets.length,0),0);
+  const monthNav = `<div class="histmon">
+      <button data-act="histmon" data-d="-1" aria-label="前の月"${histMonth <= firstMon ? " disabled" : ""}>‹ 前の月</button>
+      <span class="num">${hy}年${hm}月</span>
+      <button data-act="histmon" data-d="1" aria-label="次の月"${histMonth >= nowMon ? " disabled" : ""}>次の月 ›</button>
+    </div>`;
+  const table = monDates.map(d=>{
     const s = state.sessions[d];
     const sets = (s.entries||[]).reduce((a,e)=>a+e.sets.length,0);
     const names = (s.entries||[]).filter(e=>e.sets.length).map(e=>EXMAP[e.ex]?EXMAP[e.ex].name:e.ex).join("、");
@@ -28,9 +41,11 @@ function viewHist(){
     ${trendCards(dates)}
     <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
-    <div class="card overflowx">
+    ${monthNav}
+    <p class="lastline" style="margin-top:0">${monDates.length ? `${monDates.length} 回・${monSets} セット` : "この月の記録はありません"}</p>
+    ${monDates.length ? `<div class="card overflowx">
       <table class="hist"><thead><tr><th>日付</th><th style="text-align:right">セット</th></tr></thead><tbody>${table}</tbody></table>
-    </div>
+    </div>` : ""}
     ${addDayRow}
     <h3 class="sec">書き出し</h3>
     <div class="card">
@@ -42,6 +57,17 @@ function viewHist(){
     </div>`;
 }
 ACTIONS.histday = el => openDaySheet(el.dataset.d);
+let histMonth = null;               /* 日ごとの記録で見ている月（YYYY-MM）。null なら今月 */
+ACTIONS.histmon = el => {
+  const nav = document.querySelector("#view .histmon"), y = nav ? nav.getBoundingClientRect().top : null;
+  const [y0, m0] = (histMonth || TODAY.slice(0,7)).split("-").map(Number);
+  const t = new Date(y0, m0 - 1 + (+el.dataset.d), 1);
+  histMonth = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0");
+  render();
+  /* 切り替えても月の見出しは同じ高さに残す（表の長さが変わって画面が飛ばないように） */
+  const nav2 = document.querySelector("#view .histmon");
+  if(nav2 && y !== null) window.scrollBy(0, nav2.getBoundingClientRect().top - y);
+};
 ACTIONS.addpastday = () => openAddDaySheet();
 
 /* ============================================================

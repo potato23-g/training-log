@@ -222,7 +222,7 @@ function addSet(id, keep){
   const btn0 = document.querySelector(sel), y0 = btn0 ? btn0.getBoundingClientRect().top : null;
   const sp = doneNow ? rowSpot(id) : null;
   render();
-  keepSpot(sp, true);                                /* 終えてカードが閉じたら、閉じたカードを元の高さ（隠れていたら帯の下）に置く */
+  keepSpot(sp, false);                               /* 終えたカードは一覧の最後に回るので、次のカードを元の高さ（隠れていたら帯の下）に置く */
   const btn1 = y0 === null ? null : document.querySelector(sel);
   if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
   /* その日の最後のセットのあとは休憩が要らないので、タイマーも合図の音も出さない（2026-11-04 本人の要望） */

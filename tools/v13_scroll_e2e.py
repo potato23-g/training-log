@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """スマホ幅・本物のタッチで、種目を外す・後に回す・終えるときに画面が飛ばないか、つまみの上から指を動かしてもスクロールできるか、
    長押しなら並べ替えられるか、目標と違う回数で記録したら以降の目標がその回数になるか（2026-11-08 本人の指摘）。
+   終えた種目が一覧の最後に回るか・履歴を1か月ずつ切り替えられるか（2026-11-15）。
    python v13_scroll_e2e.py"""
 import json, os, subprocess, sys, tempfile, time, urllib.request, io
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,8 +60,29 @@ try:
         ok(t is not None and b <= t <= b + 20, "「%s」のあと、次のカードが上の帯のすぐ下に来る（%s・帯の下 %s）" % ({"skip": "今日は外す", "later": "後に回す"}[act], t, b))
     ev(SETUP % '"goblet"'); time.sleep(1.0); place("goblet", -130)
     for k in range(3): tap('.exrow[data-row=goblet] [data-act=addset]')
-    t, b = top("goblet"), sb()
-    ok(b <= t <= b + 20 and top("fly") < 844, "見出しが隠れた状態で最後のセットを記録すると、閉じたカードが帯のすぐ下に来て次のカードも見える（%s）" % t)
+    t, b = top("fly"), sb()
+    ok(b <= t <= b + 20, "見出しが隠れた状態で最後のセットを記録すると、次のカードが帯のすぐ下に来る（%s・帯の下 %s）" % (t, b))
+    ok(order().endswith(",goblet") and order().startswith("curl,ohp,row,fly"), "終えた種目は一覧の最後に回る（%s）" % order())
+    ok(ev("document.querySelector('.hero h2') && document.querySelector('.hero h2').textContent") == ev("itemName(itemOf('curl'))"), "次の種目は、まだの種目の一番上と同じ")
+    # 履歴: 1か月ずつ見て、前の月・次の月で切り替える（2026-11-15 本人の要望）
+    ev("""(() => { state.sessions = {}; const mk = (d, n) => { state.sessions[d] = {entries: [{ex: "curl", sets: Array.from({length: n}, (_, i) => ({id: d + i, at: 1, r: 10, w: 5}))}]}; };
+      const t = new Date(TODAY + "T00:00:00"); const ym = (k) => { const x = new Date(t.getFullYear(), t.getMonth() + k, 1); return x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0"); };
+      for(let i = 1; i <= 20; i++) mk(ym(-1) + "-" + String(i).padStart(2, "0"), 2);
+      mk(TODAY, 3); mk(ym(-2) + "-05", 1);
+      catalogMemo = null; planMemo = null; resetProg(); histMonth = null; tab = "hist"; render(); window.scrollTo(0, 0); return true; })()""")
+    time.sleep(0.8)
+    rows = lambda: ev("document.querySelectorAll('table.hist tbody tr').length")
+    lbl = lambda: ev("document.querySelector('.histmon span').textContent")
+    ok(rows() == 1 and lbl() == ev("(+TODAY.slice(0,4)) + '年' + (+TODAY.slice(5,7)) + '月'") and ev("document.querySelector('[data-act=histmon][data-d=\"1\"]').disabled"), "初めは今月だけを出し、次の月へは進めない（%s・%s 行）" % (lbl(), rows()))
+    ev("document.querySelector('.histmon').scrollIntoView({block:'center'}); true"); time.sleep(0.3)
+    y0 = ev("Math.round(document.querySelector('.histmon').getBoundingClientRect().top)")
+    tap('[data-act=histmon][data-d="-1"]')
+    y1 = ev("Math.round(document.querySelector('.histmon').getBoundingClientRect().top)")
+    ok(rows() == 20 and abs(y1 - y0) <= 2, "前の月を押すと、その月の全部の日（20日・30日で切らない）が出て、月の見出しは同じ高さのまま（%s 行・%s→%s）" % (rows(), y0, y1))
+    tap('[data-act=histmon][data-d="-1"]')
+    ok(rows() == 1 and ev("document.querySelector('[data-act=histmon][data-d=\"-1\"]').disabled"), "記録の一番古い月より前へは進めない")
+    tap('[data-act=histmon][data-d="1"]'); tap('[data-act=histmon][data-d="1"]')
+    ok(rows() == 1, "次の月で今月に戻る（%s 行）" % rows())
     def drag(sel, hold, dy):
         ev("document.querySelector(%s).scrollIntoView({block:'center'}); true" % json.dumps(sel)); time.sleep(0.5)
         x, y = ev("""((sel)=>{const r=document.querySelector(sel).getBoundingClientRect(); return [r.left+15, r.top+r.height/2];})(%s)""" % json.dumps(sel))

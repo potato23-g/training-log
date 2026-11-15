@@ -129,7 +129,9 @@ function viewToday(){
   const deloadAsk = dl && dl.suggest
     ? `<div class="flash">同じ重さで回数が続けて減っている動きがあります。今週を軽めの週（1回3種目まで）にすると、疲れが抜けて、また伸びやすくなります。
         <div class="rowbtns"><button data-act="deloadon">今週を軽めの週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
-  const rows = items.map(it=>exRow(it, items.length > 1)).join("");
+  /* その日終えた種目は一覧の最後に回し、まだの種目が常に上に来るようにする（2026-11-15 本人の要望）。並びの中の順は保つ */
+  const rows = items.filter(it => !isDoneToday(it.ex)).concat(items.filter(it => isDoneToday(it.ex)))
+    .map(it=>exRow(it, items.length > 1)).join("");
   const skippedLine = skipped.length
     ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
   const sore = soreToday();
@@ -264,7 +266,9 @@ function reorderToday(ids){
   s.planAt = s.planEdit = stampNow();
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
-  learnOrder(ids);
+  /* 終えた種目は一覧の最後にあるので、覚える並びはまだの種目だけで決める（終えた種目を「最後にやる種目」と覚えないように） */
+  const open = ids.filter(id => !isDoneToday(id));
+  learnOrder(open.length >= 2 ? open : ids);
   planMemo = null; resetProg();
   todayMsg = "並びを変えました。次からのメニューも、この並びに近づけます";
   render();

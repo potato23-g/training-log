@@ -452,6 +452,11 @@ table.hist td{padding:9px 6px}
 .kits .kitgo{flex:1;text-align:left;min-height:52px;padding:8px 12px;font-weight:600}
 .kits .kitgo span{display:block;font-weight:400;font-size:12px;color:var(--ink-2);margin-top:2px}
 .kits .kitedit{flex:none;min-width:64px}
+/* 履歴: 日ごとの記録の月の切り替え（2026-11-15） */
+.histmon{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 8px}
+.histmon span{font-weight:700;font-size:16px}
+.histmon button{min-height:40px;padding:0 12px}
+.histmon button:disabled{opacity:.35}
 </style>
 </head>
 <body>
@@ -5975,7 +5980,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-11-08 21:51";
+const BUILD_VERSION = "2026-11-15 20:33";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -8520,7 +8525,9 @@ function viewToday(){
   const deloadAsk = dl && dl.suggest
     ? `<div class="flash">同じ重さで回数が続けて減っている動きがあります。今週を軽めの週（1回3種目まで）にすると、疲れが抜けて、また伸びやすくなります。
         <div class="rowbtns"><button data-act="deloadon">今週を軽めの週にする</button><button data-act="gotab" data-tab="plan">理由を見る</button></div></div>` : "";
-  const rows = items.map(it=>exRow(it, items.length > 1)).join("");
+  /* その日終えた種目は一覧の最後に回し、まだの種目が常に上に来るようにする（2026-11-15 本人の要望）。並びの中の順は保つ */
+  const rows = items.filter(it => !isDoneToday(it.ex)).concat(items.filter(it => isDoneToday(it.ex)))
+    .map(it=>exRow(it, items.length > 1)).join("");
   const skippedLine = skipped.length
     ? `<p class="skipped">今日は外した: ${skipped.map(it => esc(itemName(it)) + `<button data-act="unskip" data-ex="${it.ex}">戻す</button>`).join("　")}</p>` : "";
   const sore = soreToday();
@@ -8655,7 +8662,9 @@ function reorderToday(ids){
   s.planAt = s.planEdit = stampNow();
   persistSession(TODAY);
   if(typeof syncNow === "function") syncNow();
-  learnOrder(ids);
+  /* 終えた種目は一覧の最後にあるので、覚える並びはまだの種目だけで決める（終えた種目を「最後にやる種目」と覚えないように） */
+  const open = ids.filter(id => !isDoneToday(id));
+  learnOrder(open.length >= 2 ? open : ids);
   planMemo = null; resetProg();
   todayMsg = "並びを変えました。次からのメニューも、この並びに近づけます";
   render();
@@ -10091,7 +10100,20 @@ function viewHist(){
   const totalSets = dates.reduce((a,d)=>a+(state.sessions[d].entries||[]).reduce((x,e)=>x+e.sets.length,0),0);
   const last7 = dates.filter(d=>daysAgo(d)<7).length;
 
-  const table = dates.slice(0,30).map(d=>{
+  /* 日ごとの記録は1か月ずつ見せ、前の月・次の月で切り替える（2026-11-15 本人の要望）。
+     初めは今月。記録の一番古い月より前・今月より先には進めない */
+  const nowMon = TODAY.slice(0,7), firstMon = dates[dates.length-1].slice(0,7);
+  if(!histMonth || histMonth > nowMon) histMonth = nowMon;
+  if(histMonth < firstMon) histMonth = firstMon;
+  const monDates = dates.filter(d => d.slice(0,7) === histMonth);
+  const [hy, hm] = histMonth.split("-").map(Number);
+  const monSets = monDates.reduce((a,d)=>a+(state.sessions[d].entries||[]).reduce((x,e)=>x+e.sets.length,0),0);
+  const monthNav = `<div class="histmon">
+      <button data-act="histmon" data-d="-1" aria-label="前の月"${histMonth <= firstMon ? " disabled" : ""}>‹ 前の月</button>
+      <span class="num">${hy}年${hm}月</span>
+      <button data-act="histmon" data-d="1" aria-label="次の月"${histMonth >= nowMon ? " disabled" : ""}>次の月 ›</button>
+    </div>`;
+  const table = monDates.map(d=>{
     const s = state.sessions[d];
     const sets = (s.entries||[]).reduce((a,e)=>a+e.sets.length,0);
     const names = (s.entries||[]).filter(e=>e.sets.length).map(e=>EXMAP[e.ex]?EXMAP[e.ex].name:e.ex).join("、");
@@ -10109,9 +10131,11 @@ function viewHist(){
     ${trendCards(dates)}
     <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
-    <div class="card overflowx">
+    ${monthNav}
+    <p class="lastline" style="margin-top:0">${monDates.length ? `${monDates.length} 回・${monSets} セット` : "この月の記録はありません"}</p>
+    ${monDates.length ? `<div class="card overflowx">
       <table class="hist"><thead><tr><th>日付</th><th style="text-align:right">セット</th></tr></thead><tbody>${table}</tbody></table>
-    </div>
+    </div>` : ""}
     ${addDayRow}
     <h3 class="sec">書き出し</h3>
     <div class="card">
@@ -10123,6 +10147,17 @@ function viewHist(){
     </div>`;
 }
 ACTIONS.histday = el => openDaySheet(el.dataset.d);
+let histMonth = null;               /* 日ごとの記録で見ている月（YYYY-MM）。null なら今月 */
+ACTIONS.histmon = el => {
+  const nav = document.querySelector("#view .histmon"), y = nav ? nav.getBoundingClientRect().top : null;
+  const [y0, m0] = (histMonth || TODAY.slice(0,7)).split("-").map(Number);
+  const t = new Date(y0, m0 - 1 + (+el.dataset.d), 1);
+  histMonth = t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0");
+  render();
+  /* 切り替えても月の見出しは同じ高さに残す（表の長さが変わって画面が飛ばないように） */
+  const nav2 = document.querySelector("#view .histmon");
+  if(nav2 && y !== null) window.scrollBy(0, nav2.getBoundingClientRect().top - y);
+};
 ACTIONS.addpastday = () => openAddDaySheet();
 
 /* ============================================================
@@ -10725,7 +10760,7 @@ function addSet(id, keep){
   const btn0 = document.querySelector(sel), y0 = btn0 ? btn0.getBoundingClientRect().top : null;
   const sp = doneNow ? rowSpot(id) : null;
   render();
-  keepSpot(sp, true);                                /* 終えてカードが閉じたら、閉じたカードを元の高さ（隠れていたら帯の下）に置く */
+  keepSpot(sp, false);                               /* 終えたカードは一覧の最後に回るので、次のカードを元の高さ（隠れていたら帯の下）に置く */
   const btn1 = y0 === null ? null : document.querySelector(sel);
   if(btn1) window.scrollBy(0, btn1.getBoundingClientRect().top - y0);
   /* その日の最後のセットのあとは休憩が要らないので、タイマーも合図の音も出さない（2026-11-04 本人の要望） */
