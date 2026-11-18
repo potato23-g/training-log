@@ -261,6 +261,24 @@ export const EXLIB = {
     }),
   },
 
+  // ダンベルキックバック（2026-11-15）: ワンハンドロウと同じ構え（ベッドの縁に左手と左膝）。右の上腕を体の横で胴と平行に引き上げたまま、
+  // 肘を直角から後ろへ伸ばしきる。持ち手は前腕と直角（手のひらは体の側）
+  kickback: {
+    name: 'ダンベルキックバック', cam: { yaw0: -110 }, props: { bench: [4.0, 2.7, 1.0, 0] }, fixed: ['左手首', '右足首'],
+    pose: (u, k, m) => {
+      // 上腕は少し外へ開く（線の図と同じ 25°）。体に沿わせきると、垂らしたダンベルが右の太ももに当たる
+      const ud = N(V(-0.47, 0.06, -1)), fd = mixN(V(-0.05, -1, -0.05), ud, u);
+      return {
+        pelvis: [88, 0, 0], chest: [88, 0, 0], head: [-12, 0, 0],
+        pin: pinHip(9.5, 0, 1.2),
+        footL: c => ({ pos: [2.0, 6.3, -2.34], toe: V(0, -0.6, -0.8), up: V(0, -0.8, 0.6), pole: V(0, -0.3, 1) }),
+        footR: c => ({ pos: [-0.5, m.legL.ankleH, -0.8], toe: V(-0.15, 0, 1), pole: V(-0.2, 0, 1) }),
+        handL: c => ({ pos: [c.shL.x + 0.1, 5.82, c.shL.z + 0.5], pole: V(0.3, 0, -1), palm: V(0, -1, 0), fingers: Z, hand: 'flat' }),
+        handR: c => ({ ...armFK(c, -1, ud, fd, V(0, 1, 0)), bar: N(fd.clone().cross(X)), db: true }),
+      };
+    },
+  },
+
   // ダンベルショルダープレス: ダンベルを肩の高さ、耳の横あたりに構え、真上に押し上げて肘を伸ばしきる。
   ohp: {
     name: 'ダンベルショルダープレス', fixed: FEET,
@@ -314,6 +332,18 @@ export const EXLIB = {
       return { baseQ: Qx(L.th), pin: pinSh(0, lerp(hi, lo, u), L.z), head: [-8, 0, 0],
                footL: toeStand(1), footR: toeStand(-1),
                handL: v.deep ? grip(1) : palmFloor(1, 1.85, top.z - 0.25), handR: v.deep ? grip(-1) : palmFloor(-1, 1.85, top.z - 0.25) };
+    },
+  },
+
+  // ナロープッシュアップ（2026-11-15）: 腕立て伏せと同じ体の線で、手を胸の真下・肩幅より狭く置き、指はやや内へ。肘は体の横に沿わせて後ろへ曲げる
+  pushupnarrow: {
+    name: 'ナロープッシュアップ', cam: { alt: 12 }, fixed: ['左手首', '右手首'],
+    pose: (u, k, m) => {
+      const hi = 4.75, lo = 2.15;
+      const top = plankLine(hi, TOE_ANK, 13.96), L = plankLine(lerp(hi, lo, u), TOE_ANK, 13.96);
+      const hand = sg => c => ({ ...palmFloor(sg, 1.05, top.z - 0.6, -0.84)(c), pole: V(sg * 0.15, 0.3, -1) });
+      return { baseQ: Qx(L.th), pin: pinSh(0, lerp(hi, lo, u), L.z), head: [-8, 0, 0],
+               footL: toeStand(1), footR: toeStand(-1), handL: hand(1), handR: hand(-1) };
     },
   },
 

@@ -31,6 +31,9 @@ const WANT = {
   floorpress: [{ t: 1.3, hand: 'handR', to: [-1, 0, 0], label: '押し上げ: 手のひらは足の方（pronated）' }],
   /* 解説文「反対の手でダンベルを持ち、腕を真下に垂らす」= ニュートラル（手のひらは体の側） */
   row: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '下: 手のひらは体の側' }],
+  /* ACE: キックバックはニュートラル（手のひらは体の側）。構えも伸ばしきりも同じ */
+  kickback: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '構え: 手のひらは体の側' },
+             { t: 1.0, hand: 'handR', to: [0, 0, -1], label: '伸ばしきり: 手のひらは体の側' }],
   /* NASM: "a neutral grip"（手のひらは太もも側） */
   rdl: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '立位: 手のひらは太ももの側' }],
   rdl1: [{ t: 0, hand: 'handR', to: [0, 0, -1], label: '立位: 手のひらは太ももの側' }],
@@ -46,6 +49,7 @@ const WANT = {
   goblet: [{ t: 0, hand: 'handR', to: [0, 1, 0], label: '胸の前: 手のひらは上（持ち手を下から握る）' }],
   /* 床に手をつく = 手のひらは下 */
   pushup: [{ t: 0, hand: 'handR', to: [0, -1, 0], label: '床につく手: 手のひらは下' }],
+  pushupnarrow: [{ t: 0, hand: 'handR', to: [0, -1, 0], label: '床につく手: 手のひらは下' }],
   plank: [{ t: 0, hand: 'handR', to: [0, -1, 0], label: '床につく手: 手のひらは下' }],
   sideplank: [{ t: 0, hand: 'handR', to: [0, -1, 0], label: '床につく手: 手のひらは下' }],
   /* 腰に乗せたダンベルの端を両側から押さえる。手の向きはIKの都合で「内側」まで回しきれず、

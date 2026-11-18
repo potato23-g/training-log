@@ -39,6 +39,10 @@ const VARIANT_TEXT = {
                easy: ["肘を手で支える",    "片手ずつ行い、反対の手で肘を支える。"]},
   skull:      {hard: ["下ろしたところで2秒止める", "耳の横まで下ろした位置で2秒止めてから伸ばす。"],
                easy: ["肘を手で支える",    "片手ずつ行い、反対の手で肘を支える。"]},
+  kickback:   {hard: ["伸ばしたところで2秒止める", "肘を伸ばしきった位置で2秒止めてから戻す。"],
+               easy: ["軽くして回数を増やす", "一段軽い持ち方にして、回数を増やす。"]},
+  pushupnarrow:{hard: ["一番下で2秒止める", "胸が手に近づいた位置で2秒止めてから押す。"],
+               easy: ["机に手をつく",      "机やベッドの縁に手をついて角度を緩める。手の幅は狭いまま。"]},
   sumo:       {hard: ["一番下で2秒止める", "一番下で2秒止め、反動を使わずに立ち上がる。"],
                easy: ["浅めに止める",      "太ももが床と平行になる手前で止める。"]},
   splitfloor: {hard: ["一番下で2秒止める", "後ろの膝が床に近づいた位置で2秒止めてから戻る。"],
@@ -117,11 +121,12 @@ const VARIANT_MOTION = {
   "adduct|上で2秒止める":"adduct_hold", "deadlift|一番下で2秒止める":"deadlift_hold",
   "chinning|上で2秒止める":"chinning_hold", "chinning|下りるだけにする":"chinning_neg",
   "backext|上で3秒止める":"backext_hold", "backext|腕を体の横に伸ばす":"backext_arms",
-  "pushup|ダンベルを握って行う":"pushup_deep"
+  "pushup|ダンベルを握って行う":"pushup_deep",
+  "kickback|伸ばしたところで2秒止める":"kickback_hold", "pushupnarrow|一番下で2秒止める":"pushupnarrow_hold"
 };
 /* 動きの見た目が基本と変わらない組み方（重さや時間だけ変えるもの）。図の断り書きを出さない */
 const VARIANT_SAME_LOOK = {
-  "shrug|軽くして回数を増やす":1, "farmer|時間を短くする":1, "row|台に手をついて支える":1
+  "shrug|軽くして回数を増やす":1, "farmer|時間を短くする":1, "row|台に手をついて支える":1, "kickback|軽くして回数を増やす":1
 };
 
 /* DETAIL[id または base].reps の「A〜B回」「A〜B秒」を読み、その幅に r を収める（外れたら近い端へ） */

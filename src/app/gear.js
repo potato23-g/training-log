@@ -108,6 +108,7 @@ const HOLD = {
   floorpress:{pair:"両手に1つずつ持つ",    one:"片手ずつ押し、反対の手は床に置く",   per:"arm"},
   curl:      {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
   triext:    {one:"持ち手を両手で握る",                                    per:"total"},
+  kickback:  {one:"片手に持ち、左右を入れ替える",                          per:"arm"},
   calf:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、反対の手で壁を支える",   per:"total"},
   farmer:    {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で左右を持ち替える", per:"total"},
   sumo:      {pair:"両肩に1つずつ担ぐ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total", prefer:"one"},
@@ -220,7 +221,7 @@ function nearestOption(opts, w){
 }
 
 /* 記録がない種目の最初の重さの目安(per が arm の種目は片腕あたり)。この重さ以下で一番重い使い方から始める */
-const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity, pullover:8, rear:3, hammer:6, deadlift:12};
+const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity, pullover:8, rear:3, hammer:6, deadlift:12, kickback:3};
 function startKg(id){ const v = START_KG[id] !== undefined ? START_KG[id] : START_KG[baseOf(id)]; return v === undefined ? 8 : v; }
 function defaultOption(id){
   const opts = gearOptions(id); if(!opts.length) return null;
@@ -321,7 +322,9 @@ const HOUSE = {
   adduct:    {up:"水を入れたペットボトルを下の脚の内ももに乗せ、上の手で押さえて行う"},
   backext:   {up:"水を入れた500mlのペットボトルを両手で持ち、頭の後ろに添えて行う"},
   deadlift:  {up:"本や水を入れたペットボトルを詰めたリュックを背負い、ダンベルと一緒に使う", down:"水を入れた2Lのペットボトルを両手に1本ずつ持つ"},
-  chinning:  {up:"荷物を詰めたリュックを背負う", down:"椅子に片足を乗せ、脚で少し押し上げながら行う"}
+  chinning:  {up:"荷物を詰めたリュックを背負う", down:"椅子に片足を乗せ、脚で少し押し上げながら行う"},
+  kickback:  {down:"水を入れた500mlのペットボトルで行う"},
+  pushupnarrow:{up:"荷物を詰めたリュックを背負う"}
 };
 function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
 

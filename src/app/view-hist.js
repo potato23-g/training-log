@@ -23,7 +23,8 @@ function viewHist(){
       <span class="num">${hy}年${hm}月</span>
       <button data-act="histmon" data-d="1" aria-label="次の月"${histMonth >= nowMon ? " disabled" : ""}>次の月 ›</button>
     </div>`;
-  const table = monDates.map(d=>{
+  /* その月の古い日から並べる（2026-11-18 本人の要望） */
+  const table = monDates.slice().reverse().map(d=>{
     const s = state.sessions[d];
     const sets = (s.entries||[]).reduce((a,e)=>a+e.sets.length,0);
     const names = (s.entries||[]).filter(e=>e.sets.length).map(e=>EXMAP[e.ex]?EXMAP[e.ex].name:e.ex).join("、");
@@ -36,9 +37,9 @@ function viewHist(){
       <div class="bigset"><span class="v num">${streakDays}</span><span class="u">回のトレーニング（合計 ${totalSets} セット）</span></div>
       <p class="lastline">直近7日で ${last7} 回。</p>
     </div>
-    <h3 class="sec">種目ごとの推移</h3>
+    ${fold("trend", "種目ごとの推移", `
     <p class="lastline" style="margin-top:0">点は日ごとの一番よいセット。<span style="color:var(--muscle-ink)">●</span>は自己ベストの日</p>
-    ${trendCards(dates)}
+    ${trendCards(dates)}`)}
     <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
     ${monthNav}

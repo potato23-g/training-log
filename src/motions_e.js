@@ -634,4 +634,55 @@
     ]
   });
 
+  /* ---------------- ダンベルキックバック（2026-11-15） ----------------
+     ワンハンドロウと同じ構え（ベッドの縁に左手と左膝、右足は床）。右の上腕を体の横で胴と平行に引き上げたまま固定し、
+     肘を直角から伸ばしきるまで動かす（ACE・NASM。notes/form-sources.md）。持ち手は前腕と直角（手のひらは体の側）。
+     上腕は少し外へ開く（25°）。体に沿わせきると、構えで垂らしたダンベルが床についた右脚の太ももに食い込む（db_clash.js で 13cm） */
+  const KB_BED = { type: 'box', id: 'chair', min: [-0.06, 0, -0.70], max: [0.56, 0.45, -0.22], label: 'ベッドの縁' };
+  const KB_ARM = { 'upperarmR.flex': -2, 'upperarmR.abd': 25, 'upperarmR.rot': 10, 'clavR.prot': -10, 'clavR.elev': -5, 'spineC.rot': -2 };
+  M.register({
+    id: 'kickback',
+    view: { az: -28, el: 16 },
+    props: [KB_BED],
+    phases: [
+      { t: 0, label: '伸ばす 1秒' }, { t: 1.0, label: '伸ばしきって止める' }, { t: 2.0, label: '戻す 2秒' }
+    ],
+    anchor: { bone: 'shankL', local: [0.075, 0, 0], at: [0.10, 0.45, -0.26] },
+    feet: { R: { at: [-0.24, 0, 0.14], local: [0, -FOOT.ankleH, 0], yaw: 6, pins: [FOOT.heel, FOOT.ball] } },
+    hands: { L: { at: [0.54, 0.45, -0.31], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+                  pins: [HAND.palmSurf], pole: [-1, -0.3, 0.3] } },
+    dumbbells: [{ grip: 'handR', kg: 3 }],
+    contacts: [{ name: 'kneeL', bone: 'shankL', local: [0.075, 0, 0], weight: 1 },
+                { name: 'shinL', bone: 'shankL', local: [0.055, -0.20, 0], weight: 0.5 }],
+    base: Object.assign({
+      'pelvis.y': 0.80, 'pelvis.x': -0.02, 'pelvis.z': -0.11, 'pelvis.pitch': 76, 'pelvis.yaw': -5, 'pelvis.roll': -5,
+      'spineL.flex': -4, 'spineT.flex': -3, 'spineC.flex': -2, 'neck.flex': -14, 'head.flex': -6,
+      'thighL.flex': 100, 'thighL.abd': -7, 'thighL.rot': 5, 'shankL.flex': 128,
+      'footL.flex': -34, 'toesL.flex': 2,
+      'forearmR.rot': 82, 'handR.flex': 0
+    }, KB_ARM),
+    keys: [
+      { t: 0.0, hold: true, d: Object.assign({ 'forearmR.flex': 95 }, KB_ARM) },
+      { t: 1.0, hold: true, d: Object.assign({ 'forearmR.flex': 5 }, KB_ARM) },
+      { t: 2.0, hold: true, d: Object.assign({ 'forearmR.flex': 5 }, KB_ARM) },
+      { t: 4.0, hold: true, d: Object.assign({ 'forearmR.flex': 95 }, KB_ARM) }
+    ]
+  });
+
+  /* ---------------- ナロープッシュアップ（2026-11-15） ----------------
+     腕立て伏せと同じ体の線で、手を胸の真下・肩幅より狭く置き、肘を体の横に沿わせて後ろへ曲げる（ACE。notes/form-sources.md）。
+     指はやや内へ向ける（左右40°）。まっすぐ前のままだと、手を狭く置いたときに前腕のねじれが関節の範囲を超える */
+  {
+    const b = M.motions.pushup;
+    M.register({
+      id: 'pushupnarrow', view: clone(b.view), phases: clone(b.phases), contacts: clone(b.contacts), base: clone(b.base), keys: clone(b.keys),
+      hands: {
+        R: { at: [0.15, 0, 0.11], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+             pins: [HAND.palmSurf], pole: [-1, 0.1, 0.25], fingerYaw: -40 },
+        L: { at: [0.15, 0, -0.11], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+             pins: [HAND.palmSurf], pole: [-1, 0.1, -0.25], fingerYaw: 40 }
+      }
+    });
+  }
+
 })(typeof window !== 'undefined' ? window : globalThis);

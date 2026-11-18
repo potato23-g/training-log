@@ -2471,6 +2471,57 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     ]
   });
 
+  /* ---------------- ダンベルキックバック（2026-11-15） ----------------
+     ワンハンドロウと同じ構え（ベッドの縁に左手と左膝、右足は床）。右の上腕を体の横で胴と平行に引き上げたまま固定し、
+     肘を直角から伸ばしきるまで動かす（ACE・NASM。notes/form-sources.md）。持ち手は前腕と直角（手のひらは体の側）。
+     上腕は少し外へ開く（25°）。体に沿わせきると、構えで垂らしたダンベルが床についた右脚の太ももに食い込む（db_clash.js で 13cm） */
+  const KB_BED = { type: 'box', id: 'chair', min: [-0.06, 0, -0.70], max: [0.56, 0.45, -0.22], label: 'ベッドの縁' };
+  const KB_ARM = { 'upperarmR.flex': -2, 'upperarmR.abd': 25, 'upperarmR.rot': 10, 'clavR.prot': -10, 'clavR.elev': -5, 'spineC.rot': -2 };
+  M.register({
+    id: 'kickback',
+    view: { az: -28, el: 16 },
+    props: [KB_BED],
+    phases: [
+      { t: 0, label: '伸ばす 1秒' }, { t: 1.0, label: '伸ばしきって止める' }, { t: 2.0, label: '戻す 2秒' }
+    ],
+    anchor: { bone: 'shankL', local: [0.075, 0, 0], at: [0.10, 0.45, -0.26] },
+    feet: { R: { at: [-0.24, 0, 0.14], local: [0, -FOOT.ankleH, 0], yaw: 6, pins: [FOOT.heel, FOOT.ball] } },
+    hands: { L: { at: [0.54, 0.45, -0.31], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+                  pins: [HAND.palmSurf], pole: [-1, -0.3, 0.3] } },
+    dumbbells: [{ grip: 'handR', kg: 3 }],
+    contacts: [{ name: 'kneeL', bone: 'shankL', local: [0.075, 0, 0], weight: 1 },
+                { name: 'shinL', bone: 'shankL', local: [0.055, -0.20, 0], weight: 0.5 }],
+    base: Object.assign({
+      'pelvis.y': 0.80, 'pelvis.x': -0.02, 'pelvis.z': -0.11, 'pelvis.pitch': 76, 'pelvis.yaw': -5, 'pelvis.roll': -5,
+      'spineL.flex': -4, 'spineT.flex': -3, 'spineC.flex': -2, 'neck.flex': -14, 'head.flex': -6,
+      'thighL.flex': 100, 'thighL.abd': -7, 'thighL.rot': 5, 'shankL.flex': 128,
+      'footL.flex': -34, 'toesL.flex': 2,
+      'forearmR.rot': 82, 'handR.flex': 0
+    }, KB_ARM),
+    keys: [
+      { t: 0.0, hold: true, d: Object.assign({ 'forearmR.flex': 95 }, KB_ARM) },
+      { t: 1.0, hold: true, d: Object.assign({ 'forearmR.flex': 5 }, KB_ARM) },
+      { t: 2.0, hold: true, d: Object.assign({ 'forearmR.flex': 5 }, KB_ARM) },
+      { t: 4.0, hold: true, d: Object.assign({ 'forearmR.flex': 95 }, KB_ARM) }
+    ]
+  });
+
+  /* ---------------- ナロープッシュアップ（2026-11-15） ----------------
+     腕立て伏せと同じ体の線で、手を胸の真下・肩幅より狭く置き、肘を体の横に沿わせて後ろへ曲げる（ACE。notes/form-sources.md）。
+     指はやや内へ向ける（左右40°）。まっすぐ前のままだと、手を狭く置いたときに前腕のねじれが関節の範囲を超える */
+  {
+    const b = M.motions.pushup;
+    M.register({
+      id: 'pushupnarrow', view: clone(b.view), phases: clone(b.phases), contacts: clone(b.contacts), base: clone(b.base), keys: clone(b.keys),
+      hands: {
+        R: { at: [0.15, 0, 0.11], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+             pins: [HAND.palmSurf], pole: [-1, 0.1, 0.25], fingerYaw: -40 },
+        L: { at: [0.15, 0, -0.11], local: HAND.palmSurf, align: 'surface', normal: [0, -1, 0],
+             pins: [HAND.palmSurf], pole: [-1, 0.1, -0.25], fingerYaw: 40 }
+      }
+    });
+  }
+
 })(typeof window !== 'undefined' ? window : globalThis);
 
 </script>
@@ -2646,7 +2697,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   insertHold('rdl', 'rdl_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('rdl1', 'rdl1_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('deadlift', 'deadlift_hold', 3.4, 2, '一番下で2秒止める');
-  insertHold('chinning', 'chinning_hold', 1.5, 1.6, '上で2秒止める');   /* 元の一瞬止める0.4秒と合わせて2秒 */
+  insertHold('chinning', 'chinning_hold', 1.5, 1.6, '上で2秒止める');
+  insertHold('kickback', 'kickback_hold', 1.0, 1.0, '伸ばしたところで2秒止める');   /* 元の1秒と合わせて2秒 */
+  insertHold('pushupnarrow', 'pushupnarrow_hold', 3.0, 2, '一番下で2秒止める');   /* 元の一瞬止める0.4秒と合わせて2秒 */
   /* 下りるだけ（ネガティブ）: 足で跳んで（台を使って）あごがバーの高さまで上がり、5秒かけて腕を伸ばしきるまで下りる。
      ぶら下がる姿勢と握りは標準と同じで、時間の配分だけが違う（ACE は台・跳び上がりで上へ行く補助を挙げている） */
   (function () {
@@ -3973,6 +4026,48 @@ EX.push({
     "荷物を詰めたリュックを背負う"
   ]
 });
+/* 上腕三頭筋の種目を足す（2026-11-15 本人の要望。ベッドを台の代わりに使える）。
+   出典と違うところは notes/form-sources.md の「追加種目（2026-11-15）」 */
+EX.push({
+  id:"kickback", name:"ダンベルキックバック", kind:"w", w:3, r:12, sets:3, side:true, level:1,
+  p:["triceps"], s:[],
+  how:[
+    "片手と片膝をベッドの縁に乗せ、背中を床と平行に近くする。反対の手にダンベルを持つ。",
+    "上腕を体の横で床と平行になるまで引き上げ、肘を直角に曲げて構える。",
+    "上腕を動かさずに、肘を後ろへ伸ばしきる。伸ばしたところで一瞬止める。",
+    "ゆっくり肘を直角まで戻す。左右を入れ替えて同じ回数行う。"
+  ],
+  ng:[
+    "上腕が下がり、肘から先を振り子のように振る。上腕は床と平行のまま。",
+    "反動で振り上げる。軽くして、伸ばしきるところまで動かす。",
+    "背中が丸まる。胸を張り、頭から腰までまっすぐに保つ。"
+  ],
+  up:[
+    "伸ばしたところで2秒止める",
+    "戻す動作に3秒かける",
+    "重いダンベルに替える"
+  ]
+});
+EX.push({
+  id:"pushupnarrow", name:"ナロープッシュアップ", kind:"b", r:8, sets:3, level:3,
+  p:["triceps"], s:["chest","frontdelt","abs"],
+  how:[
+    "手を肩幅より狭く、胸の真下に置く。指先は前へ向ける。",
+    "頭からかかとまで一直線を保つ。",
+    "肘を体の横に沿わせて後ろへ曲げ、胸が手に近づくまで下ろす。",
+    "肘を伸ばしきるまで押し返す。"
+  ],
+  ng:[
+    "肘が外に開く。肘は体の横に沿わせて後ろへ向ける。",
+    "腰が落ちる。腹と尻を締める。",
+    "手を近づけすぎて手首が痛む。痛むなら手の間を少し広げる。"
+  ],
+  up:[
+    "下ろす動作に3秒かける",
+    "一番下で2秒止める",
+    "足を台に乗せる"
+  ]
+});
 const EXMAP = Object.fromEntries(EX.map(e=>[e.id,e]));
 /* 派生種目は親の図・解説・手順を引き継ぐ */
 function baseOf(id){ const e=EXMAP[id]; return (e && e.base) ? e.base : id; }
@@ -4422,7 +4517,27 @@ chinning:{
  feel:"わきの下から背中の横。力こぶだけが疲れるなら、肘を下へ引けていない。",
  easy:"台に乗るか跳んで上まで行き、5秒かけて下りるだけにする",
  hard:"上で2秒止める、または荷物を詰めたリュックを背負う",
- reps:"3セット × 3〜8回"}
+ reps:"3セット × 3〜8回"},
+kickback:{
+ why:"上腕を体の横で止めたまま肘を伸ばすので、上腕三頭筋だけに負荷が集まる。伸ばしきった位置で一番重くなり、頭の上で伸ばす種目とは違う所で効く。軽いダンベルで足りる。",
+ setup:"ベッドの縁に片手と片膝を乗せ、反対の足は床。背中を床と平行に近くする。ダンベルを持つ手の上腕を、体の横で床と平行に引き上げ、肘を直角に曲げる。",
+ breath:"伸ばしながら吐き、戻しながら吸う。",
+ tempo:"伸ばす1秒 → 止める1秒 → 戻す2秒。",
+ rom:"肘を直角から、伸ばしきるまで。上腕は床と平行のまま動かさない。",
+ feel:"二の腕の裏。肩の後ろが疲れるなら、上腕まで動いている。",
+ easy:"軽いダンベルに替える、または伸ばす角度を浅くする",
+ hard:"伸ばしたところで2秒止める",
+ reps:"左右それぞれ3セット × 10〜15回"},
+pushupnarrow:{
+ why:"手幅を狭くし、肘を体に沿わせて曲げると、腕立て伏せの負荷が胸から上腕三頭筋へ移る。器具がいらず、体重がそのまま負荷になる。",
+ setup:"手を胸の真下に、肩幅より狭く置く。指先は前。頭からかかとまで一直線にする。",
+ breath:"下ろしながら吸い、押しながら吐く。",
+ tempo:"下ろす2〜3秒 → 押す1秒。",
+ rom:"胸が手に近づくまで下ろし、肘を伸ばしきるまで押す。",
+ feel:"二の腕の裏と胸の内側。手首が痛むなら手の間を少し広げる。",
+ easy:"膝をついて行う、または机に手をついて角度を緩める",
+ hard:"一番下で2秒止める、または足を台に乗せる",
+ reps:"3セット × 6〜12回"}
 };
 
 /* 既定メニュー（週3・全身） */
@@ -5980,7 +6095,7 @@ function stampNow(){
 }
 /* この画面がいつ作られた版か（build.py が日時に置き換える）。
    端末に保存された古い版を見ていないか確かめるために出す */
-const BUILD_VERSION = "2026-11-15 20:33";
+const BUILD_VERSION = "2026-11-18 22:20";
 let TODAY = todayKey();
 /* アプリを開いたまま日付が変わっていたら、今日に切り替える（前日の記録はそのまま残る）。切り替えたら true */
 function rollDay(){
@@ -6562,6 +6677,8 @@ const PHYS = {
   triext:{hold:"両足は床。ダンベル1つの持ち手を両手で握り、頭の後ろへ"},
   floorpress:{hold:"背中と足裏は床。ダンベルは胸の横から真上へ"},
   pushup:{hold:"手のひらとつま先だけが床に接する"},
+  pushupnarrow:{hold:"手のひらとつま先だけが床に接する。手は胸の真下で、肩幅より狭く"},
+  kickback:{hold:"片手と片膝をベッドの縁に乗せ、反対の足は床。ダンベルは反対の手に1つ"},
   plank:{hold:"前腕とつま先だけが床に接する"},
   sideplank:{hold:"下側の前腕と足の外側だけが床に接する"},
   deadbug:{hold:"背中と腰は床につけたまま。手足だけを動かす"},
@@ -6603,6 +6720,8 @@ const DIANOTE = {
   ohp: "肋骨を締めて腰が反らないようにする。下ろす位置は耳の高さまで。",
   lateral: "肘の角度は固定したまま真横へ。上げるより、3秒かけて下ろすほうが効く。",
   floorpress: "上腕は体幹から45度くらい。真横に開くと肩を痛めやすい。",
+  kickback: "上腕は体の横で床と平行のまま。肘から先だけを後ろへ伸ばしきる。",
+  pushupnarrow: "肘は体の横に沿わせて後ろへ曲げる。外に開くと胸の種目になる。",
   pushup: "頭からかかとまで一直線。腰が落ちたらそこが限界なので、膝つきか台に手を乗せて角度を緩める。",
   curl: "肘の位置を動かさない。肘が前に出たらそれは肩の動き。",
   triext: "肘の位置は固定。開かないように前へ向けたまま保つ。",
@@ -6967,7 +7086,7 @@ if(window.matchMedia){
    止まった姿は公開前に描いておいた画像（docs/mmd/stills/）、再生は「動きを再生」を押したときに初めて読むモデル。
    どちらかが読めなかったら、その回は画面のすべてを線の図に切り替える（1 枚の画面に両方を混ぜない） */
 const MMD_BASE = "./mmd/";       /* build.py が site のときだけ "./mmd/" を入れる。ほかの版では空 */
-const MMD_STILLS = {"abduct":"w","abduct_bent":"w","abduct_db":"w","adduct":"x","adduct_hold":"x","backext":"x","backext_arms":"x","backext_hold":"x","bridge":"w","bridge_low":"w","bridge_one":"w","calf":"t","calf_floor":"t","calfseat":"t","calfseat.1":"t","calfseat_single":"t","calfseat_single.1":"t","chinning":"t","chinning_hold":"t","chinning_neg":"t","crunch":"w","crunch_arms":"w","crunch_db":"w","curl":"t","curl.1":"t","curl_hold":"t","curl_hold.1":"t","curl_one":"t","deadbug":"x","deadbug_db":"x","deadbug_db.1":"x","deadbug_half":"x","deadlift":"t","deadlift.1":"t","deadlift_hold":"t","deadlift_hold.1":"t","farmer":"t","farmer.1":"t","farmer_one":"t","floorpress":"w","floorpress.1":"w","floorpress_hold":"w","floorpress_hold.1":"w","floorpress_one":"w","fly":"t","fly.1":"t","fly_hold":"t","fly_hold.1":"t","fly_shallow":"t","fly_shallow.1":"t","front":"t","front.1":"t","front_hold":"t","front_hold.1":"t","front_one":"t","goblet":"t","goblet_box":"t","goblet_hold":"t","hammer":"t","hammer.1":"t","hammer_hold":"t","hammer_hold.1":"t","hammer_one":"t","hipthrust":"t","lateral":"t","lateral.1":"t","lateral_hold":"t","lateral_hold.1":"t","lateral_short":"t","lateral_short.1":"t","ohp":"t","ohp.1":"t","ohp_one":"t","plank":"x","plank_leg":"x","pullover":"s","pullover_hold":"s","pullover_shallow":"s","pushup":"x","pushup_deep":"x","pushup_deep.1":"x","pushupknee":"x","pushupknee_hold":"x","rdl":"t","rdl.1":"t","rdl1":"t","rdl1.1":"t","rdl1_hold":"t","rdl1_hold.1":"t","rdl_hold":"t","rdl_hold.1":"t","rear":"s","rear.1":"s","rear_hold":"s","rear_hold.1":"s","rear_short":"t","rear_short.1":"t","row":"s","row2":"t","row2.1":"t","row2_hold":"t","row2_hold.1":"t","row_hold":"s","shrug":"t","shrug.1":"t","shrug_hold":"t","shrug_hold.1":"t","sidebend":"t","sidebend_hold":"t","sidelunge":"t","sidelunge_hold":"t","sidelunge_shallow":"t","sideplank":"x","sideplank_leg":"w","sissy":"t","sissy_hold":"t","sissy_shallow":"t","skull":"w","skull.1":"w","skull_hold":"w","skull_hold.1":"w","skull_one":"w","slidecurl":"x","slidecurl_one":"x","slidecurl_shallow":"x","split":"t","split.1":"t","split_hold":"t","split_hold.1":"t","splitfloor":"t","splitfloor.1":"t","splitfloor_hold":"t","splitfloor_hold.1":"t","sumo":"t","sumo_hold":"t","sumo_shallow":"t","triext":"t","triext_hold":"t","triext_one":"t","twist":"s","twist_db":"s","twist_shallow":"s"};     /* 画像がある動きの id → 枠の形（t 縦長・s 正方形・w 横長・x もっと横長）。build.py が入れる */
+const MMD_STILLS = {"abduct":"w","abduct_bent":"w","abduct_db":"w","adduct":"x","adduct_hold":"x","backext":"x","backext_arms":"x","backext_hold":"x","bridge":"w","bridge_low":"w","bridge_one":"w","calf":"t","calf_floor":"t","calfseat":"t","calfseat.1":"t","calfseat_single":"t","calfseat_single.1":"t","chinning":"t","chinning_hold":"t","chinning_neg":"t","crunch":"w","crunch_arms":"w","crunch_db":"w","curl":"t","curl.1":"t","curl_hold":"t","curl_hold.1":"t","curl_one":"t","deadbug":"x","deadbug_db":"x","deadbug_db.1":"x","deadbug_half":"x","deadlift":"t","deadlift.1":"t","deadlift_hold":"t","deadlift_hold.1":"t","farmer":"t","farmer.1":"t","farmer_one":"t","floorpress":"w","floorpress.1":"w","floorpress_hold":"w","floorpress_hold.1":"w","floorpress_one":"w","fly":"t","fly.1":"t","fly_hold":"t","fly_hold.1":"t","fly_shallow":"t","fly_shallow.1":"t","front":"t","front.1":"t","front_hold":"t","front_hold.1":"t","front_one":"t","goblet":"t","goblet_box":"t","goblet_hold":"t","hammer":"t","hammer.1":"t","hammer_hold":"t","hammer_hold.1":"t","hammer_one":"t","hipthrust":"t","kickback":"s","kickback_hold":"s","lateral":"t","lateral.1":"t","lateral_hold":"t","lateral_hold.1":"t","lateral_short":"t","lateral_short.1":"t","ohp":"t","ohp.1":"t","ohp_one":"t","plank":"x","plank_leg":"x","pullover":"s","pullover_hold":"s","pullover_shallow":"s","pushup":"x","pushup_deep":"x","pushup_deep.1":"x","pushupknee":"x","pushupknee_hold":"x","pushupnarrow":"x","pushupnarrow_hold":"x","rdl":"t","rdl.1":"t","rdl1":"t","rdl1.1":"t","rdl1_hold":"t","rdl1_hold.1":"t","rdl_hold":"t","rdl_hold.1":"t","rear":"s","rear.1":"s","rear_hold":"s","rear_hold.1":"s","rear_short":"t","rear_short.1":"t","row":"s","row2":"t","row2.1":"t","row2_hold":"t","row2_hold.1":"t","row_hold":"s","shrug":"t","shrug.1":"t","shrug_hold":"t","shrug_hold.1":"t","sidebend":"t","sidebend_hold":"t","sidelunge":"t","sidelunge_hold":"t","sidelunge_shallow":"t","sideplank":"x","sideplank_leg":"w","sissy":"t","sissy_hold":"t","sissy_shallow":"t","skull":"w","skull.1":"w","skull_hold":"w","skull_hold.1":"w","skull_one":"w","slidecurl":"x","slidecurl_one":"x","slidecurl_shallow":"x","split":"t","split.1":"t","split_hold":"t","split_hold.1":"t","splitfloor":"t","splitfloor.1":"t","splitfloor_hold":"t","splitfloor_hold.1":"t","sumo":"t","sumo_hold":"t","sumo_shallow":"t","triext":"t","triext_hold":"t","triext_one":"t","twist":"s","twist_db":"s","twist_shallow":"s"};     /* 画像がある動きの id → 枠の形（t 縦長・s 正方形・w 横長・x もっと横長）。build.py が入れる */
 const MMD_SHAPES = {t: [720, 960], s: [840, 840], w: [960, 660], x: [960, 500]};
 let MMD = null, mmdLoading = null, mmdOff = false;
 
@@ -7028,7 +7147,8 @@ const MDRV = {
   curl: ["forearmR.flex", 5, 142], hammer: ["forearmR.flex", 5, 138], triext: ["forearmR.flex", 95, 10],
   /* 次の3つは、キャラクターの側が「腕を伸ばした所」を始めにしている */
   floorpress: ["upperarmR.flex", 90, -15], fly: ["upperarmR.abd", 32, 88], skull: ["forearmR.flex", 8, 96],
-  pushup: ["pelvis.y", 0.38, 0.18], pushupknee: ["pelvis.y", 0.38, 0.18], pushup_deep: ["pelvis.y", 0.44, 0.18],
+  pushup: ["pelvis.y", 0.38, 0.18], pushupknee: ["pelvis.y", 0.38, 0.18], pushup_deep: ["pelvis.y", 0.44, 0.18], pushupnarrow: ["pelvis.y", 0.38, 0.18],
+  kickback: ["forearmR.flex", 95, 5],
   crunch: ["spineT.flex", 0, 18], backext: ["spineL.flex", 2, -12], sidebend: ["spineL.abd", 0, 22],
   /* 左右を交互に動かす: 右の番（k=0）と左の番（k=1）を、動いている側で決める */
   deadbug: {alt: [["upperarmR.flex", 90, 172], ["upperarmL.flex", 90, 172]]},
@@ -7091,7 +7211,7 @@ function playModel(id, wrap, m){
 /* ---------- 今日 ---------- */
 const REST = {split:120, goblet:120, sumo:120, splitfloor:120, rdl:120, rdl1:120, hipthrust:105, bridge:90,
               row:105, row2:105, ohp:105, pushup:105, pushupknee:105, floorpress:105, fly:90,
-              sidelunge:120, slidecurl:90, pullover:90, deadlift:120, chinning:120};
+              sidelunge:120, slidecurl:90, pullover:90, deadlift:120, chinning:120, pushupnarrow:105};
 function restFor(item){
   const ex = EXMAP[item.ex];
   if(ex.kind === "t") return 60;
@@ -7147,19 +7267,19 @@ const PATTERN = {
   rdl:"hinge", rdl1:"hinge", deadlift:"deadlift", slidecurl:"legcurl", hipthrust:"bridge", bridge:"bridge", abduct:"abduct", adduct:"adduct",
   pushupknee:"hpush", pushup:"hpush", floorpress:"floorpress", fly:"fly",
   row:"pull", row2:"row2", pullover:"pullover", chinning:"vpull", ohp:"vpush", farmer:"carry", shrug:"shrug",
-  lateral:"raise", front:"fraise", rear:"rear", curl:"curl", hammer:"hammer", triext:"ext", skull:"skull",
+  lateral:"raise", front:"fraise", rear:"rear", curl:"curl", hammer:"hammer", triext:"ext", skull:"skull", kickback:"kick", pushupnarrow:"npush",
   calf:"calf", calfseat:"calf", backext:"backext", plank:"abs", deadbug:"deadbug", crunch:"crunch",
   sideplank:"side", sidebend:"sidebend", twist:"twist"
 };
 /* 動きのまとまり: 種目を選ぶシートと履歴の種目選びの見出し（picker.js の PATTERN_HEAD）、提案タブの「動きごとの今の段階」の
    見出し（view-plan.js の PATTERN_NAME）、軽い週を勧める判定（progress.js の deloadAdvice）に使う。
    書いていない動きは、その動きだけのまとまり。メニュー作りには使わない */
-const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", deadlift:"hinge", floorpress:"hpush", row2:"pull", vpull:"pull", hammer:"curl", skull:"ext",
+const PATTERN_GROUP = {sumo:"squat", splitsq:"squat", deadlift:"hinge", floorpress:"hpush", row2:"pull", vpull:"pull", hammer:"curl", skull:"ext", kick:"ext", npush:"ext",
                        deadbug:"abs", crunch:"abs", sidebend:"side"};
 function groupOf(pat){ return PATTERN_GROUP[pat] || pat; }
 /* メニューに並べる順（大きい動きを先に、体幹は最後に）。同じまとまりの動きは続けて並べる */
 const PATTERN_ORDER = ["squat","sumo","splitsq","lunge","kneeext","hinge","deadlift","legcurl","hpush","floorpress","fly","pull","row2","vpull","pullover",
-                       "vpush","bridge","abduct","adduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull",
+                       "vpush","bridge","abduct","adduct","carry","shrug","raise","fraise","rear","curl","hammer","ext","skull","kick","npush",
                        "calf","backext","abs","deadbug","crunch","side","sidebend","twist"];
 /* まとまりの並び（PATTERN_ORDER に出てくる順） */
 function groupOrder(){ return Array.from(new Set(PATTERN_ORDER.map(groupOf))); }
@@ -7375,7 +7495,9 @@ const PATTERN_PREF = {lunge:0.7, pullover:0.8, fly:0.9, carry:0.85, shrug:0.85, 
                       sumo:0.85, splitsq:0.95, row2:0.95, skull:0.95, crunch:0.95, deadbug:0.9, sidebend:0.95,
                       /* デッドリフトは大殿筋と大腿四頭筋の1日の上限をスクワットと分け合うので、サイドランジと同じ順にする。
                          1 のままだとサイドランジが入らない日が増えて、毎日やる場合の内転筋が週 9.4 → 8.3 に減った（2026-10-09 の試算） */
-                      deadlift:0.7};
+                      deadlift:0.7,
+                      /* 上腕三頭筋の種目（2026-11-15）。肘を伸ばす動きが4つになったので、前からある2つより少し後に選ぶ */
+                      kick:0.9, npush:0.9};
 /* 部位ごとの回復の日数: 主役（主働筋）として3セット以上やった日から、次に主役にするまで空ける日数
    （0=連日でもよい、1=中1日=48時間、2=中2日=72時間、3=中3日=96時間）。その日に主役で6セット以上やったときは1日延ばす。
    文献の目安（2026-09-29 に調べたもの）: 下肢の大きい筋は中2日が最小で、量が多い・下ろす動作が強いと1日（ハムストリングは
@@ -7689,6 +7811,10 @@ const VARIANT_TEXT = {
                easy: ["肘を手で支える",    "片手ずつ行い、反対の手で肘を支える。"]},
   skull:      {hard: ["下ろしたところで2秒止める", "耳の横まで下ろした位置で2秒止めてから伸ばす。"],
                easy: ["肘を手で支える",    "片手ずつ行い、反対の手で肘を支える。"]},
+  kickback:   {hard: ["伸ばしたところで2秒止める", "肘を伸ばしきった位置で2秒止めてから戻す。"],
+               easy: ["軽くして回数を増やす", "一段軽い持ち方にして、回数を増やす。"]},
+  pushupnarrow:{hard: ["一番下で2秒止める", "胸が手に近づいた位置で2秒止めてから押す。"],
+               easy: ["机に手をつく",      "机やベッドの縁に手をついて角度を緩める。手の幅は狭いまま。"]},
   sumo:       {hard: ["一番下で2秒止める", "一番下で2秒止め、反動を使わずに立ち上がる。"],
                easy: ["浅めに止める",      "太ももが床と平行になる手前で止める。"]},
   splitfloor: {hard: ["一番下で2秒止める", "後ろの膝が床に近づいた位置で2秒止めてから戻る。"],
@@ -7767,11 +7893,12 @@ const VARIANT_MOTION = {
   "adduct|上で2秒止める":"adduct_hold", "deadlift|一番下で2秒止める":"deadlift_hold",
   "chinning|上で2秒止める":"chinning_hold", "chinning|下りるだけにする":"chinning_neg",
   "backext|上で3秒止める":"backext_hold", "backext|腕を体の横に伸ばす":"backext_arms",
-  "pushup|ダンベルを握って行う":"pushup_deep"
+  "pushup|ダンベルを握って行う":"pushup_deep",
+  "kickback|伸ばしたところで2秒止める":"kickback_hold", "pushupnarrow|一番下で2秒止める":"pushupnarrow_hold"
 };
 /* 動きの見た目が基本と変わらない組み方（重さや時間だけ変えるもの）。図の断り書きを出さない */
 const VARIANT_SAME_LOOK = {
-  "shrug|軽くして回数を増やす":1, "farmer|時間を短くする":1, "row|台に手をついて支える":1
+  "shrug|軽くして回数を増やす":1, "farmer|時間を短くする":1, "row|台に手をついて支える":1, "kickback|軽くして回数を増やす":1
 };
 
 /* DETAIL[id または base].reps の「A〜B回」「A〜B秒」を読み、その幅に r を収める（外れたら近い端へ） */
@@ -8779,6 +8906,7 @@ const HOLD = {
   floorpress:{pair:"両手に1つずつ持つ",    one:"片手ずつ押し、反対の手は床に置く",   per:"arm"},
   curl:      {pair:"両手に1つずつ持つ",    one:"片手ずつ巻き上げ、左右を入れ替える", per:"arm"},
   triext:    {one:"持ち手を両手で握る",                                    per:"total"},
+  kickback:  {one:"片手に持ち、左右を入れ替える",                          per:"arm"},
   calf:      {pair:"両手に1つずつ持つ",    one:"片手に持ち、反対の手で壁を支える",   per:"total"},
   farmer:    {pair:"両手に1つずつ持つ",    one:"片手に持ち、途中で左右を持ち替える", per:"total"},
   sumo:      {pair:"両肩に1つずつ担ぐ",    one:"横にして持ち手を両手で握り、胸の前に構える", per:"total", prefer:"one"},
@@ -8891,7 +9019,7 @@ function nearestOption(opts, w){
 }
 
 /* 記録がない種目の最初の重さの目安(per が arm の種目は片腕あたり)。この重さ以下で一番重い使い方から始める */
-const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity, pullover:8, rear:3, hammer:6, deadlift:12};
+const START_KG = {goblet:10, rdl:12, rdl1:10, split:10, hipthrust:15, row:8, ohp:5, lateral:3, floorpress:6, curl:5, triext:6, calf:10, farmer:Infinity, pullover:8, rear:3, hammer:6, deadlift:12, kickback:3};
 function startKg(id){ const v = START_KG[id] !== undefined ? START_KG[id] : START_KG[baseOf(id)]; return v === undefined ? 8 : v; }
 function defaultOption(id){
   const opts = gearOptions(id); if(!opts.length) return null;
@@ -8992,7 +9120,9 @@ const HOUSE = {
   adduct:    {up:"水を入れたペットボトルを下の脚の内ももに乗せ、上の手で押さえて行う"},
   backext:   {up:"水を入れた500mlのペットボトルを両手で持ち、頭の後ろに添えて行う"},
   deadlift:  {up:"本や水を入れたペットボトルを詰めたリュックを背負い、ダンベルと一緒に使う", down:"水を入れた2Lのペットボトルを両手に1本ずつ持つ"},
-  chinning:  {up:"荷物を詰めたリュックを背負う", down:"椅子に片足を乗せ、脚で少し押し上げながら行う"}
+  chinning:  {up:"荷物を詰めたリュックを背負う", down:"椅子に片足を乗せ、脚で少し押し上げながら行う"},
+  kickback:  {down:"水を入れた500mlのペットボトルで行う"},
+  pushupnarrow:{up:"荷物を詰めたリュックを背負う"}
 };
 function houseOf(id){ return HOUSE[id] || HOUSE[baseOf(id)] || {}; }
 
@@ -10113,7 +10243,8 @@ function viewHist(){
       <span class="num">${hy}年${hm}月</span>
       <button data-act="histmon" data-d="1" aria-label="次の月"${histMonth >= nowMon ? " disabled" : ""}>次の月 ›</button>
     </div>`;
-  const table = monDates.map(d=>{
+  /* その月の古い日から並べる（2026-11-18 本人の要望） */
+  const table = monDates.slice().reverse().map(d=>{
     const s = state.sessions[d];
     const sets = (s.entries||[]).reduce((a,e)=>a+e.sets.length,0);
     const names = (s.entries||[]).filter(e=>e.sets.length).map(e=>EXMAP[e.ex]?EXMAP[e.ex].name:e.ex).join("、");
@@ -10126,9 +10257,9 @@ function viewHist(){
       <div class="bigset"><span class="v num">${streakDays}</span><span class="u">回のトレーニング（合計 ${totalSets} セット）</span></div>
       <p class="lastline">直近7日で ${last7} 回。</p>
     </div>
-    <h3 class="sec">種目ごとの推移</h3>
+    ${fold("trend", "種目ごとの推移", `
     <p class="lastline" style="margin-top:0">点は日ごとの一番よいセット。<span style="color:var(--muscle-ink)">●</span>は自己ベストの日</p>
-    ${trendCards(dates)}
+    ${trendCards(dates)}`)}
     <h3 class="sec">日ごとの記録</h3>
     <p class="lastline" style="margin-top:0">日付をタップすると、その日の中身を直せます。</p>
     ${monthNav}

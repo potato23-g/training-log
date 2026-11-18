@@ -223,10 +223,12 @@ def judge_trailing_count(label):
 
 
 def judge_joint_audit(out, rc):
-    """指摘が出てよいのは既知の12種目のみ。それ以外で指摘が出たら不合格。
+    """指摘が出てよいのは既知の16種目のみ。それ以外で指摘が出たら不合格。
     「止める」版（*_hold）は元の動きと同じ姿勢なので、元の動きと同じ関節・同じ角度で指摘が出る。"""
     KNOWN = {"row", "triext", "pushup", "split", "splitfloor", "pushupknee", "triext_one",
-             "row_hold", "triext_hold", "split_hold", "splitfloor_hold", "pushupknee_hold"}
+             "row_hold", "triext_hold", "split_hold", "splitfloor_hold", "pushupknee_hold",
+             # 2026-11-15 追加。キックバックはロウと同じ構え（台に置いた手の指摘が同じ）、ナロープッシュアップは腕立て伏せと同じ手首の指摘
+             "kickback", "kickback_hold", "pushupnarrow", "pushupnarrow_hold"}
     flagged = set()
     cur = None
     for line in out.splitlines():

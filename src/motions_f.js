@@ -169,7 +169,9 @@
   insertHold('rdl', 'rdl_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('rdl1', 'rdl1_hold', 3.4, 2, '一番下で2秒止める');
   insertHold('deadlift', 'deadlift_hold', 3.4, 2, '一番下で2秒止める');
-  insertHold('chinning', 'chinning_hold', 1.5, 1.6, '上で2秒止める');   /* 元の一瞬止める0.4秒と合わせて2秒 */
+  insertHold('chinning', 'chinning_hold', 1.5, 1.6, '上で2秒止める');
+  insertHold('kickback', 'kickback_hold', 1.0, 1.0, '伸ばしたところで2秒止める');   /* 元の1秒と合わせて2秒 */
+  insertHold('pushupnarrow', 'pushupnarrow_hold', 3.0, 2, '一番下で2秒止める');   /* 元の一瞬止める0.4秒と合わせて2秒 */
   /* 下りるだけ（ネガティブ）: 足で跳んで（台を使って）あごがバーの高さまで上がり、5秒かけて腕を伸ばしきるまで下りる。
      ぶら下がる姿勢と握りは標準と同じで、時間の配分だけが違う（ACE は台・跳び上がりで上へ行く補助を挙げている） */
   (function () {

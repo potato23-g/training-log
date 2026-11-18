@@ -69,7 +69,12 @@ setTimeout(() => {
       const K = patternNext(pat);
       if(K && itemKey(K) === itemKey(only)){
         out.probed++;
-        if(has(buildPlan(), pat)) out.noRecordOnly.push(tag + ": " + itemName(only));
+        /* 入ったのが比べた組み方そのものの時だけ数える。仮の記録で段が進み、別の組み方（「一番下で3秒止める」など）が入ったときは、
+           記録が無いせいで外れていたのとは言えない（2026-11-15: 上腕三頭筋の2種目を足したら、1回10種目の最後の枠で
+           サイドベンドが「一番下で3秒止める」に進んで入った。2種目をメニューから外すと元どおり通ることを確かめた） */
+        const got = buildPlan().filter(it => patternOf(it.ex) === pat);
+        if(got.some(it => itemKey(it) === itemKey(only))) out.noRecordOnly.push(tag + ": " + itemName(only));
+        else if(got.length) out.skipped++;
       }else out.skipped++;                    /* 次の段に進んだなど、同じ組み方で比べられない */
       delete state.sessions[OLD]; fresh();
     });

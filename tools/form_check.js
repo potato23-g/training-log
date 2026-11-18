@@ -188,6 +188,37 @@ const CHECKS = {
       ['肘は体幹から45度くらい（NASM）', `体幹とのなす角 ${flare.toFixed(0)}°`, flare > 28 && flare < 62]
     ];
   },
+  /* ACE "Triceps kickback": 上腕は胴と平行に保ち、肘から先だけを伸ばす（2026-11-15） */
+  kickback: (m) => {
+    const start = at(m, 0), top = findT(m, (fr) => -M.boneAngles(fr.pose, 'forearmR').flex);
+    const elbowStart = M.boneAngles(start.pose, 'forearmR').flex, elbowTop = M.boneAngles(top.fr.pose, 'forearmR').flex;
+    const upS = fromHoriz(dir(start, 'upperarmR')), upT = fromHoriz(dir(top.fr, 'upperarmR'));
+    const drift = V.len(V.sub(top.fr.b.forearmR.pos, start.b.forearmR.pos));
+    const torso = Math.abs(fromHoriz(dir(start, 'spineT')));
+    return [
+      ['構えで肘は直角くらい', `肘屈曲 ${elbowStart.toFixed(0)}°`, elbowStart > 80 && elbowStart < 110],
+      ['上腕は床と平行に近い（構え・伸ばしきり）', `上腕の傾き ${upS.toFixed(0)}° / ${upT.toFixed(0)}°`, Math.abs(upS) < 25 && Math.abs(upT) < 25],
+      ['肘を伸ばしきる', `肘屈曲 ${elbowTop.toFixed(0)}°`, elbowTop < 15],
+      ['肘の位置は動かさない', `肘の移動 ${(drift * 100).toFixed(0)}cm`, drift < 0.05],
+      ['背中は床と平行に近い', `胴の傾き ${torso.toFixed(0)}°`, torso < 25]
+    ];
+  },
+  /* ACE "Close-grip push-up": 手は肩幅より狭く、肘は体に沿わせる */
+  pushupnarrow: (m) => {
+    const bottom = findT(m, (fr) => -fr.b.spineT.pos[1]);
+    const chest = bottom.fr.b.spineT.pos[1] - 0.125;
+    const line = ang3(bottom.fr.b.head.pos, bottom.fr.b.pelvis.pos, bottom.fr.b.footR.pos);
+    const torsoDown = V.mul(dir(bottom.fr, 'spineT'), -1);
+    const flare = angWith(V.sub(bottom.fr.b.forearmR.pos, bottom.fr.b.upperarmR.pos), torsoDown);
+    const handW = Math.abs(bottom.fr.b.handR.pos[2] - bottom.fr.b.handL.pos[2]);
+    const shW = Math.abs(bottom.fr.b.upperarmR.pos[2] - bottom.fr.b.upperarmL.pos[2]);
+    return [
+      ['手の幅は肩幅より狭い', `手の幅 ${(handW * 100).toFixed(0)}cm / 肩幅 ${(shW * 100).toFixed(0)}cm`, handW < shW],
+      ['胸が手に近づくまで下りる', `胸の下端 ${(chest * 100).toFixed(0)}cm`, chest < 0.15],
+      ['頭からかかとまで一直線', `頭-骨盤-足の角度 ${line.toFixed(0)}°`, line > 160],
+      ['肘は体に沿わせる（体幹から30度以内）', `体幹とのなす角 ${flare.toFixed(0)}°`, flare < 30]
+    ];
+  },
   plank: (m) => {
     const fr = at(m, 0);
     const under = Math.hypot(fr.b.forearmR.pos[0] - fr.b.upperarmR.pos[0], fr.b.forearmR.pos[2] - fr.b.upperarmR.pos[2]);

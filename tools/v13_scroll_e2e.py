@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """スマホ幅・本物のタッチで、種目を外す・後に回す・終えるときに画面が飛ばないか、つまみの上から指を動かしてもスクロールできるか、
    長押しなら並べ替えられるか、目標と違う回数で記録したら以降の目標がその回数になるか（2026-11-08 本人の指摘）。
-   終えた種目が一覧の最後に回るか・履歴を1か月ずつ切り替えられるか（2026-11-15）。
+   終えた種目が一覧の最後に回るか・履歴を1か月ずつ切り替えられるか（2026-11-15）。日ごとの記録は古い日から・推移は初め閉じる（2026-11-18）。
    python v13_scroll_e2e.py"""
 import json, os, subprocess, sys, tempfile, time, urllib.request, io
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -78,6 +78,9 @@ try:
     y0 = ev("Math.round(document.querySelector('.histmon').getBoundingClientRect().top)")
     tap('[data-act=histmon][data-d="-1"]')
     y1 = ev("Math.round(document.querySelector('.histmon').getBoundingClientRect().top)")
+    first = ev("document.querySelector('table.hist tbody tr[data-d]').dataset.d"); last = ev("[...document.querySelectorAll('table.hist tbody tr[data-d]')].pop().dataset.d")
+    ok(first < last and first.endswith("-01") and last.endswith("-20"), "日ごとの記録は月の古い日から並ぶ（%s … %s）" % (first, last))
+    ok(ev("!!document.querySelector('details[data-fold=trend]') && !document.querySelector('details[data-fold=trend]').open"), "種目ごとの推移は初め閉じている")
     ok(rows() == 20 and abs(y1 - y0) <= 2, "前の月を押すと、その月の全部の日（20日・30日で切らない）が出て、月の見出しは同じ高さのまま（%s 行・%s→%s）" % (rows(), y0, y1))
     tap('[data-act=histmon][data-d="-1"]')
     ok(rows() == 1 and ev("document.querySelector('[data-act=histmon][data-d=\"-1\"]').disabled"), "記録の一番古い月より前へは進めない")
